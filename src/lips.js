@@ -1238,7 +1238,7 @@
             } else {
                 value = toString(this.car);
             }
-            if (value) {
+            if (value !== undefined) {
                 arr.push(value);
             }
             if (this.cdr instanceof Pair) {
@@ -2599,7 +2599,7 @@
             if (code.cdr instanceof Pair &&
                 typeof code.cdr.car === 'string' &&
                 code.cdr.cdr !== nil) {
-                __doc__ = code.cdr.car;
+                __doc__ = trimLines(code.cdr.car);
             }
             function lambda(...args) {
                 var env = (dynamic_scope ? this : self).inherit('lambda');
@@ -3299,7 +3299,7 @@
         // ------------------------------------------------------------------
         read: doc(function read(arg) {
             if (typeof arg === 'string') {
-                return parse(tokenize(arg));
+                return parse(tokenize(arg))[0];
             }
             return this.get('stdin').read().then((text) => {
                 return read.call(this, text);
@@ -3336,7 +3336,7 @@
             it user code)`),
         // ------------------------------------------------------------------
         error: doc(function(...args) {
-            this.get('print')(...args);
+            this.get('print').apply(this, args);
         }, `(error . args)
 
             Display error message.`),
@@ -3468,8 +3468,11 @@
             lists.forEach((arg, i) => {
                 typecheck('map', arg, ['pair', 'nil'], i + 1);
             });
-            if (lists.some((x) => isEmptyList(x))) {
+            if (lists.some(x => x === nil)) {
                 return nil;
+            }
+            if (lists.some(isEmptyList)) {
+                return emptyList();
             }
             return unpromise(fn.call(this, ...lists.map(l => l.car)), (head) => {
                 return unpromise(map.call(this, fn, ...lists.map(l => l.cdr)), (rest) => {

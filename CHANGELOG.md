@@ -1,6 +1,35 @@
-## 0.17.0
+## 0.19.0
 ### Features
 * proper Tail Call Optimizations and continuations (inspired by implementation from nconc lisp)
+
+## 0.18.1
+### Bug fixes
+* fix auto indent and add version number to executable
+
+## 0.18.0
+### Features
+* add copyright notes to binary and improve the calling it
+* allow to call lips from shebang
+### Bug fixes
+* trim lines in functions doc strings [#23](https://github.com/jcubic/lips/issues/23)
+
+## 0.17.2
+### Bug fixes
+* fix list of false values [#22](https://github.com/jcubic/lips/issues/22)
+
+## 0.17.1
+### Bug fixes
+* fix map last value [#21](https://github.com/jcubic/lips/issues/21)
+
+## 0.17.0
+### Features
+* revert breaking change of read to return Array
+* use proper read function in executable REPL
+
+## 0.16.3
+### Bug fixes
+* fix map on empty list
+* fix exception when calling error
 
 ## 0.16.2
 ### Bug fixes
