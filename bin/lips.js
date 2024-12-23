@@ -675,13 +675,15 @@ function run_repl(err, rl) {
             console.error(e);
         }
     };
-    process.stdin.on('keypress', (c, k) => {
+    process.stdin.on('keypress', (key) => {
         setTimeout(function() {
             // we force triggering rl._writeToOutput function
-            // so we have the change to syntax highlight the command line
+            // so we have the change to syntax highlight of the command line
             // this needs to happen on next tick so the string have time
             // to updated with a given key
-            if (cmd) {
+            if (key !== '\r') {
+                // we don't want to run on enter, since _refreshLine
+                // prints space at the beginning of the line #406
                 rl._refreshLine();
             }
         }, 0);
@@ -690,9 +692,9 @@ function run_repl(err, rl) {
         if (supports_paste_brackets) {
             // this make sure that the paste brackets ANSI escape
             // is added to cmd so they can be processed in 'line' event
-            process.stdin.on('keypress', (c, k) => {
-                if (k?.name?.match(/^paste-/)) {
-                    cmd += k.sequence;
+            process.stdin.on('keypress', (key, meta) => {
+                if (meta?.name?.match(/^paste-/)) {
+                    cmd += meta.sequence;
                 }
             });
             // enable paste bracket mode by the terminal
