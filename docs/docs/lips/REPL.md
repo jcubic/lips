@@ -29,7 +29,7 @@ to properly handle copy-paste of Scheme code.
 To learn more you can read this article:
 [Handling auto-indentation in Node.js REPL](https://jakub.jankiewicz.org/blog/node-repl-auto-indent/).
 
-From version [1.0.0-beta.20](https://github.com/LIPS-scheme/lips/releases/tag/1.0.0-beta.20)
+From version [1.0.0-beta.20](https://github.com/jcubic/lips/releases/tag/1.0.0-beta.20)
 the Node.js REPL also supports parentheses matching. It's supported by
 [CLisp](https://www.gnu.org/software/clisp/), a [Common Lisp](https://common-lisp.net/) interpreter.
 

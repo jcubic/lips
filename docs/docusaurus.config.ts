@@ -35,7 +35,7 @@ const config: Config = {
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'LIPS-scheme', // Usually your GitHub org/user name.
+  organizationName: 'jcubic', // Usually your GitHub org/user name.
   projectName: 'lips', // Usually your repo name.
   deploymentBranch: 'master',
 
@@ -63,7 +63,7 @@ const config: Config = {
         },
         blog: {
           showReadingTime: true,
-          editUrl: 'https://github.com/LIPS-scheme/lips/tree/master/docs/',
+          editUrl: 'https://github.com/jcubic/lips/tree/master/docs/',
           feedOptions: {
             type: 'rss',
             limit: 10,
@@ -88,7 +88,7 @@ const config: Config = {
         },
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/LIPS-scheme/lips/tree/master/docs/',
+          editUrl: 'https://github.com/jcubic/lips/tree/master/docs/',
         },
         theme: {
           customCss: './src/css/custom.css',
@@ -129,7 +129,7 @@ const config: Config = {
           position: 'right'
         },
         {
-          href: 'https://github.com/LIPS-scheme/lips',
+          href: 'https://github.com/jcubic/lips',
           label: 'GitHub',
           position: 'right',
         },
@@ -183,7 +183,7 @@ const config: Config = {
             },
             {
               label: 'GitHub',
-              href: 'https://github.com/LIPS-scheme/lips',
+              href: 'https://github.com/jcubic/lips',
             },
           ],
         },
