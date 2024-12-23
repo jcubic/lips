@@ -542,7 +542,11 @@ in JavaScript:
 // ==> [1, NaN, NaN]
 ```
 
-**NOTE**: the value are different becaseu in Shceme i
+:::info
+
+the values in JavaScript are different because they have different representation in LIPS.
+
+:::
 
 To fix the issue you can
 define lambda with single argument:
