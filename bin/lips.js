@@ -702,6 +702,11 @@ function run_repl(err, rl) {
         }
         rl.on('line', function(line) {
             try {
+                // user pressed enter without any code
+                if (!line) {
+                    rl.prompt();
+                    return;
+                }
                 cmd += line;
                 const code = cmd.replace(brackets_re, '');
                 if (cmd.match(/\x1b\[201~$/)) {
