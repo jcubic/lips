@@ -7,6 +7,7 @@
 ### Bugfix
 * fix exception when handling parse error for lonely `)` [#417](https://github.com/jcubic/lips/issues/417)
 * fix unboxing arguments of LIPS created classes [#411](https://github.com/jcubic/lips/issues/411)
+* fix space in front of output in REPL [#406](https://github.com/jcubic/lips/issues/406)
 
 ## 1.0.0-beta.20
 ### Feature

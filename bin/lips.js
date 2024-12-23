@@ -681,7 +681,9 @@ function run_repl(err, rl) {
             // so we have the change to syntax highlight the command line
             // this needs to happen on next tick so the string have time
             // to updated with a given key
-            rl._refreshLine();
+            if (cmd) {
+                rl._refreshLine();
+            }
         }, 0);
     });
     bootstrap(interp).then(function() {
@@ -714,9 +716,9 @@ function run_repl(err, rl) {
                     // https://github.com/nodejs/node/issues/11699
                     rl.setPrompt('');
                     rl.pause();
+                    cmd = '';
                     prev_eval = prev_eval.then(function() {
                         const result = run(code, interp, dynamic, null, options.t || options.trace, false);
-                        cmd = '';
                         return result;
                     }).then(function(result) {
                         if (process.stdin.isTTY) {
