@@ -7,6 +7,21 @@ import renderSocialCards from './src/utils';
 
 const isProd = process.env.NODE_ENV === 'production';
 
+prismThemes.dracula.styles.push({
+  types: ['regex', 'important'],
+  style: {
+    color: '#fd971f'
+  }
+}, {
+    types: ['number', 'boolean'],
+    style: {
+        color: '#ae81ff'
+    }
+});
+
+
+
+
 const config: Config = {
   title: 'LIPS Scheme',
   tagline: 'Powerful Scheme based Lisp in JavaScript',
@@ -176,8 +191,7 @@ const config: Config = {
       copyright: `Copyright (c) 2018-${new Date().getFullYear()} <a href="https://jakub.jankiewicz.org">Jakub T. Jankiewicz</a><br/>Website content licensed with <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a> unless noted otherwise.`,
     },
     prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
+      theme: prismThemes.dracula,
       additionalLanguages: ['scheme', 'lisp', 'bash']
     },
   } satisfies Preset.ThemeConfig,
