@@ -31,10 +31,14 @@ After adding the script tag with the main file, you can use Scheme code within a
 </script>
 ```
 
-**NOTE**: Only the core of LIPS is written in JavaScript, almost half of it it's written in Scheme.
+:::info
+
+Only the core of LIPS is written in JavaScript, almost half of it it's written in Scheme.
 So if you want to load the standard library (to have full LIPS), you should use `bootstrap` or
 `data-bootstrap` attribute that will load it for you. You can optionally specify the location of the
 file.
+
+:::
 
 ```html
 <script type="text/x-scheme" bootstrap="https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/dist/std.xcb">
@@ -48,7 +52,11 @@ file.
 `xcb` file is simple binary format that LIPS uses to speed up parsing the the code. You can also use
 `.scm` file or `.min.scm` file that may be little bit bigger.
 
-**NOTE** The `bootstrap` attribute can also be included on main script tag with the JavaScript file.
+:::info
+
+The `bootstrap` attribute can also be included on main script tag with the JavaScript file.
+
+:::
 
 ### Running External Scheme Code
 
@@ -141,8 +149,12 @@ and execute the script by providing the name:
 ./script.scm
 ```
 
-**NOTE**: by default most systems don't execute files in current directory so you need to provide `./` in front.
+:::info
+
+By default most systems don't execute files in current directory so you need to provide `./` in front.
 You can change that if you add dot (current working directory) to the `$PATH` environment variable:
+
+:::
 
 ```bash
 export $PATH=".:$PATH"
@@ -156,8 +168,12 @@ If you prefer to install lips locally instead of globally you can use this sheba
   (print (string-append "Hello " what)))
 ```
 
-**NOTE**: if you run this code outside of [Node.js project](#nodejs-project) npx will install the
+:::info
+
+If you run this code outside of [Node.js project](#nodejs-project) npx will install the
 package before execution.
+
+:::
 
 ### Node.js project
 
@@ -186,9 +202,13 @@ and use them in LIPS Scheme:
 ;; ==> #("01" "02" "03" "04" "05" "06" "07" "08" "09" "10")
 ```
 
-**NOTE**: [braces](https://www.npmjs.com/package/braces) is a popular package to expand bash like
+:::info
+
+[braces](https://www.npmjs.com/package/braces) is a popular package to expand bash like
 expressions, it's used as [deep dependency for
 TailwindCSS](https://shubhamjain.co/2024/02/29/why-is-number-package-have-59m-downloads/).
+
+:::
 
 ## Executing LIPS prammatically
 
@@ -242,7 +262,11 @@ The Interpreter have a method `exec` that work the same as thhe one exported fro
 
 ### Bootstrapping
 
-**Note**: that you also need to bootstrap the standard library to have fully working Scheme system.
+:::info
+
+Note that you also need to bootstrap the standard library to have fully working Scheme system.
+
+:::
 
 ```javascript
 await interpreter.exec(`(let-env lips.env.__parent__

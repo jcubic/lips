@@ -199,8 +199,12 @@ Let's create a macro that will count how many times the code is executed:
          (console.timeEnd ,label))))))
 ```
 
-**NOTE** `#:result` expression is [auto gensym](/docs/lips/extension#autogensyms) as one of
+:::info
+
+`#:result` expression is [auto gensym](/docs/lips/extension#autogensyms) as one of
 builtin [syntax extensions](/docs/lips/extension#syntax-extensions).
+
+:::
 
 We can use this code to make sure that the function has been executed only once:
 
@@ -271,7 +275,11 @@ The code removes the zeros from list before applying the fraction that will thro
 LIPS define function `reduce` that is an alias to standard Scheme procedure `fold-right` and fold that is the same
 as `fold-left`. Both procedures works similarly. The take a procedure and a list and reduce it into a single value.
 
-**NOTE** the reduce works differently than in JavaScript, the callback function get accumulator in last argument.
+:::info
+
+The reduce works differently than in JavaScript, the callback function get accumulator in last argument.
+
+:::
 
 
 ```scheme
@@ -308,8 +316,12 @@ Same as reduce it accept more than one list:
 ;; ==> (1 "foo" 2 "bar" 3 "baz" 4 "quuz")
 ```
 
-**NOTE**: here we use `cons` to create a list, `cons` construct the list in reverse order so `reduce`
+:::info
+
+Here we use `cons` to create a list, `cons` construct the list in reverse order so `reduce`
 start from first element and `fold` is reversed:
+
+:::
 
 ```scheme
 (reduce (lambda (item acc)

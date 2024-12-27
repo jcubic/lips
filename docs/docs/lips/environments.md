@@ -49,8 +49,12 @@ specification](/docs/scheme-intro/what-is-lisp#standards) in a form of a functio
 
 You can use this function in LIPS with version 5 and 7 to get R<sup>5</sup>RS or R<sup>7</sup>RS.
 
-**NOTE**: that some of the functions from R<sup>5</sup>RS may have features of R<sup>7</sup>RS since
+:::info
+
+Note that some of the functions from R<sup>5</sup>RS may have features of R<sup>7</sup>RS since
 some of them got additional arguments. R<sup>n</sup>RS is backward compatible.
+
+:::
 
 You can use this function with `eval` or `let-env`:
 
