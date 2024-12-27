@@ -58,8 +58,13 @@ If you want to learn more about lisp macros, there are two great books:
 
 ## Scheme hygienic macros
 
-**NOTE**: Unfortunately, there are no good books about Scheme hygienic macros.  But you can read
+:::info
+
+Unfortunately, there are no good books about Scheme hygienic macros.  But you can read
 those documents:
+
+:::
+
 * [Writing Powerful Macros in Scheme](https://github.com/mnieper/scheme-macros) by [Marc
 Nieper-Wißkirchen](https://github.com/mnieper).
 * [JRM’s Syntax-rules Primer for the Merely Eccentric](http://www.phyast.pitt.edu/~micheles/syntax-rules.pdf)
