@@ -99,7 +99,7 @@ And you can type your scheme code and press enter to execute it (it's often call
 
 :::info
 
-you can run [LIPS bookmarklet](/#bookmark) while reading this tutorial. But note that it
+You can run [LIPS bookmarklet](/#bookmark) while reading this tutorial. But note that it
 doesn't yet support [continuations](/docs/scheme-intro/continuations) and TCO ([Tail Call
 Optimization](/docs/scheme-intro/core#tail-call-optimization)).
 

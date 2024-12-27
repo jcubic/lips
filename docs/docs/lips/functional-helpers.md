@@ -277,7 +277,7 @@ as `fold-left`. Both procedures works similarly. The take a procedure and a list
 
 :::info
 
-the reduce works differently than in JavaScript, the callback function get accumulator in last argument.
+The reduce works differently than in JavaScript, the callback function get accumulator in last argument.
 
 :::
 
@@ -318,7 +318,7 @@ Same as reduce it accept more than one list:
 
 :::info
 
-here we use `cons` to create a list, `cons` construct the list in reverse order so `reduce`
+Here we use `cons` to create a list, `cons` construct the list in reverse order so `reduce`
 start from first element and `fold` is reversed:
 
 :::

@@ -199,7 +199,7 @@ You can call this macro to create alist based on its arguments:
 
 :::info
 
-recursive call is inside quote and only argument is unquoted. This is required since
+Recursive call is inside quote and only argument is unquoted. This is required since
 recursive macro call needs to appear in the expansion. If you call macro recursively and don't return
 macro call as output list you will end up in ifninite recursive call.
 
@@ -549,7 +549,7 @@ But with [SRFI-139](https://srfi.schemers.org/srfi-139/srfi-139.html) you can im
 
 :::info
 
-that not every scheme implementation support this <abbr title="Scheme Request For
+Note that not every scheme implementation support this <abbr title="Scheme Request For
 Implementation">SRFI</abbr>.
 
 :::

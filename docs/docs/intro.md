@@ -151,7 +151,7 @@ and execute the script by providing the name:
 
 :::info
 
-by default most systems don't execute files in current directory so you need to provide `./` in front.
+By default most systems don't execute files in current directory so you need to provide `./` in front.
 You can change that if you add dot (current working directory) to the `$PATH` environment variable:
 
 :::
@@ -170,7 +170,7 @@ If you prefer to install lips locally instead of globally you can use this sheba
 
 :::info
 
-if you run this code outside of [Node.js project](#nodejs-project) npx will install the
+If you run this code outside of [Node.js project](#nodejs-project) npx will install the
 package before execution.
 
 :::
@@ -264,7 +264,7 @@ The Interpreter have a method `exec` that work the same as thhe one exported fro
 
 :::info
 
-that you also need to bootstrap the standard library to have fully working Scheme system.
+Note that you also need to bootstrap the standard library to have fully working Scheme system.
 
 :::
 

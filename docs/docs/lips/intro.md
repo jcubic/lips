@@ -484,7 +484,7 @@ This is equivalent of:
 
 :::info
 
-the only time when you still need `.` function is when you want to get the property of
+The only time when you still need `.` function is when you want to get the property of
 object returned by expression.
 
 :::
@@ -500,7 +500,7 @@ reference to the DOM node.
 
 :::info
 
-because dot notation in symbols is not special syntax you can use code like this:
+Because dot notation in symbols is not special syntax you can use code like this:
 
 :::
 
@@ -560,7 +560,7 @@ in JavaScript:
 
 :::info
 
-the values in JavaScript are different because they have different representation in LIPS.
+The values in JavaScript are different because they have different representation in LIPS.
 
 :::
 
@@ -672,7 +672,7 @@ You can also use quasiquote with object literals:
 
 :::info
 
-because of the construction of [syntax extensions](/docs/lips/extension#syntax-extensions) and
+Because of the construction of [syntax extensions](/docs/lips/extension#syntax-extensions) and
 [quasiquote](/docs/scheme-intro/data-types#quasiquote), you can't splice a list inside object literals:
 
 :::
@@ -717,7 +717,7 @@ The same you can use macros that will return LIPS Scheme code:
 
 :::info
 
-this example macro works the same `object` is it's not that useful, but you can create
+This example macro works the same `object` is it's not that useful, but you can create
 more complex code where you will be able to generate object literals with splicing.
 
 :::
@@ -879,7 +879,7 @@ You can also define `finally` without `catch`:
 
 :::info
 
-the order of execution is not expected, but it may change in the future.
+The order of execution is not expected, but it may change in the future.
 
 :::
 
@@ -928,7 +928,7 @@ float if used on normal vector:
 
 :::info
 
-be careful when using iterator protocol because any function side Scheme can return a promise. If you would change
+Be careful when using iterator protocol because any function side Scheme can return a promise. If you would change
 quoted object literal `` `&() `` with longhand `object` you will get an error because `object` is async.
 
 :::
@@ -1097,7 +1097,7 @@ loading `.xcb` or `.scm` files.
 
 :::info
 
-directives `#!fold-case` and `#!no-fold-case` work only inside the parser and they are
+Directives `#!fold-case` and `#!no-fold-case` work only inside the parser and they are
 treated as comments, so you can't compile the code that have those directives.
 
 :::

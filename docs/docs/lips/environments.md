@@ -51,7 +51,7 @@ You can use this function in LIPS with version 5 and 7 to get R<sup>5</sup>RS or
 
 :::info
 
-that some of the functions from R<sup>5</sup>RS may have features of R<sup>7</sup>RS since
+Note that some of the functions from R<sup>5</sup>RS may have features of R<sup>7</sup>RS since
 some of them got additional arguments. R<sup>n</sup>RS is backward compatible.
 
 :::
