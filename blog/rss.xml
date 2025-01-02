@@ -8,7 +8,7 @@
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
         <generator>https://github.com/jpmonette/feed</generator>
         <language>en</language>
-        <copyright>Copyright © 2024 Jakub T. Jankiewicz</copyright>
+        <copyright>Copyright © 2025 Jakub T. Jankiewicz</copyright>
         <item>
             <title><![CDATA[Scheme Regex literals in Emacs]]></title>
             <link>https://lips.js.org/blog/emacs-scheme-regex</link>
