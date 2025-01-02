@@ -13,14 +13,11 @@ prismThemes.dracula.styles.push({
     color: '#fd971f'
   }
 }, {
-    types: ['number', 'boolean'],
-    style: {
-        color: '#ae81ff'
-    }
+  types: ['number', 'boolean'],
+  style: {
+    color: '#ae81ff'
+  }
 });
-
-
-
 
 const config: Config = {
   title: 'LIPS Scheme',
