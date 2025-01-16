@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Thu, 16 Jan 2025 18:16:26 +0000
+ * build: Thu, 16 Jan 2025 19:00:08 +0000
  */
 
 function _classApplyDescriptorGet(receiver, descriptor) {
@@ -11575,12 +11575,7 @@ LComplex.prototype.constant = function (im, re) {
 };
 // -------------------------------------------------------------------------
 LComplex.prototype.abs = function () {
-  var im = this.__im__.abs();
-  var re = this.__re__.abs();
-  return LComplex({
-    im: im,
-    re: re
-  });
+  return LNumber(this.modulus());
 };
 // -------------------------------------------------------------------------
 LComplex.prototype.serialize = function () {
@@ -17443,10 +17438,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Thu, 16 Jan 2025 18:16:26 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Thu, 16 Jan 2025 19:00:08 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Thu, 16 Jan 2025 18:16:26 +0000').valueOf();
+  var date = LString('Thu, 16 Jan 2025 19:00:08 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17486,7 +17481,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Thu, 16 Jan 2025 18:16:26 +0000';
+var date = 'Thu, 16 Jan 2025 19:00:08 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

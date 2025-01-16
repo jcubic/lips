@@ -6352,9 +6352,7 @@ LComplex.prototype.constant = function(im, re) {
 };
 // -------------------------------------------------------------------------
 LComplex.prototype.abs = function() {
-    const im = this.__im__.abs();
-    const re = this.__re__.abs();
-    return LComplex({ im, re });
+    return LNumber(this.modulus());
 };
 // -------------------------------------------------------------------------
 LComplex.prototype.serialize = function() {
