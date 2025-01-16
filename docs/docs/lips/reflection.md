@@ -8,7 +8,7 @@ description: A way to introspect and manipulate LIPS internals
 You can use standard JavaScript methods to inspect LIPS objects.
 
 * Scheme functions
-  * `dir` - this procedure is inspired by Python function with the same name, it return all properties
+  * `dir` - this procedure is inspired by Python function with the same name, it returns all properties
      that you can access on an object. Including those from object prototype and whole chain.
   * `env` - function return everything what is inside current-environment.
 
@@ -53,7 +53,7 @@ You can also manipulate the list with `set!`:
 ;; ==> #0=(1 2 3 . #0#)
 ```
 
-Above create a cycle. When you you try to display a cycle it's printed using R7RS datum syntax.
+Above create a cycle. When you try to display a cycle it's printed using R7RS datum syntax.
 
 ## Strings
 
@@ -61,12 +61,11 @@ Same as with numbers and list you can access internals of Strings.
 
 ```scheme
 (let ((str "hello"))
-  (str.__string__.toUpperCase)
-  (set! str.__string__ "world")
-  str)
+  (str.__string__.toUpperCase))
+;; ==> "HELLO"
 ```
 
-`__string__` property is read only so you can't modify it's value:
+`__string__` property is read only so you can't modify its value:
 
 ```scheme
 (let ((str "hello"))
@@ -97,7 +96,7 @@ the `__char__` property is a string that hold the value of the character.
 ```
 
 ## Procedures
-Procedures as described in [Core features](/docs/lips/intro#procedures) are JavaScript functions,
+As described in [Core features](/docs/lips/intro#procedures), procedures are JavaScript functions,
 they also hold additional properties like `__code__` and `__doc__`. The first property is the live
 source code of the procedure that you can modify:
 
@@ -111,6 +110,22 @@ source code of the procedure that you can modify:
    (let ((r (cadr (cdadddr (. repeater '__code__)))))
      (set-cdr! r (list (+ (cadr r) 1)))))
 ```
+
+:::info
+
+The `__code__` property always contain a lambda expression, because:
+
+```scheme
+(define (foo x) ...)
+```
+
+is an alias for:
+
+```scheme
+(define foo (lambda (x) ...))
+```
+
+:::
 
 This procedure modify its source code. Each time you execute this function it will run one more
 times.

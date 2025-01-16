@@ -16,11 +16,12 @@ export interface TerminalProps extends CSSProperties {
 }
 
 function track(type: string, command: string) {
-  const _paq = globalThis._paq as PiwikTrack;
-  _paq.push(['trackEvent', 'REPL', type, command]);
+  const umami = globalThis.umami as any;
+  if (umami) {
+    umami.track('REPL', { type, command });
+  }
 }
 
-type PiwikTrack = Array<Array<string>>;
 export type JQueryTerminal = ReturnType<typeof globalThis.terminal>;
 
 const replReady = () => {
@@ -53,9 +54,9 @@ export default function Interpreter(): JSX.Element {
 
   useScripts(!globalThis.jQuery && [
     'https://cdn.jsdelivr.net/npm/jquery',
-    'https://cdn.jsdelivr.net/combine/npm/jquery.terminal/js/jquery.terminal.min.js,npm/js-polyfills/keyboard.js,npm/prismjs/prism.js,npm/jquery.terminal/js/prism.js,npm/prismjs/components/prism-scheme.min.js',
-    'https://cdn.jsdelivr.net/gh/jcubic/lips@devel/lib/js/terminal.js',
-    'https://cdn.jsdelivr.net/gh/jcubic/lips@devel/lib/js/prism.js'
+    'https://cdn.jsdelivr.net/combine/gh/jcubic/jquery.terminal@8a179e7b2c9/js/jquery.terminal.min.js,npm/js-polyfills/keyboard.js,npm/prismjs/prism.js,npm/jquery.terminal@latest/js/prism.js,npm/prismjs/components/prism-scheme.min.js',
+    'https://cdn.jsdelivr.net/gh/jcubic/lips@d730e075d8/lib/js/terminal.js',
+    'https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/lib/js/prism.js'
   ]);
 
   useLayoutEffect(() => {
@@ -123,15 +124,15 @@ export default function Interpreter(): JSX.Element {
     <>
       <Head>
         <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-        <link href="https://cdn.jsdelivr.net/combine/npm/jquery.terminal/css/jquery.terminal.min.css,npm/terminal-prism@0.4.1/css/prism-coy.css" rel="stylesheet"/>
-        <link href="https://cdn.jsdelivr.net/gh/jcubic/lips@devel/lib/css/terminal.css"
+        <link href="https://cdn.jsdelivr.net/combine/npm/jquery.terminal@latest/css/jquery.terminal.min.css,npm/terminal-prism@0.4.1/css/prism-coy.css" rel="stylesheet"/>
+        <link href="https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/lib/css/terminal.css"
               rel="stylesheet"/>
         {isStatic && <script src="https://cdn.jsdelivr.net/npm/jquery" />}
-        {isStatic && <script src="https://cdn.jsdelivr.net/combine/npm/jquery.terminal/js/jquery.terminal.min.js,npm/js-polyfills/keyboard.js,npm/prismjs/prism.js,npm/jquery.terminal/js/prism.js,npm/prismjs/components/prism-scheme.min.js" />}
-        {isStatic && <script src="https://cdn.jsdelivr.net/gh/jcubic/lips@devel/lib/js/terminal.js" />}
-        {isStatic && <script src="https://cdn.jsdelivr.net/gh/jcubic/lips@devel/lib/js/prism.js" />}
-        {!globalThis.lips && <script src="https://cdn.jsdelivr.net/gh/jcubic/lips@devel/dist/lips.min.js"
-                                     data-bootstrap="https://cdn.jsdelivr.net/gh/jcubic/lips@devel/dist/std.xcb"/>}
+        {isStatic && <script src="https://cdn.jsdelivr.net/combine/gh/jcubic/jquery.terminal@devel/js/jquery.terminal.min.js,npm/js-polyfills/keyboard.js,npm/prismjs/prism.js,npm/jquery.terminal@latest/js/prism.js,npm/prismjs/components/prism-scheme.min.js" />}
+        {isStatic && <script src="https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/lib/js/terminal.js" />}
+        {isStatic && <script src="https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/lib/js/prism.js" />}
+        {!globalThis.lips && <script src="https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/dist/lips.min.js"
+                                     data-bootstrap="https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/dist/std.xcb"/>}
       </Head>
       <div className="intro">
         <div className="actions-wrapper">

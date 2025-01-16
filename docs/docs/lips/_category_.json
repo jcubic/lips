@@ -1,7 +1,9 @@
 {
-  "label": "LIPS introduction",
+  "label": "LIPS Documentation",
   "position": 3,
+  
   "link": {
-    "type": "generated-index"
+     "type": "generated-index",
+     "slug": "/category/lips-introduction"
   }
 }

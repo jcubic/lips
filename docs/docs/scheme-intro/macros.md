@@ -197,9 +197,13 @@ You can call this macro to create alist based on its arguments:
 ;; ==> (("foo" . 10) ("bar" . 20) ("baz" . 30))
 ```
 
-**Note** recursive call is inside quote and only argument is unquoted. This is required since
+:::info
+
+Recursive call is inside quote and only argument is unquoted. This is required since
 recursive macro call needs to appear in the expansion. If you call macro recursively and don't return
 macro call as output list you will end up in ifninite recursive call.
+
+:::
 
 You can see the macro will expand with macroexpand:
 
@@ -452,8 +456,8 @@ The macro works exactly the same as previous one:
 ```
 
 ### Identifiers
-Inside macros you can add identifiers can can be used like keywords from other programming languages. They match only
-if literal symbol was used and it was not shadowed (overwritten) by variable with same name.
+Inside macros you can add identifiers. They can be used like keywords from other programming languages. They match only
+if literal symbol was used, and it was not shadowed (overwritten) by variable with same name.
 
 ```scheme
 (define-syntax for
@@ -543,8 +547,12 @@ The output may be different depending on implementation.
 By default Scheme `syntax-rules` macros don't allow creating anaphoric macros like lisp macro do.
 But with [SRFI-139](https://srfi.schemers.org/srfi-139/srfi-139.html) you can implement such macros.
 
-**Note**: that not every scheme implementation support this <abbr title="Scheme Request For
+:::info
+
+Note that not every scheme implementation support this <abbr title="Scheme Request For
 Implementation">SRFI</abbr>.
+
+:::
 
 Here is example of `awhen` anaphoric macro that use this <abbr title="Scheme Request For
 Implementation">SRFI</abbr>:

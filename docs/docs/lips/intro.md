@@ -18,10 +18,14 @@ LIPS define `#null` and `#void` as Parser constants so they can be used inside q
 ;; ==> #f
 ```
 
-**NOTE** `#null` is the same as JavaScript `null` value and it's a false value. Similar to
+:::info
+
+`#null` is the same as JavaScript `null` value and it's a false value. Similar to
 [Kawa Scheme](https://www.gnu.org/software/kawa/index.html) that use `#!null`.
 
-`#void` constants is the same as result of `(value)` or `(if #f #f)`. In Scheme it's unspecified value,
+:::
+
+`#void` constants is the same as result of `(values)` or `(if #f #f)`. In Scheme it's unspecified value,
 but in LIPS it's JavaScript undefined. `#void` is not false value.
 
 ```scheme
@@ -226,7 +230,11 @@ There is also another function to check type of number:
 ;; ==> Expecting bigint got complex in expression `let`
 ```
 
-**NOTE**: In LIPS all integers are BigInts.
+:::info
+
+In LIPS all integers are BigInts.
+
+:::
 
 The last typecking function is `typecheck-args` that check if all arguments are of same type.
 
@@ -496,8 +504,12 @@ This is equivalent of:
 (document.querySelector "body")
 ```
 
-**NOTE** the only time when you still need `.` function is when you want to get the property of
+:::info
+
+The only time when you still need `.` function is when you want to get the property of
 object returned by expression.
+
+:::
 
 ```scheme
 (let ((style (. (document.querySelector "body") 'style)))
@@ -508,7 +520,11 @@ Here we get a [style object](https://developer.mozilla.org/en-US/docs/Web/API/HT
 from [the DOM node](https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement) without sorting the
 reference to the DOM node.
 
-**NOTE** because dot notation in symbols is not special syntax you can use code like this:
+:::info
+
+Because dot notation in symbols is not special syntax you can use code like this:
+
+:::
 
 ```scheme
 (let ((x #(1 2 3)))
@@ -564,7 +580,11 @@ in JavaScript:
 // ==> [1, NaN, NaN]
 ```
 
-**NOTE**: the value are different becaseu in Shceme i
+:::info
+
+The values in JavaScript are different because they have different representation in LIPS.
+
+:::
 
 To fix the issue you can
 define lambda with single argument:
@@ -603,7 +623,8 @@ Example of procedures that are not wise to use are:
 "[object Promise] bar"
 ```
 
-Instead of `Array::replace` you should use LIPS Scheme `replace` procedure that works with async `lambda`:
+Instead of `Array::replace` you should use LIPS Scheme `replace` procedure that works with async
+`lambda`:
 
 ```scheme
 (replace #/[a-z]+/g (lambda ()
@@ -613,10 +634,10 @@ Instead of `Array::replace` you should use LIPS Scheme `replace` procedure that 
 ```
 
 ### Regular Expressions
-LIPS define regular expressions it uses native JavaScript regular expressions.  At first, the syntax
-looked like in JavaScript. It was problematic for the parser so you were not able to put space after
-`/` to distinguish from divide procedure.  Later, the syntax was renamed into form that start with
-hash `#/[0-9]/`. The same syntax is used by
+LIPS define regular expressions it uses native JavaScript regex.  At first, the syntax looked like
+in JavaScript. It was problematic for the parser so you were not able to put space after `/` to
+distinguish from divide procedure.  Later, the syntax was renamed into form that start with hash
+`#/[0-9]/`. The same syntax is used by
 [Gauche](https://practical-scheme.net/gauche/man/gauche-refe/Regular-expressions.html)
 implementation. But LIPS supports more flags (same as JavaScript).
 
@@ -671,8 +692,12 @@ You can also use quasiquote with object literals:
 ;; ==> &(:name "Jack" :age 22)
 ```
 
-**NOTE**: because of the construction of [syntax extensions](/docs/lips/extension#syntax-extensions) and
+:::info
+
+Because of the construction of [syntax extensions](/docs/lips/extension#syntax-extensions) and
 [quasiquote](/docs/scheme-intro/data-types#quasiquote), you can't splice a list inside object literals:
+
+:::
 
 ```scheme
 (let ((args (list ':foo "lorem" ':bar "ipsum")))
@@ -712,8 +737,12 @@ The same you can use macros that will return LIPS Scheme code:
 ;; ==> &(:foo "lorem" :bar "ipsum")
 ```
 
-**NOTE**: this example macro works the same `object` is it's not that useful, but you can create
+:::info
+
+This example macro works the same `object` is it's not that useful, but you can create
 more complex code where you will be able to generate object literals with splicing.
+
+:::
 
 Object literal also have shorthad notation:
 
@@ -786,7 +815,11 @@ automatic async/await you can use `(await)` procedure
 ;; ==> Scheme is Super Fun
 ```
 
-**NOTE** Inside `then` lambda promises are still automagically resolved.
+:::info
+
+Inside `then` lambda promises are still automagically resolved.
+
+:::
 
 ```scheme
 (--> '>(Promise.resolve "hello")
@@ -866,7 +899,11 @@ You can also define `finally` without `catch`:
 ;; ==> nasty
 ```
 
-**NOTE** the order of execution is not expected, but it may change in the future.
+:::info
+
+The order of execution is not expected, but it may change in the future.
+
+:::
 
 LIPS also define R<sup>7</sup>RS guard `procedure` that is just a macro that use try..catch behind the scene:
 
@@ -911,8 +948,12 @@ float if used on normal vector:
 ;; ==> #(0.5 0.3333333333333333 0.25 0.2)
 ```
 
-**NOTE**: be careful when using iterator protocol because any function side Scheme can return a promise. If you would change
+:::info
+
+Be careful when using iterator protocol because any function side Scheme can return a promise. If you would change
 quoted object literal `` `&() `` with longhand `object` you will get an error because `object` is async.
+
+:::
 
 You can abstract the use of iteration protocol with a macro, but to have real `yield` keyword like
 syntax you need `call/cc`.
@@ -1076,9 +1117,12 @@ $ lips -c file.xcb
 Will create `file.xcb` in same directory. For smaller files it make not have a difference when
 loading `.xcb` or `.scm` files.
 
-<<<<<<< HEAD
-**NOTE**: directives `#!fold-case` and `#!no-fold-case` work only inside the parser and they are
+:::info
+
+Directives `#!fold-case` and `#!no-fold-case` work only inside the parser and they are
 treated as comments, so you can't compile the code that have those directives.
+
+:::
 
 ## loading SRFI
 
@@ -1094,13 +1138,9 @@ Library. You can use this syntax in Node based REPL (NPM executable).  The same 
 with the web. But note that the root directory reply on the path of the LIPS Scheme script file. So
 you if you bundle the code with Webpack or Rollup, LIPS may not find the root URL and may not be
 able to load the proper file.
-=======
-**NOTE**: directives `#!fold-case` and `#!no-fold-case` work only inside the parser and they are treated
-as comments, so you can't compile the code that have those directives.
 
 ## Limitations
 
 LISP Scheme currently don't support [continuations](/docs/scheme-intro/continuations) and [Tail Call
 Optimization](/docs/scheme-intro/core#tail-call-optimization).  But they are part of the roadmap for
 version 1.0.
->>>>>>> origin/master

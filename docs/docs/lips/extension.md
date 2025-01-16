@@ -127,7 +127,11 @@ To see the expansion of syntax extension you can use `lips.parse`:
 ;; ==> #((list 10 10))
 ```
 
-**NOTE**: The `lips.parse` function return array/vector of parsed expressions.
+:::info
+
+The `lips.parse` function return array/vector of parsed expressions.
+
+:::
 
 There are 3 types of syntax extensions `SPLICE`, `LITERAL`, and `SYMBOL`. You define them using
 constants defined in `lips.specials` object.
@@ -286,8 +290,12 @@ extension that return line number:
 ;; ==> (12 13)
 ```
 
-**NOTE**: The provided output will be exactly the same, when the code will be put into a single file
+:::info
+
+The provided output will be exactly the same, when the code will be put into a single file
 and executed.
+
+:::
 
 ### Standard input
 In syntax extensions `current-input-port` points into the parser stream. So you can implement

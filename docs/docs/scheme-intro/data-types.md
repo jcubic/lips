@@ -309,8 +309,8 @@ Will return:
 (quote (1 2 3))
 ```
 
-Because comma is just an alias for quote. You can use them interchangeably. But using symbols is
-faster to type. If you quote quasi quote expression, you will also get symbols expanded:
+Because `'` is just an alias for `quote`. You can use them interchangeably. But using symbols is
+faster to type. If you quote quasiquote expression, you will also get symbols expanded:
 
 ```scheme
 '`(1 2 3 ,(+ 1 2) ,@(list 4 5))
@@ -342,7 +342,7 @@ Most special symbols in Scheme start with a hash symbol. Example are Byte vector
 ```
 
 Above creates 8 bit byte vector of numbers. In R<sup>7</sup>RS, only unsigned 8 bit vectors are
-defined. But in [SRFI-4](https://srfi.schemers.org/srfi-4/srfi-4.html) are more bit vectors types.
-They all starts with hash. In different SRFI there are more examples of syntax's that start with
-hash. This is just a convention everything is using.
+defined. But in [SRFI-4](https://srfi.schemers.org/srfi-4/srfi-4.html) there are more bit vectors
+types.  They all starts with hash. In different SRFI there are more examples of syntax's that start
+with hash. This is just a convention everything is using.
 

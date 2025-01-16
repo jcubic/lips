@@ -39,7 +39,11 @@ write the same expression as:
 
 Is that in Lisp there are no operators. The above expression is just procedure application (function call).
 
-**NOTE**: We will use procedure and function interchangeably in this tutorial.
+:::info
+
+We will use procedure and function interchangeably in this tutorial.
+
+:::
 
 Plus is not an operator, only a symbol that point into an addition procedure that is executed. So in
 fact in other programming languages this should be written as:
@@ -93,9 +97,13 @@ scheme>
 
 And you can type your scheme code and press enter to execute it (it's often called evaluation of the expression).
 
-**NOTE**: you can run [LIPS bookmarklet](/#bookmark) while reading this tutorial. But note that it
+:::info
+
+You can run [LIPS bookmarklet](/#bookmark) while reading this tutorial. But note that it
 doesn't yet support [continuations](/docs/scheme-intro/continuations) and TCO ([Tail Call
 Optimization](/docs/scheme-intro/core#tail-call-optimization)).
+
+:::
 
 ### Standards
 

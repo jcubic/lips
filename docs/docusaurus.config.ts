@@ -7,6 +7,18 @@ import renderSocialCards from './src/utils';
 
 const isProd = process.env.NODE_ENV === 'production';
 
+prismThemes.dracula.styles.push({
+  types: ['regex', 'important'],
+  style: {
+    color: '#fd971f'
+  }
+}, {
+  types: ['number', 'boolean'],
+  style: {
+    color: '#ae81ff'
+  }
+});
+
 const config: Config = {
   title: 'LIPS Scheme',
   tagline: 'Powerful Scheme based Lisp in JavaScript',
@@ -20,7 +32,7 @@ const config: Config = {
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'LIPS-scheme', // Usually your GitHub org/user name.
+  organizationName: 'jcubic', // Usually your GitHub org/user name.
   projectName: 'lips', // Usually your repo name.
   deploymentBranch: 'master',
 
@@ -48,7 +60,7 @@ const config: Config = {
         },
         blog: {
           showReadingTime: true,
-          editUrl: 'https://github.com/LIPS-scheme/lips/tree/master/docs/',
+          editUrl: 'https://github.com/jcubic/lips/tree/master/docs/',
           feedOptions: {
             type: 'rss',
             limit: 10,
@@ -73,7 +85,7 @@ const config: Config = {
         },
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/LIPS-scheme/lips/tree/master/docs/',
+          editUrl: 'https://github.com/jcubic/lips/tree/master/docs/',
         },
         theme: {
           customCss: './src/css/custom.css',
@@ -114,7 +126,7 @@ const config: Config = {
           position: 'right'
         },
         {
-          href: 'https://github.com/LIPS-scheme/lips',
+          href: 'https://github.com/jcubic/lips',
           label: 'GitHub',
           position: 'right',
         },
@@ -168,7 +180,7 @@ const config: Config = {
             },
             {
               label: 'GitHub',
-              href: 'https://github.com/LIPS-scheme/lips',
+              href: 'https://github.com/jcubic/lips',
             },
           ],
         },
@@ -176,8 +188,7 @@ const config: Config = {
       copyright: `Copyright (c) 2018-${new Date().getFullYear()} <a href="https://jakub.jankiewicz.org">Jakub T. Jankiewicz</a><br/>Website content licensed with <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a> unless noted otherwise.`,
     },
     prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
+      theme: prismThemes.dracula,
       additionalLanguages: ['scheme', 'lisp', 'bash']
     },
   } satisfies Preset.ThemeConfig,
