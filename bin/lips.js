@@ -330,6 +330,7 @@ if (options.version || options.V) {
         return [LSymbol(key), ...values];
     }));
     bootstrap(interp).then(function() {
+        // Scheme can access JS global.output
         return run('(for-each (lambda (x) (write x) (newline)) output)', interp, options.d || options.dynamic);
     });
 } else if (options.e || options.eval) {
@@ -574,12 +575,12 @@ function run_repl(err, rl) {
     let resolve;
     const brackets_re = /\x1b\[(200|201)~/g;
     // we use promise loop to fix issue when copy paste list of S-Expression
+    const is_emacs = process.env.EMACS || process.env.INSIDE_EMACS;
     let prev_eval = Promise.resolve();
-    if (process.stdin.isTTY) {
+    if (process.stdin.isTTY || is_emacs) {
         rl.prompt();
     }
     let prev_line;
-    const is_emacs = process.env.INSIDE_EMACS;
     function is_brackets_mode() {
         return !!cmd.match(brackets_re);
     }

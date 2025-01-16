@@ -6351,6 +6351,12 @@ LComplex.prototype.constant = function(im, re) {
     enumerable(this, '__type__', 'complex');
 };
 // -------------------------------------------------------------------------
+LComplex.prototype.abs = function() {
+    const im = this.__im__.abs();
+    const re = this.__re__.abs();
+    return LComplex({ im, re });
+};
+// -------------------------------------------------------------------------
 LComplex.prototype.serialize = function() {
     return {
         re: this.__re__,
