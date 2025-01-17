@@ -754,12 +754,17 @@
                   (char=? (peek-char port) #\{))
              (read-char)
              (let ((expr (read port)))
-               (let ((next (peek-char port)))
-                 (if (char=? next #\})
-                     (begin
-                       (read-char)
-                       (loop "" (vector-append result (vector part expr)) (read-char)))
-                     (error (string-append "Parse Error: expecting } got " (repr next)))))))
+               (if (symbol? expr)
+                   (let* ((expr (--> (symbol->string expr) (replace #/\}$/ "")))
+                          (value (read (open-input-string expr))))
+                     (loop "" (vector-append result (vector part expr)) (read-char)))
+                   (let inner ((next (peek-char port)))
+                     (cond ((char=? next #\space) (read-char) (inner (peek-char port)))
+                           ((char=? next #\})
+                            (read-char)
+                            (loop "" (vector-append result (vector part expr)) (read-char)))
+                           (else
+                            (error (string-append "Parse Error: expecting } got " (repr next)))))))))
             ((char=? char #\\)
              (loop (string-append part (repr (read-char))) result (read-char)))
             ((char=? char #\")
@@ -769,6 +774,7 @@
             (else
              (loop (string-append part (repr char)) result (read-char)))))))
 
+;; -----------------------------------------------------------------------------
 (define (%string-interpolation)
   "(%string-interpolation)
 
