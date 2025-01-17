@@ -1,4 +1,4 @@
-(test "interpolation: shoud parse simple string"
+(test "interpolation: should parse simple string"
       (lambda (t)
         (t.plan 1)
         (t.is #"foo" "foo")))
