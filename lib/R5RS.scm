@@ -1403,10 +1403,14 @@
    Procedure open file for reading, call user defined procedure with given port
    and then close the port. It return value that was returned by user proc
    and it close the port even if user proc throw exception."
-  (let ((p (open-input-file filename)))
+  (let ((p (open-input-file filename))
+        (throw #f))
     (try (proc p)
+         (catch (e)
+                (set! throw #t))
          (finally
-          (close-input-port p)))))
+          (if (not throw)
+              (close-input-port p))))))
 
 ;; -----------------------------------------------------------------------------
 (define (call-with-output-file filename proc)
@@ -1415,10 +1419,13 @@
    Procedure open file for writing, call user defined procedure with port
    and then close the port. It return value that was returned by user proc
    and it close the port even if user proc throw exception."
-  (let ((p (open-output-file filename)))
+  (let ((p (open-output-file filename)) (throw #f))
     (try (proc p)
+         (catch (e)
+                (set! throw #t))
          (finally
-          (close-output-port p)))))
+          (if (not throw)
+              (close-output-port p))))))
 
 ;; -----------------------------------------------------------------------------
 (define (with-input-from-port port thunk)
