@@ -10553,8 +10553,31 @@ var global_env = new Environment({
     '**': doc('**', binary_math_op(function(a, b) {
         a = LNumber(a);
         b = LNumber(b);
-        if (b.cmp(0) === -1 && LNumber.isInteger(b)) {
-            return LRational({ num: 1, denom: a.pow(b.sub()) });
+        if (LNumber.isInteger(b)) {
+            const neg = b.cmp(0) === -1;
+            if (neg) {
+                b = b.sub();
+            }
+            if (LNumber.isRational(a)) {
+                if (neg) {
+                    const denom = a.__denom__.pow(b);
+                    if (a.__num__.cmp(1) === 0) {
+                        return denom;
+                    }
+                    const num = a.__num__.pow(b);
+                    return LRational({
+                        num: denom,
+                        denom: num
+                    });
+                }
+                return LRational({
+                    num: a.__num__.pow(b),
+                    denom: a.__denom__.pow(b)
+                });
+            }
+            if (neg) {
+                return LRational({ num: 1, denom: a.pow(b) });
+            }
         }
         [a, b] = a.coerce(b);
         return a.pow(b);
