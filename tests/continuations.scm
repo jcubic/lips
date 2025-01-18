@@ -133,3 +133,8 @@
                      (reverse result)
                      (iter (counter) (cons i result))))
               '(0 1 2))))
+
+;; https://docs.scheme.org/surveys/petrofsky-catastrophe/
+(test.failing "continuations: Petrofsky catastrophe"
+      (lambda (t)
+        (t.is (call/cc (lambda (c) (0 (c 1)))) 1)))
