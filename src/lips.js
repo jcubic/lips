@@ -6803,7 +6803,7 @@ LRational.prototype.serialize = function() {
 LRational.prototype.pow = function(n) {
     if (LNumber.isRational(n)) {
         // nth root
-        return pow(this.valueOf(), n.valueOf());
+        return LNumber(pow(this.valueOf(), n.valueOf()));
     }
     var cmp = n.cmp(0);
     if (cmp === 0) {
@@ -10578,6 +10578,39 @@ var global_env = new Environment({
             if (neg) {
                 return LRational({ num: 1, denom: a.pow(b) });
             }
+        }
+        if (LNumber.isRational(b) && a.cmp(0) === -1) {
+            const denom = b.__denom__;
+            const num = b.__num__;
+
+            // square root of negative value can create exact complex without
+            // real value
+            if (denom.cmp(2) === 0) {
+                let base = a.abs().pow(LRational({ num: 1, denom: 2 }));
+                [, base] = a.coerce(base); // get 3.0 when a == -9.0
+                if (b.cmp(0) === 1) {
+                    return LComplex({
+                        re: LNumber(0),
+                        im: base
+                    });
+                }
+                if (num.cmp(0) === -1) {
+                    return LComplex({
+                        re: LNumber(0),
+                        im: LRational({ num: -1, denom: base })
+                    });
+                }
+            }
+
+            // this will create complex float, that can have rounding errors
+            const exponent = b.valueOf();
+            const alpha = exponent * Math.PI;
+            const base = a.abs().pow(exponent);
+
+            const re = base.mul(Math.cos(alpha));
+            const im = base.mul(Math.sin(alpha));
+
+            return LComplex({ re, im });
         }
         [a, b] = a.coerce(b);
         return a.pow(b);

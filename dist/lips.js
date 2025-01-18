@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 17 Jan 2025 15:57:01 +0000
+ * build: Sat, 18 Jan 2025 15:45:24 +0000
  */
 
 (function (global, factory) {
@@ -12087,7 +12087,7 @@
   LRational.prototype.pow = function (n) {
     if (LNumber.isRational(n)) {
       // nth root
-      return pow(this.valueOf(), n.valueOf());
+      return LNumber(pow(this.valueOf(), n.valueOf()));
     }
     var cmp = n.cmp(0);
     if (cmp === 0) {
@@ -15789,10 +15789,53 @@
           });
         }
       }
-      var _a$coerce = a.coerce(b);
-      var _a$coerce2 = _slicedToArray(_a$coerce, 2);
-      a = _a$coerce2[0];
-      b = _a$coerce2[1];
+      if (LNumber.isRational(b) && a.cmp(0) === -1) {
+        var _denom = b.__denom__;
+        var _num = b.__num__;
+
+        // square root of negative value can create exact complex without
+        // real value
+        if (_denom.cmp(2) === 0) {
+          var _base = a.abs().pow(LRational({
+            num: 1,
+            denom: 2
+          }));
+          // get 3.0 when a == -9.0
+          var _a$coerce = a.coerce(_base);
+          var _a$coerce2 = _slicedToArray(_a$coerce, 2);
+          _base = _a$coerce2[1];
+          if (b.cmp(0) === 1) {
+            return LComplex({
+              re: LNumber(0),
+              im: _base
+            });
+          }
+          if (_num.cmp(0) === -1) {
+            return LComplex({
+              re: LNumber(0),
+              im: LRational({
+                num: -1,
+                denom: _base
+              })
+            });
+          }
+        }
+
+        // this will create complex float, that can have rounding errors
+        var exponent = b.valueOf();
+        var alpha = exponent * Math.PI;
+        var base = a.abs().pow(exponent);
+        var re = base.mul(Math.cos(alpha));
+        var im = base.mul(Math.sin(alpha));
+        return LComplex({
+          re: re,
+          im: im
+        });
+      }
+      var _a$coerce3 = a.coerce(b);
+      var _a$coerce4 = _slicedToArray(_a$coerce3, 2);
+      a = _a$coerce4[0];
+      b = _a$coerce4[1];
       return a.pow(b);
     }), "(** a b)\n\n         Function that calculates number a to to the power of b."),
     // ------------------------------------------------------------------
@@ -17470,10 +17513,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Fri, 17 Jan 2025 15:57:01 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sat, 18 Jan 2025 15:45:24 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Fri, 17 Jan 2025 15:57:01 +0000').valueOf();
+    var date = LString('Sat, 18 Jan 2025 15:45:24 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -17513,7 +17556,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Fri, 17 Jan 2025 15:57:01 +0000';
+  var date = 'Sat, 18 Jan 2025 15:45:24 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);
