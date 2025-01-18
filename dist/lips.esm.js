@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 18 Jan 2025 15:45:24 +0000
+ * build: Sat, 18 Jan 2025 22:52:19 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -4509,7 +4509,7 @@ var Lexer = /*#__PURE__*/function () {
       _ref7$whitespace = _ref7.whitespace,
       whitespace = _ref7$whitespace === void 0 ? false : _ref7$whitespace;
     _classCallCheck(this, Lexer);
-    read_only(this, '__input__', input.replace(/\r/g, ''));
+    read_only(this, '__input__', input);
     var internals = {};
     // hide internals from introspection
     ['_i', '_whitespace', '_col', '_newline', '_line', '_state', '_next', '_token', '_prev_char'].forEach(function (name) {
@@ -17506,10 +17506,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 18 Jan 2025 15:45:24 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sat, 18 Jan 2025 22:52:19 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 18 Jan 2025 15:45:24 +0000').valueOf();
+  var date = LString('Sat, 18 Jan 2025 22:52:19 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17549,7 +17549,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 18 Jan 2025 15:45:24 +0000';
+var date = 'Sat, 18 Jan 2025 22:52:19 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

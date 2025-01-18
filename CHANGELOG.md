@@ -9,6 +9,8 @@
 * fix unboxing arguments of LIPS created classes [#411](https://github.com/jcubic/lips/issues/411)
 * fix space in front of output in REPL [#406](https://github.com/jcubic/lips/issues/406)
 * fix `call-with-port` in R7RS, `call-with-input-file`, and `call-with-output-file` in R5RS to catch errors and don't close the port
+* fix `expt` [#426](https://github.com/jcubic/lips/issues/426), [#424](https://github.com/jcubic/lips/issues/424)
+* remove stripping `\r` characters from Lexer (that is used by ports)
 
 ## 1.0.0-beta.20
 ### Feature

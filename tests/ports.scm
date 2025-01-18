@@ -317,7 +317,7 @@
                   str)
             (delete-file fname)))))
 
-(test.only "ports: read after exception"
+(test "ports: read after exception"
       (lambda (t)
         (let ((fname "./tests/__x8__.scm")
               (str "Lorem")

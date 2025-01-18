@@ -1066,7 +1066,7 @@ defined_specials.forEach(([seq, symbol, type]) => {
 */
 class Lexer {
     constructor(input, { whitespace = false } = {}) {
-        read_only(this, '__input__', input.replace(/\r/g, ''));
+        read_only(this, '__input__', input);
         var internals = {};
         // hide internals from introspection
         [
