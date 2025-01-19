@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 18 Jan 2025 22:52:19 +0000
+ * build: Sun, 19 Jan 2025 01:29:44 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -3522,12 +3522,12 @@ function log(x) {
   }
   if (is_plain_object(x) && is_debug(args[0])) {
     console.log(map_object(x, function (value) {
-      return toString(value, true);
+      return to_string(value, true);
     }));
   } else if (is_debug()) {
     var _console;
-    (_console = console).log.apply(_console, [toString(x, true)].concat(_toConsumableArray(args.map(function (item) {
-      return toString(item, true);
+    (_console = console).log.apply(_console, [to_string(x, true)].concat(_toConsumableArray(args.map(function (item) {
+      return to_string(item, true);
     }))));
   }
 }
@@ -6259,7 +6259,7 @@ function Pattern() {
 }
 Pattern.prototype.toString = function () {
   var patterns = this.patterns.map(function (x) {
-    return toString(x);
+    return to_string(x);
   }).join('|');
   return "#<pattern(".concat(patterns, " ").concat(this.flag, ")>");
 };
@@ -8284,7 +8284,7 @@ function symbolize(obj) {
     var _symbols = Object.getOwnPropertySymbols(obj);
     _symbols.forEach(function (key) {
       var name = key.toString().replace(/Symbol\(([^)]+)\)/, '$1');
-      result[name] = toString(obj[key]);
+      result[name] = to_string(obj[key]);
     });
     var _props = Object.getOwnPropertyNames(obj);
     _props.forEach(function (key) {
@@ -8292,7 +8292,7 @@ function symbolize(obj) {
       if (o && _typeof$1(o) === 'object' && o.constructor === Object) {
         result[key] = symbolize(o);
       } else {
-        result[key] = toString(o);
+        result[key] = to_string(o);
       }
     });
     return result;
@@ -8379,7 +8379,7 @@ var instances = new Map();
 // ----------------------------------------------------------------------
 var native_types = [LSymbol, Macro, Values, InputPort, OutputPort, Environment, QuotedPromise];
 // ----------------------------------------------------------------------
-function toString(obj, quote, skip_cycles) {
+function to_string(obj, quote, skip_cycles) {
   if (typeof jQuery !== 'undefined' && obj instanceof jQuery.fn.init) {
     return '#<jQuery(' + obj.length + ')>';
   }
@@ -8605,7 +8605,7 @@ Pair.prototype.toString = function (quote) {
   if (this[__cycles__] && this[__cycles__].car) {
     value = this[__cycles__].car;
   } else {
-    value = toString(this.car, quote, true);
+    value = to_string(this.car, quote, true);
   }
   if (value !== undefined) {
     arr.push(value);
@@ -8626,7 +8626,7 @@ Pair.prototype.toString = function (quote) {
       arr.push(cdr);
     }
   } else if (!is_nil(this.cdr)) {
-    arr = arr.concat([' . ', toString(this.cdr, quote, true)]);
+    arr = arr.concat([' . ', to_string(this.cdr, quote, true)]);
   }
   if (!nested || this[__ref__]) {
     arr.push(')');
@@ -10095,10 +10095,10 @@ function transform_syntax() {
       }
       log({
         a: true,
-        car: toString(expr.car),
-        cdr: toString(expr.cdr),
-        head: toString(head),
-        rest: toString(rest)
+        car: to_string(expr.car),
+        cdr: to_string(expr.cdr),
+        head: to_string(head),
+        rest: to_string(rest)
       });
       return new Pair(head, rest);
     }
@@ -11849,14 +11849,14 @@ LComplex.prototype.valueOf = function () {
 LComplex.prototype.toString = function () {
   var result;
   if (this.__re__.cmp(0) !== 0) {
-    result = [toString(this.__re__)];
+    result = [to_string(this.__re__)];
   } else {
     result = [];
   }
   // NaN and inf already have sign
   var im = this.__im__.valueOf();
   var inf = [Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY].includes(im);
-  var im_str = toString(this.__im__);
+  var im_str = to_string(this.__im__);
   if (!inf && !Number.isNaN(im)) {
     var zero_check = this.__im__.cmp(0);
     if (zero_check < 0 || zero_check === 0 && this.__im__._minus) {
@@ -12601,7 +12601,7 @@ function OutputFilePort(filename, fd) {
   read_only(this, '__type__', text_port);
   this.write = function (x) {
     if (!LString.isString(x)) {
-      x = toString(x);
+      x = to_string(x);
     } else {
       x = x.valueOf();
     }
@@ -13215,7 +13215,7 @@ function Values(values) {
 }
 Values.prototype.toString = function () {
   return this.__values__.map(function (x) {
-    return toString(x);
+    return to_string(x);
   }).join('\n');
 };
 Values.prototype.valueOf = function () {
@@ -15171,7 +15171,7 @@ var global_env = new Environment({
   }, "(search pattern string)\n\n        Function that returns the first found index of the pattern inside a string."),
   // ------------------------------------------------------------------
   repr: doc('repr', function repr(obj, quote) {
-    return toString(obj, quote);
+    return to_string(obj, quote);
   }, "(repr obj)\n\n        Function that returns a LIPS code representation of the object as a string."),
   // ------------------------------------------------------------------
   'escape-regex': doc('escape-regex', function (string) {
@@ -17506,10 +17506,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 18 Jan 2025 22:52:19 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 19 Jan 2025 01:29:44 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 18 Jan 2025 22:52:19 +0000').valueOf();
+  var date = LString('Sun, 19 Jan 2025 01:29:44 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17549,7 +17549,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 18 Jan 2025 22:52:19 +0000';
+var date = 'Sun, 19 Jan 2025 01:29:44 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

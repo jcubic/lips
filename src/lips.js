@@ -121,11 +121,11 @@ function contentLoaded(win, fn) {
 function log(x, ...args) {
     if (is_plain_object(x) && is_debug(args[0])) {
         console.log(map_object(x, function(value) {
-            return toString(value, true);
+            return to_string(value, true);
         }));
     } else if (is_debug()) {
-        console.log(toString(x, true), ...args.map(item => {
-            return toString(item, true);
+        console.log(to_string(x, true), ...args.map(item => {
+            return to_string(item, true);
         }));
     }
 }
@@ -2366,7 +2366,7 @@ function Pattern(...args) {
     this.flag = flag;
 }
 Pattern.prototype.toString = function() {
-    var patterns = this.patterns.map(x => toString(x)).join('|');
+    var patterns = this.patterns.map(x => to_string(x)).join('|');
     return `#<pattern(${patterns} ${this.flag})>`;
 };
 // ----------------------------------------------------------------------
@@ -3333,7 +3333,7 @@ function symbolize(obj) {
         symbols.forEach((key) => {
             const name = key.toString()
                 .replace(/Symbol\(([^)]+)\)/, '$1');
-            result[name] = toString(obj[key]);
+            result[name] = to_string(obj[key]);
         });
         const props = Object.getOwnPropertyNames(obj);
         props.forEach(key => {
@@ -3341,7 +3341,7 @@ function symbolize(obj) {
             if (o && typeof o === 'object' && o.constructor === Object) {
                 result[key] = symbolize(o);
             } else {
-                result[key] = toString(o);
+                result[key] = to_string(o);
             }
         });
         return result;
@@ -3434,7 +3434,7 @@ const native_types = [
     QuotedPromise
 ];
 // ----------------------------------------------------------------------
-function toString(obj, quote, skip_cycles, ...pair_args) {
+function to_string(obj, quote, skip_cycles, ...pair_args) {
     if (typeof jQuery !== 'undefined' &&
         obj instanceof jQuery.fn.init) {
         return '#<jQuery(' + obj.length + ')>';
@@ -3661,7 +3661,7 @@ const pair_to_string = (function() {
         if (pair[__cycles__] && pair[__cycles__].car) {
             car = pair[__cycles__].car;
         } else {
-            car = toString(pair.car, quote, true, { result, cont });
+            car = to_string(pair.car, quote, true, { result, cont });
         }
         if (car !== undefined) {
             result.push(car);
@@ -3685,7 +3685,7 @@ const pair_to_string = (function() {
                 }
             } else if (!is_nil(pair.cdr)) {
                 result.push(' . ');
-                result.push(toString(pair.cdr, quote));
+                result.push(to_string(pair.cdr, quote));
             }
         }, cont);
     });
@@ -3703,7 +3703,7 @@ Pair.prototype.toString = function(quote, { nested = false } = {}) {
     if (this[__cycles__] && this[__cycles__].car) {
         value = this[__cycles__].car;
     } else {
-        value = toString(this.car, quote, true);
+        value = to_string(this.car, quote, true);
     }
     if (value !== undefined) {
         arr.push(value);
@@ -3722,7 +3722,7 @@ Pair.prototype.toString = function(quote, { nested = false } = {}) {
             arr.push(cdr);
         }
     } else if (!is_nil(this.cdr)) {
-        arr = arr.concat([' . ', toString(this.cdr, quote, true)]);
+        arr = arr.concat([' . ', to_string(this.cdr, quote, true)]);
     }
     if (!nested || this[__ref__]) {
         arr.push(')');
@@ -5011,10 +5011,10 @@ function transform_syntax(options = {}) {
             }
             log({
                 a: true,
-                car: toString(expr.car),
-                cdr: toString(expr.cdr),
-                head: toString(head),
-                rest: toString(rest)
+                car: to_string(expr.car),
+                cdr: to_string(expr.cdr),
+                head: to_string(head),
+                rest: to_string(rest)
             });
             return new Pair(
                 head,
@@ -6576,14 +6576,14 @@ LComplex.prototype.valueOf = function() {
 LComplex.prototype.toString = function() {
     var result;
     if (this.__re__.cmp(0) !== 0) {
-        result = [toString(this.__re__)];
+        result = [to_string(this.__re__)];
     } else {
         result = [];
     }
     // NaN and inf already have sign
     var im = this.__im__.valueOf();
     var inf = [Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY].includes(im);
-    var im_str = toString(this.__im__);
+    var im_str = to_string(this.__im__);
     if (!inf && !Number.isNaN(im)) {
         var zero_check = this.__im__.cmp(0);
         if (zero_check < 0 || (zero_check === 0 && this.__im__._minus)) {
@@ -7221,7 +7221,7 @@ function OutputFilePort(filename, fd) {
     read_only(this, '__type__', text_port);
     this.write = (x) => {
         if (!LString.isString(x)) {
-            x = toString(x);
+            x = to_string(x);
         } else {
             x = x.valueOf();
         }
@@ -7775,7 +7775,7 @@ function Values(values) {
     this.__values__ = values;
 }
 Values.prototype.toString = function() {
-    return this.__values__.map(x => toString(x)).join('\n');
+    return this.__values__.map(x => to_string(x)).join('\n');
 };
 Values.prototype.valueOf = function() {
     return this.__values__;
@@ -9798,7 +9798,7 @@ var global_env = new Environment({
         Function that returns the first found index of the pattern inside a string.`),
     // ------------------------------------------------------------------
     repr: doc('repr', function repr(obj, quote) {
-        return toString(obj, quote);
+        return to_string(obj, quote);
     }, `(repr obj)
 
         Function that returns a LIPS code representation of the object as a string.`),
