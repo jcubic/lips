@@ -14,6 +14,7 @@ import {
     compile,
     parse,
     Parser,
+    Values,
     Formatter,
     serialize,
     unserialize,
@@ -126,8 +127,14 @@ function print(result) {
         const last = result.pop();
         if (last !== undefined) {
             try {
-                const ret = env.get('repr')(last, true);
-                process.stdout.write('\x1b[K' + ret.toString());
+                let value;
+                if (last instanceof Values) {
+                    value = last.toString();
+                } else {
+                    value = env.get('repr')(last, true);
+                    value = value.toString();
+                }
+                process.stdout.write('\x1b[K' + value);
                 return true;
             } catch(e) {
                 print_error(e, options.t || options.trace);

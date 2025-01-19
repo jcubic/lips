@@ -3427,7 +3427,6 @@ const instances = new Map();
 const native_types = [
     LSymbol,
     Macro,
-    Values,
     InputPort,
     OutputPort,
     Environment,

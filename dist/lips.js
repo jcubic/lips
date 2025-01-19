@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 19 Jan 2025 01:29:44 +0000
+ * build: Sun, 19 Jan 2025 01:49:32 +0000
  */
 
 (function (global, factory) {
@@ -8384,7 +8384,7 @@
     instances.set(cls, fn);
   });
   // ----------------------------------------------------------------------
-  var native_types = [LSymbol, Macro, Values, InputPort, OutputPort, Environment, QuotedPromise];
+  var native_types = [LSymbol, Macro, InputPort, OutputPort, Environment, QuotedPromise];
   // ----------------------------------------------------------------------
   function to_string(obj, quote, skip_cycles) {
     if (typeof jQuery !== 'undefined' && obj instanceof jQuery.fn.init) {
@@ -17513,10 +17513,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sun, 19 Jan 2025 01:29:44 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sun, 19 Jan 2025 01:49:32 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sun, 19 Jan 2025 01:29:44 +0000').valueOf();
+    var date = LString('Sun, 19 Jan 2025 01:49:32 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -17556,7 +17556,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Sun, 19 Jan 2025 01:29:44 +0000';
+  var date = 'Sun, 19 Jan 2025 01:49:32 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

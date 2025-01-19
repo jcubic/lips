@@ -11,6 +11,7 @@
 * fix `call-with-port` in R7RS, `call-with-input-file`, and `call-with-output-file` in R5RS to catch errors and don't close the port
 * fix `expt` [#426](https://github.com/jcubic/lips/issues/426), [#424](https://github.com/jcubic/lips/issues/424)
 * remove stripping `\r` characters from Lexer (that is used by ports)
+* unpack `values` only in REPL
 
 ## 1.0.0-beta.20
 ### Feature
