@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 19 Jan 2025 22:39:28 +0000
+ * build: Sun, 19 Jan 2025 22:40:00 +0000
  */
 
 (function (global, factory) {
@@ -14597,6 +14597,8 @@
           error: error
         });
         this.set(name, macro_instance);
+      } else {
+        throw new Error('Syntax Error: Invalid `define-macro` expression');
       }
     }), "(define-macro (name . args) body)\n\n         The meta-macro, that creates new macros. If the return value is a list structure\n         it will be evaluated where the macro is invoked from. You can use quasiquote `\n         and unquote , and unquote-splicing ,@ inside to create an expression that will be\n         evaluated at runtime. Macros works like this: if you pass any expression to a\n         macro the arguments will not be evaluated unless the macro's body explicitly\n         calls (eval) on it. Because of this a macro can manipulate the expression\n         (arguments) as lists."),
     // ------------------------------------------------------------------
@@ -17530,10 +17532,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sun, 19 Jan 2025 22:39:28 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sun, 19 Jan 2025 22:40:00 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sun, 19 Jan 2025 22:39:28 +0000').valueOf();
+    var date = LString('Sun, 19 Jan 2025 22:40:00 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -17573,7 +17575,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Sun, 19 Jan 2025 22:39:28 +0000';
+  var date = 'Sun, 19 Jan 2025 22:40:00 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

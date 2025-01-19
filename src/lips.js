@@ -9152,6 +9152,8 @@ var global_env = new Environment({
                 use_dynamic, error
             });
             this.set(name, macro_instance);
+        } else {
+            throw new Error('Syntax Error: Invalid `define-macro` expression');
         }
     }), `(define-macro (name . args) body)
 
