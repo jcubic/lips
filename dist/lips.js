@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 19 Jan 2025 22:40:00 +0000
+ * build: Sun, 19 Jan 2025 23:01:48 +0000
  */
 
 (function (global, factory) {
@@ -8850,6 +8850,14 @@
   // ----------------------------------------------------------------------
   // :: define-macro macro
   // ----------------------------------------------------------------------
+  function is_lambda_macro(macro) {
+    return macro.car instanceof LSymbol && is_pair(macro.cdr) && is_pair(macro.cdr.car) && LSymbol.is(macro.cdr.car.car, 'lambda');
+  }
+  // ----------------------------------------------------------------------
+  function is_named_macro(macro) {
+    return is_pair(macro.car) && macro.car.car instanceof LSymbol;
+  }
+  // ----------------------------------------------------------------------
   function define_macro(name, args, body, __doc__, _ref21) {
     var use_dynamic = _ref21.use_dynamic,
       error = _ref21.error;
@@ -14583,16 +14591,24 @@
     'define-macro': doc(new Macro(macro, function (macro, _ref38) {
       var use_dynamic = _ref38.use_dynamic,
         error = _ref38.error;
-      if (is_pair(macro.car) && macro.car.car instanceof LSymbol) {
-        var name = macro.car.car.__name__;
-        var __doc__;
-        var body = macro.cdr;
+      var name, __doc__, body, args;
+      if (is_named_macro(macro)) {
+        name = macro.car.car.__name__;
+        body = macro.cdr;
+        args = macro.car.cdr;
+      }
+      if (is_lambda_macro(macro)) {
+        name = macro.car.__name__;
+        var _lambda = macro.cdr.car;
+        args = _lambda.cdr.car;
+        body = _lambda.cdr.cdr;
+      }
+      if (name && body && args) {
         if (LString.isString(body.car) && is_pair(body.cdr)) {
           __doc__ = body.car.valueOf();
           body = body.cdr;
         }
-        var _args24 = macro.car.cdr;
-        var macro_instance = define_macro(name, _args24, body, __doc__, {
+        var macro_instance = define_macro(name, args, body, __doc__, {
           use_dynamic: use_dynamic,
           error: error
         });
@@ -17532,10 +17548,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sun, 19 Jan 2025 22:40:00 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sun, 19 Jan 2025 23:01:48 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sun, 19 Jan 2025 22:40:00 +0000').valueOf();
+    var date = LString('Sun, 19 Jan 2025 23:01:48 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -17575,7 +17591,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Sun, 19 Jan 2025 22:40:00 +0000';
+  var date = 'Sun, 19 Jan 2025 23:01:48 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

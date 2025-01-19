@@ -4,6 +4,7 @@
 * add metadata to the parser [#414](https://github.com/jcubic/lips/issues/414), [#416](https://github.com/jcubic/lips/issues/416)
 * expose `box` and `unbox` functions
 * add line number to errors [#416](https://github.com/jcubic/lips/issues/416)
+* allow using `define-macro` with `lambda` expression
 ### Bugfix
 * fix exception when handling parse error for lonely `)` [#417](https://github.com/jcubic/lips/issues/417)
 * fix unboxing arguments of LIPS created classes [#411](https://github.com/jcubic/lips/issues/411)

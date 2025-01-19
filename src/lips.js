@@ -3940,6 +3940,17 @@ const macro = 'define-macro';
 // ----------------------------------------------------------------------
 // :: define-macro macro
 // ----------------------------------------------------------------------
+function is_lambda_macro(macro) {
+    return macro.car instanceof LSymbol &&
+        is_pair(macro.cdr) &&
+        is_pair(macro.cdr.car) &&
+        LSymbol.is(macro.cdr.car.car, 'lambda');
+}
+// ----------------------------------------------------------------------
+function is_named_macro(macro) {
+    return is_pair(macro.car) && macro.car.car instanceof LSymbol;
+}
+// ----------------------------------------------------------------------
 function define_macro(name, args, body, __doc__, { use_dynamic, error }) {
     const makro_instance = Macro.defmacro(name, function(code) {
         const env = macro_args_env(args, code, this);
@@ -9139,15 +9150,22 @@ var global_env = new Environment({
          and return single expression as output.`),
     // ------------------------------------------------------------------
     'define-macro': doc(new Macro(macro, function(macro, { use_dynamic, error }) {
-        if (is_pair(macro.car) && macro.car.car instanceof LSymbol) {
-            const name = macro.car.car.__name__;
-            let __doc__;
-            let body = macro.cdr;
+        let name, __doc__, body, args;
+        if (is_named_macro(macro)) {
+            name = macro.car.car.__name__;
+            body = macro.cdr;
+            args = macro.car.cdr;
+        } if (is_lambda_macro(macro)) {
+            name = macro.car.__name__;
+            const lambda = macro.cdr.car;
+            args = lambda.cdr.car;
+            body = lambda.cdr.cdr;
+        }
+        if (name && body && args) {
             if (LString.isString(body.car) && is_pair(body.cdr)) {
                 __doc__ = body.car.valueOf();
                 body = body.cdr;
             }
-            const args = macro.car.cdr;
             const macro_instance = define_macro(name, args, body, __doc__, {
                 use_dynamic, error
             });

@@ -29,7 +29,6 @@ ESLINT=./node_modules/.bin/eslint
 COVERALLS=./node_modules/.bin/coveralls
 JEST=./node_modules/.bin/jest
 MERMAID=./node_modules/.bin/mmdc
-NPM=npm
 UGLIFY=./node_modules/.bin/uglifyjs
 ROLLUP=./node_modules/.bin/rollup
 LIPS=./bin/lips.js
