@@ -3938,6 +3938,67 @@ Macro.prototype.toString = function() {
 // ----------------------------------------------------------------------
 const macro = 'define-macro';
 // ----------------------------------------------------------------------
+// :: define-macro macro
+// ----------------------------------------------------------------------
+function define_macro(name, args, body, __doc__, { use_dynamic, error }) {
+    const makro_instance = Macro.defmacro(name, function(code) {
+        const env = macro_args_env(args, code, this);
+        const eval_args = {
+            env,
+            dynamic_env: env,
+            use_dynamic,
+            error
+        };
+        // evaluate macro
+        if (is_pair(body)) {
+            // this eval will return lips code
+            const rest = __doc__ ? body.cdr : body;
+            const result = rest.reduce(function(result, node) {
+                return evaluate(node, eval_args);
+            });
+            return unpromise(result, function(result) {
+                if (typeof result === 'object') {
+                    delete result[__data__];
+                }
+                return result;
+            });
+        }
+    }, __doc__, true);
+    makro_instance.__code__ = new Pair(new LSymbol('define-macro'), macro);
+    return makro_instance;
+}
+// ----------------------------------------------------------------------
+function macro_args_env(params, code, scope) {
+    const env = new Environment({}, scope, 'defmacro');
+    let arg = code;
+    while (true) {
+        if (is_nil(params)) {
+            break;
+        }
+        if (params instanceof LSymbol) {
+            env.__env__[params.__name__] = arg;
+            break;
+        } else if (!is_nil(params.car)) {
+            if (is_nil(arg)) {
+                env.__env__[params.car.__name__] = nil;
+            } else {
+                if (is_pair(arg.car)) {
+                    arg.car[__data__] = true;
+                }
+                env.__env__[params.car.__name__] = arg.car;
+            }
+        }
+        if (is_nil(params.cdr)) {
+            break;
+        }
+        if (!is_nil(arg)) {
+            arg = arg.cdr;
+        }
+        params = params.cdr;
+    }
+    return env;
+}
+// ----------------------------------------------------------------------
 const recur_guard = -10000;
 function macro_expand(single) {
     return async function(code, args) {
@@ -9080,63 +9141,17 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'define-macro': doc(new Macro(macro, function(macro, { use_dynamic, error }) {
         if (is_pair(macro.car) && macro.car.car instanceof LSymbol) {
-            var name = macro.car.car.__name__;
-            var __doc__;
+            const name = macro.car.car.__name__;
+            let __doc__;
             if (LString.isString(macro.cdr.car) && is_pair(macro.cdr.cdr)) {
                 __doc__ = macro.cdr.car.valueOf();
             }
-            var makro_instance = Macro.defmacro(name, function(code) {
-                var env = new Environment({}, this, 'defmacro');
-                var name = macro.car.cdr;
-                var arg = code;
-                while (true) {
-                    if (is_nil(name)) {
-                        break;
-                    }
-                    if (name instanceof LSymbol) {
-                        env.__env__[name.__name__] = arg;
-                        break;
-                    } else if (!is_nil(name.car)) {
-                        if (is_nil(arg)) {
-                            env.__env__[name.car.__name__] = nil;
-                        } else {
-                            if (is_pair(arg.car)) {
-                                arg.car[__data__] = true;
-                            }
-                            env.__env__[name.car.__name__] = arg.car;
-                        }
-                    }
-                    if (is_nil(name.cdr)) {
-                        break;
-                    }
-                    if (!is_nil(arg)) {
-                        arg = arg.cdr;
-                    }
-                    name = name.cdr;
-                }
-                var eval_args = {
-                    env,
-                    dynamic_env: env,
-                    use_dynamic,
-                    error
-                };
-                // evaluate macro
-                if (is_pair(macro.cdr)) {
-                    // this eval will return lips code
-                    var rest = __doc__ ? macro.cdr.cdr : macro.cdr;
-                    var result = rest.reduce(function(result, node) {
-                        return evaluate(node, eval_args);
-                    });
-                    return unpromise(result, function(result) {
-                        if (typeof result === 'object') {
-                            delete result[__data__];
-                        }
-                        return result;
-                    });
-                }
-            }, __doc__, true);
-            makro_instance.__code__ = new Pair(new LSymbol('define-macro'), macro);
-            this.set(name, makro_instance);
+            const args = macro.car.cdr;
+            const body = macro.cdr;
+            const macro_instance = define_macro(name, args, body, __doc__, {
+                use_dynamic, error
+            });
+            this.set(name, macro_instance);
         }
     }), `(define-macro (name . args) body)
 
