@@ -3952,8 +3952,7 @@ function define_macro(name, args, body, __doc__, { use_dynamic, error }) {
         // evaluate macro
         if (is_pair(body)) {
             // this eval will return lips code
-            const rest = __doc__ ? body.cdr : body;
-            const result = rest.reduce(function(result, node) {
+            const result = body.reduce(function(result, node) {
                 return evaluate(node, eval_args);
             });
             return unpromise(result, function(result) {
@@ -9147,7 +9146,7 @@ var global_env = new Environment({
                 __doc__ = macro.cdr.car.valueOf();
             }
             const args = macro.car.cdr;
-            const body = macro.cdr;
+            const body = __doc__ ? macro.cdr.cdr : macro.cdr;
             const macro_instance = define_macro(name, args, body, __doc__, {
                 use_dynamic, error
             });
