@@ -4838,7 +4838,7 @@ function transform_syntax(options = {}) {
                                 // there are two cases ((a . b) ...) and (a ...)
                                 new_bind[key] = value;
                             };
-                            const car = transform_ellipsis_expr(
+                            let car = transform_ellipsis_expr(
                                 new_expr,
                                 bind,
                                 { nested: true },
@@ -4895,7 +4895,7 @@ function transform_syntax(options = {}) {
                         return result;
                     } else {
                         log('>> 3');
-                        const car = transform_ellipsis_expr(first, symbols, {
+                        let car = transform_ellipsis_expr(first, symbols, {
                             nested: true
                         });
                         if (car) {

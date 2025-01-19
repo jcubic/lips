@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 19 Jan 2025 01:49:32 +0000
+ * build: Sun, 19 Jan 2025 17:27:45 +0000
  */
 
 'use strict';
@@ -58,10 +58,6 @@ function _construct(t, e, r) {
   o.push.apply(o, e);
   var p = new (t.bind.apply(t, o))();
   return r && _setPrototypeOf(p, r.prototype), p;
-}
-
-function _readOnlyError(r) {
-  throw new TypeError('"' + r + '" is read-only');
 }
 
 function _arrayWithHoles(r) {
@@ -9919,7 +9915,7 @@ function transform_syntax() {
               // on empty ellipsis
               if (car !== undefined) {
                 if (car instanceof Value) {
-                  car.valueOf(), _readOnlyError("car");
+                  car = car.valueOf();
                 }
                 if (is_spread) {
                   if (is_array) {
@@ -9978,7 +9974,7 @@ function transform_syntax() {
             });
             if (car) {
               if (car instanceof Value) {
-                car.valueOf(), _readOnlyError("car");
+                car = car.valueOf();
               }
               return new Pair(car, _nil);
             }
@@ -17509,10 +17505,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 19 Jan 2025 01:49:32 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 19 Jan 2025 17:27:45 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 19 Jan 2025 01:49:32 +0000').valueOf();
+  var date = LString('Sun, 19 Jan 2025 17:27:45 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17552,7 +17548,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 19 Jan 2025 01:49:32 +0000';
+var date = 'Sun, 19 Jan 2025 17:27:45 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
