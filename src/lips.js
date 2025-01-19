@@ -9248,7 +9248,10 @@ var global_env = new Environment({
                     rules = rules.cdr;
                 }
             } catch (e) {
-                e.message += `\nin macro:\n  ${macro.toString(true)}`;
+                const location = `\nin macro:\n  ${macro.toString(true)}`;
+                if (!e.message.includes(location)) {
+                    e.message += location;
+                }
                 throw e;
             }
             throw new Error(`syntax-rules: no matching syntax in macro ${code.toString(true)}`);

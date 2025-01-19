@@ -12,6 +12,7 @@
 * fix `expt` [#426](https://github.com/jcubic/lips/issues/426), [#424](https://github.com/jcubic/lips/issues/424)
 * remove stripping `\r` characters from Lexer (that is used by ports)
 * unpack `values` only in REPL
+* fix duplicated location in recursive syntax-rules macro error [#429](https://github.com/jcubic/lips/issues/429)
 
 ## 1.0.0-beta.20
 ### Feature
