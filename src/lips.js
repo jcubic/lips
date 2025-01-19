@@ -9142,11 +9142,12 @@ var global_env = new Environment({
         if (is_pair(macro.car) && macro.car.car instanceof LSymbol) {
             const name = macro.car.car.__name__;
             let __doc__;
-            if (LString.isString(macro.cdr.car) && is_pair(macro.cdr.cdr)) {
-                __doc__ = macro.cdr.car.valueOf();
+            let body = macro.cdr;
+            if (LString.isString(body.car) && is_pair(body.cdr)) {
+                __doc__ = body.car.valueOf();
+                body = body.cdr;
             }
             const args = macro.car.cdr;
-            const body = __doc__ ? macro.cdr.cdr : macro.cdr;
             const macro_instance = define_macro(name, args, body, __doc__, {
                 use_dynamic, error
             });
