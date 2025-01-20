@@ -30,8 +30,8 @@
                                           (return result)
                                           (next)))))))
 
-                (t.is (string-repeat 5 "x") "xxxxx")
-                (t.is (string-repeat 2 "1") "11")))
+                (t.is (repeat-string 5 "x") "xxxxx")
+                (t.is (repeat-string 2 "1") "11")))
 
 (test.failing "continuations: don't call after call continuation"
       (lambda (t)
