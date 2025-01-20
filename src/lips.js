@@ -8773,7 +8773,7 @@ var global_env = new Environment({
         };
         return unpromise(evaluate(code.car, args), (result) => {
             if (is_function(result)) {
-                return result(new Continuation(null));
+                return result(new Continuation());
             }
         });
     }), `(call/cc proc)
@@ -11438,16 +11438,67 @@ function search_param(env, param) {
 // :: Continuations object from call/cc
 // -------------------------------------------------------------------------
 class Continuation {
-    __value__;
-    constructor(k) {
-        this.__value__ = k;
+    constructor(object, env, cc, next) {
+        read_only(this, '__env__', env);
+        read_only(this, '__object__', object);
+        read_only(this, '__continuation__', cc);
+        read_only(this, '__next__', next);
+        read_only(this, '_state', { i: 0 }, { hidden: true });
+    }
+    clone() {
+        const copy = clone(this);
+        if (this.__continuation__) {
+            copy.__continuation__ = copy.__continuation__.clone();
+        }
+        return copy;
     }
     invoke() {
-        if (this.__value__ === null) {
+        if (!this.__env__) {
             throw new Error('Continuations are not implemented yet');
         }
     }
 }
+// -------------------------------------------------------------------------
+function clone(object) {
+    const copy = new object.constructor;
+    for (const [key, value] of Object.entries(x)) {
+        copy[key] = value;
+    }
+    return copy;
+}
+// -------------------------------------------------------------------------
+// :: code based on jsScheme by Alex Yakovlev
+// -------------------------------------------------------------------------
+class State {
+    constructor(object, env, cc) {
+        this.env = env;
+        this.object = object;
+        this.cc = cc;
+        this.ready = false;
+    }
+    cont() {
+        this.cc.__next__(this);
+    }
+    eval() {
+        if (this.object === null) {
+            this.ready = false;
+        }
+        if (!this.ready) {
+            if (is_debug()) {
+                console.log('eval: ' + to_string(this.object));
+            }
+            this.ready = false;
+            if (this.object instanceof State) {
+                this.object.eval();
+            } else {
+                this.ready = true;
+            }
+        }
+        return this.ready;
+    }
+}
+// -------------------------------------------------------------------------
+const to_cc = new Continuation(null, null, null, (state) => { throw state; });
 
 // -------------------------------------------------------------------------
 function evaluate(code, { env, dynamic_env, use_dynamic, error = noop, ...rest } = {}) {
