@@ -14,6 +14,7 @@
 * remove stripping `\r` characters from Lexer (that is used by ports)
 * unpack `values` only in REPL
 * fix duplicated location in recursive syntax-rules macro error [#429](https://github.com/jcubic/lips/issues/429)
+* fix `angle` and `magnitude` on real values
 
 ## 1.0.0-beta.20
 ### Feature

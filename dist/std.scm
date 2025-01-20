@@ -3088,19 +3088,18 @@
   "(angle x)
 
    Returns angle of the complex number in polar coordinate system."
-  ;; TODO: replace %number-type with typechecking
-  (if (not (%number-type "complex" x))
+  (if (not (complex? x))
       (error "angle: number need to be complex")
-      (Math.atan2 x.__im__ x.__re__)))
+      (Math.atan2 (imag-part x) (real-part x))))
 
 ;; -----------------------------------------------------------------------------
 (define (magnitude x)
   "(magnitude x)
 
    Returns magnitude of the complex number in polar coordinate system."
-  (if (not (%number-type "complex" x))
+  (if (not (complex? x))
       (error "magnitude: number need to be complex")
-      (sqrt (+ (* x.__im__ x.__im__) (* x.__re__ x.__re__)))))
+      (sqrt (+ (expt (imag-part x) 2) (expt (real-part x) 2)))))
 
 ;; -----------------------------------------------------------------------------
 ;; ref: https://stackoverflow.com/a/14675103/387194
