@@ -4,11 +4,11 @@
 ;; http://people.cs.aau.dk/~normark/prog3-03/html/notes/eval-order_themes-delay-stream-section.html
 ;;
 ;; This file is part of the LIPS - Scheme based Powerful lisp in JavaScript
-;; Copyright (C) 2019-2023 Jakub T. Jankiewicz <https://jcubic.pl/me>
+;; Copyright (C) 2019-2024 Jakub T. Jankiewicz <https://jcubic.pl/me>
 ;; Released under MIT license
 ;;
 
-(define-macro (cons-stream x y)
+(define-macro (stream-cons x y)
   `(cons ,x (delay ,y)))
 
 ;; -----------------------------------------------------------------------------
@@ -31,9 +31,10 @@
 
 ;; -----------------------------------------------------------------------------
 (define (stream-take n stream)
+  "return n elements from the stream"
   (if (<= n 0)
       '()
-      (cons (head stream) (take (- n 1) (tail stream)))))
+      (cons (head stream) (stream-take (- n 1) (tail stream)))))
 
 ;; -----------------------------------------------------------------------------
 (define (stream-section n stream)
@@ -55,43 +56,44 @@
               (stream-cdr stream)))))
 
 ;; -----------------------------------------------------------------------------
-(define (add-streams s1 s2)
+(define (stream-add s1 s2)
   (let ((h1 (head s1))
         (h2 (head s2)))
-    (cons-stream
+    (stream-cons
      (+ h1 h2)
-     (add-streams (tail s1) (tail s2)))))
+     (stream-add (tail s1) (tail s2)))))
 
 ;; --------------------------------------------------------------------------
 (define (stream-range n)
   (let loop ((i 0))
     (if (= i n)
         the-empty-stream
-        (cons-stream i (loop (+ i 1))))))
+        (stream-cons i (loop (+ i 1))))))
+
 ;; --------------------------------------------------------------------------
 (define (stream-reduce fun stream)
   (let iter ((result (stream-car stream))
-             (stream stream))
-    (if (empty-stream? (stream-cdr stream))
+             (stream (stream-cdr stream)))
+    (if (empty-stream? stream)
         result
         (iter (fun result (stream-car stream))
               (stream-cdr stream)))))
 
 ;; -----------------------------------------------------------------------------
-(define (zip-streams . streams)
+(define (stream-zip . streams)
   (if (empty-stream? streams)
       the-empty-stream
-      (cons-stream (apply list (map stream-car streams))
-                   (apply zip-streams (map stream-cdr streams)))))
+      (stream-cons (apply list (map stream-car streams))
+                   (apply stream-zip (map stream-cdr streams)))))
 
 ;; --------------------------------------------------------------------------
 (define (stream-map proc . streams)
   (define (single-map proc stream)
     (if (empty-stream? stream)
         the-empty-stream
-        (cons-stream (apply proc (stream-car stream))
+        (stream-cons (apply proc (stream-car stream))
                      (single-map proc (stream-cdr stream)))))
-  (single-map proc (apply zip-streams streams)))
+  (single-map proc (apply stream-zip streams)))
 
 ;; --------------------------------------------------------------------------
 (define (stream-for-each proc stream)
@@ -105,20 +107,26 @@
   (let iter ((n n) (stream stream))
     (if (or (empty-stream? stream) (eq? n 0))
         the-empty-stream
-        (cons-stream (stream-car stream)
+        (stream-cons (stream-car stream)
                      (iter (- n 1)
                            (stream-cdr stream))))))
 
 ;; -----------------------------------------------------------------------------
-(define (slice-stream a b stream)
-  (let loop ((n (- b a)) (stream (skip-stream a stream)))
+(define (stream-skip n stream)
+  (if (<= n 0)
+      stream
+      (stream-skip (- n 1) (stream-cdr stream))))
+
+;; -----------------------------------------------------------------------------
+(define (stream-slice a b stream)
+  (let loop ((n (- b a)) (stream (stream-skip a stream)))
     (if (eq? n 0)
         the-empty-stream
-        (cons-stream (stream-car stream)
+        (stream-cons (stream-car stream)
                      (loop (- n 1) (stream-cdr stream))))))
 
 ;; -----------------------------------------------------------------------------
-(define (force-stream stream)
+(define (stream-force stream)
   (let iter ((stream stream))
     (if (empty-stream? stream)
         '()
@@ -129,23 +137,23 @@
 ;; example streams
 ;; -----------------------------------------------------------------------------
 (define fibs
-  (cons-stream 0
-               (cons-stream 1
-                            (add-streams (tail fibs) fibs))))
+  (stream-cons 0
+               (stream-cons 1
+                            (stream-add (tail fibs) fibs))))
 
 ;; -----------------------------------------------------------------------------
 (define (integers-from n)
-  (cons-stream n (integers-from (+ n 1))))
+  (stream-cons n (integers-from (+ n 1))))
 
 ;; -----------------------------------------------------------------------------
-(define ones (cons-stream 1 ones))
+(define ones (stream-cons 1 ones))
 
 ;; -----------------------------------------------------------------------------
-(define integers (cons-stream 1 (add-streams integers ones)))
+(define integers (stream-cons 1 (stream-add integers ones)))
 
 ;; -----------------------------------------------------------------------------
 (define (! n)
-  (stream-reduce * (limit n integers)))
+  (stream-reduce * (stream-limit n integers)))
 
 ;; -----------------------------------------------------------------------------
 (define factorials
@@ -157,7 +165,7 @@
 
 ;; -----------------------------------------------------------------------------
 (define (sieve stream)
-  (cons-stream
+  (stream-cons
    (stream-car stream)
    (sieve (stream-filter
            (lambda (x)
@@ -166,7 +174,7 @@
            (stream-cdr stream)))))
 
 ;; -----------------------------------------------------------------------------
-(define (scale-stream stream n)
-  (map-stream (lambda (x) (* x n)) stream))
+(define (stream-scale stream n)
+  (stream-map (lambda (x) (* x n)) stream))
 
-;;(force-stream (limit 10 (stream-map (lambda (a b) (+ a b)) integers (stream-cdr integers))))
+;;(stream-force (limit 10 (stream-map (lambda (a b) (+ a b)) integers (stream-cdr integers))))

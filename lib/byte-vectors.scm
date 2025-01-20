@@ -8,7 +8,7 @@
 ;; https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays
 ;;
 ;; This file is part of the LIPS - Scheme based Powerful lisp in JavaScript
-;; Copyright (C) 2019-2023 Jakub T. Jankiewicz <https://jcubic.pl/me>
+;; Copyright (C) 2019-2024 Jakub T. Jankiewicz <https://jcubic.pl/me>
 ;; Released under MIT license
 ;;
 
@@ -56,7 +56,8 @@
        (define (,make-vector k . fill)
          ,(format "(~a k fill)
 
-                   Allocate new ~a of length k, with optional initial values."
+                   Allocate new ~a of length k,
+                   with optional initial values."
                   make-vector
                   help)
          (let ((v (new ,type k)))
@@ -67,7 +68,8 @@
        (define (,vector? x)
          ,(format "(~a x)
 
-                   Returns #t of argument is ~a otherwise it return #f."
+                   Returns #t of argument is ~a,
+                   otherwise it return #f."
                   vector?
                   help)
          (and (object? x) (equal? (. x 'constructor) ,type)))
@@ -86,7 +88,8 @@
        (define (,vector-ref vector k)
          ,(format "(~a vector k)
 
-                  Returns value from vector at index k. If index is out of range it throw exception."
+                  Returns value from vector at index k.
+                  If index is out of range it throw exception."
                   vector-ref
                   help)
          (typecheck ,(symbol->string vector-ref) vector ,l-type)
@@ -102,7 +105,8 @@
        (define (,vector-set! vector k v)
          ,(format "(~a vector k)
 
-                   Function set value of ~a at index k. If index is out of range it throw exception."
+                   Function set value of ~a at index k.
+                   If index is out of range it throw exception."
                   vector-set!
                   help)
          (typecheck ,(symbol->string vector-set!) vector ,l-type)

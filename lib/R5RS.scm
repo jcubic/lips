@@ -13,7 +13,7 @@
 ;; https://schemers.org/Documents/Standards/R5RS/HTML/
 ;;
 ;; This file is part of the LIPS - Scheme based Powerful lisp in JavaScript
-;; Copyright (C) 2019-2023 Jakub T. Jankiewicz <https://jcubic.pl/me>
+;; Copyright (C) 2019-2024 Jakub T. Jankiewicz <https://jcubic.pl/me>
 ;; Released under MIT license
 ;;
 ;; (+ 1 (call-with-current-continuation
@@ -24,12 +24,19 @@
 (define string-append concat)
 (define = ==)
 (define remainder %)
-(define -inf.0 Number.NEGATIVE_INFINITY)
-(define +inf.0 Number.POSITIVE_INFINITY)
+(define procedure? function?)
 (define expt **)
 (define list->vector list->array)
 (define vector->list array->list)
 (define call-with-current-continuation call/cc)
+
+;; -----------------------------------------------------------------------------
+(define (procedure? obj)
+  "(procedure? expression)
+
+   Predicate that tests if value is a callable function or continuation."
+  (or (function? obj) (continuation? obj)))
+
 ;; -----------------------------------------------------------------------------
 (define (procedure? obj)
   "(procedure? obj)
@@ -40,10 +47,10 @@
 (define-macro (define-symbol-macro type spec . rest)
   "(define-symbol-macro type (name . args) . body)
 
-   Creates special symbol macros for evaluator similar to built-in , or `.
-   It's like an alias for a real macro. Similar to CL reader macros but it receives already
-   parsed code like normal macros. Type can be SPLICE or LITERAL symbols (see set-special!).
-   ALL default symbol macros are literal."
+   Creates syntax extensions for evaluator similar to built-in , or `.
+   It's like an alias for a real macro. Similar to CL reader macros
+   but it receives already parsed code like normal macros. Type can be SPLICE
+   or LITERAL symbols (see set-special!). ALL default symbol macros are literal."
   (let* ((name (car spec))
          (symbol (cadr spec))
          (args (cddr spec)))
@@ -54,13 +61,10 @@
         (define-macro (,name ,@args) ,@rest))))
 
 ;; -----------------------------------------------------------------------------
-;; Vector literals syntax using parser symbol macros
+;; Vector literals syntax using parser syntax extensions
 ;; -----------------------------------------------------------------------------
-(set-special! "#" 'vector-literal lips.specials.SPLICE)
-
-;; -----------------------------------------------------------------------------
-(define-macro (vector-literal . args)
-  (if (not (or (pair? args) (eq? args nil)))
+(define-symbol-macro SPLICE (vector-literal "#" . args)
+  (if (not (or (pair? args) (eq? args '())))
       (throw (new Error (concat "Parse Error: vector require pair got "
                                 (type args) " in " (repr args))))
       (let ((v (list->array args)))
@@ -68,21 +72,20 @@
         v)))
 
 ;; -----------------------------------------------------------------------------
-(define-syntax vector
-  (syntax-rules ()
-    ((_ arg ...) (list->array (list arg ...))))
+(define (vector . rest)
   "(vector 1 2 3 (+ 3 1)) or #(1 2 3 4)
 
    Macro for defining vectors (Javascript Arrays). Vector literals are
    automatically quoted, so you can't use expressions inside them, only other
-   literals, like other vectors or objects.")
+   literals, like other vectors or objects."
+  (list->array rest))
 
 ;; -----------------------------------------------------------------------------
 (set-repr! Array
            (lambda (arr q)
              ;; Array.from is used to convert empty to undefined
              ;; but we can't use the value because Array.from calls
-             ;; valueOf on its arguments
+             ;; valueOf on its arguments (unbox the LIPS data types)
              (let ((result (--> (Array.from arr)
                                 (map (lambda (x i)
                                        (if (not (in i arr))
@@ -132,7 +135,8 @@
   "(equal? a b)
 
    The function checks if values are equal. If both are a pair or an array
-   it compares their elements recursively."
+   it compares their elements recursively. If pairs have cycles it compares
+   them with eq?"
   (cond ((and (pair? a))
          (and (pair? b)
               (equal? (car a) (car b))
@@ -173,6 +177,11 @@
                      (equal? keys_a keys_b)
                      (equal? (--> keys_a (map (lambda (key) (. a key))))
                              (--> keys_b (map (lambda (key) (. b key)))))))))
+        ((instance? a)
+         (and (instance? b)
+              (%same-functions b.constructor a.constructor)
+              (function? a.equal)
+              (a.equal b)))
         (else (eqv? a b))))
 
 ;; -----------------------------------------------------------------------------
@@ -222,7 +231,8 @@
   "(promise? obj)
 
    Checks if the value is a promise created with delay or make-promise."
-  (string=? (type obj) "promise"))
+  (and (string=? (type obj) "function")
+       (. obj (Symbol.for "promise"))))
 
 ;; -----------------------------------------------------------------------------
 (define (positive? x)
@@ -334,6 +344,7 @@
        (not (eq? x Number.NEGATIVE_INFINITY))
        (not (eq? x Number.POSITIVE_INFINITY))
        (or (%number-type "bigint" x)
+           (%number-type "integer" x)
            (and (%number-type "float" x)
                 (= (modulo x 2) 1)))))
 
@@ -359,14 +370,14 @@
        (or (%number-type "rational" x) (integer? x))))
 
 ;; -----------------------------------------------------------------------------
-(define (typecheck-args _type name _list)
-  "(typecheck-args args type)
+(define (typecheck-args _type label _list)
+  "(typecheck-args type label lst)
 
-   Function that makes sure that all items in the array are of same type."
+   Function that makes sure that all items in list are of same type."
   (let iter ((n 1) (_list _list))
     (if (pair? _list)
         (begin
-          (typecheck name (car _list) _type n)
+          (typecheck label (car _list) _type n)
           (iter (+ n 1) (cdr _list))))))
 
 ;; -----------------------------------------------------------------------------
@@ -459,7 +470,7 @@
 
 ;; -----------------------------------------------------------------------------
 ;; generate Math functions with documentation
-(define _maths (list "sin" "cos" "tan" "asin" "acos" "atan" "atan"))
+(define _maths (list "asin" "acos"))
 
 ;; -----------------------------------------------------------------------------
 (define _this_env (current-environment))
@@ -526,6 +537,33 @@
       (Math.tan n)))
 
 ;; -----------------------------------------------------------------------------
+(define (atan z . rest)
+  "(atan z)
+   (atan x y)
+
+   Function calculates arcus tangent of a complex number.
+   If two arguments are passed and they are not complex numbers
+   it calculate Math.atan2 on those arguments."
+  (if (and (null? rest) (complex? z))
+      (cond ((nan? z) +nan.0)
+            ((infinite? z)
+             (let ((atan (/ Math.PI 2)))
+               (if (< z 0)
+                   (- atan)
+                   atan)))
+            (else
+             ;; ref: https://youtu.be/d93AarE0lKg
+             (let ((iz (* +i z)))
+               (* (/ 1 +2i)
+                  (log (/ (+ 1 iz)
+                          (- 1 iz)))))))
+      (let ((x z) (y (car rest)))
+        (if (and (zero? (imag-part x))
+                 (zero? (imag-part y)))
+            (Math.atan2 x y)
+            (error "atan: can't call with two complex numbers")))))
+
+;; -----------------------------------------------------------------------------
 (define (exp n)
   "(exp n)
 
@@ -577,18 +615,10 @@
   "(list-ref list n)
 
    Returns n-th element of a list."
-  (typecheck "list-ref" l '("pair" "nil"))
-  (if (< k 0)
-      (throw (new Error "list-ref: index out of range"))
-      (let ((l l) (k k))
-        (while (> k 0)
-          (if (or (null? (cdr l)) (null? l))
-              (throw (new Error "list-ref: not enough elements in the list")))
-          (set! l (cdr l))
-          (set! k (- k 1)))
-        (if (null? l)
-            l
-            (car l)))))
+  (let ((l (%nth-pair "list-ref" l k)))
+    (if (null? l)
+        l
+        (car l))))
 
 ;; -----------------------------------------------------------------------------
 (define (not x)
@@ -735,7 +765,7 @@
    Function that destructively fills the string with given character."
   (typecheck "string-fill!" string "string" 1)
   (typecheck "string-fill!" char "character" 2)
-  (--> string (fill char)))
+  (string.fill char))
 
 ;; -----------------------------------------------------------------------------
 (define (identity n)
@@ -775,29 +805,27 @@
                            (lips.LCharacter x))))))
 
 ;; -----------------------------------------------------------------------------
-;; (let ((x "hello")) (string-set! x 0 #\H) x)
 (define-macro (string-set! object index char)
-  "(string-set! object index char)
+  "(string-set! string index char)
 
-   Replaces character in string in given index. It create new JavaScript
-   string and replaces the old value. Object needs to be symbol that points to the variable
-   that holds the string."
-  (typecheck "string-set!" object "symbol")
-  (let ((chars (gensym "chars")))
+   Replaces character in string at a given index."
+  (let ((input (gensym "input")))
     `(begin
-       (typecheck "string-set!" ,object "string")
-       (typecheck "string-set!" ,index "number")
-       (typecheck "string-set!" ,char "character")
-       (let ((,chars (list->vector (string->list ,object))))
-          (set-obj! ,chars ,index ,char)
-          (set! ,object (list->string (vector->list ,chars)))))))
+       (let ((,input ,object))
+         (typecheck "string-set!" ,input "string")
+         (typecheck "string-set!" ,index "number")
+         (typecheck "string-set!" ,char "character")
+         (try
+          (--> ,input (set ,index  ,char))
+          (catch (e)
+                 (error "string-set!: attempt to change an immutable string")))))))
 
 ;; -----------------------------------------------------------------------------
 (define (string-length string)
   "(string-length string)
 
    Returns the length of the string."
-  (typecheck "string-ref" string "string")
+  (typecheck "string-length" string "string")
   (. string 'length))
 
 ;; -----------------------------------------------------------------------------
@@ -807,7 +835,7 @@
    Returns character inside string at given zero-based index."
   (typecheck "string-ref" string "string" 1)
   (typecheck "string-ref" k "number" 2)
-  (lips.LCharacter (--> string (get k))))
+  (lips.LCharacter (string.get k)))
 
 (define (%string-cmp name string1 string2)
   "(%string-cmp name a b)
@@ -1095,21 +1123,15 @@
        (char=? (char-downcase char) char)))
 
 ;; -----------------------------------------------------------------------------
-(define (newline . rest)
-  "(newline [port])
-
-   Write newline character to standard output or given port"
-  (let ((port (if (null? rest) (current-output-port) (car rest))))
-    (display "\n" port)))
-
-;; -----------------------------------------------------------------------------
 (define (write obj . rest)
   "(write obj [port])
 
    Write object to standard output or give port. For strings it will include
    wrap in quotes."
   (let ((port (if (null? rest) (current-output-port) (car rest))))
-    (display (repr obj true) port)))
+    (if (binary-port? port)
+        (display obj port)
+        (display (repr obj true) port))))
 
 ;; -----------------------------------------------------------------------------
 (define (write-char char . rest)
@@ -1289,18 +1311,18 @@
   "(angle x)
 
    Returns angle of the complex number in polar coordinate system."
-  (if (not (%number-type "complex" x))
+  (if (not (complex? x))
       (error "angle: number need to be complex")
-      (Math.atan2 x.__im__ x.__re__)))
+      (Math.atan2 (imag-part x) (real-part x))))
 
 ;; -----------------------------------------------------------------------------
 (define (magnitude x)
   "(magnitude x)
 
    Returns magnitude of the complex number in polar coordinate system."
-  (if (not (%number-type "complex" x))
+  (if (not (complex? x))
       (error "magnitude: number need to be complex")
-      (sqrt (+ (* x.__im__ x.__im__) (* x.__re__ x.__re__)))))
+      (sqrt (+ (expt (imag-part x) 2) (expt (real-part x) 2)))))
 
 ;; -----------------------------------------------------------------------------
 ;; ref: https://stackoverflow.com/a/14675103/387194
@@ -1386,23 +1408,31 @@
    Procedure open file for reading, call user defined procedure with given port
    and then close the port. It return value that was returned by user proc
    and it close the port even if user proc throw exception."
-  (let ((p (open-input-file filename)))
+  (let ((p (open-input-file filename))
+        (throw #f))
     (try (proc p)
+         (catch (e)
+                (set! throw #t))
          (finally
-          (close-input-port p)))))
+          (if (not throw)
+              (close-input-port p))))))
 
 ;; -----------------------------------------------------------------------------
 (define (call-with-output-file filename proc)
   "(call-with-output-file filename proc)
 
    Procedure open file for writing, call user defined procedure with port
-   and then close the port. It return value that was returned by user proc and it close the port
-   even if user proc throw exception."
-  (let ((p (open-output-file filename)))
+   and then close the port. It return value that was returned by user proc
+   and it close the port even if user proc throw exception."
+  (let ((p (open-output-file filename)) (throw #f))
     (try (proc p)
+         (catch (e)
+                (set! throw #t))
          (finally
-          (close-output-port p)))))
+          (if (not throw)
+              (close-output-port p))))))
 
+;; -----------------------------------------------------------------------------
 (define (with-input-from-port port thunk)
   "(with-input-from-port port thunk)
 
@@ -1511,7 +1541,45 @@
                     string>=? string>? string? substring symbol->string symbol? tan truncate values
                     vector vector->list vector-fill! vector-length vector-ref vector-set! vector?
                     with-input-from-file with-output-to-file write write-char zero?))
-     ((7) (throw (new Error "not yet implemented")) #;(%make-env "R7RS"))
-      (else (throw (new Error (string-append "scheme-report-environment: version "
-                                             (number->string version)
-                                             " not supported"))))))
+    ((7) (%make-env "R7RS" - * / _ + < <= = => > >= abs acos and angle append apply asin assoc assq
+                    assv atan begin binary-port? boolean? boolean=? bytevector bytevector?  bytevector-append
+                    bytevector-copy bytevector-copy!  bytevector-length bytevector-u8-ref bytevector-u8-set!  caaaar
+                    caaadr caaar caadar caaddr caadr caar cadaar cadadr cadar caddar cadddr caddr cadr call/cc
+                    call-with-current-continuation call-with-input-file call-with-output-file call-with-port
+                    call-with-values car case case-lambda cdaaar cdaadr cdaar cdadar cdaddr cdadr cdar cddaar cddadr
+                    cddar cdddar cddddr cdddr cddr cdr ceiling char? char<? char<=? char=? char>? char>=?
+                    char->integer char-alphabetic? char-ci<? char-ci<=? char-ci=? char-ci>? char-ci>=?
+                    char-downcase char-foldcase char-lower-case? char-numeric? char-ready? char-upcase
+                    char-upper-case? char-whitespace? close-input-port close-output-port close-port command-line
+                    complex? cond cond-expand cons cos current-error-port current-input-port current-jiffy
+                    current-output-port current-second define define-record-type define-syntax define-values delay
+                    delay-force delete-file denominator digit-value display do dynamic-wind else emergency-exit
+                    environment eof-object eof-object? eq? equal? eqv? error error-object? error-object-irritants
+                    error-object-message eval even? exact exact? exact-integer? exact-integer-sqrt exit exp expt
+                    features file-exists? finite? floor floor/ floor-quotient floor-remainder flush-output-port force
+                    for-each gcd get-environment-variable get-environment-variables get-output-bytevector
+                    get-output-string guard if imag-part import include include-ci inexact inexact? infinite?
+                    input-port? input-port-open? integer? integer->char interaction-environment
+                    interaction-environment jiffies-per-second lambda lcm length let let* let*-values letrec letrec*
+                    letrec-syntax let-syntax let-values list list? list->string list->vector list-copy list-ref
+                    list-set! list-tail load log magnitude make-bytevector make-list make-parameter make-polar
+                    make-promise make-rectangular make-string make-vector map max member memq memv min modulo nan?
+                    negative? newline not null? number? number->string numerator odd? open-binary-input-file
+                    open-binary-output-file open-input-bytevector open-input-file open-input-string
+                    open-output-bytevector open-output-file open-output-string or output-port? output-port-open? pair?
+                    parameterize peek-char peek-u8 port? positive? procedure? quasiquote quote quotient raise
+                    raise-continuable rational? rationalize read read-bytevector read-bytevector! read-char read-line
+                    read-string read-u8 real? real-part remainder reverse round scheme-report-environment set!
+                    set-car! set-cdr! sin sqrt square string string? string<? string<=? string=? string>?
+                    string>=? string->list string->number string->symbol string->utf8 string->vector string-append
+                    string-ci<? string-ci<=? string-ci=? string-ci>? string-ci>=? string-copy string-copy!
+                    string-downcase string-fill! string-foldcase string-for-each string-length string-map string-ref
+                    string-set! string-upcase substring symbol? symbol=? symbol->string syntax-error syntax-rules tan
+                    textual-port? truncate truncate/ truncate-quotient truncate-remainder u8-ready? unless unquote
+                    unquote-splicing utf8->string values vector vector? vector->list vector->string vector-append
+                    vector-copy vector-copy! vector-fill! vector-for-each vector-length vector-map vector-ref
+                    vector-set! when with-exception-handler with-input-from-file with-output-to-file write
+                    write-bytevector write-char write-shared write-simple write-string write-u8 zero?))
+    (else (throw (new Error (string-append "scheme-report-environment: version "
+                                           (number->string version)
+                                           " not supported"))))))

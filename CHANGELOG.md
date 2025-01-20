@@ -1,3 +1,168 @@
+## 1.0.0-beta.21
+### Feature
+* allow to use auto-indent with Node >=18.19.0
+* add metadata to the parser [#414](https://github.com/jcubic/lips/issues/414), [#416](https://github.com/jcubic/lips/issues/416)
+* expose `box` and `unbox` functions
+* add line number to errors [#416](https://github.com/jcubic/lips/issues/416)
+* allow using `define-macro` with `lambda` expression
+### Bugfix
+* fix exception when handling parse error for lonely `)` [#417](https://github.com/jcubic/lips/issues/417)
+* fix unboxing arguments of LIPS created classes [#411](https://github.com/jcubic/lips/issues/411)
+* fix space in front of output in REPL [#406](https://github.com/jcubic/lips/issues/406)
+* fix `call-with-port` in R7RS, `call-with-input-file`, and `call-with-output-file` in R5RS to catch errors and don't close the port
+* fix `expt` [#426](https://github.com/jcubic/lips/issues/426), [#424](https://github.com/jcubic/lips/issues/424)
+* remove stripping `\r` characters from Lexer (that is used by ports)
+* unpack `values` only in REPL
+* fix duplicated location in recursive syntax-rules macro error [#429](https://github.com/jcubic/lips/issues/429)
+* fix `angle` and `magnitude` on real values
+
+## 1.0.0-beta.20
+### Feature
+* allow to call `load` with `@lips` prefix [#354](https://github.com/jcubic/lips/issues/354)
+* add string interpolation [#321](https://github.com/jcubic/lips/issues/321)
+* add default repr for R7RS records
+* add parenthesis matching in Node.js REPL
+### Bugfix
+* fix duplicated identifiers in syntax-rules (case of SRFI-239 example implementation)
+* fix `load` of absolute path in Node
+* fix require of LIPS package from Node
+* fix transforming `syntax-rules` ellipsis that expand into #void
+* fix improper lists in `syntax-rules` [#360](https://github.com/LIPS-scheme/lips/issues/360)
+* fix handling of REPL in Emacs (`run-scheme`)
+* fix `promise?` predicate
+* fix handling of `|1|1` and `|a|b|c|` symbols
+* fix repr of anonymous classes [#361](https://github.com/LIPS-scheme/lips/issues/361)
+* fix handling of escape characters in symbols
+* fix processing list with nested unquote-splicing [#362](https://github.com/LIPS-scheme/lips/issues/362)
+* fix exception during error from eval [#362](https://github.com/LIPS-scheme/lips/issues/362)
+* allow to catch exceptions from eval
+* fix else keyword as only expression in cond [#366](https://github.com/LIPS-scheme/lips/issues/366)
+* fix clash of variable named `list` in named `let` [#398](https://github.com/LIPS-scheme/lips/issues/398)
+* fix Node REPL flickering
+
+## 1.0.0-beta.19
+### Breaking
+* change `get-environment-variables` and `get-environment-variable` returns nil and undefined in the browser
+* `true`, `false`, and `NaN` are no longer parser constants [#292](https://github.com/jcubic/lips/issues/292)
+* get rid of node polyfills from output files
+* `eval` use `interaction-environment` stead of `current-environment` by default
+* remove support for string argument to `read` [#327](https://github.com/jcubic/lips/issues/327)
+* make `null` falsy value [#330](https://github.com/jcubic/lips/issues/330)
+* remove `nil` parser constant [#332](https://github.com/jcubic/lips/issues/332)
+* replace `undefined` with `#void`, and `null` with `#null`
+* characters are again unboxed into strings by JavaScript code [#329](https://github.com/jcubic/lips/issues/329)
+* code that throw exception now return exit code 1
+* change order of arguments in `take`
+* `(type #void)` (JavaScript `undefined`) is now `void`
+### Features
+* add `vector-for-each` and `vector-copy!` function from R7RS
+* add `string-for-each`, `string-downcase`, and `string-upcase` from R7RS
+* add `typecheck-number` function
+* add `char-foldcase` and `string-foldcase` functions
+* add `list-set!` and `nth-pair` functions
+* add `SRFI-61`, `SRFI-139`, and `SRFI-210`
+* add `continuations?` function
+* add `iterator->array` function
+* add immutable strings as in R7RS spec [#285](https://github.com/jcubic/lips/issues/285)
+* add R7RS `char<...>?` and `string<...>?` functions [#298](https://github.com/jcubic/lips/issues/298)
+* improve syntax-rule exception message (appending macro code)
+* update `log` to accept two arguments [#301](https://github.com/jcubic/lips/issues/301)
+* allow to use `data-bootstrap` attribute on script tags
+* make `atan` work for complex numbers
+* save error logs in home dir
+* add timestamp to error logs
+* make `+inf.0` and `-inf.0` parser constants
+* add `zip` procedure (inspired by [Lodash](https://docs-lodash.com/v4/zip/))
+* add `with-input-from-string` and `read-all` [#327](https://github.com/jcubic/lips/issues/327)
+* add `#!fold-case` and `#!no-fold-case` directives [#342](https://github.com/jcubic/lips/issues/342)
+* add `drop` procedure
+* allow to use unquoted symbols in `-->` to get the function
+* add `regex` procedure (rename from `%r` used in bootstrap.scm)
+* support unterminated strings in REPL [#280](https://github.com/jcubic/lips/issues/280)
+* expose parser and lexer instance from syntax extensions [#308](https://github.com/jcubic/lips/issues/308)
+### Bugfix
+* fix `let-values` to allow binding to list [#281](https://github.com/jcubic/lips/issues/281)
+* fix wrong strings in `string-fill!`
+* fix `string-set!` to mutate the string and work on any expression
+* fix tokenizing regex that ends with hash
+* fix bookmark on SRFI-210 document [#287](https://github.com/jcubic/lips/issues/287)
+* fix `syntax-rules` in macro `define-value` [#290](https://github.com/jcubic/lips/issues/290)
+* fix indentation of `let-values`
+* various fixes to `syntax-rules`
+* fix `procedure?` to return true for continuations
+* fix `lips --help` screen
+* fix `cond-expand` to skip not-matched symbols
+* fix shadowing `syntax-rules` identifiers with let [#291](https://github.com/jcubic/lips/issues/291)
+* fix nested syntax rules with symbols after nested ellipsis
+* fix Dark Mode colors and scrolling of the page when using Bookmarklet on English Wikipedia
+* remove dependencies on `cond` from `-->` macro so you can use use `-->` inside `cond`
+* fix handling of recursive `flatten` `syntax-rules` macro [#304](https://github.com/jcubic/lips/issues/304)
+* fix syntax-rules macro that manipulate code (see tests/syntax.scm and undswap macro)
+* fix `(read)` in the Web REPL
+* fix Node REPL with `npm install` [#305](https://github.com/jcubic/lips/issues/305)
+* fix formatting `syntax-rules`
+* improve floating point representation and parsing
+* fix bookmark when hovering over boolean values
+* fix quoted cycle in REPL [#313](https://github.com/jcubic/lips/issues/313)
+* fix set-repr! on base class [#314](https://github.com/jcubic/lips/issues/314)
+* fix `repr` of delay expressions [#315](https://github.com/jcubic/lips/issues/315)
+* fix `try..catch` [#317](https://github.com/jcubic/lips/issues/317)
+* fix handling `^` and `$` syntax extension [#318](https://github.com/jcubic/lips/issues/318)
+* fix mixed values in `let*-values` [#322](https://github.com/jcubic/lips/issues/322)
+* fix `do` macro [#324](https://github.com/jcubic/lips/issues/324)
+* fix `string->number` that leads to NaN [#326](https://github.com/jcubic/lips/issues/326)
+* fix unintentional unboxing in `iterator->array` [#328](https://github.com/jcubic/lips/issues/328)
+* fix `replace` with async `lambda` [#319](https://github.com/jcubic/lips/issues/319)
+* fix `values` without arguments [#331](https://github.com/jcubic/lips/issues/331)
+* improve working of REPL in Emacs
+* fix `(expt +i +i)`
+* fix let with duplicated variables [#335](https://github.com/jcubic/lips/issues/335)
+* fix escape ellipsis in syntax-rules [#334](https://github.com/jcubic/lips/issues/334)
+* fix parsing inexact complex without real part and `inexact->exact` procedure [#340](https://github.com/jcubic/lips/issues/340)
+* fix Petrofsky let [#341](https://github.com/jcubic/lips/issues/341)
+* fix `repr` of cycles
+* fix parsing regex that have escaped open bracket
+* fix parsing quotation without data
+* fix reading syntax-extensions from input ports
+* fix parsing syntax-extensions that start with `#f` or `#t` [#343](https://github.com/jcubic/lips/issues/343)
+* fix repr of curried function (output of `curry`)
+
+## 1.0.0-beta.18
+### Breaking
+* change undocumented arguments to `lips.exec` into an object
+* change default export into named exports in ES Module
+### Features
+* add R7RS `guard` macro
+* add R7RS `parameterize` and `make-parameter`
+* add `shuffle` function
+* add support to ES Modules [#254](https://github.com/jcubic/lips/issues/254)
+* add support for `(scheme-report-environment 7)`
+* add a way to compare custom instances with `equal?` [#270](https://github.com/jcubic/lips/issues/270)
+* add support for `equal?` on records [#273](https://github.com/jcubic/lips/issues/273)
+* expose `lips.set_fs` function [#256](https://github.com/jcubic/lips/issues/256)
+### Bugfix
+* remove evaluating of async list data as first argument
+* fix `number->string` for binary numbers
+* fix macro expand on let with more than one binding
+* fix shallow `list->array`
+* fix resolving promises inside quoted promise realm
+* fix undocumented symbol syntax extensions
+* fix odd? even? on non integers
+* fix object literals with null value [#264](https://github.com/jcubic/lips/issues/264)
+* fix version and date in executable [#261](https://github.com/jcubic/lips/issues/261)
+* fix error on extra close parenthesis [#263](https://github.com/jcubic/lips/issues/263)
+* fix `scheme-report-environment` [#268](https://github.com/jcubic/lips/issues/268)
+* fix writing to binary ports
+* fix unboxing object literals
+* throw error on comparing complex numbers [#248](https://github.com/jcubic/lips/issues/248)
+* make `integer?` works for normal native numbers
+* fix parsing newline character literal
+* fix reading local files in browser [#276](https://github.com/jcubic/lips/issues/276)
+* fix parsing invalid expression `(1 . 2 3)` [#245](https://github.com/jcubic/lips/issues/245)
+* fix invalid error message for not matched `syntax-rules` [#243](https://github.com/jcubic/lips/issues/243)
+* fix silent error when class don't have parent [#272](https://github.com/jcubic/lips/issues/272)
+* fix `try..catch` [#163](https://github.com/jcubic/lips/issues/163)
+
 ## 1.0.0-beta.17
 ### Breaking
 * chars are now not automatically unboxed to strings [#233](https://github.com/jcubic/lips/issues/233)

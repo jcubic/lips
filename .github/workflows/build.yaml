@@ -2,10 +2,30 @@ name: Build and test
 
 on:
   push:
+    paths:
+      - "template/Makefile"
+      - "package.json"
+      - "package-lock.json"
+      - "Makefile"
+      - "scripts/*"
+      - "tests/*"
+      - "bin/*"
+      - "lib/*"
+      - "src/*"
+      - ".github/workflows/build.yaml"
     branches:
       - master
       - devel
   pull_request:
+    paths:
+      - "template/Makefile"
+      - "Makefile"
+      - "scripts/*"
+      - "tests/*"
+      - "bin/*"
+      - "lib/*"
+      - "src/*"
+      - ".github/workflows/build.yaml"
     branches:
       - master
       - devel
@@ -21,15 +41,21 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
       - name: setup node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '16'
+          node-version: '20'
       - run: npm ci
       - run: make
       - run: make lint
       - run: make test
       - run: make coverage
       - name: Coveralls
-        uses: coverallsapp/github-action@master
+        uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Code Climate
+        uses: paambaati/codeclimate-action@v9.0.0
+        env:
+          CC_TEST_REPORTER_ID: ${{ secrets.CODE_CLIMATE }}
+        with:
+          debug: true

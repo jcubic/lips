@@ -1,6 +1,6 @@
-(test "quasiquote: it should splice nil"
+(test "quasiquote: it should splice an empty list"
       (lambda (t)
-        (t.is `(x ,@nil x) '(x x))))
+        (t.is `(x ,@() x) '(x x))))
 
 (test "quasiquote: it should splice nil as body in do macro"
       (lambda (t)
@@ -156,7 +156,7 @@
 
         (define (foo x) x)
 
-        (t.is (eval (cadr (bar))) '(list 1 2 3))))
+        (t.is (eval (cadr (bar)) (current-environment)) '(list 1 2 3))))
 
 (let ((fun (lambda (a b)
           (if (number? a)
@@ -338,3 +338,13 @@
       (lambda (t)
         (let ((result `((foo ,(- 10 3)) ,@(cdr '(c)) . ,(car '(cons)))))
           (t.is result '((foo 7) . cons)))))
+
+(test "quasiquote: should process list after double unquote-splicing (#362)"
+      (lambda (t)
+        (let ((x '(1 2 3))
+              (y '(11 22 33))
+              (l '(x y)))
+          (t.is ``(,@,@l ,@,@l)
+                '(quasiquote ((unquote-splicing x y) (unquote-splicing x y))))
+          (t.is (eval ``(foo ,@,@l ,@,@l bar) (current-environment))
+                '(foo 1 2 3 11 22 33 1 2 3 11 22 33 bar)))))

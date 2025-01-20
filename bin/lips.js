@@ -2,17 +2,19 @@
 
 import lily from '@jcubic/lily';
 
-const boolean = ['d', 'dynamic', 'q', 'quiet', 'V', 'version', 'trace', 't', 'debug', 'c', 'compile', 'b', 'cbor'];
+const boolean = [
+    'd', 'dynamic', 'q', 'quiet', 'V', 'version', 'trace', 't', 'c', 'compile'
+];
 const options = lily(process.argv.slice(2), { boolean });
 
 const quiet = options.q || options.quiet;
 
-import lips from '../src/lips.js';
-
-const {
+import {
     exec,
     compile,
     parse,
+    Parser,
+    Values,
     Formatter,
     serialize,
     unserialize,
@@ -20,19 +22,19 @@ const {
     unserialize_bin,
     balanced_parenthesis,
     tokenize,
+    _is_directive,
     Interpreter,
     LSymbol,
     Macro,
     LString,
     evaluate,
     nil,
-    version,
-    date,
     Pair,
     env,
-    banner,
     InputPort,
-    OutputPort } = lips;
+    OutputPort
+} from '../src/lips.js';
+import { version, date, banner } from '../dist/lips.esm.js';
 
 import fs from 'fs';
 import os from 'os';
@@ -51,26 +53,40 @@ const require = createRequire(import.meta.url);
 
 const kDebounceHistoryMS = 15;
 
-const supports_paste_brackets = satisfies(process.version, '>=v20.6.0');
+const supports_paste_brackets = satisfies(process.version, '>=18.19.0 <19') ||
+      satisfies(process.version, '>=20.6.0');
 
 // -----------------------------------------------------------------------------
 process.on('uncaughtException', function (err) {
-  log_error(err.message);
+    log_error(err.message);
+    log_error(err.stack);
 });
 
 // -----------------------------------------------------------------------------
 function log_error(message) {
-    fs.appendFileSync('error.log', message + '\n');
+    const date = (new Date()).toISOString();
+    message = message.split('\n').map(line => {
+        return `${date}: ${line}`;
+    }).join('\n');
+    fs.appendFileSync(home_file('lips.error.log'), message + '\n');
 }
+
+function home_file(filename) {
+    return path.join(os.homedir(), filename);
+}
+
 // -----------------------------------------------------------------------------
 function debug(message) {
     console.log(message);
 }
 // -----------------------------------------------------------------------------
-async function run(code, interpreter, dynamic = false, env = null, stack = false) {
+async function run(code, interpreter, use_dynamic = false, env = null, stack = false, log_unterminated = true) {
     try {
-        return await interpreter.exec(code, dynamic, env)
-    } catch (e) {
+        return await interpreter.exec(code, { use_dynamic, env });
+    } catch(e) {
+        if (e instanceof Parser.Unterminated && !log_unterminated) {
+            return;
+        }
         print_error(e, stack);
     }
 }
@@ -84,9 +100,9 @@ function print_error(e, stack) {
     log_error(e.message);
     if (e.__code__) {
         strace = e.__code__.map((line, i) => {
-            var prefix = `[${i+1}]: `;
-            var formatter = new Formatter(line);
-            var output = formatter.break().format({
+            const prefix = `[${i+1}]: `;
+            const formatter = new Formatter(line);
+            const output = formatter.break().format({
                 offset: prefix.length
             });
             return prefix + output;
@@ -95,23 +111,31 @@ function print_error(e, stack) {
     if (stack) {
         console.error(e.stack);
         console.error(strace);
+        process.exit(1);
     } else {
         console.error(e.message);
         console.error('Call (stack-trace) to see the stack');
         console.error('Thrown exception is in global exception variable, use ' +
                       '(display exception.stack) to display JS stack trace');
     }
-    global.exception = e;}
-
+    global.exception = e;
+}
 
 // -----------------------------------------------------------------------------
 function print(result) {
     if (result && result.length) {
-        var last = result.pop();
+        const last = result.pop();
         if (last !== undefined) {
             try {
-                var ret = env.get('repr')(last, true);
-                console.log('\x1b[K' + ret.toString());
+                let value;
+                if (last instanceof Values) {
+                    value = last.toString();
+                } else {
+                    value = env.get('repr')(last, true);
+                    value = value.toString();
+                }
+                process.stdout.write('\x1b[K' + value);
+                return true;
             } catch(e) {
                 print_error(e, options.t || options.trace);
             }
@@ -121,7 +145,11 @@ function print(result) {
 
 // -----------------------------------------------------------------------------
 function bootstrap(interpreter) {
-    const file = options.bootstrap ? options.bootstrap : './dist/std.xcb';
+    const bootstrap = options.b || options.bootstrap;
+    if (bootstrap === 'none') {
+        return Promise.resolve();
+    }
+    const file = bootstrap ? bootstrap : './dist/std.xcb';
     function read(name) {
         var path;
         try {
@@ -196,8 +224,9 @@ function log(message) {
 }
 
 // -----------------------------------------------------------------------------
-var strace;
-var rl;
+let strace;
+let rl;
+let buffer;
 var newline;
 const moduleURL = new URL(import.meta.url);
 const __dirname = path.dirname(moduleURL.pathname);
@@ -274,7 +303,12 @@ function readBinary(filename) {
 // -----------------------------------------------------------------------------
 function readFile(filename) {
     const buff = readBinary(filename);
-    return buff.toString().replace(/^#!.*\n/, '');
+    return buff.toString().replace(/^(#!.*)([\s\n])/, function(_, shebang, delim) {
+        if (_is_directive(shebang)) {
+            return shebang + delim;
+        }
+        return '';
+    });
 }
 
 // -----------------------------------------------------------------------------
@@ -292,7 +326,7 @@ if (options.version || options.V) {
         ["website", "https://lips.js.org"],
         ['languages', 'scheme', 'r5rs', 'r7rs'].map(LSymbol),
         ['encodings', 'utf-8'].map(LSymbol),
-        ["scheme.srfi", 0, 1, 2, 4, 6, 8, 10, 22, 23, 26, 46, 69, 98, 111, 156, 176],
+        ["scheme.srfi", 0, 1, 2, 4, 6, 8, 10, 22, 23, 26, 28, 46, 69, 98, 111, 139, 156, 176, 193, 210, 236],
         ["release", version],
         ["os.uname", os.platform(), os.release()],
         ["os.env.LANG", process.env.LANG],
@@ -302,20 +336,16 @@ if (options.version || options.V) {
         return [LSymbol(key), ...values];
     }));
     bootstrap(interp).then(function() {
+        // Scheme can access JS global.output
         return run('(for-each (lambda (x) (write x) (newline)) output)', interp, options.d || options.dynamic);
     });
 } else if (options.e || options.eval) {
-    // from 1.0 documentation should use -e but it's not breaking change
+    // from 1.0 documentation should use -e but it's not a breaking change
     bootstrap(interp).then(function() {
         const code = options.e || options.eval;
         const dynamic = options.d || options.dynamic;
         return run(code, interp, dynamic, null, true).then(print);
     });
-} else if (options.b && options._.length === 1) {
-    const filename = options._[0];
-    for (expr of readCode(filename)) {
-        console.log(expr.toString(true));
-    }
 } else if ((options.c || options.compile) && options._.length === 1) {
     try {
         const filename = options._[0];
@@ -382,36 +412,39 @@ if (options.version || options.V) {
     }
 } else if (options.h || options.help) {
     var name = process.argv[1];
-    var intro = banner.replace(/(me>\n)[\s\S]+$/, '$1');
-    console.log(format('%s\nusage:\n  %s -q | -h | -t | -e <code> | <filename> | -d\n\n  [-h --help]\t' +
-                       '\tthis help message\n  [-e --eval]\t\texecute code\n  [-V --version]\tdisplay ' +
-                       'version information according to srfi-176\n  [-q --quiet]\t\tdon\'t display ba' +
-                       'nner in REPL\n  [-d --dynamic]\trun interpreter with dynamic scope\n  [-t --tr' +
-                       'ace]\t\tprint JavaScript stack trace when extensions is thrown\n\nif called wi' +
-                       'thout arguments it will run REPL and if called with one argument\nit will trea' +
-                       't it as filename and execute it.', intro, path.basename(name)));
+    var intro = banner.replace(/(Jankiewicz\n)[\s\S]+$/, '$1');
+    console.log(format('%s\nusage:\n  %s -q | -c | -h | -t | -b <file> | -d | -e <code> | <filename>\n' +
+                       '\n  [-h --help]\t\tthis help message\n  [-e --eval]\t\texecute code\n  [-V --v' +
+                       'ersion]\tdisplay version information according to srfi-176\n  [-c --compile]\t' +
+                       'parse and compile the file into binary file format\n  [-b --boostrap]\tpoint t' +
+                       'o a file that should be used for boostraping standard library,\n\t\t\tdefault ' +
+                       'is ./dist/std.xcb. use none to disable boostraping\n  [-q --quiet]\t\tdon\'t d' +
+                       'isplay banner in REPL\n  [-d --dynamic]\trun interpreter with dynamic scope\n ' +
+                       ' [-t --trace]\t\tprint JavaScript and scheme stack traces when extensions is th' +
+                       'rown\n\nif called without arguments it will run the REPL and if called with on' +
+                       'e argument\nit will treat it as filename and execute it.',
+                       intro, path.basename(name)));
 } else {
     const dynamic = options.d || options.dynamic;
     const entry = '   ' + (dynamic ? 'dynamic' : 'lexical') + ' scope $1';
     if (process.stdin.isTTY && !quiet) {
-        console.log(banner.replace(/(\n\nLIPS.+)/m, entry)); // '
+        console.log(banner.replace(/(\n\nLIPS.+)/m, entry));
     }
     var prompt = 'lips> ';
-    var continuePrompt = '... ';
+    var continue_prompt = '... ';
     var terminal = !!process.stdin.isTTY && !(process.env.EMACS || process.env.INSIDE_EMACS);
+    buffer = make_buffer(process.stdout);
     rl = readline.createInterface({
         input: process.stdin,
-        output: process.stdout,
+        output: buffer,
         prompt: prompt,
         terminal
     });
-    rl._writeToOutput = function _writeToOutput(string) {
-        rl.output.write(scheme(string));
-    };
-    process.stdin.on('keypress', (c, k) => {
-        setTimeout(function() {
-            rl._refreshLine(); // force refresh colors
-        }, 0);
+    rl.on('close', () => {
+        setTimeout(() => {
+            rl.setPrompt('');
+            buffer.flush('\n');
+        }, 10);
     });
     const historySize = Number(env.LIPS_REPL_HISTORY_SIZE);
     if (!Number.isNaN(historySize) && historySize > 0) {
@@ -422,12 +455,123 @@ if (options.version || options.V) {
     setupHistory(rl, terminal ? env.LIPS_REPL_HISTORY : '', run_repl);
 }
 
-function unify_prompt(a, b) {
-    var result = a;
-    if (a.length < b.length) {
-        result += new Array((b.length - a.length) + 1).join(' ');
+function is_open(token) {
+    return ['(', '['].includes(token);
+}
+
+function is_close(token) {
+    return [')', ']'].includes(token);
+}
+
+function debug_log(filename) {
+    return (message) => {
+        const payload = message.replace(/\n/g, '\\n') + '\n';
+        fs.appendFile(filename, payload, function (err) {
+            if (err) throw err;
+        });
+    };
+}
+
+// buffer Proxy to prevent flicker when Node writes to stdout
+function make_buffer(stream) {
+    const DEBUG = false;
+    const buffer = [];
+    const fname = home_file('lips__debug.log');
+    if (DEBUG) {
+        fs.truncate(fname, 0, () => {});
     }
-    return result;
+    const log = DEBUG ? debug_log(fname) : () => {};
+    function flush(data, ...args) {
+        if (buffer.length) {
+            const payload = buffer.join('') + data;
+            buffer.length = 0;
+            log(`flush ::: ${payload}`);
+            stream.write(payload, ...args);
+        } else {
+            log('write :::');
+            stream.write(data, ...args);
+        }
+    }
+    return new Proxy(stream, {
+        get(target, prop) {
+            if (prop === 'flush') {
+                return flush;
+            }
+            if (prop === 'write') {
+                return function(data, ...args) {
+                    log(data);
+                    if (data.match(/\x1b\[(?:1G|0J)|(^(?:lips>|\.\.\.) )/)) {
+                        buffer.push(data);
+                        log('buffer :::');
+                    } else {
+                        flush(data, ...args);
+                    }
+                }
+            }
+            return target[prop];
+        }
+    });
+}
+
+// find matching open parentheses. The last token is always
+// a closing parenthesis
+function matched_token(code) {
+    try {
+        let count = 0;
+        // true to tokenize return tokens with meta data
+        return tokenize(code, true).reverse().find(token => {
+            if (is_open(token.token)) {
+                count--;
+            } else if (is_close(token.token)) {
+                count++;
+            }
+            return is_open(token.token) && count === 0;
+        });
+    } catch(e) {
+        if (!(e instanceof Parser.Unterminated)) {
+            throw e;
+        }
+    }
+}
+
+// highlight the open parentheses based on token metadata
+function mark_paren(code, token) {
+    const re = /(\x1b\[[0-9;]*m)/;
+    let str_len = 0, found;
+    return code.split(re).reduce((acc, str) => {
+        let result
+        if (str.match(re)) {
+            result = str;
+        } else if (found) {
+            result = str;
+        } else if (str_len + str.length <= token.offset) {
+            result = str;
+            str_len += str.length;
+        } else {
+            const pos = token.offset - str_len;
+            const before = str.substring(0, pos);
+            const after = str.substring(pos + 1);
+            result = `${before}\x1b[7m(\x1b[m${after}`;
+            found = true;
+        }
+        return acc + result;
+    }, '');
+}
+
+// function accept ANSI (syntax highlighted code) and
+// return ANSI escapes to overwrite the code
+// this is needed to make sure that syntax highlighting
+// is always correct
+function ansi_rewrite_above(ansi_code) {
+    const lines = ansi_code.split('\n');
+    const stdout = lines.map((line, i) => {
+        const prefix = i === 0 ? prompt : continue_prompt;
+        return prefix + line;
+    }).join('\x1b[E') + '\x1b[E';
+    const len = lines.length;
+    // overwrite all lines to get rid of any artifacts left my stdin
+    // mostly because of parenthesis matching
+    return `\x1b[${len}F${stdout}`;
 }
 
 function run_repl(err, rl) {
@@ -435,98 +579,186 @@ function run_repl(err, rl) {
     let cmd = '';
     let multiline = false;
     let resolve;
+    const brackets_re = /\x1b\[(200|201)~/g;
     // we use promise loop to fix issue when copy paste list of S-Expression
+    const is_emacs = process.env.EMACS || process.env.INSIDE_EMACS;
     let prev_eval = Promise.resolve();
-    if (process.stdin.isTTY) {
+    if (process.stdin.isTTY || is_emacs) {
         rl.prompt();
     }
     let prev_line;
+    function is_brackets_mode() {
+        return !!cmd.match(brackets_re);
+    }
+    function continue_multiline(code) {
+        multiline = true;
+        // we don't do indentation for paste bracket mode
+        // indentation will also not work for old Node.js
+        // because it's too problematice to make it right
+        if ((is_brackets_mode() || !supports_paste_brackets)) {
+            rl.prompt();
+            if (is_emacs) {
+                rl.setPrompt('');
+            } else {
+                rl.setPrompt(continue_prompt);
+            }
+            if (terminal) {
+                rl.write(' '.repeat(prompt.length - continue_prompt.length));
+            }
+        } else {
+            let ind;
+            try {
+                ind = indent(code, 2, prompt.length - continue_prompt.length);
+            } catch (e) {
+                ind = 0;
+            }
+            const spaces = ' '.repeat(ind);
+            if (is_emacs) {
+                rl.setPrompt('');
+                rl.prompt();
+            } else {
+                rl.setPrompt(continue_prompt);
+                rl.prompt();
+                rl.write(spaces);
+            }
+        }
+    }
+    function char_before_cursor() {
+        return rl.line[rl.cursor - 1];
+    }
+    function format_input_code(code) {
+        if (code) {
+            // we remove trailing newline from code
+            code = code.substring(0, code.length - 1);
+            return scheme(code);
+        }
+    }
+    let prev_token;
+    rl._writeToOutput = function _writeToOutput(string) {
+        function should_update() {
+            return (token || prev_token) && code_above && !string.match(/^[\n\r]+$/);
+        }
+        let token, code_above, code;
+        try {
+            const prefix = multiline ? continue_prompt : prompt;
+            const current_line = prefix + rl.line;
+            code = scheme(string);
+            const bracket_mode = cmd.match(brackets_re);
+            const full_copy_paste = bracket_mode?.length == 2;
+            if ((!bracket_mode || full_copy_paste) && !is_emacs) {
+                // clean bracket mode markers
+                const clean_cmd = cmd.replace(brackets_re, '');
+                code_above = format_input_code(clean_cmd);
+                if (char_before_cursor() === ')') {
+                    const substring = rl.line.substring(0, rl.cursor);
+                    const input = prefix + substring;
+                    token = matched_token(input);
+                    if (token) {
+                        code = mark_paren(code, token);
+                    } else if (clean_cmd) {
+                        const input = clean_cmd + substring;
+                        // we match paren above the current line
+                        // but we need whole code with rl.line
+                        // so we need to ignore rl.line
+                        token = matched_token(input);
+                        if (token) {
+                            // code_above don't include the current line that
+                            // is added after user press enter
+                            code_above = mark_paren(code_above, token);
+                        }
+                    }
+                }
+                if (should_update()) {
+                    // overwrite lines above the cursor this is side effect
+                    process.stdout.write('\x1b7' + ansi_rewrite_above(code_above) + '\x1b8');
+                }
+                prev_token = token;
+            }
+            // this always need to be executed inside rl._writeToOutput
+            // even if nothing changes, this make sure that the input
+            // stay intact while editing the command line
+            rl.output.write(code);
+        } catch(e) {
+            console.error(e);
+        }
+    };
+    process.stdin.on('keypress', (key) => {
+        setTimeout(function() {
+            // we force triggering rl._writeToOutput function
+            // so we have the change to syntax highlight of the command line
+            // this needs to happen on next tick so the string have time
+            // to updated with a given key
+            if (key !== '\r') {
+                // we don't want to run on enter, since _refreshLine
+                // prints space at the beginning of the line #406
+                rl._refreshLine();
+            }
+        }, 0);
+    });
     bootstrap(interp).then(function() {
         if (supports_paste_brackets) {
-            process.stdin.on('keypress', (c, k) => {
-                if (k?.name?.match(/^paste-/)) {
-                    cmd += k.sequence;
+            // this make sure that the paste brackets ANSI escape
+            // is added to cmd so they can be processed in 'line' event
+            process.stdin.on('keypress', (key, meta) => {
+                if (meta?.name?.match(/^paste-/)) {
+                    cmd += meta.sequence;
                 }
             });
+            // enable paste bracket mode by the terminal
             process.stdout.write('\x1b[?2004h');
         }
-        const re = /\x1b\[(200|201)~/g;
         rl.on('line', function(line) {
-            cmd += line;
-            if (cmd.match(/\x1b\[201~$/)) {
-                cmd = cmd.replace(re, '');
-            }
-            const code = cmd.replace(re, '');
-            const lines = code.split('\n');
-            if (terminal && lines.length > 2) {
-                const stdout = scheme(code).split('\n').map((line, i) => {
-                    let prefix;
-                    if (i === 0) {
-                        prefix = unify_prompt(prompt, continuePrompt);
-                    } else {
-                        prefix = unify_prompt(continuePrompt, prompt);
-                    }
-                    return '\x1b[K' + prefix + line;
-                }).join('\n');
-                let num = lines.length;
-                const format = `\x1b[${num}F${stdout}\n`;
-                process.stdout.write(format);
-            }
-            cmd += '\n';
             try {
+                // user pressed enter without any code
+                if (!line) {
+                    rl.prompt();
+                    return;
+                }
+                cmd += line;
+                const code = cmd.replace(brackets_re, '');
+                if (cmd.match(/\x1b\[201~$/)) {
+                    cmd = code;
+                }
+                if (terminal) {
+                    const output = ansi_rewrite_above(scheme(code));
+                    process.stdout.write(output);
+                }
+                cmd += '\n';
                 if (balanced_parenthesis(code)) {
                     // we need to clear the prompt because resume
                     // is adding the prompt that was present when pause was called
                     // https://github.com/nodejs/node/issues/11699
                     rl.setPrompt('');
                     rl.pause();
+                    cmd = '';
                     prev_eval = prev_eval.then(function() {
-                        const result = run(code, interp, dynamic, null, options.t || options.trace);
-                        cmd = '';
+                        const result = run(code, interp, dynamic, null, options.t || options.trace, false);
                         return result;
                     }).then(function(result) {
                         if (process.stdin.isTTY) {
-                            print(result);
-                            if (newline) {
+                            if (print(result) || newline) {
                                 // readline doesn't work with not ended lines
                                 // it ignore those, so we end them ourselves
-                                process.stdout.write("\n");
+                                process.stdout.write('\n');
                                 newline = false;
                             }
                             if (multiline) {
                                 multiline = false;
                             }
                         }
-                        rl.setPrompt(prompt);
-                        rl.prompt();
-                        rl.resume();
                     }).catch(function() {
                         if (process.stdin.isTTY) {
                             if (multiline) {
                                 multiline = false;
                             }
                         }
+                    }).finally(function() {
                         rl.setPrompt(prompt);
                         rl.prompt();
                         rl.resume();
                     });
                 } else {
-                    multiline = true;
-                    if (cmd.match(/\x1b\[200~/) || !supports_paste_brackets) {
-                        rl.setPrompt(continuePrompt);
-                        rl.prompt();
-                        if (terminal) {
-                            rl.write(' '.repeat(prompt.length - continuePrompt.length));
-                        }
-                    } else {
-                        const ind = indent(code, 2, prompt.length - continuePrompt.length);
-                        const spaces = new Array(ind + 1).join(' ');
-                        rl.setPrompt(continuePrompt);
-                        rl.prompt();
-                        if (terminal) {
-                            rl.write(spaces);
-                        }
-                    }
+                    continue_multiline(code);
                 }
             } catch (e) {
                 console.error(e.message);
