@@ -1522,10 +1522,17 @@ class Parser {
             return result;
         }, cleanup);
     }
+    reset_state() {
+        Object.assign(this._state, {
+            parentheses: 0,
+            line: 0
+        });
+    }
     prepare(arg) {
         if (arg instanceof LString) {
             arg = arg.toString();
         }
+        this.reset_state();
         read_only(this, '__lexer__', new Lexer(arg));
     }
     resolve(name) {
@@ -1675,6 +1682,7 @@ class Parser {
         return this._state.parentheses === 0;
     }
     ballancing_error(expr, prev) {
+        console.log(this._state);
         const count = this._state.parentheses;
         let e;
         if (count < 0) {
