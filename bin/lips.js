@@ -566,7 +566,7 @@ function ansi_rewrite_above(ansi_code) {
     const lines = ansi_code.split('\n');
     const stdout = lines.map((line, i) => {
         const prefix = i === 0 ? prompt : continue_prompt;
-        return prefix + line;
+        return prefix + line + '\x1b[K';
     }).join('\x1b[E') + '\x1b[E';
     const len = lines.length;
     // overwrite all lines to get rid of any artifacts left my stdin
