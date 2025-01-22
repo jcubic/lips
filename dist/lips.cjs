@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Tue, 21 Jan 2025 23:55:07 +0000
+ * build: Wed, 22 Jan 2025 00:05:07 +0000
  */
 
 'use strict';
@@ -13745,7 +13745,7 @@ var global_env = new Environment({
         return __doc__;
       }
     }
-  }), "(help object)\n\n         This macro returns documentation for a function or macro.\n         You can save the function or macro in a variable and use it\n         here. But getting help for a variable requires passing the\n         variable in a `quote`."),
+  }), "(help object)\n\n         This macro returns documentation for a function, macro, or a variable."),
   // ------------------------------------------------------------------
   cons: doc('cons', function cons(car, cdr) {
     return new Pair(car, cdr);
@@ -17554,10 +17554,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Tue, 21 Jan 2025 23:55:07 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Wed, 22 Jan 2025 00:05:07 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Tue, 21 Jan 2025 23:55:07 +0000').valueOf();
+  var date = LString('Wed, 22 Jan 2025 00:05:07 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17597,7 +17597,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Tue, 21 Jan 2025 23:55:07 +0000';
+var date = 'Wed, 22 Jan 2025 00:05:07 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

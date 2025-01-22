@@ -8316,10 +8316,7 @@ var global_env = new Environment({
         }
     }), `(help object)
 
-         This macro returns documentation for a function or macro.
-         You can save the function or macro in a variable and use it
-         here. But getting help for a variable requires passing the
-         variable in a \`quote\`.`),
+         This macro returns documentation for a function, macro, or a variable.`),
     // ------------------------------------------------------------------
     cons: doc('cons', function cons(car, cdr) {
         return new Pair(car, cdr);
