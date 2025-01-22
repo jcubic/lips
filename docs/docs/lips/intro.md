@@ -572,8 +572,8 @@ You can use Scheme functions as callbacks to JavaScript functions:
 ;; ==> #(1 +nan.0 +nan.0)
 ```
 
-This is classic issue with functions that accept more than one argument. You have samilar issue
-in JavaScript:
+This is classic issue with functions that accept more than one argument.
+You have similar issue in JavaScript:
 
 ```javascript
 ["1", "2", "3"].map(parseInt)
