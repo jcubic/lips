@@ -28,8 +28,8 @@ export function initTerminal() {
 Copyright (c) 2018-${new Date().getFullYear()} [[!;;;;https://jcubic.pl/me]Jakub T. Jankiewicz]
 
 Type (env) to see environment with functions macros and variables
-You can also use (help obj)to display help for specific function or macro.
-Use (dir name) to get list of JavaScript properties and (apropos name)
+You can also use (help obj) to display help for specific function or macro.
+Use (dir obj) to get list of JavaScript properties and (apropos "name")
 to display list of matched names in environment.`
 
   term.echo(intro.replace(/(\((?:env|dir|help|apropos)[^)]*\))/g, function(code) {
