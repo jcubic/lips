@@ -344,8 +344,9 @@ LIPS Scheme in the future).
 
 ### Limitations
 
-The limitation of syntax extensions is that you can't define a variable that starts with the
-same characters as syntax extension. This may be a benefit and not a limitation:
+The limitation of syntax extensions is that you can't define a variable that starts with the same
+characters as syntax extension. This may be a benefit and not a limitation. You also need to be
+careful about performace of your extensions.
 
 ## New Homoiconic data types
 
