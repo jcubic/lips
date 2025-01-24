@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.6.1">
 <title data-rh="true">Extending LIPS | LIPS Scheme</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://lips.js.org/img/lips-social-card.png"><meta data-rh="true" name="twitter:image" content="https://lips.js.org/img/lips-social-card.png"><meta data-rh="true" property="og:url" content="https://lips.js.org/docs/lips/extension"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Extending LIPS | LIPS Scheme"><meta data-rh="true" name="description" content="A way to extends LIPS syntax, not only with macros"><meta data-rh="true" property="og:description" content="A way to extends LIPS syntax, not only with macros"><link data-rh="true" rel="icon" href="/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://lips.js.org/docs/lips/extension"><link data-rh="true" rel="alternate" href="https://lips.js.org/docs/lips/extension" hreflang="en"><link data-rh="true" rel="alternate" href="https://lips.js.org/docs/lips/extension" hreflang="x-default"><link data-rh="true" rel="preconnect" href="https://HSV6UC2UY5-dsn.algolia.net" crossorigin="anonymous"><link rel="alternate" type="application/rss+xml" href="/blog/rss.xml" title="LIPS Scheme blog RSS Feed"><link rel="stylesheet" href="/assets/css/styles.18f81f7e.css">
-<script src="/assets/js/runtime~main.327e932f.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.df43fbf9.js" defer="defer"></script>
 <script src="/assets/js/main.612c5bb4.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -261,8 +261,9 @@ Similarly, you can implement strings that use backticks, you only need to replac
 <p>With this feature in hand you can implement full string interpolation (that will probably be part of
 LIPS Scheme in the future).</p>
 <h3 class="anchor anchorWithStickyNavbar_LWe7" id="limitations">Limitations<a href="#limitations" class="hash-link" aria-label="Direct link to Limitations" title="Direct link to Limitations">​</a></h3>
-<p>The limitation of syntax extensions is that you can&#x27;t define a variable that starts with the
-same characters as syntax extension. This may be a benefit and not a limitation:</p>
+<p>The limitation of syntax extensions is that you can&#x27;t define a variable that starts with the same
+characters as syntax extension. This may be a benefit and not a limitation. You also need to be
+careful about performance of your extensions.</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="new-homoiconic-data-types">New Homoiconic data types<a href="#new-homoiconic-data-types" class="hash-link" aria-label="Direct link to New Homoiconic data types" title="Direct link to New Homoiconic data types">​</a></h2>
 <p>With LIPS, you can define representation of custom data types that are the same when printed and read.</p>
 <p>To create custom representation of new data type you can use <code>set-repr!</code> expression. It only works
