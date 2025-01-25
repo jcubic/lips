@@ -82,6 +82,12 @@
 
 (unset-special! "#:num")
 
+(set-special! "*|" 'multply-inline)
+
+(define (multply-inline x) `(* ,@x))
+
+(define parser/t11 '*|(1 2 3)) ;; |
+
 (test "parser: #!fold-case"
       (lambda (t)
         (define foo 10)
@@ -333,3 +339,7 @@
                            (parser.prepare code)
                            (lips.parse parser))
                          (catch (e) e)))))
+
+(test "parser: regex characters in syntax extension"
+      (lambda (t)
+        (t.is parser/t11 '(* 1 2 3))))
