@@ -740,7 +740,7 @@ function strip_s_comments(tokens) {
 // ----------------------------------------------------------------------
 // Detect if object is ES6 Symbol that work with polyfills
 // ----------------------------------------------------------------------
-function isSymbol(x) {
+function is_symbol(x) {
     return typeof x === 'symbol' ||
         typeof x === 'object' &&
         Object.prototype.toString.call(x) === '[object Symbol]';
@@ -759,6 +759,7 @@ function LSymbol(name, interned = true) {
         typeof this === 'undefined') {
         return new LSymbol(name, interned);
     }
+    read_only(this, '__interned__', interned);
     this.__name__ = name;
     if (interned && typeof name === 'string') {
         LSymbol.list[name] = this;
@@ -777,10 +778,13 @@ LSymbol.is = function(symbol, name) {
 // ----------------------------------------------------------------------
 LSymbol.prototype.toString = function(quote) {
     //return '#<symbol \'' + this.name + '\'>';
-    if (isSymbol(this.__name__)) {
+    if (is_symbol(this.__name__)) {
         return symbol_to_string(this.__name__);
     }
     var str = this.valueOf();
+    if (!this.__interned__) {
+        return `:|${str}|`;
+    }
     // those special characters can be normal symbol when printed
     if (quote && str.match(/(^;|[\s()[\]'])/)) {
         return `|${str}|`;

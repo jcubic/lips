@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 25 Jan 2025 13:01:57 +0000
+ * build: Sat, 25 Jan 2025 15:01:38 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -4159,7 +4159,7 @@ function strip_s_comments(tokens) {
 // ----------------------------------------------------------------------
 // Detect if object is ES6 Symbol that work with polyfills
 // ----------------------------------------------------------------------
-function isSymbol(x) {
+function is_symbol(x) {
   return _typeof$1(x) === 'symbol' || _typeof$1(x) === 'object' && Object.prototype.toString.call(x) === '[object Symbol]';
 }
 // ----------------------------------------------------------------------
@@ -4176,6 +4176,7 @@ function LSymbol(name) {
   if (typeof this !== 'undefined' && this.constructor !== LSymbol || typeof this === 'undefined') {
     return new LSymbol(name, interned);
   }
+  read_only(this, '__interned__', interned);
   this.__name__ = name;
   if (interned && typeof name === 'string') {
     LSymbol.list[name] = this;
@@ -4191,10 +4192,13 @@ LSymbol.is = function (symbol, name) {
 // ----------------------------------------------------------------------
 LSymbol.prototype.toString = function (quote) {
   //return '#<symbol \'' + this.name + '\'>';
-  if (isSymbol(this.__name__)) {
+  if (is_symbol(this.__name__)) {
     return symbol_to_string(this.__name__);
   }
   var str = this.valueOf();
+  if (!this.__interned__) {
+    return ":|".concat(str, "|");
+  }
   // those special characters can be normal symbol when printed
   if (quote && str.match(/(^;|[\s()[\]'])/)) {
     return "|".concat(str, "|");
@@ -5443,7 +5447,7 @@ var Parser = /*#__PURE__*/function () {
     value: function () {
       var _read_object3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee8() {
         var _this6 = this;
-        var token, special, builtin, expr, extension, is_symbol, was_close_paren, object, args, e, _e, result, _e2, ref, _e3, ref_label;
+        var token, special, builtin, expr, extension, _is_symbol, was_close_paren, object, args, e, _e, result, _e2, ref, _e3, ref_label;
         return _regeneratorRuntime.wrap(function _callee8$(_context8) {
           while (1) switch (_context8.prev = _context8.next) {
             case 0:
@@ -5472,14 +5476,14 @@ var Parser = /*#__PURE__*/function () {
               special = specials.get(token);
               builtin = is_builtin(token);
               this.skip();
-              is_symbol = is_symbol_extension(token);
+              _is_symbol = is_symbol_extension(token);
               _context8.t0 = this;
               _context8.next = 14;
               return this.peek();
             case 14:
               _context8.t1 = _context8.sent;
               was_close_paren = _context8.t0.is_close.call(_context8.t0, _context8.t1);
-              if (!is_symbol) {
+              if (!_is_symbol) {
                 _context8.next = 20;
                 break;
               }
@@ -5515,12 +5519,12 @@ var Parser = /*#__PURE__*/function () {
               } else if (is_pair(object)) {
                 args = object.to_array(false);
               }
-              if (!(args || is_symbol)) {
+              if (!(args || _is_symbol)) {
                 _context8.next = 32;
                 break;
               }
               return _context8.abrupt("return", this._with_syntax_scope(function () {
-                return call_function(extension, is_symbol ? [] : args, {
+                return call_function(extension, _is_symbol ? [] : args, {
                   env: _this6.__env__,
                   dynamic_env: _this6.__env__,
                   use_dynamic: false
@@ -17552,10 +17556,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 25 Jan 2025 13:01:57 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sat, 25 Jan 2025 15:01:38 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 25 Jan 2025 13:01:57 +0000').valueOf();
+  var date = LString('Sat, 25 Jan 2025 15:01:38 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17595,7 +17599,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 25 Jan 2025 13:01:57 +0000';
+var date = 'Sat, 25 Jan 2025 15:01:38 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
