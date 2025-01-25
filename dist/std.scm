@@ -1920,7 +1920,7 @@
               (equal? (cdr a) (cdr b))))
         ((symbol? a)
          (and (symbol? b)
-              (equal? a.__name__ b.__name__)))
+              (eq? a b)))
         ((regex? a)
          (and (regex? b)
               (equal? (. a 'source) (. b 'source))))

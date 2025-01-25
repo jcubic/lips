@@ -287,6 +287,7 @@ They should be loaded as R7RS libraries in final 1.0.0 version
 | Procedures and Syntax for Multiple Values | [SRFI-210](https://srfi.schemers.org/srfi-210/) |
 | Evaluating expressions in an unspecified order | [SRFI-236](https://srfi.schemers.org/srfi-236) |
 | Destructuring Lists | [SRFI 239](https://srfi.schemers.org/srfi-239/) |
+| Uninterned Symbols | [SRFI 258](https://srfi.schemers.org/srfi-258/) |
 
 in Web (e.g. in Web REPL) you can also use full URL:
 

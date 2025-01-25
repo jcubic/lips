@@ -748,19 +748,19 @@ function isSymbol(x) {
 // ----------------------------------------------------------------------
 // :: LSymbol constructor
 // ----------------------------------------------------------------------
-function LSymbol(name) {
+function LSymbol(name, interned = true) {
     if (name instanceof LString) {
         name = name.valueOf();
     }
-    if (LSymbol.list[name] instanceof LSymbol) {
+    if (interned && LSymbol.list[name] instanceof LSymbol) {
         return LSymbol.list[name];
     }
     if (typeof this !== 'undefined' && this.constructor !== LSymbol ||
         typeof this === 'undefined') {
-        return new LSymbol(name);
+        return new LSymbol(name, interned);
     }
     this.__name__ = name;
-    if (typeof name === 'string') {
+    if (interned && typeof name === 'string') {
         LSymbol.list[name] = this;
     }
 }
@@ -821,7 +821,7 @@ function is_gensym(symbol) {
 const gensym = (function() {
     var count = 0;
     function with_props(name, sym) {
-        var symbol = new LSymbol(sym);
+        var symbol = new LSymbol(sym, false);
         hidden_prop(symbol, '__literal__', name);
         return symbol;
     }
@@ -834,7 +834,7 @@ const gensym = (function() {
         }
         if (is_gensym(name)) {
             // don't do double gynsyms in nested syntax-rules
-            return LSymbol(name);
+            return LSymbol(name, false);
         }
         // use ES6 symbol as name for lips symbol (they are unique)
         if (name !== null) {
