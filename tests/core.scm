@@ -211,7 +211,7 @@
 (test "core: scheme signature"
       (lambda (t)
         ;; we should know about changing of signature
-        (load "./examples/scheme-detect.scm")
+        (load "@lips/examples/scheme-detect.scm")
 
         (t.is (detect:name) 'lips)))
 

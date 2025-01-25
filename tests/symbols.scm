@@ -1,5 +1,3 @@
-(load "@lips/lib/srfi/258.scm")
-
 (test "symbols: it should create interned symbols"
       (lambda (t)
         (t.is (eq? 'foo 'foo) #t)
@@ -56,3 +54,9 @@
         (t.is (symbol-interned? #:foo) #f)
         (t.is (symbol-interned? (gensym)) #f)
         (t.is (symbol-interned? (gensym "foo")) #f)))
+
+(test "symbols: it should create symbols with colon in the middle"
+      (lambda (t)
+        (let ((detect:signature "foo"))
+          (t.is (symbol->string 'detect:signature) "detect:signature")
+          (t.is detect:signature "foo"))))

@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 25 Jan 2025 15:01:38 +0000
+ * build: Sat, 25 Jan 2025 17:09:53 +0000
  */
 
 'use strict';
@@ -4924,6 +4924,9 @@ Object.defineProperty(Lexer, 'rules', {
 });
 // ----------------------------------------------------------------------
 function match_or_null(re, _char6) {
+  if (is_string(re)) {
+    return re === _char6;
+  }
   return re === null || _char6.match(re);
 }
 // ----------------------------------------------------------------------
@@ -5313,7 +5316,6 @@ var Parser = /*#__PURE__*/function () {
   }, {
     key: "ballancing_error",
     value: function ballancing_error(expr, prev) {
-      console.log(this._state);
       var count = this._state.parentheses;
       var e;
       if (count < 0) {
@@ -10231,6 +10233,23 @@ function is_false(o) {
 function is_string(o) {
   return typeof o === 'string';
 }
+// ----------------------------------------------------------------------
+function is_lambda(obj) {
+  return obj && obj[__lambda__];
+}
+// ----------------------------------------------------------------------
+function is_method(obj) {
+  return obj && obj[__method__];
+}
+// ----------------------------------------------------------------------
+function is_raw_lambda(fn) {
+  return is_lambda(fn) && !fn[__prototype__] && !is_method(fn) && !is_port_method(fn);
+}
+// ----------------------------------------------------------------------
+function is_native_function(fn) {
+  var _native = Symbol["for"]('__native__');
+  return is_function(fn) && fn.toString().match(/\{\s*\[native code\]\s*\}/) && (fn.name.match(/^bound /) && fn[_native] === true || !fn.name.match(/^bound /) && !fn[_native]);
+}
 // ----------------------------------------------------------------------------
 function is_prototype(obj) {
   return obj && _typeof$1(obj) === 'object' && obj.hasOwnProperty && obj.hasOwnProperty("constructor") && typeof obj.constructor === "function" && obj.constructor.prototype === obj;
@@ -10525,23 +10544,6 @@ function set_fn_length(fn, length) {
     var wrapper = new Function("f", "return function(".concat(args, ") {\n                return f.apply(this, arguments);\n            };"));
     return wrapper(fn);
   }
-}
-// ----------------------------------------------------------------------
-function is_lambda(obj) {
-  return obj && obj[__lambda__];
-}
-// ----------------------------------------------------------------------
-function is_method(obj) {
-  return obj && obj[__method__];
-}
-// ----------------------------------------------------------------------
-function is_raw_lambda(fn) {
-  return is_lambda(fn) && !fn[__prototype__] && !is_method(fn) && !is_port_method(fn);
-}
-// ----------------------------------------------------------------------
-function is_native_function(fn) {
-  var _native = Symbol["for"]('__native__');
-  return is_function(fn) && fn.toString().match(/\{\s*\[native code\]\s*\}/) && (fn.name.match(/^bound /) && fn[_native] === true || !fn.name.match(/^bound /) && !fn[_native]);
 }
 // ----------------------------------------------------------------------
 // :: function that return macro for let, let* and letrec
@@ -17559,10 +17561,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 25 Jan 2025 15:01:38 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sat, 25 Jan 2025 17:09:53 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 25 Jan 2025 15:01:38 +0000').valueOf();
+  var date = LString('Sat, 25 Jan 2025 17:09:53 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17602,7 +17604,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 25 Jan 2025 15:01:38 +0000';
+var date = 'Sat, 25 Jan 2025 17:09:53 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

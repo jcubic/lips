@@ -1491,6 +1491,9 @@ Object.defineProperty(Lexer, 'rules', {
 });
 // ----------------------------------------------------------------------
 function match_or_null(re, char) {
+    if (is_string(re)) {
+        return re === char;
+    }
     return re === null || char.match(re);
 }
 // ----------------------------------------------------------------------
@@ -1686,7 +1689,6 @@ class Parser {
         return this._state.parentheses === 0;
     }
     ballancing_error(expr, prev) {
-        console.log(this._state);
         const count = this._state.parentheses;
         let e;
         if (count < 0) {
@@ -5148,6 +5150,27 @@ function is_false(o) {
 function is_string(o) {
     return typeof o === 'string';
 }
+// ----------------------------------------------------------------------
+function is_lambda(obj) {
+    return obj && obj[__lambda__];
+}
+// ----------------------------------------------------------------------
+function is_method(obj) {
+    return obj && obj[__method__];
+}
+// ----------------------------------------------------------------------
+function is_raw_lambda(fn) {
+    return is_lambda(fn) && !fn[__prototype__] &&
+        !is_method(fn) && !is_port_method(fn);
+}
+// ----------------------------------------------------------------------
+function is_native_function(fn) {
+    var native = Symbol.for('__native__');
+    return is_function(fn) &&
+        fn.toString().match(/\{\s*\[native code\]\s*\}/) &&
+        ((fn.name.match(/^bound /) && fn[native] === true) ||
+         (!fn.name.match(/^bound /) && !fn[native]));
+}
 // ----------------------------------------------------------------------------
 function is_prototype(obj) {
     return obj &&
@@ -5445,27 +5468,6 @@ function set_fn_length(fn, length) {
             };`);
         return wrapper(fn);
     }
-}
-// ----------------------------------------------------------------------
-function is_lambda(obj) {
-    return obj && obj[__lambda__];
-}
-// ----------------------------------------------------------------------
-function is_method(obj) {
-    return obj && obj[__method__];
-}
-// ----------------------------------------------------------------------
-function is_raw_lambda(fn) {
-    return is_lambda(fn) && !fn[__prototype__] &&
-        !is_method(fn) && !is_port_method(fn);
-}
-// ----------------------------------------------------------------------
-function is_native_function(fn) {
-    var native = Symbol.for('__native__');
-    return is_function(fn) &&
-        fn.toString().match(/\{\s*\[native code\]\s*\}/) &&
-        ((fn.name.match(/^bound /) && fn[native] === true) ||
-         (!fn.name.match(/^bound /) && !fn[native]));
 }
 // ----------------------------------------------------------------------
 // :: function that return macro for let, let* and letrec
