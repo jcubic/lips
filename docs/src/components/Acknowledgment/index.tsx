@@ -7,7 +7,7 @@ export default function Acknowledgment(): JSX.Element {
         <Heading as="h2" id="acknowledgment" className={styles.header}>Acknowledgments</Heading>
         <ul>
           <li>Font used in logo is <a href="https://www.dafont.com/telegrafico.font">Telegrafico</a> by <a href="https://www.deviantart.com/ficod">ficod</a>.</li>
-          <li>Current Parser is inspired by implementation in <a href="https://www.biwascheme.org/">BiwaScheme</a> by Yutaka HARA (yhara).</li>
+          <li>Part of the current parser is inspired by implementation in <a href="https://www.biwascheme.org/">BiwaScheme</a> by Yutaka HARA (yhara).</li>
           <li><code>fetch</code> polyfill use <a href="https://github.com/developit/unfetch">unfetch</a> by Jason Miller.</li>
           <li>Browser <code>init</code> function use <a href="http://javascript.nwbox.com/ContentLoaded/">ContentLoaded</a>.</li>
           <li>The rationalize algorithm is based on <a href="https://www.gnu.org/software/kawa/index.html">Kawa Scheme</a> by Per M.A. Bothner, Alan Bawden and Marc Feeley.</li>
