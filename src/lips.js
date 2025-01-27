@@ -11526,13 +11526,15 @@ function tco_eval(code, eval_args) {
     }
 }
 
+// -------------------------------------------------------------------------
 function next_pair(state) {
     this._arr.push(state.object);
     if (is_nil(this.__object__)) {
         state.env = this.__env__;
         state.cc = this.__continuation__;
         const args = this._arr.slice(1);
-        state.object = call_function(this._arr[0], args, {
+        const fn = this._arr[0];
+        state.object = call_function(fn, args, {
             env: state.env,
             dynamic_env: state.dynamic_env,
             use_dynamic: state.use_dynamic
@@ -11547,6 +11549,7 @@ function next_pair(state) {
     }
 }
 
+// -------------------------------------------------------------------------
 function default_eval_args({ env, dynamic_env, use_dynamic, error = noop } = {}) {
     if (!is_env(dynamic_env)) {
         dynamic_env = env === true ? user_env : (env || user_env);
@@ -11561,7 +11564,7 @@ function default_eval_args({ env, dynamic_env, use_dynamic, error = noop } = {})
     return { env, dynamic_env, use_dynamic, error };
 }
 
-
+// -------------------------------------------------------------------------
 function evaluate_code(state) {
     function ready() {
         state.ready = true;
@@ -11572,9 +11575,27 @@ function evaluate_code(state) {
     }
     if (is_pair(state.object)) {
         const { car, cdr } = state.object;
-        state.object = car;
-        state.cc = new Continuation(cdr, state.env, state.cc, next_pair);
-        state.ready = false;
+        if (car instanceof LSymbol) {
+            const first = state.env.get(car);
+            if (first instanceof Macro) {
+                state.cc = new Continuation( null, state.env, state.cc, function(state) {
+                    state.env = this.__env__;
+                    state.cc = this.__continuation__;
+                    state.ready = false;
+                });
+                const eval_args = {
+                    env: state.env,
+                    dynamic_env: state.dynamic_env,
+                    use_dynamic: state.use_dynamic
+                };
+                state.object = evaluate_macro(first, cdr, eval_args);
+                state.ready = false;
+            } else if (is_function(first)) {
+                state.object = car;
+                state.cc = new Continuation(cdr, state.env, state.cc, next_pair);
+                state.ready = false;
+            }
+        }
     } else {
         ready();
     }
