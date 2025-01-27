@@ -8641,15 +8641,15 @@ var global_env = new Environment({
         const eval_args = { env, dynamic_env, use_dynamic, error };
         const resolve = (cond) => {
             if (is_false(cond)) {
-                return evaluate(code.cdr.cdr.car, eval_args);
+                return tco_eval(code.cdr.cdr.car, eval_args);
             } else {
-                return evaluate(code.cdr.car, eval_args);
+                return tco_eval(code.cdr.car, eval_args);
             }
         };
         if (is_nil(code)) {
             throw new Error('too few expressions for `if`');
         }
-        const cond = evaluate(code.car, eval_args);
+        const cond = tco_eval(code.car, eval_args);
         return unpromise(cond, resolve);
     }), `(if cond true-expr false-expr)
 
@@ -8741,7 +8741,7 @@ var global_env = new Environment({
         return (function loop() {
             if (arr.length) {
                 const code = arr.shift();
-                const ret = evaluate(code, eval_args);
+                const ret = tco_eval(code, eval_args);
                 return unpromise(ret, value => {
                     result = value;
                     return loop();
@@ -9118,7 +9118,7 @@ var global_env = new Environment({
                 use_dynamic,
                 error
             }
-            return evaluate(output, eval_args);
+            return tco_eval(output, eval_args);
         }
         var length = is_pair(code.car) ? code.car.length() : null;
         lambda.__code__ = new Pair(new LSymbol('lambda'), code);
@@ -11476,11 +11476,12 @@ function clone(object) {
 // :: code based on jsScheme by Alex Yakovlev
 // -------------------------------------------------------------------------
 class State {
-    constructor(object, cc, { env, dynamic_env, use_dynamic }) {
+    constructor(object, cc, { env, dynamic_env, use_dynamic, error }) {
         this.env = env;
         this.object = object;
         this.cc = cc;
         this.dynamic_env = dynamic_env;
+        this.error = error;
         this.use_dynamic = use_dynamic;
         this.ready = false;
     }
@@ -11491,9 +11492,12 @@ class State {
         if (this.object === null) {
             this.ready = false;
         }
+        if (this.object === undefined) {
+            this.ready = true;
+        }
         if (!this.ready) {
             if (is_debug()) {
-                console.log('eval: ' + to_string(this.object));
+                console.log(`eval: ` + to_string(this.object));
             }
             evaluate_code(this);
             if (is_debug()) {
@@ -11511,31 +11515,50 @@ function tco_eval(code, eval_args) {
     eval_args = default_eval_args(eval_args);
     const state = new State(code, top_cc, eval_args);
     try {
-        while(true) {
+        while (true) {
             if (state.eval()) {
                 state.ready = false;
                 state.cont();
             }
         }
     } catch(e) {
-        if(e instanceof State) {
+        if (e instanceof State) {
             return e.object;
-        } else {
-            throw e;
         }
+        state.error && state.error(e);
     }
 }
 
 // -------------------------------------------------------------------------
+function apply_fn(fn, args, eval_args) {
+    try {
+        const object = call_function(fn, args, eval_args);
+        const state = new State(object, top_cc, eval_args);
+
+        while (true) {
+            if (state.eval()) {
+                state.ready = false;
+                state.cont();
+            }
+        }
+    } catch (e) {
+        if (e instanceof State) {
+            return e.object;
+        }
+        state.error && state.error(e);
+    }
+}
+
 function next_pair(state) {
     this._arr.push(state.object);
     if (is_nil(this.__object__)) {
         state.env = this.__env__;
         state.cc = this.__continuation__;
-        const args = this._arr.slice(1);
         const fn = this._arr[0];
-        state.object = call_function(fn, args, {
+        const args = this._arr.slice(1);
+        state.object = apply_fn(fn, args, {
             env: state.env,
+            error: state.error,
             dynamic_env: state.dynamic_env,
             use_dynamic: state.use_dynamic
         });
@@ -11585,6 +11608,7 @@ function evaluate_code(state) {
                 });
                 const eval_args = {
                     env: state.env,
+                    error: state.error,
                     dynamic_env: state.dynamic_env,
                     use_dynamic: state.use_dynamic
                 };
