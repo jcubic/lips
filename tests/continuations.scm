@@ -173,3 +173,13 @@
 (test.failing "continuations: Petrofsky catastrophe"
       (lambda (t)
         (t.is (call/cc (lambda (c) (0 (c 1)))) 1)))
+
+(test.failing "continuations: should execute twice"
+      (lambda (t)
+        (t.plan 2)
+        (let ((i 0) (k #f))
+          (t.is (list 1 (call/cc (lambda (c) (set! k c) i)) 3)
+                (list 1 (* i 10) 3))
+          (set! i (+ i 1))
+          (if (<= i 2)
+              (k (* i 10))))))
