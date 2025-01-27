@@ -9306,6 +9306,7 @@ var global_env = new Environment({
          argument). It will return a list if put in front of LIPS code.
          And if put in front of a symbol it will return the symbol itself, not the value
          bound to that name.`),
+    // ------------------------------------------------------------------
     'unquote-splicing': doc('unquote-splicing', function() {
         throw new Error(`You can't call \`unquote-splicing\` outside of quasiquote`);
     }, `(unquote-splicing code) or ,@code
@@ -9313,6 +9314,7 @@ var global_env = new Environment({
         Special form used in the quasiquote macro. It evaluates the expression inside and
         splices the list into quasiquote's result. If it is not the last element of the
         expression, the computed value must be a pair.`),
+    // ------------------------------------------------------------------
     'unquote': doc('unquote', function() {
         throw new Error(`You can't call \`unquote\` outside of quasiquote`);
     }, `(unquote code) or ,code
@@ -10258,6 +10260,7 @@ var global_env = new Environment({
     }, `(raise obj)
 
         Throws the object verbatim (no wrapping an a new Error).`),
+    // ------------------------------------------------------------------
     'throw': doc('throw', function(message) {
         throw new Error(message);
     }, `(throw string)
@@ -11443,12 +11446,13 @@ class Continuation {
         read_only(this, '__object__', object);
         read_only(this, '__continuation__', cc);
         read_only(this, '__next__', next);
-        read_only(this, '_state', { i: 0 }, { hidden: true });
+        // for list
+        read_only(this, '_arr', [], { hidden: true });
     }
     clone() {
         const copy = clone(this);
         if (this.__continuation__) {
-            copy.__continuation__ = copy.__continuation__.clone();
+            read_only(this, '__continuation__', copy.__continuation__.clone());
         }
         return copy;
     }
@@ -11458,6 +11462,7 @@ class Continuation {
         }
     }
 }
+
 // -------------------------------------------------------------------------
 function clone(object) {
     const copy = new object.constructor;
@@ -11466,14 +11471,17 @@ function clone(object) {
     }
     return copy;
 }
+
 // -------------------------------------------------------------------------
 // :: code based on jsScheme by Alex Yakovlev
 // -------------------------------------------------------------------------
 class State {
-    constructor(object, env, cc) {
+    constructor(object, cc, { env, dynamic_env, use_dynamic }) {
         this.env = env;
         this.object = object;
         this.cc = cc;
+        this.dynamic_env = dynamic_env;
+        this.use_dynamic = use_dynamic;
         this.ready = false;
     }
     cont() {
@@ -11487,21 +11495,93 @@ class State {
             if (is_debug()) {
                 console.log('eval: ' + to_string(this.object));
             }
-            this.ready = false;
-            if (this.object instanceof State) {
-                this.object.eval();
-            } else {
-                this.ready = true;
+            evaluate_code(this);
+            if (is_debug()) {
+                console.log('result: ' + to_string(this.object));
             }
         }
         return this.ready;
     }
 }
 // -------------------------------------------------------------------------
-const to_cc = new Continuation(null, null, null, (state) => { throw state; });
+const top_cc = new Continuation(null, null, null, (state) => { throw state; });
+
+// Tail Call eval
+function tco_eval(code, eval_args) {
+    eval_args = default_eval_args(eval_args);
+    const state = new State(code, top_cc, eval_args);
+    try {
+        while(true) {
+            if (state.eval()) {
+                state.ready = false;
+                state.cont();
+            }
+        }
+    } catch(e) {
+        if(e instanceof State) {
+            return e.object;
+        } else {
+            throw e;
+        }
+    }
+}
+
+function next_pair(state) {
+    this._arr.push(state.object);
+    if (is_nil(this.__object__)) {
+        state.env = this.__env__;
+        state.cc = this.__continuation__;
+        const args = this._arr.slice(1);
+        state.object = call_function(this._arr[0], args, {
+            env: state.env,
+            dynamic_env: state.dynamic_env,
+            use_dynamic: state.use_dynamic
+        });
+        state.ready = false;
+    } else {
+        state.object = this.__object__.car;
+        state.env = this.__env__;
+        state.cc = this;
+        read_only(this, '__object__', this.__object__.cdr);
+        state.ready = false;
+    }
+}
+
+function default_eval_args({ env, dynamic_env, use_dynamic, error = noop } = {}) {
+    if (!is_env(dynamic_env)) {
+        dynamic_env = env === true ? user_env : (env || user_env);
+    }
+    if (use_dynamic) {
+        env = dynamic_env;
+    } else if (env === true) {
+        env = user_env;
+    } else {
+        env = env || global_env;
+    }
+    return { env, dynamic_env, use_dynamic, error };
+}
+
+
+function evaluate_code(state) {
+    function ready() {
+        state.ready = true;
+    }
+    if (state.object instanceof LSymbol) {
+        state.object = state.env.get(state.object);
+        return ready();
+    }
+    if (is_pair(state.object)) {
+        const { car, cdr } = state.object;
+        state.object = car;
+        state.cc = new Continuation(cdr, state.env, state.cc, next_pair);
+        state.ready = false;
+    } else {
+        ready();
+    }
+}
 
 // -------------------------------------------------------------------------
-function evaluate(code, { env, dynamic_env, use_dynamic, error = noop, ...rest } = {}) {
+function evaluate(code, { env, dynamic_env, use_dynamic, error = noop } = {}) {
     try {
         if (!is_env(dynamic_env)) {
             dynamic_env = env === true ? user_env : (env || user_env);
@@ -12267,6 +12347,7 @@ export {
     repr,
     nil,
     eof,
+    tco_eval,
 
     LSymbol,
     LNumber,

@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Mon, 20 Jan 2025 18:10:39 +0000
+ * build: Sun, 26 Jan 2025 22:10:46 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -11730,18 +11730,18 @@ LComplex.prototype.factor = function () {
   if (this.__im__ instanceof LFloat || this.__im__ instanceof LFloat) {
     var re = this.__re__,
       im = this.__im__;
-    var x, y;
+    var _x13, y;
     if (re instanceof LFloat) {
-      x = re.toRational().mul(re.toRational());
+      _x13 = re.toRational().mul(re.toRational());
     } else {
-      x = re.mul(re);
+      _x13 = re.mul(re);
     }
     if (im instanceof LFloat) {
       y = im.toRational().mul(im.toRational());
     } else {
       y = im.mul(im);
     }
-    return x.add(y);
+    return _x13.add(y);
   } else {
     return this.__re__.mul(this.__re__).add(this.__im__.mul(this.__im__));
   }
@@ -13068,7 +13068,7 @@ Interpreter.prototype.exec = /*#__PURE__*/function () {
       }, _callee16, null, [[10, 17]]);
     })();
   });
-  return function (_x13) {
+  return function (_x14) {
     return _ref29.apply(this, arguments);
   };
 }();
@@ -13983,7 +13983,7 @@ var global_env = new Environment({
             }
           }, _callee18, null, [[0, 23]]);
         }));
-        return function (_x14, _x15) {
+        return function (_x15, _x16) {
           return _ref32.apply(this, arguments);
         };
       }());
@@ -14148,7 +14148,7 @@ var global_env = new Environment({
         }, _callee19);
       })();
     });
-    return function (_x16, _x17) {
+    return function (_x17, _x18) {
       return _ref33.apply(this, arguments);
     };
   }()), "(do ((<var> <init> <next>)) (test return) . body)\n\n         Iteration macro that evaluates the expression body in scope of the variables.\n         On each loop it changes the variables according to the <next> expression and runs\n         test to check if the loop should continue. If test is a single value, the macro\n         will return undefined. If the test is a pair of expressions the macro will\n         evaluate and return the second expression after the loop exits."),
@@ -14261,7 +14261,7 @@ var global_env = new Environment({
     }, eval_args);
     return unpromise(_evaluate(code.car, args), function (result) {
       if (is_function(result)) {
-        return result(new Continuation(null));
+        return result(new Continuation());
       }
     });
   }), "(call/cc proc)\n\n         Call-with-current-continuation.\n\n         NOT SUPPORTED BY LIPS RIGHT NOW"),
@@ -14619,16 +14619,16 @@ var global_env = new Environment({
     function get_identifiers(node) {
       var symbols = [];
       while (!is_nil(node)) {
-        var x = node.car;
-        symbols.push(x.valueOf());
+        var _x19 = node.car;
+        symbols.push(_x19.valueOf());
         node = node.cdr;
       }
       return symbols;
     }
     function validate_identifiers(node) {
       while (!is_nil(node)) {
-        var x = node.car;
-        if (!(x instanceof LSymbol)) {
+        var _x20 = node.car;
+        if (!(_x20 instanceof LSymbol)) {
           throw new Error('syntax-rules: wrong identifier');
         }
         node = node.cdr;
@@ -16419,7 +16419,7 @@ function resolve_promises(arg) {
       node.forEach(traverse);
     }
   }
-  function promise(_x18) {
+  function promise(_x21) {
     return _promise.apply(this, arguments);
   }
   function _promise() {
@@ -16746,20 +16746,51 @@ function search_param(env, param) {
 // :: Continuations object from call/cc
 // -------------------------------------------------------------------------
 var Continuation = /*#__PURE__*/function () {
-  function Continuation(k) {
+  function Continuation(object, env, cc, next) {
     _classCallCheck(this, Continuation);
-    _defineProperty(this, "__value__", void 0);
-    this.__value__ = k;
+    read_only(this, '__env__', env);
+    read_only(this, '__object__', object);
+    read_only(this, '__continuation__', cc);
+    read_only(this, '__next__', next);
+    read_only(this, '_state', {
+      i: 0
+    }, {
+      hidden: true
+    });
   }
   return _createClass(Continuation, [{
+    key: "clone",
+    value: function clone() {
+      var copy = _clone(this);
+      if (this.__continuation__) {
+        read_only(this, '__continuation__', copy.__continuation__.clone());
+      }
+      return copy;
+    }
+  }, {
     key: "invoke",
     value: function invoke() {
-      if (this.__value__ === null) {
+      if (!this.__env__) {
         throw new Error('Continuations are not implemented yet');
       }
     }
   }]);
 }(); // -------------------------------------------------------------------------
+function _clone(object) {
+  var copy = new object.constructor();
+  for (var _i6 = 0, _Object$entries3 = Object.entries(x); _i6 < _Object$entries3.length; _i6++) {
+    var _Object$entries3$_i = _slicedToArray(_Object$entries3[_i6], 2),
+      _key49 = _Object$entries3$_i[0],
+      value = _Object$entries3$_i[1];
+    copy[_key49] = value;
+  }
+  return copy;
+}
+new Continuation(null, null, null, function (state) {
+  throw state;
+});
+
+// -------------------------------------------------------------------------
 function _evaluate(code) {
   var _ref48 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
     env = _ref48.env,
@@ -17004,7 +17035,7 @@ function exec_collect(collect_callback) {
         }, _callee21, null, [[11, 26, 30, 40], [31,, 35, 39]]);
       })();
     });
-    function exec_lambda(_x19) {
+    function exec_lambda(_x22) {
       return _exec_lambda.apply(this, arguments);
     }
     return exec_lambda;
@@ -17267,10 +17298,10 @@ var serialization_map = {
 // class mapping to create smaller JSON
 var available_class = Object.keys(serialization_map);
 var class_map = {};
-for (var _i6 = 0, _Object$entries3 = Object.entries(available_class); _i6 < _Object$entries3.length; _i6++) {
-  var _Object$entries3$_i = _slicedToArray(_Object$entries3[_i6], 2),
-    i = _Object$entries3$_i[0],
-    cls = _Object$entries3$_i[1];
+for (var _i7 = 0, _Object$entries4 = Object.entries(available_class); _i7 < _Object$entries4.length; _i7++) {
+  var _Object$entries4$_i = _slicedToArray(_Object$entries4[_i7], 2),
+    i = _Object$entries4$_i[0],
+    cls = _Object$entries4$_i[1];
   class_map[cls] = +i;
 }
 function mangle_name(name) {
@@ -17337,10 +17368,10 @@ var cbor = function () {
   }
   var encoder = new Encoder();
   var cbor_serialization_map = {};
-  for (var _i7 = 0, _Object$entries4 = Object.entries(serialization_map); _i7 < _Object$entries4.length; _i7++) {
-    var _Object$entries4$_i = _slicedToArray(_Object$entries4[_i7], 2),
-      name = _Object$entries4$_i[0],
-      _fn = _Object$entries4$_i[1];
+  for (var _i8 = 0, _Object$entries5 = Object.entries(serialization_map); _i8 < _Object$entries5.length; _i8++) {
+    var _Object$entries5$_i = _slicedToArray(_Object$entries5[_i8], 2),
+      name = _Object$entries5$_i[0],
+      _fn = _Object$entries5$_i[1];
     var Class = types[name];
     cbor_serialization_map[name] = serializer(Class, _fn);
   }
@@ -17384,8 +17415,8 @@ var cbor = function () {
 
 // -------------------------------------------------------------------------
 function merge_uint8_array() {
-  for (var _len47 = arguments.length, args = new Array(_len47), _key49 = 0; _key49 < _len47; _key49++) {
-    args[_key49] = arguments[_key49];
+  for (var _len47 = arguments.length, args = new Array(_len47), _key50 = 0; _key50 < _len47; _key50++) {
+    args[_key50] = arguments[_key50];
   }
   if (args.length > 1) {
     var len = args.reduce(function (acc, arr) {
@@ -17541,10 +17572,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Mon, 20 Jan 2025 18:10:39 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 26 Jan 2025 22:10:46 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Mon, 20 Jan 2025 18:10:39 +0000').valueOf();
+  var date = LString('Sun, 26 Jan 2025 22:10:46 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17585,7 +17616,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Mon, 20 Jan 2025 18:10:39 +0000';
+var date = 'Sun, 26 Jan 2025 22:10:46 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
