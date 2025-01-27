@@ -9110,15 +9110,15 @@ var global_env = new Environment({
                     name = name.cdr;
                 }
             }
-            var rest = __doc__ ? code.cdr.cdr : code.cdr;
-            var output = hygienic_begin([env, dynamic_env], rest);
+            const rest = __doc__ ? code.cdr.cdr : code.cdr;
+            const body = hygienic_begin([env, dynamic_env], rest);
             const eval_args = {
                 env,
                 dynamic_env,
                 use_dynamic,
                 error
-            }
-            return tco_eval(output, eval_args);
+            };
+            return tco_eval(body, eval_args);
         }
         var length = is_pair(code.car) ? code.car.length() : null;
         lambda.__code__ = new Pair(new LSymbol('lambda'), code);
