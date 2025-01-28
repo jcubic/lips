@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 26 Jan 2025 22:10:46 +0000
+ * build: Tue, 28 Jan 2025 17:58:18 +0000
  */
 
 (function (global, factory) {
@@ -3431,8 +3431,7 @@
     _excluded2 = ["env"],
     _excluded3 = ["stderr", "stdin", "stdout", "command_line"],
     _excluded4 = ["use_dynamic"],
-    _excluded5 = ["use_dynamic"],
-    _excluded6 = ["env", "dynamic_env", "use_dynamic", "error"];
+    _excluded5 = ["use_dynamic"];
   function _classPrivateFieldInitSpec(e, t, a) { _checkPrivateRedeclaration(e, t), t.set(e, a); }
   function _checkPrivateRedeclaration(e, t) { if (t.has(e)) throw new TypeError("Cannot initialize the same private elements twice on an object"); }
   function _classPrivateFieldGet(s, a) { return s.get(_assertClassBrand(s, a)); }
@@ -14173,15 +14172,15 @@
       };
       var resolve = function resolve(cond) {
         if (is_false(cond)) {
-          return _evaluate(code.cdr.cdr.car, eval_args);
+          return tco_eval(code.cdr.cdr.car, eval_args);
         } else {
-          return _evaluate(code.cdr.car, eval_args);
+          return tco_eval(code.cdr.car, eval_args);
         }
       };
       if (is_nil(code)) {
         throw new Error('too few expressions for `if`');
       }
-      var cond = _evaluate(code.car, eval_args);
+      var cond = tco_eval(code.car, eval_args);
       return unpromise(cond, resolve);
     }), "(if cond true-expr false-expr)\n\n         Macro that evaluates cond expression and if the value is true, it\n         evaluates and returns true-expression, if not it evaluates and returns\n         false-expression."),
     // ------------------------------------------------------------------
@@ -14242,7 +14241,7 @@
       return function loop() {
         if (arr.length) {
           var _code = arr.shift();
-          var ret = _evaluate(_code, eval_args);
+          var ret = tco_eval(_code, eval_args);
           return unpromise(ret, function (value) {
             result = value;
             return loop();
@@ -14491,90 +14490,33 @@
       });
     }, "(eval expr)\n        (eval expr environment)\n\n        Function that evaluates LIPS Scheme code. If the second argument is provided\n        it will be the environment that the code is evaluated in."),
     // ------------------------------------------------------------------
-    lambda: new Macro('lambda', function (code) {
-      var _ref36 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-        use_dynamic = _ref36.use_dynamic,
-        error = _ref36.error;
+    lambda: new Macro('lambda', function (code, scope) {
       var self = this;
       var __doc__;
       if (is_pair(code.cdr) && LString.isString(code.cdr.car) && !is_nil(code.cdr.cdr)) {
         __doc__ = code.cdr.car.valueOf();
       }
+      var rest = __doc__ ? code.cdr.cdr : code.cdr;
       function lambda() {
-        // lambda got scopes as context in apply
-        var _ref37 = is_context(this) ? this : {
-            dynamic_env: self
-          },
-          dynamic_env = _ref37.dynamic_env;
-        var env = self.inherit('lambda');
-        dynamic_env = dynamic_env.inherit('lambda');
-        if (this && !is_context(this)) {
-          if (this && !this.__instance__) {
-            Object.defineProperty(this, '__instance__', {
-              enumerable: false,
-              get: function get() {
-                return true;
-              },
-              set: function set() {},
-              configurable: false
-            });
-          }
-          env.set('this', this);
-        }
-        // arguments and arguments.callee inside lambda function
         for (var _len24 = arguments.length, args = new Array(_len24), _key24 = 0; _key24 < _len24; _key24++) {
           args[_key24] = arguments[_key24];
         }
-        if (this instanceof LambdaContext) {
-          var options = {
-            throwError: false
-          };
-          env.set('arguments', this.env.get('arguments', options));
-          env.set('parent.frame', this.env.get('parent.frame', options));
-        } else {
-          // this case is for lambda as callback function in JS; e.g. setTimeout
-          var _args = args.slice();
-          _args.callee = lambda;
-          _args.env = env;
-          env.set('arguments', _args);
-        }
-        function set(name, value) {
-          env.__env__[name.__name__] = value;
-          dynamic_env.__env__[name.__name__] = value;
-        }
-        var name = code.car;
-        var i = 0;
-        if (name instanceof LSymbol || !is_nil(name)) {
-          while (true) {
-            if (!is_nil(name.car)) {
-              if (name instanceof LSymbol) {
-                // rest argument,  can also be first argument
-                var value = quote(Pair.fromArray(args.slice(i), false));
-                set(name, value);
-                break;
-              } else if (is_pair(name)) {
-                var _value6 = args[i];
-                set(name.car, _value6);
-              }
-            }
-            if (is_nil(name.cdr)) {
-              break;
-            }
-            i++;
-            name = name.cdr;
-          }
-        }
-        var rest = __doc__ ? code.cdr.cdr : code.cdr;
-        var output = hygienic_begin([env, dynamic_env], rest);
-        var eval_args = {
-          env: env,
-          dynamic_env: dynamic_env,
-          use_dynamic: use_dynamic,
-          error: error
-        };
-        return _evaluate(output, eval_args);
+        var eval_args = lambda_scope.call(this, self, lambda, code, args, scope);
+        var env = eval_args.env,
+          dynamic_env = eval_args.dynamic_env;
+        var body = hygienic_begin([env, dynamic_env], rest);
+        return tco_eval(body, eval_args);
       }
       var length = is_pair(code.car) ? code.car.length() : null;
+      read_only(lambda, '_env', self, {
+        hidden: true
+      });
+      read_only(lambda, '_body', rest, {
+        hidden: true
+      });
+      read_only(lambda, '_code', code, {
+        hidden: true
+      });
       lambda.__code__ = new Pair(new LSymbol('lambda'), code);
       lambda[__lambda__] = true;
       if (!is_pair(code.car)) {
@@ -14588,9 +14530,9 @@
     // ------------------------------------------------------------------
     'macroexpand-1': doc(new Macro('macroexpand-1', macro_expand(true)), "(macroexpand-1 expr)\n\n         Macro similar to macroexpand but it expand macros only one level\n         and return single expression as output."),
     // ------------------------------------------------------------------
-    'define-macro': doc(new Macro(macro, function (macro, _ref38) {
-      var use_dynamic = _ref38.use_dynamic,
-        error = _ref38.error;
+    'define-macro': doc(new Macro(macro, function (macro, _ref36) {
+      var use_dynamic = _ref36.use_dynamic,
+        error = _ref36.error;
       var name, __doc__, body, args;
       if (is_named_macro(macro)) {
         name = macro.car.car.__name__;
@@ -14646,8 +14588,8 @@
       } else {
         validate_identifiers(macro.car);
       }
-      var syntax = new Syntax(function (code, _ref39) {
-        var macro_expand = _ref39.macro_expand;
+      var syntax = new Syntax(function (code, _ref37) {
+        var macro_expand = _ref37.macro_expand;
         log('>> SYNTAX');
         log(code);
         log(macro);
@@ -14746,9 +14688,11 @@
     quote: doc(new Macro('quote', function (arg) {
       return quote(arg.car);
     }), "(quote expression) or 'expression\n\n         Macro that returns a single LIPS expression as data (it won't evaluate the\n         argument). It will return a list if put in front of LIPS code.\n         And if put in front of a symbol it will return the symbol itself, not the value\n         bound to that name."),
+    // ------------------------------------------------------------------
     'unquote-splicing': doc('unquote-splicing', function () {
       throw new Error("You can't call `unquote-splicing` outside of quasiquote");
     }, "(unquote-splicing code) or ,@code\n\n        Special form used in the quasiquote macro. It evaluates the expression inside and\n        splices the list into quasiquote's result. If it is not the last element of the\n        expression, the computed value must be a pair."),
+    // ------------------------------------------------------------------
     'unquote': doc('unquote', function () {
       throw new Error("You can't call `unquote` outside of quasiquote");
     }, "(unquote code) or ,code\n\n        Special form used in the quasiquote macro. It evaluates the expression inside and\n        substitutes the value into quasiquote's result."),
@@ -14776,10 +14720,10 @@
             cdr = fn(cdr);
           }
           if (is_promise(car) || is_promise(cdr)) {
-            return promise_all([car, cdr]).then(function (_ref40) {
-              var _ref41 = _slicedToArray(_ref40, 2),
-                car = _ref41[0],
-                cdr = _ref41[1];
+            return promise_all([car, cdr]).then(function (_ref38) {
+              var _ref39 = _slicedToArray(_ref38, 2),
+                car = _ref39[0],
+                cdr = _ref39[1];
               return new Pair(car, cdr);
             });
           } else {
@@ -15422,10 +15366,10 @@
       return false;
     }, "(string->number number [radix])\n\n        Function that parses a string into a number."),
     // ------------------------------------------------------------------
-    'try': doc(new Macro('try', function (code, _ref42) {
+    'try': doc(new Macro('try', function (code, _ref40) {
       var _this28 = this;
-      var use_dynamic = _ref42.use_dynamic;
-        _ref42.error;
+      var use_dynamic = _ref40.use_dynamic;
+        _ref40.error;
       return new Promise(function (resolve, reject) {
         var catch_clause, finally_clause;
         if (LSymbol.is(code.cdr.car.car, 'catch')) {
@@ -15484,8 +15428,8 @@
                   throw new IgnoreException('[CATCH]');
                 }
               };
-              var _value7 = _evaluate(new Pair(new LSymbol('begin'), catch_clause.cdr.cdr), catch_args);
-              unpromise(_value7, function handler(result) {
+              var _value6 = _evaluate(new Pair(new LSymbol('begin'), catch_clause.cdr.cdr), catch_args);
+              unpromise(_value6, function handler(result) {
                 if (!catch_error) {
                   _next2(result, finalize);
                 }
@@ -15507,6 +15451,7 @@
     'raise': doc('raise', function (obj) {
       throw obj;
     }, "(raise obj)\n\n        Throws the object verbatim (no wrapping an a new Error)."),
+    // ------------------------------------------------------------------
     'throw': doc('throw', function (message) {
       throw new Error(message);
     }, "(throw string)\n\n        Throws a new exception."),
@@ -15940,9 +15885,9 @@
     // ------------------------------------------------------------------
     'eq?': doc('eq?', equal, "(eq? a b)\n\n         Function that compares two values if they are identical."),
     // ------------------------------------------------------------------
-    or: doc(new Macro('or', function (code, _ref43) {
-      var use_dynamic = _ref43.use_dynamic,
-        error = _ref43.error;
+    or: doc(new Macro('or', function (code, _ref41) {
+      var use_dynamic = _ref41.use_dynamic,
+        error = _ref41.error;
       var args = global_env.get('list->array')(code);
       var self = this;
       var dynamic_env = self;
@@ -15979,9 +15924,9 @@
     }), "(or . expressions)\n\n         Macro that executes the values one by one and returns the first that is\n         a truthy value. If there are no expressions that evaluate to true it\n         returns false."),
     // ------------------------------------------------------------------
     and: doc(new Macro('and', function (code) {
-      var _ref44 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-        use_dynamic = _ref44.use_dynamic,
-        error = _ref44.error;
+      var _ref42 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+        use_dynamic = _ref42.use_dynamic,
+        error = _ref42.error;
       var args = global_env.get('list->array')(code);
       var self = this;
       var dynamic_env = self;
@@ -16488,9 +16433,9 @@
     }
   }
   // -------------------------------------------------------------------------
-  function evaluate_args(rest, _ref45) {
-    var use_dynamic = _ref45.use_dynamic,
-      options = _objectWithoutProperties(_ref45, _excluded5);
+  function evaluate_args(rest, _ref43) {
+    var use_dynamic = _ref43.use_dynamic,
+      options = _objectWithoutProperties(_ref43, _excluded5);
     var args = [];
     var node = rest;
     function next() {
@@ -16536,7 +16481,7 @@
     });
   }
   // -------------------------------------------------------------------------
-  function evaluate_macro(macro, code, eval_args) {
+  function evaluate_macro(macro, code, state) {
     function finalize(result) {
       if (is_pair(result)) {
         result.mark_cycles();
@@ -16544,12 +16489,12 @@
       }
       return quote(result);
     }
-    var value = macro.invoke(code, eval_args);
+    var value = macro.invoke(code, state);
     return unpromise(resolve_promises(value), function ret(value) {
       if (!value || value && value[__data__] || self_evaluated(value)) {
         return value;
       } else {
-        return unpromise(_evaluate(value, eval_args), finalize);
+        return unpromise(_evaluate(value, state), finalize);
       }
     }, function (error) {
       throw error;
@@ -16598,10 +16543,10 @@
 
   // -------------------------------------------------------------------------
   function call_function(fn, args) {
-    var _ref46 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
-      env = _ref46.env,
-      dynamic_env = _ref46.dynamic_env,
-      use_dynamic = _ref46.use_dynamic;
+    var _ref44 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
+      env = _ref44.env,
+      dynamic_env = _ref44.dynamic_env,
+      use_dynamic = _ref44.use_dynamic;
     var scope = env === null || env === void 0 ? void 0 : env.new_frame(fn, args);
     var dynamic_scope = dynamic_env === null || dynamic_env === void 0 ? void 0 : dynamic_env.new_frame(fn, args);
     var context = new LambdaContext({
@@ -16614,12 +16559,12 @@
 
   // -------------------------------------------------------------------------
   function apply(fn, args) {
-    var _ref47 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
-      env = _ref47.env,
-      dynamic_env = _ref47.dynamic_env,
-      use_dynamic = _ref47.use_dynamic,
-      _ref47$error = _ref47.error,
-      error = _ref47$error === void 0 ? function () {} : _ref47$error;
+    var _ref45 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
+      env = _ref45.env,
+      dynamic_env = _ref45.dynamic_env,
+      use_dynamic = _ref45.use_dynamic,
+      _ref45$error = _ref45.error,
+      error = _ref45$error === void 0 ? function () {} : _ref45$error;
     args = evaluate_args(args, {
       env: env,
       dynamic_env: dynamic_env,
@@ -16759,9 +16704,8 @@
       read_only(this, '__object__', object);
       read_only(this, '__continuation__', cc);
       read_only(this, '__next__', next);
-      read_only(this, '_state', {
-        i: 0
-      }, {
+      // for list
+      read_only(this, '_arr', [], {
         hidden: true
       });
     }
@@ -16793,115 +16737,407 @@
     }
     return copy;
   }
-  new Continuation(null, null, null, function (state) {
+
+  // -------------------------------------------------------------------------
+  // :: code based on jsScheme by Alex Yakovlev
+  // -------------------------------------------------------------------------
+  var State = /*#__PURE__*/function () {
+    function State(object, cc, _ref46) {
+      var env = _ref46.env,
+        dynamic_env = _ref46.dynamic_env,
+        use_dynamic = _ref46.use_dynamic,
+        error = _ref46.error;
+      _classCallCheck(this, State);
+      this.env = env;
+      this.object = object;
+      this.cc = cc;
+      this.dynamic_env = dynamic_env;
+      this.error = error;
+      this.use_dynamic = use_dynamic;
+      this.ready = false;
+    }
+    return _createClass(State, [{
+      key: "cont",
+      value: function cont() {
+        this.cc.__next__(this);
+      }
+    }, {
+      key: "eval",
+      value: function _eval() {
+        if (this.object === null) {
+          this.ready = false;
+        }
+        if (this.object === undefined) {
+          this.ready = true;
+        }
+        if (!this.ready) {
+          if (is_debug()) {
+            console.log("eval: " + to_string(this.object));
+          }
+          evaluate_code(this);
+          if (is_debug()) {
+            console.log('result: ' + to_string(this.object));
+          }
+        }
+        return this.ready;
+      }
+    }]);
+  }(); // -------------------------------------------------------------------------
+  var top_cc = new Continuation(null, null, null, function (state) {
     throw state;
   });
 
+  // Tail Call eval
+  function tco_eval(code, eval_args) {
+    eval_args = default_eval_args(eval_args);
+    var state = new State(code, top_cc, eval_args);
+    try {
+      while (true) {
+        if (state.eval()) {
+          state.ready = false;
+          state.cont();
+        }
+      }
+    } catch (e) {
+      if (e instanceof State) {
+        return e.object;
+      }
+      console.log(code.toString());
+      state.error && state.error(e);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  function apply_fn(fn, args, eval_args) {
+    var state = new State(null, top_cc, eval_args);
+    try {
+      state.object = call_function(fn, args, eval_args);
+      while (true) {
+        if (state.eval()) {
+          state.ready = false;
+          state.cont();
+        }
+      }
+    } catch (e) {
+      if (e instanceof State) {
+        return e.object;
+      }
+      state.error && state.error(e);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  function next_pair(state) {
+    this._arr.push(state.object);
+    if (is_nil(this.__object__)) {
+      state.env = this.__env__;
+      state.cc = this.__continuation__;
+      var _fn = this._arr[0];
+      var _args25 = this._arr.slice(1);
+      if (_fn[__lambda__] && _fn._body) {
+        var define_env = _fn._env;
+        var eval_args = lambda_scope.call(this, define_env, _fn, _fn._code, _args25, {
+          error: state.error,
+          use_dynamic: state.use_dynamic
+        });
+        var _env = eval_args.env,
+          _dynamic_env = eval_args.dynamic_env;
+        var body = hygienic_begin([_env, _dynamic_env], _fn._body);
+        var body_state = new State(body, top_cc, eval_args);
+        try {
+          while (true) {
+            if (body_state.eval()) {
+              body_state.ready = false;
+              body_state.cont();
+            }
+          }
+        } catch (e) {
+          if (e instanceof State) {
+            body_state.object = e.object;
+          }
+          throw e;
+        }
+      } else {
+        state.object = apply_fn(_fn, _args25, {
+          env: state.env,
+          error: state.error,
+          dynamic_env: state.dynamic_env,
+          use_dynamic: state.use_dynamic
+        });
+        state.ready = false;
+      }
+    } else {
+      state.object = this.__object__.car;
+      state.env = this.__env__;
+      state.cc = this;
+      read_only(this, '__object__', this.__object__.cdr);
+      state.ready = false;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  function default_eval_args() {
+    var _ref47 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+      env = _ref47.env,
+      dynamic_env = _ref47.dynamic_env,
+      use_dynamic = _ref47.use_dynamic,
+      _ref47$error = _ref47.error,
+      error = _ref47$error === void 0 ? noop : _ref47$error;
+    if (!is_env(dynamic_env)) {
+      dynamic_env = env === true ? user_env : env || user_env;
+    }
+    if (use_dynamic) {
+      env = dynamic_env;
+    } else if (env === true) {
+      env = user_env;
+    } else {
+      env = env || global_env;
+    }
+    return {
+      env: env,
+      dynamic_env: dynamic_env,
+      use_dynamic: use_dynamic,
+      error: error
+    };
+  }
+  // -------------------------------------------------------------------------
+  function lambda_scope(self, fn, code, args, _ref48) {
+    var use_dynamic = _ref48.use_dynamic,
+      error = _ref48.error;
+    // lambda got scopes as context in apply
+    var _ref49 = is_context(this) ? this : {
+        dynamic_env: self
+      },
+      dynamic_env = _ref49.dynamic_env;
+    var env = self.inherit('lambda');
+    dynamic_env = dynamic_env.inherit('lambda');
+    if (this && !is_context(this)) {
+      if (this && !this.__instance__) {
+        Object.defineProperty(this, '__instance__', {
+          enumerable: false,
+          get: function get() {
+            return true;
+          },
+          set: function set() {},
+          configurable: false
+        });
+      }
+      env.set('this', this);
+    }
+    // arguments and arguments.callee inside lambda function
+    if (this instanceof LambdaContext) {
+      var options = {
+        throwError: false
+      };
+      env.set('arguments', this.env.get('arguments', options));
+      env.set('parent.frame', this.env.get('parent.frame', options));
+    } else {
+      // this case is for lambda as callback function in JS; e.g. setTimeout
+      var _args = args.slice();
+      _args.callee = fn;
+      _args.env = env;
+      env.set('arguments', _args);
+    }
+    function set(name, value) {
+      env.__env__[name.__name__] = value;
+      dynamic_env.__env__[name.__name__] = value;
+    }
+    var name = code.car;
+    var i = 0;
+    if (name instanceof LSymbol || !is_nil(name)) {
+      while (true) {
+        if (!is_nil(name.car)) {
+          if (name instanceof LSymbol) {
+            // rest argument,  can also be first argument
+            var value = quote(Pair.fromArray(args.slice(i), false));
+            set(name, value);
+            break;
+          } else if (is_pair(name)) {
+            var _value7 = args[i];
+            set(name.car, _value7);
+          }
+        }
+        if (is_nil(name.cdr)) {
+          break;
+        }
+        i++;
+        name = name.cdr;
+      }
+    }
+    return {
+      env: env,
+      dynamic_env: dynamic_env,
+      use_dynamic: use_dynamic,
+      error: error
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  function evaluate_code(state) {
+    function ready() {
+      state.ready = true;
+    }
+    if (state.object instanceof LSymbol) {
+      state.object = state.env.get(state.object);
+      return ready();
+    }
+    if (is_pair(state.object)) {
+      var _state$object = state.object,
+        car = _state$object.car,
+        cdr = _state$object.cdr;
+      if (car instanceof LSymbol) {
+        var first = state.env.get(car);
+        if (first === global_env.get('if')) {
+          state.object = cdr.car;
+          state.cc = new Continuation(cdr.cdr, state.env, state.cc, function (s) {
+            s.object = s.object ? this.__object__.car : this.__object__.cdr.car;
+            s.cc = this.__continuation__;
+            state.ready = false;
+          });
+          state.ready = false;
+        } else if (first === global_env.get('begin')) {
+          state.object = cdr.car;
+          if (!is_nil(cdr.cdr)) {
+            state.cc = new Continuation(cdr.cdr, state.env, state.cc, function (state) {
+              state.object = this.__object__.car;
+              state.env = this.__env__;
+              state.ready = false;
+              if (is_nil(this.__object__.cdr)) {
+                state.cc = this.__continuation__;
+              } else {
+                read_only(this, '__object__', this.__object__.cdr);
+                state.cc = this;
+              }
+            });
+          }
+          state.ready = false;
+        } else if (first instanceof Macro) {
+          state.cc = new Continuation(null, state.env, state.cc, function (state) {
+            state.env = this.__env__;
+            state.cc = this.__continuation__;
+            state.ready = false;
+          });
+          ({
+            env: state.env,
+            error: state.error,
+            dynamic_env: state.dynamic_env,
+            use_dynamic: state.use_dynamic
+          });
+          state.object = evaluate_macro(first, cdr, state);
+          state.ready = false;
+        } else if (is_function(first)) {
+          state.object = car;
+          state.cc = new Continuation(cdr, state.env, state.cc, next_pair);
+          state.ready = false;
+        }
+      }
+    } else {
+      ready();
+    }
+  }
+
   // -------------------------------------------------------------------------
   function _evaluate(code) {
-    var _ref48 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-      env = _ref48.env,
-      dynamic_env = _ref48.dynamic_env,
-      use_dynamic = _ref48.use_dynamic,
-      _ref48$error = _ref48.error,
-      error = _ref48$error === void 0 ? noop : _ref48$error,
-      rest = _objectWithoutProperties(_ref48, _excluded6);
-    return function (rest) {
-      try {
-        if (!is_env(dynamic_env)) {
-          dynamic_env = env === true ? user_env : env || user_env;
-        }
-        if (use_dynamic) {
-          env = dynamic_env;
-        } else if (env === true) {
-          env = user_env;
-        } else {
-          env = env || global_env;
-        }
-        var eval_args = {
-          env: env,
-          dynamic_env: dynamic_env,
-          use_dynamic: use_dynamic,
-          error: error
-        };
-        var value;
-        if (is_null(code)) {
-          return code;
-        }
-        if (code instanceof LSymbol) {
-          return env.get(code);
-        }
-        if (!is_pair(code)) {
-          return code;
-        }
-        var first = code.car;
-        var rest = code.cdr;
-        if (is_pair(first)) {
-          value = resolve_promises(_evaluate(first, eval_args));
-          if (is_promise(value)) {
-            return value.then(function (value) {
-              if (!is_callable(value)) {
-                throw new Error(type(value) + ' ' + env.get('repr')(value) + ' is not callable while evaluating ' + code.toString());
-              }
-              return _evaluate(new Pair(value, code.cdr), eval_args);
-            });
-            // else is later in code
-          } else if (!is_callable(value)) {
-            throw new Error(type(value) + ' ' + env.get('repr')(value) + ' is not callable while evaluating ' + code.toString());
-          }
-        }
-        if (first instanceof LSymbol) {
-          value = env.get(first);
-        } else if (is_function(first)) {
-          value = first;
-        }
-        var result;
-        if (value instanceof Syntax) {
-          result = evaluate_syntax(value, code, eval_args);
-        } else if (value instanceof Macro) {
-          result = evaluate_macro(value, rest, eval_args);
-        } else if (is_function(value)) {
-          result = apply(value, rest, eval_args);
-        } else if (value instanceof SyntaxParameter) {
-          result = evaluate_syntax(value._syntax, code, eval_args);
-        } else if (is_parameter(value)) {
-          var param = search_param(dynamic_env, value);
-          if (is_null(code.cdr)) {
-            result = param.invoke();
-          } else {
-            return unpromise(_evaluate(code.cdr.car, eval_args), function (value) {
-              param.__value__ = value;
-            });
-          }
-        } else if (is_continuation(value)) {
-          result = value.invoke();
-        } else if (is_pair(code)) {
-          value = first && first.toString();
-          throw new Error("".concat(type(first), " ").concat(value, " is not a function"));
-        } else {
-          return code;
-        }
-        // escape promise feature #54
-        var __promise__ = env.get(Symbol["for"]('__promise__'), {
-          throwError: false
-        });
-        if (__promise__ === true && is_promise(result)) {
-          // fix #139 evaluate the code inside the promise that is not data.
-          // When promise is not quoted it happen automatically, when returning
-          // promise from evaluate.
-          result = result.then(function (result) {
-            if (is_pair(result) && !value[__data__]) {
-              return _evaluate(result, eval_args);
-            }
-            return result;
-          });
-          return new QuotedPromise(result);
-        }
-        return result;
-      } catch (e) {
-        error && error.call(env, e, code);
+    var _ref50 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+      env = _ref50.env,
+      dynamic_env = _ref50.dynamic_env,
+      use_dynamic = _ref50.use_dynamic,
+      _ref50$error = _ref50.error,
+      error = _ref50$error === void 0 ? noop : _ref50$error;
+    try {
+      if (!is_env(dynamic_env)) {
+        dynamic_env = env === true ? user_env : env || user_env;
       }
-    }(rest);
+      if (use_dynamic) {
+        env = dynamic_env;
+      } else if (env === true) {
+        env = user_env;
+      } else {
+        env = env || global_env;
+      }
+      var eval_args = {
+        env: env,
+        dynamic_env: dynamic_env,
+        use_dynamic: use_dynamic,
+        error: error
+      };
+      var value;
+      if (is_null(code)) {
+        return code;
+      }
+      if (code instanceof LSymbol) {
+        return env.get(code);
+      }
+      if (!is_pair(code)) {
+        return code;
+      }
+      var first = code.car;
+      var rest = code.cdr;
+      if (is_pair(first)) {
+        value = resolve_promises(_evaluate(first, eval_args));
+        if (is_promise(value)) {
+          return value.then(function (value) {
+            if (!is_callable(value)) {
+              throw new Error(type(value) + ' ' + env.get('repr')(value) + ' is not callable while evaluating ' + code.toString());
+            }
+            return _evaluate(new Pair(value, code.cdr), eval_args);
+          });
+          // else is later in code
+        } else if (!is_callable(value)) {
+          throw new Error(type(value) + ' ' + env.get('repr')(value) + ' is not callable while evaluating ' + code.toString());
+        }
+      }
+      if (first instanceof LSymbol) {
+        value = env.get(first);
+      } else if (is_function(first)) {
+        value = first;
+      }
+      var result;
+      if (value instanceof Syntax) {
+        result = evaluate_syntax(value, code, eval_args);
+      } else if (value instanceof Macro) {
+        result = evaluate_macro(value, rest, eval_args);
+      } else if (is_function(value)) {
+        result = apply(value, rest, eval_args);
+      } else if (value instanceof SyntaxParameter) {
+        result = evaluate_syntax(value._syntax, code, eval_args);
+      } else if (is_parameter(value)) {
+        var param = search_param(dynamic_env, value);
+        if (is_null(code.cdr)) {
+          result = param.invoke();
+        } else {
+          return unpromise(_evaluate(code.cdr.car, eval_args), function (value) {
+            param.__value__ = value;
+          });
+        }
+      } else if (is_continuation(value)) {
+        result = value.invoke();
+      } else if (is_pair(code)) {
+        value = first && first.toString();
+        throw new Error("".concat(type(first), " ").concat(value, " is not a function"));
+      } else {
+        return code;
+      }
+      // escape promise feature #54
+      var __promise__ = env.get(Symbol["for"]('__promise__'), {
+        throwError: false
+      });
+      if (__promise__ === true && is_promise(result)) {
+        // fix #139 evaluate the code inside the promise that is not data.
+        // When promise is not quoted it happen automatically, when returning
+        // promise from evaluate.
+        result = result.then(function (result) {
+          if (is_pair(result) && !value[__data__]) {
+            return _evaluate(result, eval_args);
+          }
+          return result;
+        });
+        return new QuotedPromise(result);
+      }
+      return result;
+    } catch (e) {
+      error && error.call(env, e, code);
+    }
   }
   // -------------------------------------------------------------------------
   var compile = exec_collect(function (code) {
@@ -16913,10 +17149,10 @@
   });
   // -------------------------------------------------------------------------
   function exec_with_stacktrace(code) {
-    var _ref49 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-      env = _ref49.env,
-      dynamic_env = _ref49.dynamic_env,
-      use_dynamic = _ref49.use_dynamic;
+    var _ref51 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+      env = _ref51.env,
+      dynamic_env = _ref51.dynamic_env,
+      use_dynamic = _ref51.use_dynamic;
     return _evaluate(code, {
       env: env,
       dynamic_env: dynamic_env,
@@ -16946,10 +17182,10 @@
   function exec_collect(collect_callback) {
     return /*#__PURE__*/function () {
       var _exec_lambda = _asyncToGenerator(function (arg) {
-        var _ref50 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-          env = _ref50.env,
-          dynamic_env = _ref50.dynamic_env,
-          use_dynamic = _ref50.use_dynamic;
+        var _ref52 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+          env = _ref52.env,
+          dynamic_env = _ref52.dynamic_env,
+          use_dynamic = _ref52.use_dynamic;
         return /*#__PURE__*/_regeneratorRuntime.mark(function _callee21() {
           var results, input, _iteratorAbruptCompletion2, _didIteratorError2, _iteratorError2, _iterator2, _step2, code, value;
           return _regeneratorRuntime.wrap(function _callee21$(_context22) {
@@ -17259,9 +17495,9 @@
     this.rpc('init', [url])["catch"](function (error) {
       console.error(error);
     });
-    this.exec = function (code, _ref51) {
-      var _ref51$use_dynamic = _ref51.use_dynamic,
-        use_dynamic = _ref51$use_dynamic === void 0 ? false : _ref51$use_dynamic;
+    this.exec = function (code, _ref53) {
+      var _ref53$use_dynamic = _ref53.use_dynamic,
+        use_dynamic = _ref53$use_dynamic === void 0 ? false : _ref53$use_dynamic;
       return this.rpc('eval', [code, use_dynamic]);
     };
   }
@@ -17270,10 +17506,10 @@
   // :: Serialization
   // -------------------------------------------------------------------------
   var serialization_map = {
-    'pair': function pair(_ref52) {
-      var _ref53 = _slicedToArray(_ref52, 2),
-        car = _ref53[0],
-        cdr = _ref53[1];
+    'pair': function pair(_ref54) {
+      var _ref55 = _slicedToArray(_ref54, 2),
+        car = _ref55[0],
+        cdr = _ref55[1];
       return Pair(car, cdr);
     },
     'number': function number(value) {
@@ -17282,10 +17518,10 @@
       }
       return LNumber(value);
     },
-    'regex': function regex(_ref54) {
-      var _ref55 = _slicedToArray(_ref54, 2),
-        pattern = _ref55[0],
-        flag = _ref55[1];
+    'regex': function regex(_ref56) {
+      var _ref57 = _slicedToArray(_ref56, 2),
+        pattern = _ref57[0],
+        flag = _ref57[1];
       return new RegExp(pattern, flag);
     },
     'nil': function nil() {
@@ -17378,9 +17614,9 @@
     for (var _i8 = 0, _Object$entries5 = Object.entries(serialization_map); _i8 < _Object$entries5.length; _i8++) {
       var _Object$entries5$_i = _slicedToArray(_Object$entries5[_i8], 2),
         name = _Object$entries5$_i[0],
-        _fn = _Object$entries5$_i[1];
+        _fn2 = _Object$entries5$_i[1];
       var Class = types[name];
-      cbor_serialization_map[name] = serializer(Class, _fn);
+      cbor_serialization_map[name] = serializer(Class, _fn2);
     }
     // add CBOR data mapping
     var tag = 43311;
@@ -17579,10 +17815,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sun, 26 Jan 2025 22:10:46 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Tue, 28 Jan 2025 17:58:18 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sun, 26 Jan 2025 22:10:46 +0000').valueOf();
+    var date = LString('Tue, 28 Jan 2025 17:58:18 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -17623,7 +17859,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Sun, 26 Jan 2025 22:10:46 +0000';
+  var date = 'Tue, 28 Jan 2025 17:58:18 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);
@@ -17743,6 +17979,7 @@
   exports.serialize_bin = serialize_bin;
   exports.set_fs = set_fs;
   exports.specials = specials;
+  exports.tco_eval = tco_eval;
   exports.tokenize = tokenize;
   exports.unbox = unbox;
   exports.unserialize = unserialize;

@@ -11460,7 +11460,9 @@ class State {
 // -------------------------------------------------------------------------
 const top_cc = new Continuation(null, null, null, (state) => { throw state; });
 
-// Tail Call eval
+// -------------------------------------------------------------------------
+// :: Tail Call Optimized eval
+// -------------------------------------------------------------------------
 async function tco_eval(code, eval_args) {
     eval_args = default_eval_args(eval_args);
     const state = new State(code, top_cc, eval_args);
@@ -11513,7 +11515,7 @@ function next_pair(state) {
             }
         } else {
             state.object = call_function(fn, args, state);
-            state.ready = true;
+            state.ready = !is_promise(state.object);
         }
     } else {
         state.object = this.__object__.car;
@@ -11610,14 +11612,14 @@ function evaluate_code(state) {
     }
     if (state.object instanceof LSymbol) {
         if (!state.object[__data__]) {
-            state.object = state.env.get(state.object);
         }
+        state.object = state.env.get(state.object);
         return ready();
     }
     if (is_promise(state.object)) {
         let attached = false;
         state.cc = new Continuation(state.object, state.env, state.cc, async function(state) {
-            state.ready = true;
+            state.ready = false;
             state.object = await this.__object__;
             state.cc = this.__continuation__;
         });
