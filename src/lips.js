@@ -9048,7 +9048,7 @@ var global_env = new Environment({
         Function that evaluates LIPS Scheme code. If the second argument is provided
         it will be the environment that the code is evaluated in.`),
     // ------------------------------------------------------------------
-    lambda: new Macro('lambda', function(code, { use_dynamic, error } = {}) {
+    lambda: new Macro('lambda', function(code, scope) {
         var self = this;
         var __doc__;
         if (is_pair(code.cdr) &&
@@ -9056,71 +9056,17 @@ var global_env = new Environment({
             !is_nil(code.cdr.cdr)) {
             __doc__ = code.cdr.car.valueOf();
         }
+        const rest = __doc__ ? code.cdr.cdr : code.cdr;
         function lambda(...args) {
-            // lambda got scopes as context in apply
-            let { dynamic_env } = is_context(this) ? this : { dynamic_env: self };
-            const env = self.inherit('lambda');
-            dynamic_env = dynamic_env.inherit('lambda');
-            if (this && !is_context(this)) {
-                if (this && !this.__instance__) {
-                    Object.defineProperty(this, '__instance__', {
-                        enumerable: false,
-                        get: () => true,
-                        set: () => {},
-                        configurable: false
-                    });
-                }
-                env.set('this', this);
-            }
-            // arguments and arguments.callee inside lambda function
-            if (this instanceof LambdaContext) {
-                const options = { throwError: false };
-                env.set('arguments', this.env.get('arguments', options));
-                env.set('parent.frame', this.env.get('parent.frame', options));
-            } else {
-                // this case is for lambda as callback function in JS; e.g. setTimeout
-                var _args = args.slice();
-                _args.callee = lambda;
-                _args.env = env;
-                env.set('arguments', _args);
-            }
-            function set(name, value) {
-                env.__env__[name.__name__] = value;
-                dynamic_env.__env__[name.__name__] = value;
-            }
-            let name = code.car;
-            let i = 0;
-            if (name instanceof LSymbol || !is_nil(name)) {
-                while (true) {
-                    if (!is_nil(name.car)) {
-                        if (name instanceof LSymbol) {
-                            // rest argument,  can also be first argument
-                            const value = quote(Pair.fromArray(args.slice(i), false));
-                            set(name, value);
-                            break;
-                        } else if (is_pair(name)) {
-                            const value = args[i];
-                            set(name.car, value);
-                        }
-                    }
-                    if (is_nil(name.cdr)) {
-                        break;
-                    }
-                    i++;
-                    name = name.cdr;
-                }
-            }
-            const rest = __doc__ ? code.cdr.cdr : code.cdr;
+            const eval_args = lambda_scope.call(this, self, lambda, code, args, scope);
+            const { env, dynamic_env } = eval_args;
             const body = hygienic_begin([env, dynamic_env], rest);
-            const eval_args = {
-                env,
-                dynamic_env,
-                use_dynamic,
-                error
-            };
             return tco_eval(body, eval_args);
         }
         var length = is_pair(code.car) ? code.car.length() : null;
+        read_only(lambda, '_env', self, { hidden: true });
+        read_only(lambda, '_body', rest, { hidden: true });
+        read_only(lambda, '_code', code, { hidden: true });
         lambda.__code__ = new Pair(new LSymbol('lambda'), code);
         lambda[__lambda__] = true;
         if (!is_pair(code.car)) {
@@ -11267,7 +11213,7 @@ function evaluate_syntax(macro, code, eval_args) {
     });
 }
 // -------------------------------------------------------------------------
-function evaluate_macro(macro, code, eval_args) {
+function evaluate_macro(macro, code, state) {
     function finalize(result) {
         if (is_pair(result)) {
             result.mark_cycles();
@@ -11275,12 +11221,12 @@ function evaluate_macro(macro, code, eval_args) {
         }
         return quote(result);
     }
-    const value = macro.invoke(code, eval_args);
+    const value = macro.invoke(code, state);
     return unpromise(resolve_promises(value), function ret(value) {
         if (!value || value && value[__data__] || self_evaluated(value)) {
             return value;
         } else {
-            return unpromise(evaluate(value, eval_args), finalize);
+            return unpromise(evaluate(value, state), finalize);
         }
     }, error => {
         throw error;
@@ -11531,9 +11477,9 @@ function tco_eval(code, eval_args) {
 
 // -------------------------------------------------------------------------
 function apply_fn(fn, args, eval_args) {
+    const state = new State(null, top_cc, eval_args);
     try {
-        const object = call_function(fn, args, eval_args);
-        const state = new State(object, top_cc, eval_args);
+        state.object = call_function(fn, args, eval_args);
 
         while (true) {
             if (state.eval()) {
@@ -11549,6 +11495,7 @@ function apply_fn(fn, args, eval_args) {
     }
 }
 
+// -------------------------------------------------------------------------
 function next_pair(state) {
     this._arr.push(state.object);
     if (is_nil(this.__object__)) {
@@ -11556,13 +11503,37 @@ function next_pair(state) {
         state.cc = this.__continuation__;
         const fn = this._arr[0];
         const args = this._arr.slice(1);
-        state.object = apply_fn(fn, args, {
-            env: state.env,
-            error: state.error,
-            dynamic_env: state.dynamic_env,
-            use_dynamic: state.use_dynamic
-        });
-        state.ready = false;
+        if (fn[__lambda__] && fn._body) {
+            const define_env = fn._env;
+            const eval_args = lambda_scope.call(this, define_env, fn, fn._code, args, {
+                error: state.error,
+                use_dynamic: state.use_dynamic
+            });
+            const { env, dynamic_env } = eval_args;
+            const body = hygienic_begin([env, dynamic_env], fn._body);
+            const body_state = new State(body, top_cc, eval_args);
+            try {
+                while (true) {
+                    if (body_state.eval()) {
+                        body_state.ready = false;
+                        body_state.cont();
+                    }
+                }
+            } catch (e) {
+                if (e instanceof State) {
+                    body_state.object = e.object;
+                }
+                throw e;
+            }
+        } else {
+            state.object = apply_fn(fn, args, {
+                env: state.env,
+                error: state.error,
+                dynamic_env: state.dynamic_env,
+                use_dynamic: state.use_dynamic
+            });
+            state.ready = false;
+        }
     } else {
         state.object = this.__object__.car;
         state.env = this.__env__;
@@ -11586,6 +11557,70 @@ function default_eval_args({ env, dynamic_env, use_dynamic, error = noop } = {})
     }
     return { env, dynamic_env, use_dynamic, error };
 }
+// -------------------------------------------------------------------------
+function lambda_scope(self, fn, code, args, { use_dynamic, error }) {
+    // lambda got scopes as context in apply
+    let { dynamic_env } = is_context(this) ? this : { dynamic_env: self };
+    const env = self.inherit('lambda');
+    dynamic_env = dynamic_env.inherit('lambda');
+    if (this && !is_context(this)) {
+        if (this && !this.__instance__) {
+            Object.defineProperty(this, '__instance__', {
+                enumerable: false,
+                get: () => true,
+                set: () => {},
+                configurable: false
+            });
+        }
+        env.set('this', this);
+    }
+    // arguments and arguments.callee inside lambda function
+    if (this instanceof LambdaContext) {
+        const options = { throwError: false };
+        env.set('arguments', this.env.get('arguments', options));
+        env.set('parent.frame', this.env.get('parent.frame', options));
+    } else {
+        // this case is for lambda as callback function in JS; e.g. setTimeout
+        var _args = args.slice();
+        _args.callee = fn;
+        _args.env = env;
+        env.set('arguments', _args);
+    }
+    function set(name, value) {
+        env.__env__[name.__name__] = value;
+        dynamic_env.__env__[name.__name__] = value;
+    }
+    let name = code.car;
+    let i = 0;
+    if (name instanceof LSymbol || !is_nil(name)) {
+        while (true) {
+            if (!is_nil(name.car)) {
+                if (name instanceof LSymbol) {
+                    // rest argument,  can also be first argument
+                    const value = quote(Pair.fromArray(args.slice(i), false));
+                    set(name, value);
+                    break;
+                } else if (is_pair(name)) {
+                    const value = args[i];
+                    set(name.car, value);
+                }
+            }
+            if (is_nil(name.cdr)) {
+                break;
+            }
+            i++;
+            name = name.cdr;
+        }
+    }
+    return {
+        env,
+        dynamic_env,
+        use_dynamic,
+        error
+    };
+}
+
+
 
 // -------------------------------------------------------------------------
 function evaluate_code(state) {
@@ -11612,7 +11647,7 @@ function evaluate_code(state) {
                     dynamic_env: state.dynamic_env,
                     use_dynamic: state.use_dynamic
                 };
-                state.object = evaluate_macro(first, cdr, eval_args);
+                state.object = evaluate_macro(first, cdr, state);
                 state.ready = false;
             } else if (is_function(first)) {
                 state.object = car;
