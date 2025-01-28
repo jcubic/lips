@@ -3928,6 +3928,9 @@ Macro.prototype.invoke = function(code, { env, ...rest }, macro_expand) {
         macro_expand
     };
     var result = this.__fn__.call(env, code, args, this.__name__);
+    if (is_pair(result)) {
+        delete result[__data__];
+    }
     return result;
     //return macro_expand ? quote(result) : result;
 };
@@ -11213,11 +11216,12 @@ function evaluate_syntax(macro, code, eval_args) {
     });
 }
 // -------------------------------------------------------------------------
+// TODO: delete me
+// -------------------------------------------------------------------------
 function evaluate_macro(macro, code, state) {
     function finalize(result) {
         if (is_pair(result)) {
             result.mark_cycles();
-            return result;
         }
         return quote(result);
     }
@@ -11226,7 +11230,7 @@ function evaluate_macro(macro, code, state) {
         if (!value || value && value[__data__] || self_evaluated(value)) {
             return value;
         } else {
-            return unpromise(evaluate(value, state), finalize);
+            return unpromise(tco_eval(value, state), finalize);
         }
     }, error => {
         throw error;
@@ -11477,26 +11481,6 @@ async function tco_eval(code, eval_args) {
 }
 
 // -------------------------------------------------------------------------
-async function apply_fn(fn, args, eval_args) {
-    const state = new State(null, top_cc, eval_args);
-    try {
-        state.object = await call_function(fn, args, eval_args);
-
-        while (true) {
-            if (state.eval()) {
-                state.ready = false;
-                await state.cont();
-            }
-        }
-    } catch (e) {
-        if (e instanceof State) {
-            return e.object;
-        }
-        state.error && state.error(e);
-    }
-}
-
-// -------------------------------------------------------------------------
 function next_pair(state) {
     this._arr.push(state.object);
     if (is_nil(this.__object__)) {
@@ -11522,18 +11506,14 @@ function next_pair(state) {
                 }
             } catch (e) {
                 if (e instanceof State) {
-                    body_state.object = e.object;
+                    state.object = e.object;
+                } else {
+                    throw e;
                 }
-                throw e;
             }
         } else {
-            state.object = apply_fn(fn, args, {
-                env: state.env,
-                error: state.error,
-                dynamic_env: state.dynamic_env,
-                use_dynamic: state.use_dynamic
-            });
-            state.ready = false;
+            state.object = call_function(fn, args, state);
+            state.ready = true;
         }
     } else {
         state.object = this.__object__.car;
@@ -11629,24 +11609,21 @@ function evaluate_code(state) {
         state.ready = true;
     }
     if (state.object instanceof LSymbol) {
-        state.object = state.env.get(state.object);
+        if (!state.object[__data__]) {
+            state.object = state.env.get(state.object);
+        }
         return ready();
     }
     if (is_promise(state.object)) {
         let attached = false;
         state.cc = new Continuation(state.object, state.env, state.cc, async function(state) {
-            state.cc = this;
-            state.ready = false;
-            if (!attached) {
-                attached = true;
-                state.object = await this.__object__;
-                state.cc = this.__continuation__;
-                state.ready = true;
-            }
+            state.ready = true;
+            state.object = await this.__object__;
+            state.cc = this.__continuation__;
         });
         delete state.object;
         state.ready = false;
-    } else if (is_pair(state.object)) {
+    } else if (is_pair(state.object) && !state.object[__data__]) {
         const { car, cdr } = state.object;
         if (car instanceof LSymbol) {
             const first = state.env.get(car);
@@ -11674,24 +11651,25 @@ function evaluate_code(state) {
                     });
                 }
                 state.ready = false;
+            } else if (first === global_env.get('quote')) {
+                state.object = cdr.car;
+                state.ready = true;
             } else if (first instanceof Macro) {
-                state.cc = new Continuation( null, state.env, state.cc, function(state) {
+                const result = first.invoke(cdr, state);
+                delete state.object;
+                state.cc = new Continuation(result, state.env, state.cc, function(state) {
                     state.env = this.__env__;
                     state.cc = this.__continuation__;
+                    state.object = this.__object__;
                     state.ready = false;
                 });
-                const eval_args = {
-                    env: state.env,
-                    error: state.error,
-                    dynamic_env: state.dynamic_env,
-                    use_dynamic: state.use_dynamic
-                };
-                state.object = evaluate_macro(first, cdr, state);
-                state.ready = false;
+                state.ready = true;
             } else if (is_function(first)) {
                 state.object = car;
                 state.cc = new Continuation(cdr, state.env, state.cc, next_pair);
                 state.ready = false;
+            } else {
+                ready();
             }
         }
     } else {
