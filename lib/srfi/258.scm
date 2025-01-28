@@ -23,8 +23,3 @@
                                    (number->string count))))
           (set! count (+ count 1))
           (lips.LSymbol name #f))))))
-
-(set-special! ":|" '%uninterned-symbol)
-
-(define (%uninterned-symbol symbol)
-  `(quote ,(lips.LSymbol symbol.__name__ #f)))
