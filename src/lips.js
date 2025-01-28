@@ -11635,7 +11635,15 @@ function evaluate_code(state) {
         const { car, cdr } = state.object;
         if (car instanceof LSymbol) {
             const first = state.env.get(car);
-            if (first instanceof Macro) {
+            if (first === global_env.get('if')) {
+                state.object = cdr.car;
+                state.cc = new Continuation(cdr.cdr, state.env, state.cc, function(s) {
+                    s.object = s.object ? this.__object__.car : this.__object__.cdr.car;
+                    s.cc = this.__continuation__;
+                    state.ready = false;
+                });
+                state.ready = false;
+            } else if (first instanceof Macro) {
                 state.cc = new Continuation( null, state.env, state.cc, function(state) {
                     state.env = this.__env__;
                     state.cc = this.__continuation__;
