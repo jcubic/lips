@@ -63,7 +63,7 @@ execute that expression again with a value `10` (expression `(+ 1 10)`).
 
 :::info
 
-Note that the above code will creae an infinite loop when called inside an expression like `let`.
+Note that the above code will create an infinite loop when called inside an expression like `let`.
 It will only work at top level.
 
 :::
@@ -92,8 +92,8 @@ expression, but with continuations you can add one.
                         (loop (cdr lst))))))))
 ```
 
-Above function is recursive fuction but the continuations saved before the loop and when calling
-return it immedielty jump ot hte beginning with a given value.
+Above function is recursive function but the continuations saved before the loop and when calling
+return it immedielty jump to the beginning with a given value.
 
 You can even create abstraction of `return` with an [anaphoric
 macro](/docs/scheme-intro/macros#anaphoric-macros):
@@ -178,10 +178,10 @@ The above example came from
 [SRFI 158 example implementation](https://github.com/scheme-requests-for-implementation/srfi-158/blob/master/srfi-158-impl.scm#L77-L87).
 
 There are two saved continuations that interact with each other. First is return like in one the
-previous examples. And the other is `yeild` that saves the point when it was called and return the
+previous examples. And the other is `yield` that saves the point when it was called and return the
 value. When the main function is called (the return `lambda`) for the first time it saves the return
 from the function for the `yield` and execute the main function with `yield` as argument. But when
-you execute the function next time, it call resume, the location when `yield` was called. When yeild
+you execute the function next time, it call resume, the location when `yield` was called. When yield
 is not called it return `eof-object`.
 
 The procedure `make-coroutine-generator` allows defining generators:
