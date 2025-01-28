@@ -11432,7 +11432,7 @@ class State {
         this.ready = false;
     }
     cont() {
-        this.cc.__next__(this);
+        return this.cc.__next__(this);
     }
     eval() {
         if (this.object === null) {
@@ -11457,14 +11457,14 @@ class State {
 const top_cc = new Continuation(null, null, null, (state) => { throw state; });
 
 // Tail Call eval
-function tco_eval(code, eval_args) {
+async function tco_eval(code, eval_args) {
     eval_args = default_eval_args(eval_args);
     const state = new State(code, top_cc, eval_args);
     try {
         while (true) {
             if (state.eval()) {
                 state.ready = false;
-                state.cont();
+                await state.cont();
             }
         }
     } catch(e) {
@@ -11477,15 +11477,15 @@ function tco_eval(code, eval_args) {
 }
 
 // -------------------------------------------------------------------------
-function apply_fn(fn, args, eval_args) {
+async function apply_fn(fn, args, eval_args) {
     const state = new State(null, top_cc, eval_args);
     try {
-        state.object = call_function(fn, args, eval_args);
+        state.object = await call_function(fn, args, eval_args);
 
         while (true) {
             if (state.eval()) {
                 state.ready = false;
-                state.cont();
+                await state.cont();
             }
         }
     } catch (e) {
@@ -11632,7 +11632,21 @@ function evaluate_code(state) {
         state.object = state.env.get(state.object);
         return ready();
     }
-    if (is_pair(state.object)) {
+    if (is_promise(state.object)) {
+        let attached = false;
+        state.cc = new Continuation(state.object, state.env, state.cc, async function(state) {
+            state.cc = this;
+            state.ready = false;
+            if (!attached) {
+                attached = true;
+                state.object = await this.__object__;
+                state.cc = this.__continuation__;
+                state.ready = true;
+            }
+        });
+        delete state.object;
+        state.ready = false;
+    } else if (is_pair(state.object)) {
         const { car, cdr } = state.object;
         if (car instanceof LSymbol) {
             const first = state.env.get(car);
