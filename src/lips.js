@@ -11471,6 +11471,7 @@ function tco_eval(code, eval_args) {
         if (e instanceof State) {
             return e.object;
         }
+        console.log(code.toString());
         state.error && state.error(e);
     }
 }
@@ -11642,6 +11643,22 @@ function evaluate_code(state) {
                     s.cc = this.__continuation__;
                     state.ready = false;
                 });
+                state.ready = false;
+            } else if (first === global_env.get('begin')) {
+                state.object = cdr.car;
+                if (!is_nil(cdr.cdr)) {
+                    state.cc = new Continuation(cdr.cdr, state.env, state.cc, function(state) {
+                        state.object = this.__object__.car;
+                        state.env = this.__env__;
+                        state.ready = false;
+                        if (is_nil(this.__object__.cdr)) {
+                            state.cc = this.__continuation__;
+                        } else {
+                            read_only(this, '__object__', this.__object__.cdr);
+                            state.cc = this;
+                        }
+                    });
+                }
                 state.ready = false;
             } else if (first instanceof Macro) {
                 state.cc = new Continuation( null, state.env, state.cc, function(state) {
