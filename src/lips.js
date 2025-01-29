@@ -9060,7 +9060,7 @@ var global_env = new Environment({
             const eval_args = lambda_scope.call(this, self, lambda, code, args, scope);
             const { env, dynamic_env } = eval_args;
             const body = hygienic_begin([env, dynamic_env], rest);
-            return tco_eval(body, eval_args);
+            return evaluate(body, eval_args);
         }
         var length = is_pair(code.car) ? code.car.length() : null;
         read_only(lambda, '_env', self, { hidden: true });
@@ -11494,21 +11494,10 @@ async function next_pair(state) {
             });
             const { env, dynamic_env } = eval_args;
             const body = hygienic_begin([env, dynamic_env], fn._body);
-            const body_state = new State(body, top_cc, eval_args);
-            try {
-                while (true) {
-                    if (await body_state.eval()) {
-                        body_state.ready = false;
-                        await body_state.cont();
-                    }
-                }
-            } catch (e) {
-                if (e instanceof State) {
-                    state.object = e.object;
-                } else {
-                    throw e;
-                }
-            }
+            state.env = env;
+            state.dynamic_env = dynamic_env;
+            state.object = body;
+            state.ready = false;
         } else {
             state.object = call_function(fn, args, state);
             state.ready = !is_promise(state.object);
@@ -11604,7 +11593,9 @@ async function evaluate_code(state) {
     function ready() {
         state.ready = true;
     }
-    if (state.object instanceof LSymbol) {
+    if (state.object instanceof LNumber) {
+        ready()
+    } else if (state.object instanceof LSymbol) {
         if (is_gensym(state.object)) {
             console.log(state.object);
         }
