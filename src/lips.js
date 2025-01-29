@@ -3927,11 +3927,7 @@ Macro.prototype.invoke = function(code, { env, ...rest }, macro_expand) {
         ...rest,
         macro_expand
     };
-    var result = this.__fn__.call(env, code, args, this.__name__);
-    if (is_pair(result)) {
-        delete result[__data__];
-    }
-    return result;
+    return this.__fn__.call(env, code, args, this.__name__);
     //return macro_expand ? quote(result) : result;
 };
 // ----------------------------------------------------------------------
@@ -11438,7 +11434,7 @@ class State {
     cont() {
         return this.cc.__next__(this);
     }
-    eval() {
+    async eval() {
         if (this.object === null) {
             this.ready = false;
         }
@@ -11449,7 +11445,7 @@ class State {
             if (is_debug()) {
                 console.log(`eval: ` + to_string(this.object));
             }
-            evaluate_code(this);
+            await evaluate_code(this);
             if (is_debug()) {
                 console.log('result: ' + to_string(this.object));
             }
@@ -11468,7 +11464,7 @@ async function tco_eval(code, eval_args) {
     const state = new State(code, top_cc, eval_args);
     try {
         while (true) {
-            if (state.eval()) {
+            if (await state.eval()) {
                 state.ready = false;
                 await state.cont();
             }
@@ -11477,13 +11473,13 @@ async function tco_eval(code, eval_args) {
         if (e instanceof State) {
             return e.object;
         }
-        console.log(code.toString());
+        console.log({ error: code.toString() });
         state.error && state.error(e);
     }
 }
 
 // -------------------------------------------------------------------------
-function next_pair(state) {
+async function next_pair(state) {
     this._arr.push(state.object);
     if (is_nil(this.__object__)) {
         state.env = this.__env__;
@@ -11501,9 +11497,9 @@ function next_pair(state) {
             const body_state = new State(body, top_cc, eval_args);
             try {
                 while (true) {
-                    if (body_state.eval()) {
+                    if (await body_state.eval()) {
                         body_state.ready = false;
-                        body_state.cont();
+                        await body_state.cont();
                     }
                 }
             } catch (e) {
@@ -11603,28 +11599,23 @@ function lambda_scope(self, fn, code, args, { use_dynamic, error }) {
     };
 }
 
-
-
 // -------------------------------------------------------------------------
-function evaluate_code(state) {
+async function evaluate_code(state) {
     function ready() {
         state.ready = true;
     }
     if (state.object instanceof LSymbol) {
-        if (!state.object[__data__]) {
+        if (is_gensym(state.object)) {
+            console.log(state.object);
         }
-        state.object = state.env.get(state.object);
+        if (!state.object[__data__]) {
+            state.object = state.env.get(state.object);
+        }
         return ready();
     }
     if (is_promise(state.object)) {
-        let attached = false;
-        state.cc = new Continuation(state.object, state.env, state.cc, async function(state) {
-            state.ready = false;
-            state.object = await this.__object__;
-            state.cc = this.__continuation__;
-        });
-        delete state.object;
-        state.ready = false;
+        state.object = await state.object;
+        return ready();
     } else if (is_pair(state.object) && !state.object[__data__]) {
         const { car, cdr } = state.object;
         if (car instanceof LSymbol) {
@@ -11657,12 +11648,12 @@ function evaluate_code(state) {
                 state.object = cdr.car;
                 state.ready = true;
             } else if (first instanceof Macro) {
-                const result = first.invoke(cdr, state);
+                const result = evaluate_macro(first, cdr, state);
                 delete state.object;
-                state.cc = new Continuation(result, state.env, state.cc, function(state) {
+                state.cc = new Continuation(result, state.env, state.cc, async function(state) {
                     state.env = this.__env__;
                     state.cc = this.__continuation__;
-                    state.object = this.__object__;
+                    state.object = await this.__object__;
                     state.ready = false;
                 });
                 state.ready = true;
