@@ -11664,6 +11664,12 @@ async function evaluate_code(state) {
             } else {
                 ready();
             }
+        } else if (is_pair(car)) {
+            state.object = car;
+            state.cc = new Continuation(cdr, state.env, state.cc, next_pair);
+            state.ready = false;
+        } else {
+            ready();
         }
     } else {
         ready();
