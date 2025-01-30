@@ -5561,7 +5561,7 @@ function let_macro(symbol) {
                 }
                 var value = tco_eval(pair.cdr.car, {
                     env: var_body_env,
-                    cc,
+                    cc: top_cc,
                     dynamic_env,
                     use_dynamic,
                     error
@@ -11479,6 +11479,7 @@ async function tco_eval(code, eval_args) {
         }
     } catch(e) {
         if (e instanceof State) {
+            //console.log({ code: to_string(code), result: to_string(e.object) });
             return e.object;
         }
         console.log({ code: to_string(code) });
