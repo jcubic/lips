@@ -5474,7 +5474,7 @@ function let_macro(symbol) {
     }
     return Macro.defmacro(name, function(code, options) {
         let { dynamic_env } = options;
-        const { error, macro_expand, use_dynamic } = options
+        const { error, macro_expand, use_dynamic, cc } = options;
         var args;
         // named let:
         // (let loop ((x 10)) (iter (- x 1))) -> (letrec ((loop (lambda (x) ...
@@ -5516,8 +5516,9 @@ function let_macro(symbol) {
         var i = 0;
         function exec() {
             var output = hygienic_begin([env], code.cdr);
-            return evaluate(output, {
+            return tco_eval(output, {
                 env,
+                cc,
                 dynamic_env: env,
                 use_dynamic,
                 error
@@ -5558,8 +5559,9 @@ function let_macro(symbol) {
                 } else if (name === 'letrec') {
                     var_body_env = env;
                 }
-                var value = evaluate(pair.cdr.car, {
+                var value = tco_eval(pair.cdr.car, {
                     env: var_body_env,
+                    cc,
                     dynamic_env,
                     use_dynamic,
                     error
@@ -7681,6 +7683,7 @@ LipsError.prototype.constructor = LipsError;
 // :: of body expression #163
 // -------------------------------------------------------------------------
 class IgnoreException extends Error { }
+
 // -------------------------------------------------------------------------
 // :: Environment constructor (parent and name arguments are optional)
 // -------------------------------------------------------------------------
@@ -7700,6 +7703,12 @@ function Environment(obj, parent, name) {
     this.__parent__ = parent;
     this.__name__ = name || 'anonymous';
 }
+// -------------------------------------------------------------------------
+Environment.prototype.clone = function() {
+    const copy = new Environment({...this.__env__}, this.__parent__, this.__name__);
+    copy.__doc__ = new Map(this.__doc__);
+    return copy;
+};
 // -------------------------------------------------------------------------
 Environment.prototype.list = function() {
     return get_props(this.__env__);
@@ -8334,12 +8343,12 @@ var global_env = new Environment({
 
         This function returns the cdr (all but first) of the list.`),
     // ------------------------------------------------------------------
-    'set!': doc(new Macro('set!', function(code, { use_dynamic, ...rest } = {}) {
+    'set!': doc(new Macro('set!', function(code, options = {}) {
         const dynamic_env = this;
         const env = this;
         let ref;
-        const eval_args = { ...rest, env: this, dynamic_env, use_dynamic };
-        let value = evaluate(code.cdr.car, eval_args);
+        const eval_args = { ...options, env: this, dynamic_env };
+        let value = tco_eval(code.cdr.car, eval_args);
         value = resolve_promises(value);
         function set(object, key, value) {
             if (is_promise(object)) {
@@ -8634,10 +8643,10 @@ var global_env = new Environment({
          will return undefined. If the test is a pair of expressions the macro will
          evaluate and return the second expression after the loop exits.`),
     // ------------------------------------------------------------------
-    'if': doc(new Macro('if', function(code, { error, use_dynamic }) {
+    'if': doc(new Macro('if', function(code, state) {
         const dynamic_env = this;
         const env = this;
-        const eval_args = { env, dynamic_env, use_dynamic, error };
+        const eval_args = { env, dynamic_env, ...state };
         const resolve = (cond) => {
             if (is_false(cond)) {
                 return tco_eval(code.cdr.cdr.car, eval_args);
@@ -8757,7 +8766,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'ignore': new Macro('ignore', function(code, options) {
         const eval_args = { ...options, env: this, dynamic_env: this };
-        evaluate(new Pair(new LSymbol('begin'), code), eval_args);
+        tco_eval(new Pair(new LSymbol('begin'), code), eval_args);
     }, `(ignore . body)
 
         Macro that will evaluate the expression and swallow any promises that may
@@ -8765,17 +8774,17 @@ var global_env = new Environment({
         expression. The code should have side effects and/or when it's promise
         it should resolve to undefined.`),
     // ------------------------------------------------------------------
-    'call/cc': Macro.defmacro('call/cc', function(code, eval_args = {}) {
+    'call/cc': Macro.defmacro('call/cc', async function(code, state) {
         const args = {
+            ...state,
             env: this,
-            ...eval_args
+            cc: top_cc
         };
-        const cc = eval_args.cc.clone();
-        return unpromise(tco_eval(code.car, args), (result) => {
-            if (is_function(result)) {
-                return result(cc);
-            }
-        });
+        const cc = state.cc.clone();
+        return new Pair(code.car, new Pair(cc, nil));
+        const fn = await tco_eval(code.car, args);
+        typecheck('call/cc', fn, 'function');
+        return fn(cc);
     }, `(call/cc proc)
         (call-with-current-continuation proc)
 
@@ -8795,12 +8804,12 @@ var global_env = new Environment({
         }
         function next() {
             const body = new Pair(new LSymbol('begin',), code.cdr);
-            return evaluate(body, { ...eval_args, dynamic_env: env });
+            return tco_eval(body, { ...eval_args, dynamic_env: env });
         }
         return (function loop() {
             const pair = params.car;
             const name = pair.car.valueOf();
-            return unpromise(evaluate(pair.cdr.car, eval_args), function(value) {
+            return unpromise(tco_eval(pair.cdr.car, eval_args), function(value) {
                 const param = dynamic_env.get(name, { throwError: false });
                 if (!is_parameter(param)) {
                     throw new Error(`Unknown parameter ${name}`);
@@ -8820,10 +8829,10 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'make-parameter': doc(new Macro('make-parameter', function(code, eval_args) {
         const dynamic_env = eval_args.dynamic_env;
-        const init = evaluate(code.car, eval_args);
+        const init = tco_eval(code.car, eval_args);
         let fn;
         if (is_pair(code.cdr.car)) {
-            fn = evaluate(code.cdr.car, eval_args);
+            fn = tco_eval(code.cdr.car, eval_args);
         }
         return new Parameter(init, fn);
     }), `(make-parameter init converter)
@@ -8841,7 +8850,7 @@ var global_env = new Environment({
         if (!(name instanceof LSymbol)) {
             throw new Error(`define-syntax-parameter: invalid syntax expecting symbol got ${type(name)}`);
         }
-        const syntax = evaluate(code.cdr.car, { env, ...eval_args });
+        const syntax = tco_eval(code.cdr.car, { env, ...eval_args });
         typecheck('define-syntax-parameter', syntax, 'syntax', 2);
         syntax.__name__ = name.valueOf();
         if (syntax.__name__ instanceof LString) {
@@ -8869,7 +8878,7 @@ var global_env = new Environment({
                 const msg = `invalid syntax for syntax-parameterize: ${repr(code, true)}`;
                 throw new Error(`syntax-parameterize: ${msg}`);
             }
-            let syntax = evaluate(pair.cdr.car, { ...eval_args, env: this });
+            let syntax = tco_eval(pair.cdr.car, { ...eval_args, env: this });
             const name = pair.car;
             typecheck('syntax-parameterize', syntax, ['syntax']);
             typecheck('syntax-parameterize', name, 'symbol');
@@ -8892,7 +8901,7 @@ var global_env = new Environment({
         const expr = hygienic_begin([
             env, eval_args.dynamic_env
         ], code.cdr);
-        return evaluate(expr, { ...eval_args, env });
+        return tco_eval(expr, { ...eval_args, env });
     }), `(syntax-parameterize (bindings) body)
 
          Macro work similar to let-syntax but the the bindnds will be exposed to the user.
@@ -8927,7 +8936,7 @@ var global_env = new Environment({
         var value = code.cdr.car;
         let new_expr;
         if (is_pair(value)) {
-            value = evaluate(value, eval_args);
+            value = tco_eval(value, eval_args);
             new_expr = true;
         } else if (value instanceof LSymbol) {
             value = env.get(value);
@@ -9037,7 +9046,7 @@ var global_env = new Environment({
     'eval': doc('eval', function(code, env) {
         env = env || this.get('interaction-environment').call(this);
         return new Promise((resolve, reject) => {
-            const result = evaluate(code, {
+            const result = tco_eval(code, {
                 env,
                 dynamic_env: env,
                 error: reject
@@ -9063,7 +9072,7 @@ var global_env = new Environment({
             const eval_args = lambda_scope.call(this, self, lambda, code, args, scope);
             const { env, dynamic_env } = eval_args;
             const body = hygienic_begin([env, dynamic_env], rest);
-            return evaluate(body, eval_args);
+            return tco_eval(body, eval_args);
         }
         var length = is_pair(code.car) ? code.car.length() : null;
         read_only(lambda, '_env', self, { hidden: true });
@@ -10111,6 +10120,7 @@ var global_env = new Environment({
         Function that parses a string into a number.`),
     // ------------------------------------------------------------------
     'try': doc(new Macro('try', function(code, { use_dynamic, error }) {
+        // TODO: add continuations or as top level expression
         return new Promise((resolve, reject) => {
             let catch_clause, finally_clause, body_error;
             if (LSymbol.is(code.cdr.car.car, 'catch')) {
@@ -10190,7 +10200,7 @@ var global_env = new Environment({
                     }
                 }
             };
-            const value = evaluate(code.car, args);
+            const value = tco_eval(code.car, args);
             unpromise(value, function(result) {
                 next(result, resolve);
             }, args.error);
@@ -10673,7 +10683,7 @@ var global_env = new Environment({
 
          Function that compares two values if they are identical.`),
     // ------------------------------------------------------------------
-    or: doc(new Macro('or', function(code, { use_dynamic, error }) {
+    or: doc(new Macro('or', function(code, state) {
         var args = global_env.get('list->array')(code);
         var self = this;
         const dynamic_env = self;
@@ -10698,7 +10708,7 @@ var global_env = new Environment({
                 }
             } else {
                 var arg = args.shift();
-                var value = evaluate(arg, { env: self, dynamic_env, use_dynamic, error });
+                var value = tco_eval(arg, { env: self, dynamic_env, ...state });
                 return unpromise(value, next);
             }
         })();
@@ -10708,7 +10718,7 @@ var global_env = new Environment({
          a truthy value. If there are no expressions that evaluate to true it
          returns false.`),
     // ------------------------------------------------------------------
-    and: doc(new Macro('and', function(code, { use_dynamic, error } = {}) {
+    and: doc(new Macro('and', function(code, state = {}) {
         const args = global_env.get('list->array')(code);
         const self = this;
         const dynamic_env = self;
@@ -10716,7 +10726,7 @@ var global_env = new Environment({
             return true;
         }
         let result;
-        const eval_args = { env: self, dynamic_env, use_dynamic, error };
+        const eval_args = { env: self, dynamic_env, ...state };
         return (function loop() {
             function next(value) {
                 result = value;
@@ -10734,7 +10744,7 @@ var global_env = new Environment({
                 }
             } else {
                 const arg = args.shift();
-                return unpromise(evaluate(arg, eval_args), next);
+                return unpromise(tco_eval(arg, eval_args), next);
             }
         })();
     }), `(and . expressions)
@@ -11458,7 +11468,7 @@ const top_cc = new Continuation(null, null, null, (state) => { throw state; });
 // -------------------------------------------------------------------------
 async function tco_eval(code, eval_args) {
     eval_args = default_eval_args(eval_args);
-    const state = new State(code, top_cc, eval_args);
+    const state = new State(code, eval_args.cc || top_cc, eval_args);
     try {
         while (true) {
             if (await state.eval()) {
@@ -11476,43 +11486,7 @@ async function tco_eval(code, eval_args) {
 }
 
 // -------------------------------------------------------------------------
-async function next_pair(state) {
-    this._state.args[this._state.i++] = state.object;
-    if (is_nil(this.__object__)) {
-        state.env = this.__env__;
-        state.cc = this.__continuation__;
-        const [fn, ...args] = this._state.args;
-        if (fn[__lambda__] && fn._body) {
-            const define_env = fn._env;
-            const eval_args = lambda_scope.call(this, define_env, fn, fn._code, args, {
-                error: state.error,
-                use_dynamic: state.use_dynamic
-            });
-            const { env, dynamic_env } = eval_args;
-            const body = hygienic_begin([env, dynamic_env], fn._body);
-            state.env = env;
-            state.dynamic_env = dynamic_env;
-            state.object = body;
-            state.ready = false;
-        } else if (is_continuation(fn)) {
-            state.ready = true;
-            state.object = args[0];
-            state.cc = fn.clone();
-        } else {
-            state.object = call_function(fn, args, state);
-            state.ready = !is_promise(state.object);
-        }
-    } else {
-        state.object = this.__object__.car;
-        state.env = this.__env__;
-        state.cc = this;
-        read_only(this, '__object__', this.__object__.cdr);
-        state.ready = false;
-    }
-}
-
-// -------------------------------------------------------------------------
-function default_eval_args({ env, dynamic_env, use_dynamic, error = noop } = {}) {
+function default_eval_args({ env, cc, dynamic_env, use_dynamic, error = noop } = {}) {
     if (!is_env(dynamic_env)) {
         dynamic_env = env === true ? user_env : (env || user_env);
     }
@@ -11523,10 +11497,10 @@ function default_eval_args({ env, dynamic_env, use_dynamic, error = noop } = {})
     } else {
         env = env || global_env;
     }
-    return { env, dynamic_env, use_dynamic, error };
+    return { env, dynamic_env, use_dynamic, error, cc };
 }
 // -------------------------------------------------------------------------
-function lambda_scope(self, fn, code, args, { use_dynamic, error }) {
+function lambda_scope(self, fn, code, args, { use_dynamic, error, cc }) {
     // lambda got scopes as context in apply
     let { dynamic_env } = is_context(this) ? this : { dynamic_env: self };
     const env = self.inherit('lambda');
@@ -11582,6 +11556,7 @@ function lambda_scope(self, fn, code, args, { use_dynamic, error }) {
     }
     return {
         env,
+        cc,
         dynamic_env,
         use_dynamic,
         error
@@ -11589,83 +11564,156 @@ function lambda_scope(self, fn, code, args, { use_dynamic, error }) {
 }
 
 // -------------------------------------------------------------------------
+const __if__ = global_env.get('if');
+const __begin__ = global_env.get('begin');
+const __quote__ = global_env.get('quote');
+const __set__ = global_env.get('set!');
+
+// -------------------------------------------------------------------------
 async function evaluate_code(state) {
-    function ready() {
-        state.ready = true;
-    }
     if (state.object instanceof LNumber) {
-        ready()
+        state.ready = true;
     } else if (state.object instanceof LSymbol) {
-        if (is_gensym(state.object)) {
-            console.log(state.object);
-        }
         if (!state.object[__data__]) {
             state.object = state.env.get(state.object);
         }
-        return ready();
+        state.ready = true;;
     } else if (is_promise(state.object)) {
         state.object = await state.object;
-        return ready();
+        state.ready = true;;
     } else if (is_pair(state.object) && !state.object[__data__]) {
         const { car, cdr } = state.object;
         if (car instanceof LSymbol) {
             const first = state.env.get(car);
-            if (first === global_env.get('if')) {
+            if (first === __if__) {
                 state.object = cdr.car;
-                state.cc = new Continuation(cdr.cdr, state.env, state.cc, function(s) {
-                    s.object = s.object ? this.__object__.car : this.__object__.cdr.car;
-                    s.cc = this.__continuation__;
-                    state.ready = false;
-                });
+                state.cc = new Continuation(cdr.cdr, state.env, state.cc, next_if);
                 state.ready = false;
-            } else if (first === global_env.get('begin')) {
+            } else if (first === __begin__) {
                 state.object = cdr.car;
                 if (!is_nil(cdr.cdr)) {
-                    state.cc = new Continuation(cdr.cdr, state.env, state.cc, function(state) {
-                        state.object = this.__object__.car;
-                        state.env = this.__env__;
-                        state.ready = false;
-                        if (is_nil(this.__object__.cdr)) {
-                            state.cc = this.__continuation__;
-                        } else {
-                            read_only(this, '__object__', this.__object__.cdr);
-                            state.cc = this;
-                        }
-                    });
+                    state.cc = new Continuation(cdr.cdr, state.env, state.cc, next_begin);
                 }
                 state.ready = false;
-            } else if (first === global_env.get('quote')) {
+            } else if (first === __quote__) {
                 state.object = cdr.car;
-                state.ready = true;
+                ready();
+            } else if (first === __set__) {
+                state.object = cdr.cdr.car;
+                state.ready = false;
+                state.cc = new Continuation(cdr.car, state.env, state.cc, next_set);
             } else if (first instanceof Macro) {
-                const result = evaluate_macro(first, cdr, state);
+                const result = await evaluate_macro(first, cdr, state);
                 delete state.object;
-                state.cc = new Continuation(result, state.env, state.cc, async function(state) {
-                    state.env = this.__env__;
-                    state.cc = this.__continuation__;
-                    state.object = await this.__object__;
-                    state.ready = false;
-                });
+                state.cc = new Continuation(result, state.env, state.cc, next_macro);
                 state.ready = true;
             } else if (is_function(first) || is_continuation(first)) {
-                state.object = car;
+                state.object = first;
                 state.cc = new Continuation(cdr, state.env, state.cc, next_pair);
                 state.ready = false;
             } else {
-                ready();
+                state.ready = true;
             }
         } else if (is_pair(car)) {
             state.object = car;
             state.cc = new Continuation(cdr, state.env, state.cc, next_pair);
             state.ready = false;
         } else {
-            ready();
+            state.ready = true;
         }
     } else {
-        ready();
+        state.ready = true;
     }
 }
 
+// -------------------------------------------------------------------------
+function next_if(state) {
+    state.object = state.object ? this.__object__.car : this.__object__.cdr.car;
+    state.cc = this.__continuation__;
+    state.ready = false;
+}
+
+// -------------------------------------------------------------------------
+function next_begin(state) {
+    state.object = this.__object__.car;
+    state.env = this.__env__;
+    state.ready = false;
+    if (is_nil(this.__object__.cdr)) {
+        state.cc = this.__continuation__;
+    } else {
+        read_only(this, '__object__', this.__object__.cdr);
+        state.cc = this;
+    }
+}
+
+// -------------------------------------------------------------------------
+function next_set(state) {
+    const env = state.env = this.__env__;
+    state.cc = this.__continuation__;
+    const symbol = this.__object__.valueOf();
+    const value = state.object;
+    const ref = env.ref(symbol);
+    if (!ref) {
+        // case (set! fn.toString (lambda () "xxx"))
+        var parts = symbol.split('.');
+        if (parts.length > 1) {
+            var key = parts.pop();
+            var name = parts.join('.');
+            var obj = this.get(name, { throwError: false });
+            if (obj) {
+                env.get('set-obj!').call(env, object, key, value);
+                return;
+            }
+        }
+        throw new Error('Unbound variable `' + symbol + '\'');
+    }
+    ref.set(symbol, value);
+    state.ready = true;
+}
+
+// -------------------------------------------------------------------------
+async function next_macro(state) {
+    state.env = this.__env__;
+    state.cc = this.__continuation__;
+    state.object = this.__object__;
+    state.ready = false;
+}
+
+// -------------------------------------------------------------------------
+function next_pair(state) {
+    this._state.args[this._state.i++] = state.object;
+    if (is_nil(this.__object__)) {
+        state.env = this.__env__;
+        state.cc = this.__continuation__;
+        const [fn, ...args] = this._state.args;
+        if (fn[__lambda__] && fn._body) {
+            const define_env = fn._env;
+            const eval_args = lambda_scope.call(this, define_env, fn, fn._code, args, {
+                error: state.error,
+                use_dynamic: state.use_dynamic
+            });
+            const { env, dynamic_env } = eval_args;
+            const body = hygienic_begin([env, dynamic_env], fn._body);
+            state.env = env;
+            state.dynamic_env = dynamic_env;
+            state.object = body;
+            state.ready = false;
+        } else if (is_continuation(fn)) {
+            state.ready = true;
+            state.object = args[0];
+            state.cc = fn.clone();
+        } else {
+            state.object = call_function(fn, args, state);
+            state.ready = !is_promise(state.object);
+        }
+    } else {
+        state.object = this.__object__.car;
+        state.env = this.__env__;
+        state.cc = this;
+        read_only(this, '__object__', this.__object__.cdr);
+        state.ready = false;
+    }
+}
 // -------------------------------------------------------------------------
 function evaluate(code, { env, dynamic_env, use_dynamic, error = noop } = {}) {
     try {
