@@ -8765,21 +8765,24 @@ var global_env = new Environment({
         expression. The code should have side effects and/or when it's promise
         it should resolve to undefined.`),
     // ------------------------------------------------------------------
-    'call/cc': doc(Macro.defmacro('call/cc', function(code, eval_args = {}) {
+    'call/cc': Macro.defmacro('call/cc', function(code, eval_args = {}) {
         const args = {
             env: this,
             ...eval_args
         };
-        return unpromise(evaluate(code.car, args), (result) => {
+        const cc = eval_args.cc.clone();
+        return unpromise(tco_eval(code.car, args), (result) => {
             if (is_function(result)) {
-                return result(new Continuation());
+                return result(cc);
             }
         });
-    }), `(call/cc proc)
+    }, `(call/cc proc)
+        (call-with-current-continuation proc)
 
-         Call-with-current-continuation.
-
-         NOT SUPPORTED BY LIPS RIGHT NOW`),
+        Function capture current continuation and call a procedure with
+        that continuation passed as the only argument. The continuation act
+        like a procedure that can be called to jump back into the place where
+        continuation was captured.`),
     // ------------------------------------------------------------------
     parameterize: doc(new Macro('parameterize', function(code, options) {
         const { dynamic_env } = options;
@@ -11393,29 +11396,23 @@ class Continuation {
         read_only(this, '__continuation__', cc);
         read_only(this, '__next__', next);
         // for list
-        read_only(this, '_arr', [], { hidden: true });
+        read_only(this, '_state', { i: 0, args: [] }, { hidden: true });
     }
     clone() {
-        const copy = clone(this);
-        if (this.__continuation__) {
-            read_only(this, '__continuation__', copy.__continuation__.clone());
+        let continuation = this.__continuation__;
+        if (continuation) {
+            continuation = continuation.clone();
         }
+        const copy = new Continuation(
+            this.__object__,
+            this.__env__,
+            continuation,
+            this.__next__
+        );
+        const state = { ...this._state, args: [...this._state.args] };
+        read_only(copy, '_state', state, { hidden: true });
         return copy;
     }
-    invoke() {
-        if (!this.__env__) {
-            throw new Error('Continuations are not implemented yet');
-        }
-    }
-}
-
-// -------------------------------------------------------------------------
-function clone(object) {
-    const copy = new object.constructor;
-    for (const [key, value] of Object.entries(x)) {
-        copy[key] = value;
-    }
-    return copy;
 }
 
 // -------------------------------------------------------------------------
@@ -11443,11 +11440,11 @@ class State {
         }
         if (!this.ready) {
             if (is_debug()) {
-                console.log(`eval: ` + to_string(this.object));
+                console.log(`eval: ` + to_string(this.object, true));
             }
             await evaluate_code(this);
             if (is_debug()) {
-                console.log('result: ' + to_string(this.object));
+                console.log('result: ' + to_string(this.object, true));
             }
         }
         return this.ready;
@@ -11480,12 +11477,11 @@ async function tco_eval(code, eval_args) {
 
 // -------------------------------------------------------------------------
 async function next_pair(state) {
-    this._arr.push(state.object);
+    this._state.args[this._state.i++] = state.object;
     if (is_nil(this.__object__)) {
         state.env = this.__env__;
         state.cc = this.__continuation__;
-        const fn = this._arr[0];
-        const args = this._arr.slice(1);
+        const [fn, ...args] = this._state.args;
         if (fn[__lambda__] && fn._body) {
             const define_env = fn._env;
             const eval_args = lambda_scope.call(this, define_env, fn, fn._code, args, {
@@ -11498,6 +11494,10 @@ async function next_pair(state) {
             state.dynamic_env = dynamic_env;
             state.object = body;
             state.ready = false;
+        } else if (is_continuation(fn)) {
+            state.ready = true;
+            state.object = args[0];
+            state.cc = fn.clone();
         } else {
             state.object = call_function(fn, args, state);
             state.ready = !is_promise(state.object);
@@ -11603,8 +11603,7 @@ async function evaluate_code(state) {
             state.object = state.env.get(state.object);
         }
         return ready();
-    }
-    if (is_promise(state.object)) {
+    } else if (is_promise(state.object)) {
         state.object = await state.object;
         return ready();
     } else if (is_pair(state.object) && !state.object[__data__]) {
@@ -11648,7 +11647,7 @@ async function evaluate_code(state) {
                     state.ready = false;
                 });
                 state.ready = true;
-            } else if (is_function(first)) {
+            } else if (is_function(first) || is_continuation(first)) {
                 state.object = car;
                 state.cc = new Continuation(cdr, state.env, state.cc, next_pair);
                 state.ready = false;
