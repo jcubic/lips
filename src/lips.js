@@ -8781,7 +8781,7 @@ var global_env = new Environment({
             cc: top_cc
         };
         const cc = state.cc.clone();
-        return new Pair(code.car, new Pair(cc, nil));
+        //return new Pair(code.car, new Pair(cc, nil));
         const fn = await tco_eval(code.car, args);
         typecheck('call/cc', fn, 'function');
         return fn(cc);
@@ -11236,7 +11236,8 @@ function evaluate_macro(macro, code, state) {
     }
     const value = macro.invoke(code, state);
     return unpromise(resolve_promises(value), function ret(value) {
-        if (!value || value && value[__data__] || self_evaluated(value)) {
+        if (!value || (value && value[__data__]) ||
+            self_evaluated(value) || !is_pair(value)) {
             return value;
         } else {
             return unpromise(tco_eval(value, state), finalize);
@@ -11480,7 +11481,7 @@ async function tco_eval(code, eval_args) {
         if (e instanceof State) {
             return e.object;
         }
-        console.log({ error: code.toString() });
+        console.log({ code: to_string(code) });
         state.error && state.error(e);
     }
 }
