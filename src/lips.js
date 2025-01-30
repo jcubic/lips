@@ -11574,13 +11574,14 @@ async function evaluate_code(state) {
     if (state.object instanceof LNumber) {
         state.ready = true;
     } else if (state.object instanceof LSymbol) {
+        // TODO: try to get rid of __data__ flag
         if (!state.object[__data__]) {
             state.object = state.env.get(state.object);
         }
-        state.ready = true;;
+        state.ready = true;
     } else if (is_promise(state.object)) {
         state.object = await state.object;
-        state.ready = true;;
+        state.ready = true;
     } else if (is_pair(state.object) && !state.object[__data__]) {
         const { car, cdr } = state.object;
         if (car instanceof LSymbol) {
@@ -11597,7 +11598,7 @@ async function evaluate_code(state) {
                 state.ready = false;
             } else if (first === __quote__) {
                 state.object = cdr.car;
-                ready();
+                state.ready = true;
             } else if (first === __set__) {
                 state.object = cdr.cdr.car;
                 state.ready = false;
