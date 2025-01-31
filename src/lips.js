@@ -10613,101 +10613,37 @@ var global_env = new Environment({
 
          Function that compares two values if they are identical.`),
     // ------------------------------------------------------------------
-    or: doc(new Macro('or', function(code, state) {
-        var args = global_env.get('list->array')(code);
-        var self = this;
-        const dynamic_env = self;
-        if (!args.length) {
-            return false;
-        }
-        var result;
-        return (function loop() {
-            function next(value) {
-                result = value;
-                if (!is_false(result)) {
-                    return result;
-                } else {
-                    return loop();
-                }
-            }
-            if (!args.length) {
-                if (!is_false(result)) {
-                    return result;
-                } else {
-                    return false;
-                }
-            } else {
-                var arg = args.shift();
-                var value = tco_eval(arg, { env: self, dynamic_env, ...state });
-                return unpromise(value, next);
-            }
-        })();
-    }), `(or . expressions)
-
-         Macro that executes the values one by one and returns the first that is
-         a truthy value. If there are no expressions that evaluate to true it
-         returns false.`),
-    // ------------------------------------------------------------------
-    and: doc(new Macro('and', function(code, state = {}) {
-        const args = global_env.get('list->array')(code);
-        const self = this;
-        const dynamic_env = self;
-        if (!args.length) {
-            return true;
-        }
-        let result;
-        const eval_args = { env: self, dynamic_env, ...state };
-        return (function loop() {
-            function next(value) {
-                result = value;
-                if (is_false(result)) {
-                    return result;
-                } else {
-                    return loop();
-                }
-            }
-            if (!args.length) {
-                if (!is_false(result)) {
-                    return result;
-                } else {
-                    return false;
-                }
-            } else {
-                const arg = args.shift();
-                return unpromise(tco_eval(arg, eval_args), next);
-            }
-        })();
-    }), `(and . expressions)
-
-         Macro that evaluates each expression in sequence and if any value returns false
-         it will stop and return false. If each value returns true it will return the
-         last value. If it's called without arguments it will return true.`),
     // bit operations
     '|': doc('|', function(a, b) {
         return LNumber(a).or(b);
     }, `(| a b)
 
         Function that calculates the bitwise or operation.`),
+    // ------------------------------------------------------------------
     '&': doc('&', function(a, b) {
         return LNumber(a).and(b);
     }, `(& a b)
 
         Function that calculates the bitwise and operation.`),
+    // ------------------------------------------------------------------
     '~': doc('~', function(a) {
         return LNumber(a).neg();
     }, `(~ number)
 
         Function that calculates the bitwise inverse (flip all the bits).`),
+    // ------------------------------------------------------------------
     '>>': doc('>>', function(a, b) {
         return LNumber(a).shr(b);
     }, `(>> a b)
 
         Function that right shifts the value a by value b bits.`),
+    // ------------------------------------------------------------------
     '<<': doc('<<', function(a, b) {
         return LNumber(a).shl(b);
     }, `(<< a b)
 
         Function that left shifts the value a by value b bits.`),
+    // ------------------------------------------------------------------
     not: doc('not', function not(value) {
         return !value;
     }, `(not object)

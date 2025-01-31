@@ -184,6 +184,36 @@
               (a.equal b)))
         (else (eqv? a b))))
 
+
+;; -----------------------------------------------------------------------------
+;; and/or macro definitions taken from R7RS spec
+;; -----------------------------------------------------------------------------
+(define-syntax and
+  (syntax-rules ()
+    ((and) #t)
+    ((and test) test)
+    ((and test1 test2 ...)
+     (if test1 (and test2 ...) #f)))
+  "(and expr1 expr2 ...)
+
+   Macro that evaluates each expression in sequence and if any value returns false
+   it will stop and return false. If each value returns true it will return the
+   last value. If it's called without arguments it will return true.")
+
+;; -----------------------------------------------------------------------------
+(define-syntax or
+  (syntax-rules ()
+    ((or) #f)
+    ((or test) test)
+    ((or test1 test2 ...)
+     (let ((x test1))
+       (if x x (or test2 ...)))))
+  "(or expr1 expr2 ...)
+
+   Macro that executes the values one by one and returns the first that is
+   a truthy value. If there are no expressions that evaluate to true it
+   returns false.")
+
 ;; -----------------------------------------------------------------------------
 (define make-promise
   (lambda (proc)
@@ -476,7 +506,7 @@
 (define _this_env (current-environment))
 
 ;; -----------------------------------------------------------------------------
-(let iter ((fns _maths))
+(let loop ((fns _maths))
   (if (not (null? fns))
       (let* ((name (car fns))
              (op (. Math name))
@@ -485,7 +515,7 @@
         (set-obj! fn '__doc__ (concat "(" name " n)\n\nFunction that calculates " name
                                   " math operation (it call JavaScript Math." name
                                   " function)"))
-        (iter (cdr fns)))))
+        (loop (cdr fns)))))
 
 ;; -----------------------------------------------------------------------------
 (define (sin n)
