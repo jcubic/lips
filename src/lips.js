@@ -3934,6 +3934,15 @@ Macro.prototype.invoke = function(code, { env, ...rest }, macro_expand) {
 Macro.prototype.toString = function() {
     return `#<macro:${this.__name__}>`;
 };
+Macro.internal = function(name) {
+    return new Macro(name, invalid_macro);
+};
+
+// ----------------------------------------------------------------------
+function invalid_macro() {
+    throw new Error("This is internal macro, you can't invoke it manually");
+}
+
 // ----------------------------------------------------------------------
 const macro = 'define-macro';
 // ----------------------------------------------------------------------
@@ -8343,59 +8352,9 @@ var global_env = new Environment({
 
         This function returns the cdr (all but first) of the list.`),
     // ------------------------------------------------------------------
-    'set!': doc(new Macro('set!', function(code, options = {}) {
-        const dynamic_env = this;
-        const env = this;
-        let ref;
-        const eval_args = { ...options, env: this, dynamic_env };
-        let value = tco_eval(code.cdr.car, eval_args);
-        value = resolve_promises(value);
-        function set(object, key, value) {
-            if (is_promise(object)) {
-                return object.then(key => set(object, key, value));
-            }
-            if (is_promise(key)) {
-                return key.then(key => set(object, key, value));
-            }
-            if (is_promise(value)) {
-                return value.then(value => set(object, key, value));
-            }
-            env.get('set-obj!').call(env, object, key, value);
-            return value;
-        }
-        if (is_pair(code.car) && LSymbol.is(code.car.car, '.')) {
-            var second = code.car.cdr.car;
-            var third = code.car.cdr.cdr.car;
-            var object = evaluate(second, eval_args);
-            var key = evaluate(third, eval_args);
-            return set(object, key, value);
-        }
-        if (!(code.car instanceof LSymbol)) {
-            throw new Error('set! first argument need to be a symbol or ' +
-                            'dot accessor that evaluate to object.');
-        }
-        var symbol = code.car.valueOf();
-        ref = this.ref(code.car.__name__);
-        // we don't return value because we only care about sync of set value
-        // when value is a promise
-        return unpromise(value, value => {
-            if (!ref) {
-                // case (set! fn.toString (lambda () "xxx"))
-                var parts = symbol.split('.');
-                if (parts.length > 1) {
-                    var key = parts.pop();
-                    var name = parts.join('.');
-                    var obj = this.get(name, { throwError: false });
-                    if (obj) {
-                        set(obj, key, value);
-                        return;
-                    }
-                }
-                throw new Error('Unbound variable `' + symbol + '\'');
-            }
-            ref.set(symbol, value);
-        });
-    }), `(set! name value)
+    'set!': doc(
+        Macro.internal('set!'),
+        `(set! name value)
 
          Macro that can be used to set the value of the variable or slot (mutate it).
          set! searches the scope chain until it finds first non empty slot and sets it.`),
@@ -8643,23 +8602,9 @@ var global_env = new Environment({
          will return undefined. If the test is a pair of expressions the macro will
          evaluate and return the second expression after the loop exits.`),
     // ------------------------------------------------------------------
-    'if': doc(new Macro('if', function(code, state) {
-        const dynamic_env = this;
-        const env = this;
-        const eval_args = { env, dynamic_env, ...state };
-        const resolve = (cond) => {
-            if (is_false(cond)) {
-                return tco_eval(code.cdr.cdr.car, eval_args);
-            } else {
-                return tco_eval(code.cdr.car, eval_args);
-            }
-        };
-        if (is_nil(code)) {
-            throw new Error('too few expressions for `if`');
-        }
-        const cond = tco_eval(code.car, eval_args);
-        return unpromise(cond, resolve);
-    }), `(if cond true-expr false-expr)
+    'if': doc(
+        Macro.internal('if'),
+        `(if cond true-expr false-expr)
 
          Macro that evaluates cond expression and if the value is true, it
          evaluates and returns true-expression, if not it evaluates and returns
@@ -8742,23 +8687,9 @@ var global_env = new Environment({
 
         Order items in vector or list in random order.`),
     // ------------------------------------------------------------------
-    begin: doc(new Macro('begin', function(code, options) {
-        const eval_args = {...options, env: this };
-        const arr = global_env.get('list->array')(code);
-        let result;
-        return (function loop() {
-            if (arr.length) {
-                const code = arr.shift();
-                const ret = tco_eval(code, eval_args);
-                return unpromise(ret, value => {
-                    result = value;
-                    return loop();
-                });
-            } else {
-                return result;
-            }
-        })();
-    }), `(begin . args)
+    begin: doc(
+        Macro.internal('begin'),
+        `(begin . args)
 
          Macro that runs a list of expressions in order and returns the value
          of the last one. It can be used in places where you can only have a
@@ -8781,7 +8712,6 @@ var global_env = new Environment({
             cc: top_cc
         };
         const cc = state.cc.clone();
-        //return new Pair(code.car, new Pair(cc, nil));
         const fn = await tco_eval(code.car, args);
         typecheck('call/cc', fn, 'function');
         return fn(cc);
@@ -9255,9 +9185,9 @@ var global_env = new Environment({
         Base of hygienic macros, it will return a new syntax expander
         that works like Lisp macros.`),
     // ------------------------------------------------------------------
-    quote: doc(new Macro('quote', function(arg) {
-        return quote(arg.car);
-    }), `(quote expression) or 'expression
+    quote: doc(
+        Macro.internal('quote'),
+        `(quote expression) or 'expression
 
          Macro that returns a single LIPS expression as data (it won't evaluate the
          argument). It will return a list if put in front of LIPS code.
@@ -11469,6 +11399,7 @@ const top_cc = new Continuation(null, null, null, (state) => { throw state; });
 // -------------------------------------------------------------------------
 async function tco_eval(code, eval_args) {
     eval_args = default_eval_args(eval_args);
+    //console.trace();
     const state = new State(code, eval_args.cc || top_cc, eval_args);
     try {
         while (true) {
