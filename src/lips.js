@@ -8652,9 +8652,33 @@ var global_env = new Environment({
          are evaluated in the environment including the previous let variables,
          so you can define one variable, and use it in the next's definition.`),
     // ---------------------------------------------------------------------
-    'let': doc(
-        let_macro(Symbol.for('let')),
-        `(let ((a value-a) (b value-b) ...) . body)
+    'let': doc(new Macro('let', function(code, state) {
+        const env = state.env.inherit('let');
+        const vars = code.car;
+        let value = nil;
+        const body = code.cdr;
+        if (is_pair(vars) && is_pair(vars.car)) {
+            value = vars.car.cdr.car;
+        }
+        const cc = new Continuation(vars, env, state.cc, function(state) {
+            if (is_nil(this.__object__)) {
+                state.cc = this.__continuation__;
+                state.env = this.__env__;
+                state.object = hygienic_begin([state.env], code.cdr);
+            } else {
+                this.__env__.set(this.__object__.car.car, state.object);
+                const next = this.__object__.cdr;
+                if (is_nil(next)) {
+                    delete state.object;
+                } else {
+                    state.object = next.car.cdr.car;
+                }
+                read_only(this, '__object__', next);
+            }
+            state.ready = false;
+        });
+        return tco_eval(value, {...state, cc });
+    }), `(let ((a value-a) (b value-b) ...) . body)
 
          Macro that creates a new environment, then evaluates and assigns values to names,
          and then evaluates the body in context of that environment.  Values are evaluated
@@ -11047,6 +11071,7 @@ function resolve_promises(arg) {
         return node;
     }
 }
+
 // -------------------------------------------------------------------------
 function evaluate_args(rest, { use_dynamic, ...options }) {
     var args = [];
