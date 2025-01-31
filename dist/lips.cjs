@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 25 Jan 2025 17:09:53 +0000
+ * build: Fri, 31 Jan 2025 13:37:58 +0000
  */
 
 'use strict';
@@ -8941,7 +8941,7 @@ function macro_expand(single) {
           case 0:
             _traverse = function _traverse3() {
               _traverse = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee11(node, n, env) {
-                var name, value, is_let, is_binding, second, code, result, _result, expr, scope, car, cdr, pair;
+                var name, value, is_let, is_binding, code, result, _result, expr, scope, second, car, cdr, pair;
                 return _regeneratorRuntime.wrap(function _callee11$(_context11) {
                   while (1) switch (_context11.prev = _context11.next) {
                     case 0:
@@ -8961,95 +8961,98 @@ function macro_expand(single) {
                       });
                       is_let = is_let_macro(node.car);
                       is_binding = is_let || is_procedure(value, node) || is_lambda(value);
-                      if (!(is_binding && is_pair(node.cdr.car))) {
-                        _context11.next = 28;
-                        break;
-                      }
-                      if (!is_let) {
-                        _context11.next = 15;
-                        break;
-                      }
-                      bindings = let_binding(node.cdr.car);
-                      _context11.next = 12;
-                      return expand_let_binding(node.cdr.car, n);
-                    case 12:
-                      second = _context11.sent;
-                      _context11.next = 17;
-                      break;
-                    case 15:
-                      bindings = proc_bindings(node.cdr.car);
-                      second = node.cdr.car;
-                    case 17:
-                      _context11.t0 = Pair;
-                      _context11.t1 = node.car;
-                      _context11.t2 = Pair;
-                      _context11.t3 = second;
-                      _context11.next = 23;
-                      return traverse(node.cdr.cdr, n, env);
-                    case 23:
-                      _context11.t4 = _context11.sent;
-                      _context11.t5 = new _context11.t2(_context11.t3, _context11.t4);
-                      return _context11.abrupt("return", new _context11.t0(_context11.t1, _context11.t5));
-                    case 28:
                       if (!is_macro(name, value)) {
-                        _context11.next = 50;
+                        _context11.next = 31;
                         break;
                       }
                       code = value instanceof Syntax ? node : node.cdr;
-                      _context11.next = 32;
+                      _context11.next = 11;
                       return value.invoke(code, _objectSpread(_objectSpread({}, args), {}, {
                         env: env
                       }), true);
-                    case 32:
+                    case 11:
                       result = _context11.sent;
                       if (!(value instanceof Syntax)) {
-                        _context11.next = 41;
+                        _context11.next = 20;
                         break;
                       }
                       _result = result, expr = _result.expr, scope = _result.scope;
                       if (!is_pair(expr)) {
-                        _context11.next = 40;
+                        _context11.next = 19;
                         break;
                       }
                       if (!(n !== -1 && n <= 1 || n < recur_guard)) {
-                        _context11.next = 38;
+                        _context11.next = 17;
                         break;
                       }
                       return _context11.abrupt("return", expr);
-                    case 38:
+                    case 17:
                       if (n !== -1) {
                         n = n - 1;
                       }
                       return _context11.abrupt("return", traverse(expr, n, scope));
-                    case 40:
+                    case 19:
                       result = expr;
-                    case 41:
+                    case 20:
                       if (!(result instanceof LSymbol)) {
-                        _context11.next = 43;
+                        _context11.next = 22;
                         break;
                       }
                       return _context11.abrupt("return", quote(result));
-                    case 43:
+                    case 22:
                       if (!is_pair(result)) {
-                        _context11.next = 48;
+                        _context11.next = 27;
                         break;
                       }
                       if (!(n !== -1 && n <= 1 || n < recur_guard)) {
-                        _context11.next = 46;
+                        _context11.next = 25;
                         break;
                       }
                       return _context11.abrupt("return", result);
-                    case 46:
+                    case 25:
                       if (n !== -1) {
                         n = n - 1;
                       }
                       return _context11.abrupt("return", traverse(result, n, env));
-                    case 48:
+                    case 27:
                       if (!is_atom(result)) {
-                        _context11.next = 50;
+                        _context11.next = 29;
                         break;
                       }
                       return _context11.abrupt("return", result);
+                    case 29:
+                      _context11.next = 50;
+                      break;
+                    case 31:
+                      if (!(is_binding && is_pair(node.cdr.car))) {
+                        _context11.next = 50;
+                        break;
+                      }
+                      if (!is_let) {
+                        _context11.next = 39;
+                        break;
+                      }
+                      bindings = let_binding(node.cdr.car);
+                      _context11.next = 36;
+                      return expand_let_binding(node.cdr.car, n);
+                    case 36:
+                      second = _context11.sent;
+                      _context11.next = 41;
+                      break;
+                    case 39:
+                      bindings = proc_bindings(node.cdr.car);
+                      second = node.cdr.car;
+                    case 41:
+                      _context11.t0 = Pair;
+                      _context11.t1 = node.car;
+                      _context11.t2 = Pair;
+                      _context11.t3 = second;
+                      _context11.next = 47;
+                      return traverse(node.cdr.cdr, n, env);
+                    case 47:
+                      _context11.t4 = _context11.sent;
+                      _context11.t5 = new _context11.t2(_context11.t3, _context11.t4);
+                      return _context11.abrupt("return", new _context11.t0(_context11.t1, _context11.t5));
                     case 50:
                       // TODO: CYCLE DETECT
                       car = node.car;
@@ -17561,10 +17564,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 25 Jan 2025 17:09:53 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Fri, 31 Jan 2025 13:37:58 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 25 Jan 2025 17:09:53 +0000').valueOf();
+  var date = LString('Fri, 31 Jan 2025 13:37:58 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17604,7 +17607,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 25 Jan 2025 17:09:53 +0000';
+var date = 'Fri, 31 Jan 2025 13:37:58 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

@@ -18,6 +18,7 @@
 * fix `angle` and `magnitude` on real values
 * fix broken REPL when parser extension throw an error in the middle of expression [#430](https://github.com/jcubic/lips/issues/430)
 * fix parsing syntax extension [#432](https://github.com/jcubic/lips/issues/432), [#433](https://github.com/jcubic/lips/issues/433)
+* fix macroexpand on let macro defined in Scheme
 
 ## 1.0.0-beta.20
 ### Feature

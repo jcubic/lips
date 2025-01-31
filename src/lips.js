@@ -4098,23 +4098,7 @@ function macro_expand(single) {
                     is_procedure(value, node) ||
                     is_lambda(value);
 
-                if (is_binding && is_pair(node.cdr.car)) {
-                    var second;
-                    if (is_let) {
-                        bindings = let_binding(node.cdr.car);
-                        second = await expand_let_binding(node.cdr.car, n);
-                    } else {
-                        bindings = proc_bindings(node.cdr.car);
-                        second = node.cdr.car;
-                    }
-                    return new Pair(
-                        node.car,
-                        new Pair(
-                            second,
-                            await traverse(node.cdr.cdr, n, env)
-                        )
-                    );
-                } else if (is_macro(name, value)) {
+                if (is_macro(name, value)) {
                     var code = value instanceof Syntax ? node : node.cdr;
                     var result = await value.invoke(code, { ...args, env }, true);
                     if (value instanceof Syntax) {
@@ -4145,6 +4129,22 @@ function macro_expand(single) {
                     if (is_atom(result)) {
                         return result;
                     }
+                } else if (is_binding && is_pair(node.cdr.car)) {
+                    var second;
+                    if (is_let) {
+                        bindings = let_binding(node.cdr.car);
+                        second = await expand_let_binding(node.cdr.car, n);
+                    } else {
+                        bindings = proc_bindings(node.cdr.car);
+                        second = node.cdr.car;
+                    }
+                    return new Pair(
+                        node.car,
+                        new Pair(
+                            second,
+                            await traverse(node.cdr.cdr, n, env)
+                        )
+                    );
                 }
             }
             // TODO: CYCLE DETECT
