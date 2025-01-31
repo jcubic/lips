@@ -3925,6 +3925,7 @@ Macro.defmacro = function(name, fn, doc, dump) {
 Macro.prototype.invoke = function(code, { env, ...rest }, macro_expand) {
     var args = {
         ...rest,
+        env,
         macro_expand
     };
     return this.__fn__.call(env, code, args, this.__name__);
@@ -3939,8 +3940,8 @@ Macro.internal = function(name) {
 };
 
 // ----------------------------------------------------------------------
-function invalid_macro() {
-    throw new Error("This is internal macro, you can't invoke it manually");
+function invalid_macro(code, args, name) {
+    throw new Error(`${name} is internal macro, you can't invoke it manually!`);
 }
 
 // ----------------------------------------------------------------------
