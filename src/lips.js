@@ -11460,9 +11460,13 @@ async function evaluate_code(state) {
                 state.cc = new Continuation(cdr.cdr, state.env, state.cc, next_if);
                 state.ready = false;
             } else if (first === __begin__) {
-                state.object = cdr.car;
-                if (!is_nil(cdr.cdr)) {
-                    state.cc = new Continuation(cdr.cdr, state.env, state.cc, next_begin);
+                if (is_nil(cdr)) {
+                    delete state.object;
+                } else {
+                    state.object = cdr.car;
+                    if (!is_nil(cdr.cdr)) {
+                        state.cc = new Continuation(cdr.cdr, state.env, state.cc, next_begin);
+                    }
                 }
                 state.ready = false;
             } else if (first === __quote__) {
