@@ -8862,7 +8862,7 @@ var global_env = new Environment({
          Macro work similar to let-syntax but the the bindnds will be exposed to the user.
          With syntax-parameterize you can define anaphoric macros.`),
     // ------------------------------------------------------------------
-    define: doc(Macro.defmacro('define', function(code, eval_args) {
+    define: doc(Macro.defmacro('define', function(code, state) {
         var env = this;
         if (is_pair(code.car) &&
             code.car.car instanceof LSymbol) {
@@ -8882,26 +8882,18 @@ var global_env = new Environment({
                 )
             );
             return new_code;
-        } else if (eval_args.macro_expand) {
+        } else if (state.macro_expand) {
             // prevent evaluation in macroexpand
             return;
         }
-        eval_args.dynamic_env = this;
-        eval_args.env = env;
-        var value = code.cdr.car;
-        let new_expr;
-        if (is_pair(value)) {
-            value = tco_eval(value, eval_args);
-            new_expr = true;
-        } else if (value instanceof LSymbol) {
-            value = env.get(value);
-        }
         typecheck('define', code.car, 'symbol');
-        return unpromise(value, value => {
+        const cc = new Continuation(code.car, state.env, top_cc, function(state) {
+            let env = this.__env__;
             if (env.__name__ === Syntax.__merge_env__) {
                 env = env.__parent__;
             }
-            if (new_expr &&
+            const value = state.object;
+            if (is_pair(value) &&
                 ((is_function(value) && is_lambda(value)) ||
                  (value instanceof Syntax) || is_parameter(value))) {
                 value.__name__ = code.car.valueOf();
@@ -8915,7 +8907,12 @@ var global_env = new Environment({
                 __doc__ = code.cdr.cdr.car.valueOf();
             }
             env.set(code.car, value, __doc__, true);
+            state.env = this.__env__;
+            state.cc = this.__continuation__;
+            delete state.object;
+            state.ready = true;
         });
+        return tco_eval(code.cdr.car, {...state, cc });
     }), `(define name expression)
          (define name expression "doc string")
          (define (function-name . args) . body)
@@ -11319,7 +11316,7 @@ class Continuation {
 }
 
 // -------------------------------------------------------------------------
-// :: code based on jsScheme by Alex Yakovlev
+// :: code based on ideas from jsScheme by Alex Yakovlev
 // -------------------------------------------------------------------------
 class State {
     constructor(object, cc, { env, dynamic_env, use_dynamic, error }) {
@@ -11361,7 +11358,6 @@ const top_cc = new Continuation(null, null, null, (state) => { throw state; });
 // -------------------------------------------------------------------------
 async function tco_eval(code, eval_args) {
     eval_args = default_eval_args(eval_args);
-    //console.trace();
     const state = new State(code, eval_args.cc || top_cc, eval_args);
     try {
         while (true) {
@@ -11562,6 +11558,7 @@ function next_set(state) {
             var obj = this.get(name, { throwError: false });
             if (obj) {
                 env.get('set-obj!').call(env, object, key, value);
+                state.ready = true;
                 return;
             }
         }
