@@ -8737,6 +8737,7 @@ var global_env = new Environment({
             env: this,
             cc: top_cc
         };
+        console.log('<<<<<<< call/cc >>>>>>>');
         const cc = state.cc.clone();
         const fn = await tco_eval(code.car, args);
         typecheck('call/cc', fn, 'function');
@@ -11243,31 +11244,46 @@ function search_param(env, param) {
 // -------------------------------------------------------------------------
 class Continuation {
     constructor(name, object, env, cc, next, data) {
-        read_only(this, '__name__', name);
         read_only(this, '__env__', env);
         read_only(this, '__object__', object);
         read_only(this, '__continuation__', cc);
         read_only(this, '__next__', next);
         // for list
-        read_only(this, '_state', { ...data, i: 0, args: [] }, { hidden: true });
+        read_only(this, '_state', {
+            ...data,
+            i: 0,
+            args: [],
+            name,
+            count: 0
+        }, { hidden: true });
     }
-    clone() {
+    get __name__() {
+        if (this._state.count === 0) {
+            return this._state.name;
+        }
+        let result = `clone(${this._state.name})`;
+        if (this._state.count > 1) {
+            result += `[${this._state.count}]`;
+        }
+        return result;
+    }
+    clone(mark = true) {
         let continuation = this.__continuation__;
         if (continuation) {
-            continuation = continuation.clone();
-        }
-        let name = this.__name__;
-        if (!name.startsWith('clone')) {
-            name = `clone(${name})`;
+            continuation = continuation.clone(mark);
         }
         const copy = new Continuation(
-            name,
+            this.__name__,
             this.__object__,
             this.__env__,
             continuation,
             this.__next__
         );
-        const state = { ...this._state, args: [...this._state.args] };
+        let count = this._state.count;
+        if (mark) {
+            count++;
+        }
+        const state = { ...this._state, count, args: [...this._state.args] };
         read_only(copy, '_state', state, { hidden: true });
         return copy;
     }
@@ -11506,7 +11522,8 @@ async function evaluate_code(state) {
             } else if (first instanceof Macro) {
                 const result = await evaluate_macro(first, cdr, state);
                 delete state.object;
-                state.cc = new Continuation('macro', result, env, cc, next_macro);
+                const name = `macro[${first.__name__}]`;
+                state.cc = new Continuation(name, result, env, cc, next_macro);
                 state.ready = true;
             } else {
                 state.object = first;
@@ -11618,7 +11635,7 @@ function next_pair(state) {
         } else if (is_continuation(fn)) {
             state.ready = true;
             state.object = args[0];
-            state.cc = fn.clone();
+            state.cc = fn.clone(false);
         } else if (is_function(fn)) {
             state.object = call_function(fn, args, state);
             state.ready = !is_promise(state.object);
