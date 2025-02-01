@@ -3973,7 +3973,7 @@ function define_macro(name, args, body, __doc__, { use_dynamic, error }) {
         if (is_pair(body)) {
             // this eval will return lips code
             const result = body.reduce(function(result, node) {
-                return evaluate(node, eval_args);
+                return tco_eval(node, eval_args);
             });
             return unpromise(result, function(result) {
                 if (typeof result === 'object') {
@@ -9251,7 +9251,7 @@ var global_env = new Environment({
                     if (unquote_cnt + 1 < max_unq) {
                         result = recur(x.cdr, unquote_cnt + 1, max_unq);
                     } else {
-                        result = evaluate(x.cdr.car, {
+                        result = tco_eval(x.cdr.car, {
                             env: self,
                             use_dynamic,
                             dynamic_env,
@@ -9282,7 +9282,7 @@ var global_env = new Environment({
                     if (unquote_cnt < max_unq) {
                         output = recur(value.cdr.car, unquote_cnt, max_unq);
                     } else {
-                        output = evaluate(value.cdr.car, {
+                        output = tco_eval(value.cdr.car, {
                             env: self,
                             dynamic_env,
                             use_dynamic,
@@ -9316,7 +9316,7 @@ var global_env = new Environment({
             }
             var lists = [];
             return (function next(node) {
-                var value = evaluate(node.car, {
+                var value = tco_eval(node.car, {
                     env: self,
                     dynamic_env,
                     use_dynamic,
@@ -9405,7 +9405,7 @@ var global_env = new Environment({
                                     if (is_nil(node)) {
                                         return Pair.fromArray(result);
                                     }
-                                    return unpromise(evaluate(node.car, {
+                                    return unpromise(tco_eval(node.car, {
                                         env: self,
                                         dynamic_env,
                                         use_dynamic,
@@ -9459,7 +9459,7 @@ var global_env = new Environment({
                                     if (is_nil(node)) {
                                         return Pair.fromArray(result);
                                     }
-                                    return unpromise(evaluate(node.car, {
+                                    return unpromise(tco_eval(node.car, {
                                         env: self,
                                         dynamic_env,
                                         use_dynamic,
@@ -9473,7 +9473,7 @@ var global_env = new Environment({
                                 return pair.cdr;
                             }
                         } else {
-                            return evaluate(pair.cdr.car, {
+                            return tco_eval(pair.cdr.car, {
                                 env: self,
                                 dynamic_env,
                                 error
