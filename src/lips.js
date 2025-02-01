@@ -11503,6 +11503,7 @@ async function evaluate_code(state) {
                 state.cc = new Continuation(cdr, state.env, state.cc, next_pair);
                 state.ready = false;
             } else {
+                throw new Error(`${type(first)} is not callable`);
                 state.ready = true;
             }
         } else if (is_pair(car)) {
