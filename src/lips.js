@@ -11566,6 +11566,7 @@ function next_set(state) {
         throw new Error('Unbound variable `' + symbol + '\'');
     }
     ref.set(symbol, value);
+    delete state.object;
     state.ready = true;
 }
 
