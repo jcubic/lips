@@ -9109,7 +9109,7 @@ var global_env = new Environment({
                     });
                     if (bindings) {
                         /* c8 ignore next 5 */
-                        if (is_debug()) {
+                        if (is_debug('syntax-rules')) {
                             console.log(JSON.stringify(symbolize(bindings), true, 2));
                             console.log('PATTERN: ' + rule.toString(true));
                             console.log('MACRO: ' + code.toString(true));
@@ -11256,8 +11256,12 @@ class Continuation {
         if (continuation) {
             continuation = continuation.clone();
         }
+        let name = this.__name__;
+        if (!name.startsWith('clone')) {
+            name = `clone(${name})`;
+        }
         const copy = new Continuation(
-            `clone(${this.__name__})`,
+            name,
             this.__object__,
             this.__env__,
             continuation,
@@ -11425,15 +11429,12 @@ async function evaluate_code(state) {
     if (state.object instanceof LNumber) {
         state.ready = true;
     } else if (state.object instanceof LSymbol) {
-        // TODO: try to get rid of __data__ flag
-        if (!state.object[__data__]) {
-            state.object = state.env.get(state.object);
-        }
+        state.object = state.env.get(state.object);
         state.ready = true;
     } else if (is_promise(state.object)) {
         state.object = await state.object;
         state.ready = true;
-    } else if (is_pair(state.object) && !state.object[__data__]) {
+    } else if (is_pair(state.object)) {
         const { car, cdr } = state.object;
         const { env, cc } = state;
         if (car instanceof LSymbol) {
@@ -11453,7 +11454,7 @@ async function evaluate_code(state) {
                 }
                 state.ready = false;
             } else if (first === __quote__) {
-                state.object = quote(cdr.car);
+                state.object = cdr.car;
                 state.ready = true;
             } else if (first === __set__) {
                 state.object = cdr.cdr.car;
@@ -11505,7 +11506,7 @@ async function evaluate_code(state) {
             } else if (first instanceof Macro) {
                 const result = await evaluate_macro(first, cdr, state);
                 delete state.object;
-                state.cc = new Continuation('maro', result, env, cc, next_macro);
+                state.cc = new Continuation('macro', result, env, cc, next_macro);
                 state.ready = true;
             } else {
                 state.object = first;
@@ -11591,7 +11592,7 @@ async function next_macro(state) {
     state.env = this.__env__;
     state.cc = this.__continuation__;
     state.object = this.__object__;
-    state.ready = false;
+    state.ready = true;
 }
 
 // -------------------------------------------------------------------------
