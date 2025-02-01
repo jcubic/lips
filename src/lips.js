@@ -5482,9 +5482,9 @@ function let_macro(symbol) {
         default:
             throw new Error('Invalid let_macro value');
     }
-    return Macro.defmacro(name, function(code, options) {
-        let { dynamic_env } = options;
-        const { error, macro_expand, use_dynamic, cc } = options;
+    return Macro.defmacro(name, function(code, state) {
+        let { dynamic_env, cc } = state;
+        const { error, macro_expand, use_dynamic } = state;
         var args;
         // named let:
         // (let loop ((x 10)) (iter (- x 1))) -> (letrec ((loop (lambda (x) ...
@@ -5528,7 +5528,7 @@ function let_macro(symbol) {
             var output = hygienic_begin([env], code.cdr);
             return tco_eval(output, {
                 env,
-                cc,
+                cc: top_cc,
                 dynamic_env: env,
                 use_dynamic,
                 error
@@ -5569,7 +5569,7 @@ function let_macro(symbol) {
                 } else if (name === 'letrec') {
                     var_body_env = env;
                 }
-                var value = tco_eval(pair.cdr.car, {
+                const value = tco_eval(pair.cdr.car, {
                     env: var_body_env,
                     cc: top_cc,
                     dynamic_env,
