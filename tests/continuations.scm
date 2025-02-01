@@ -183,3 +183,13 @@
           (set! i (+ i 1))
           (if (<= i 2)
               (k (* i 10))))))
+
+(test.failing "continuations: should work with quasiquote list"
+      (lambda (t)
+        (t.plan 3)
+        (let ((k #f) (i 0))
+          (t.is `(1 ,(call/cc (lambda (cc) (set! k cc) i)) 3)
+                   (list 1 (* i 10) 3))
+          (set! i (+ i 1))
+          (if (< i 3)
+              (k (* i 10))))))
