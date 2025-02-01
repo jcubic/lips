@@ -3907,13 +3907,13 @@ function Macro(name, fn, doc, dump) {
     typecheck('Macro', fn, 'function', 2);
     if (doc) {
         if (dump) {
-            this.__doc__ = doc;
+            read_only(this, '__doc__', doc);
         } else {
-            this.__doc__ = trim_lines(doc);
+            read_only(this, '__doc__', trim_lines(doc));
         }
     }
-    this.__name__ = name;
-    this.__fn__ = fn;
+    read_only(this, '__name__', name);
+    read_only(this, '__fn__', fn);
 }
 // ----------------------------------------------------------------------
 Macro.defmacro = function(name, fn, doc, dump) {
