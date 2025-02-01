@@ -11461,7 +11461,7 @@ async function evaluate_code(state) {
                                 new Pair(
                                     new LSymbol("lambda"),
                                     new Pair(
-                                        cdr.car,
+                                        cdr.car.cdr,
                                         cdr.cdr
                                     )
                                 ),
@@ -11498,20 +11498,15 @@ async function evaluate_code(state) {
                 delete state.object;
                 state.cc = new Continuation(result, state.env, state.cc, next_macro);
                 state.ready = true;
-            } else if (is_function(first) || is_continuation(first)) {
+            } else {
                 state.object = first;
                 state.cc = new Continuation(cdr, state.env, state.cc, next_pair);
                 state.ready = false;
-            } else {
-                throw new Error(`${type(first)} is not callable`);
-                state.ready = true;
             }
-        } else if (is_pair(car)) {
+        } else {
             state.object = car;
             state.cc = new Continuation(cdr, state.env, state.cc, next_pair);
             state.ready = false;
-        } else {
-            state.ready = true;
         }
     } else {
         state.ready = true;
@@ -11613,9 +11608,11 @@ function next_pair(state) {
             state.ready = true;
             state.object = args[0];
             state.cc = fn.clone();
-        } else {
+        } else if (is_function(fn)) {
             state.object = call_function(fn, args, state);
             state.ready = !is_promise(state.object);
+        } else {
+            throw new Error(`${type(fn)} is not a function`);
         }
     } else {
         state.object = this.__object__.car;
