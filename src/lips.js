@@ -8862,58 +8862,9 @@ var global_env = new Environment({
          Macro work similar to let-syntax but the the bindnds will be exposed to the user.
          With syntax-parameterize you can define anaphoric macros.`),
     // ------------------------------------------------------------------
-    define: doc(Macro.defmacro('define', function(code, state) {
-        var env = this;
-        if (is_pair(code.car) &&
-            code.car.car instanceof LSymbol) {
-            var new_code = new Pair(
-                new LSymbol("define"),
-                new Pair(
-                    code.car.car,
-                    new Pair(
-                        new Pair(
-                            new LSymbol("lambda"),
-                            new Pair(
-                                code.car.cdr,
-                                code.cdr
-                            )
-                        )
-                    )
-                )
-            );
-            return new_code;
-        } else if (state.macro_expand) {
-            // prevent evaluation in macroexpand
-            return;
-        }
-        typecheck('define', code.car, 'symbol');
-        const cc = new Continuation(code.car, state.env, top_cc, function(state) {
-            let env = this.__env__;
-            if (env.__name__ === Syntax.__merge_env__) {
-                env = env.__parent__;
-            }
-            const value = state.object;
-            if (is_pair(value) &&
-                ((is_function(value) && is_lambda(value)) ||
-                 (value instanceof Syntax) || is_parameter(value))) {
-                value.__name__ = code.car.valueOf();
-                if (value.__name__ instanceof LString) {
-                    value.__name__ = value.__name__.valueOf();
-                }
-            }
-            let __doc__;
-            if (is_pair(code.cdr.cdr) &&
-                LString.isString(code.cdr.cdr.car)) {
-                __doc__ = code.cdr.cdr.car.valueOf();
-            }
-            env.set(code.car, value, __doc__, true);
-            state.env = this.__env__;
-            state.cc = this.__continuation__;
-            delete state.object;
-            state.ready = true;
-        });
-        return tco_eval(code.cdr.car, {...state, cc });
-    }), `(define name expression)
+    define: doc(
+        Macro.internal('define'),
+        `(define name expression)
          (define name expression "doc string")
          (define (function-name . args) . body)
 
@@ -11290,13 +11241,13 @@ function search_param(env, param) {
 // :: Continuations object from call/cc
 // -------------------------------------------------------------------------
 class Continuation {
-    constructor(object, env, cc, next) {
+    constructor(object, env, cc, next, data) {
         read_only(this, '__env__', env);
         read_only(this, '__object__', object);
         read_only(this, '__continuation__', cc);
         read_only(this, '__next__', next);
         // for list
-        read_only(this, '_state', { i: 0, args: [] }, { hidden: true });
+        read_only(this, '_state', { ...data, i: 0, args: [] }, { hidden: true });
     }
     clone() {
         let continuation = this.__continuation__;
@@ -11459,6 +11410,7 @@ const __if__ = global_env.get('if');
 const __begin__ = global_env.get('begin');
 const __quote__ = global_env.get('quote');
 const __set__ = global_env.get('set!');
+const __define__ = global_env.get('define');
 
 // -------------------------------------------------------------------------
 async function evaluate_code(state) {
@@ -11498,6 +11450,49 @@ async function evaluate_code(state) {
                 state.object = cdr.cdr.car;
                 state.ready = false;
                 state.cc = new Continuation(cdr.car, state.env, state.cc, next_set);
+            } else if (first === __define__) {
+                if (is_pair(cdr.car)) {
+                    // (define (foo x) x) => (define foo (lambda (x) x))
+                    state.object = new Pair(
+                        new LSymbol("define"),
+                        new Pair(
+                            cdr.car.car,
+                            new Pair(
+                                new Pair(
+                                    new LSymbol("lambda"),
+                                    new Pair(
+                                        cdr.car,
+                                        cdr.cdr
+                                    )
+                                ),
+                                nil
+                            )
+                        )
+                    );
+                    state.ready = false;
+                } else {
+                    typecheck('define', car, 'symbol');
+                    let doc;
+                    if (is_pair(cdr.cdr.car) &&
+                        LString.isString(cdr.cdr.car.cdr.cdr.car)) {
+                        doc = cdr.cdr.car.cdr.cdr.car.valueOf();
+                    }
+                    const value = state.object = cdr.cdr.car;
+                    let name;
+                    if (is_pair(value) &&
+                        ((is_function(value) && is_lambda(value)) ||
+                         (value instanceof Syntax) || is_parameter(value))) {
+                        name = car.valueOf();
+                        if (name instanceof LString) {
+                            name = name.valueOf();
+                        }
+                    }
+                    state.cc = new Continuation(cdr.car, state.env, state.cc, next_define, {
+                        doc,
+                        name
+                    });
+                    state.ready = false;
+                }
             } else if (first instanceof Macro) {
                 const result = await evaluate_macro(first, cdr, state);
                 delete state.object;
@@ -11565,6 +11560,24 @@ function next_set(state) {
         throw new Error('Unbound variable `' + symbol + '\'');
     }
     ref.set(symbol, value);
+    state.ready = true;
+}
+
+// -------------------------------------------------------------------------
+function next_define(state) {
+    let env = this.__env__;
+    if (env.__name__ === Syntax.__merge_env__) {
+        env = env.__parent__;
+    }
+    const value = state.object;
+    const name = this._state.name;
+    if (name) {
+        value.__name__ = name;
+    }
+    env.set(this.__object__, value, this._state.doc, true);
+    state.env = env;
+    state.cc = this.__continuation__;
+    delete state.object;
     state.ready = true;
 }
 
