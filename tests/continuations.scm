@@ -193,3 +193,20 @@
           (set! i (+ i 1))
           (if (< i 3)
               (k (* i 10))))))
+
+(test.failing "continuations: list fliping"
+      (lambda (t)
+        (define result (let ((count 0) (flip #t) (x #f) (y #f) (result '()))
+                         (set! result (cons (list (call/cc (lambda (cc) (set! x cc) count))
+                                                  (call/cc (lambda (cc) (set! y cc) count)))
+                                            result))
+                         (if (== count 10)
+                             (reverse result)
+                             (let ((flap flip))
+                               (set! flip (not flip))
+                               (set! count (+ count 1))
+                               (if flap
+                                   (x count)
+                                   (y count))))))
+        (t.is result
+              '((0 0) (1 1) (1 2) (3 3) (3 4) (5 5) (5 6) (7 7) (7 8) (9 9) (9 10)))))
