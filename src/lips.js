@@ -11536,18 +11536,18 @@ async function evaluate_code(state) {
                         doc = cdr.cdr.car.cdr.cdr.car.valueOf();
                     }
                     const value = state.object = cdr.cdr.car;
-                    let name;
+                    let fn_name;
                     if (is_pair(value) &&
                         ((is_function(value) && is_lambda(value)) ||
                          (value instanceof Syntax) || is_parameter(value))) {
-                        name = car.valueOf();
-                        if (name instanceof LString) {
-                            name = name.valueOf();
+                        fn_name = car.valueOf();
+                        if (fn_name instanceof LString) {
+                            fn_name = fn_name.valueOf();
                         }
                     }
                     state.cc = new Continuation('define', cdr.car, code, state, next_define, {
                         doc,
-                        name
+                        fn_name
                     });
                     state.ready = false;
                 }
@@ -11626,9 +11626,9 @@ function next_define(state) {
         env = env.__parent__;
     }
     const value = state.object;
-    const name = this._state.name;
-    if (name) {
-        value.__name__ = name;
+    const fn_name = this._state.fn_name;
+    if (fn_name) {
+        value.__name__ = fn_name;
     }
     env.set(this.__object__, value, this._state.doc, true);
     state.env = env;
