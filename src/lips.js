@@ -8737,7 +8737,6 @@ var global_env = new Environment({
             env: this,
             cc: top_cc
         };
-        console.log('<<<<<<< call/cc >>>>>>>');
         const cc = state.cc.clone();
         const fn = await tco_eval(code.car, args);
         typecheck('call/cc', fn, 'function');
@@ -11305,6 +11304,8 @@ class State {
     cont() {
         if (is_debug('continuations')) {
             console.log('[CONTINUE] => ' + this.cc.__name__);
+            const code = to_string(this.cc.__object__);
+            console.log('              ' + code);
         }
         return this.cc.__next__(this);
     }
