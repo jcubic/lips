@@ -42,7 +42,7 @@ There are also more recent lectures from 2010 at [Berkeley](https://www.berkeley
 
 ![The Scheme Programming Language Cover](./img/scheme-programming.jpg)
 
-This book is completly different than SICP and talk only about Scheme.
+This book is completely different than SICP and talk only about Scheme.
 
 ## Lisp Macros
 
