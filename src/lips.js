@@ -8619,7 +8619,7 @@ var global_env = new Environment({
         const ret = evaluate(code.car, { env: this, dynamic_env, error, use_dynamic });
         return unpromise(ret, function(value) {
             typecheck('let-env', value, 'environment');
-            return evaluate(Pair(LSymbol('begin'), code.cdr), {
+            return tco_eval(Pair(LSymbol('begin'), code.cdr), {
                 env: value, dynamic_env, error
             });
         });
