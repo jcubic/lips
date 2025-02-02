@@ -8730,15 +8730,16 @@ var global_env = new Environment({
         it should resolve to undefined.`),
     // ------------------------------------------------------------------
     'call/cc': Macro.defmacro('call/cc', async function(code, state) {
-        const args = {
-            ...state,
-            env: this,
-            cc: top_cc
-        };
         const cc = state.cc.clone();
-        const fn = await tco_eval(code.car, args);
-        typecheck('call/cc', fn, 'function');
-        return fn(cc);
+        state.object = code.car;
+        state.cc = new Continuation('call/cc', null, state.env, state.cc, function(state) {
+            typecheck('call/cc', state.object, 'function');
+            state.cc = this.__continuation__;
+            state.object = call_function(state.object, [cc], state);
+            state.ready = true;
+        });
+        state.ready = false;
+        return state;
     }, `(call/cc proc)
         (call-with-current-continuation proc)
 
