@@ -3922,14 +3922,11 @@ Macro.defmacro = function(name, fn, doc, dump) {
     return macro;
 };
 // ----------------------------------------------------------------------
-Macro.prototype.invoke = function(code, { env, ...rest }, macro_expand) {
-    var args = {
-        ...rest,
-        env,
-        macro_expand
-    };
-    return this.__fn__.call(env, code, args, this.__name__);
-    //return macro_expand ? quote(result) : result;
+Macro.prototype.invoke = function(code, state, macro_expand) {
+    state.macro_expand = macro_expand;
+    const result = this.__fn__.call(state.env, code, state, this.__name__);
+    delete state.macro_expand;
+    return result;
 };
 // ----------------------------------------------------------------------
 Macro.prototype.toString = function() {
@@ -8660,12 +8657,11 @@ var global_env = new Environment({
         if (is_pair(vars) && is_pair(vars.car)) {
             value = vars.car.cdr.car;
         }
-        const cc = new Continuation('let', vars, env, state.cc, function(state) {
+        state.cc = new Continuation('let', vars, env, state.cc, function(state) {
             if (is_nil(this.__object__)) {
                 state.cc = this.__continuation__;
                 state.env = this.__env__;
                 state.object = hygienic_begin([state.env], code.cdr);
-                state.ready = true;
             } else {
                 this.__env__.set(this.__object__.car.car, state.object);
                 const next = this.__object__.cdr;
@@ -8678,7 +8674,9 @@ var global_env = new Environment({
             }
             state.ready = false;
         });
-        return tco_eval(value, {...state, cc });
+        state.object = value;
+        state.ready = false;
+        return state;
     }), `(let ((a value-a) (b value-b) ...) . body)
 
          Macro that creates a new environment, then evaluates and assigns values to names,
@@ -11521,11 +11519,11 @@ async function evaluate_code(state) {
                     state.ready = false;
                 }
             } else if (first instanceof Macro) {
-                const result = await evaluate_macro(first, cdr, state);
-                delete state.object;
-                const name = `macro[${first.__name__}]`;
-                state.cc = new Continuation(name, result, env, cc, next_macro);
-                state.ready = true;
+                const result = await first.invoke(cdr, state);
+                if (!(result instanceof State)) {
+                    state.object = result;
+                    state.ready = false;
+                }
             } else {
                 state.object = first;
                 state.cc = new Continuation('pair[a]', cdr, env, cc, next_pair);
