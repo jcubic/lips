@@ -3958,7 +3958,8 @@ function is_named_macro(macro) {
 }
 // ----------------------------------------------------------------------
 function define_macro(name, args, body, __doc__, { use_dynamic, error }) {
-    const makro_instance = Macro.defmacro(name, function(code) {
+    const makro_instance = Macro.defmacro(name, function(source) {
+        const code = source.cdr;
         const env = macro_args_env(args, code, this);
         const eval_args = {
             env,
@@ -5589,7 +5590,8 @@ function let_macro(symbol) {
 }
 // -------------------------------------------------------------------------
 function parallel(name, fn) {
-    return new Macro(name, function(code, { use_dynamic, error } = {}) {
+    return new Macro(name, function(source, { use_dynamic, error } = {}) {
+        const code = source;
         const env = this;
         const dynamic_env = this;
         const results = [];
@@ -8291,28 +8293,29 @@ var global_env = new Environment({
         A helper function that checks if the two input functions are
         the same.`),
     // ------------------------------------------------------------------
-    help: doc(new Macro('help', function(code, { dynamic_env, use_dynamic, error }) {
-        var symbol;
+    help: doc(new Macro('help', function(source, { dynamic_env, use_dynamic, error }) {
+        const code = source.cdr;
+        let symbol;
         if (code.car instanceof LSymbol) {
             symbol = code.car;
         } else if (is_pair(code.car) && code.car.car instanceof LSymbol) {
             symbol = code.car.car;
         } else {
-            var env = this;
+            const env = this;
             dynamic_env = this;
-            var ret = evaluate(code.car, { env, error, dynamic_env, use_dynamic });
+            const ret = evaluate(code.car, { env, error, dynamic_env, use_dynamic });
             if (ret && ret.__doc__) {
                 return ret.__doc__;
             }
             return;
         }
-        var __doc__;
-        var value = this.get(symbol);
+        let __doc__;
+        const value = this.get(symbol);
         __doc__ = value && value.__doc__;
         if (__doc__) {
             return __doc__;
         }
-        var ref = this.ref(symbol);
+        const ref = this.ref(symbol);
         if (ref) {
             __doc__ = ref.doc(symbol);
             if (__doc__) {
@@ -8355,7 +8358,8 @@ var global_env = new Environment({
          Macro that can be used to set the value of the variable or slot (mutate it).
          set! searches the scope chain until it finds first non empty slot and sets it.`),
     // ------------------------------------------------------------------
-    'unset!': doc(new Macro('set!', function(code) {
+    'unset!': doc(new Macro('set!', function(source) {
+        const code = source.cdr;
         if (!(code.car instanceof LSymbol)) {
             throw new Error('unset! first argument need to be a symbol or ' +
                             'dot accessor that evaluate to object.');
@@ -8531,7 +8535,8 @@ var global_env = new Environment({
         If the second argument is provided and it's an environment the evaluation
         will happen in that environment.`),
     // ------------------------------------------------------------------
-    'while': doc(new Macro('while', function(code, args) {
+    'while': doc(new Macro('while', function(source, args) {
+        const code = source.cdr;
         const test = code.car;
         const eval_args = { ...args, env: this };
         const body = new Pair(new LSymbol('begin'), code.cdr);
@@ -8546,7 +8551,8 @@ var global_env = new Environment({
 
          Creates a loop, it executes cond and body until cond expression is false.`),
     // ------------------------------------------------------------------
-    'do': doc(new Macro('do', async function(code, { use_dynamic, error }) {
+    'do': doc(new Macro('do', async function(source, { use_dynamic, error }) {
+        const code = source.cdr;
         const self = this;
         const dynamic_env = self;
         let scope = self.inherit('do');
@@ -8606,7 +8612,8 @@ var global_env = new Environment({
          evaluates and returns true-expression, if not it evaluates and returns
          false-expression.`),
     // ------------------------------------------------------------------
-    'let-env': new Macro('let-env', function(code, options = {}) {
+    'let-env': new Macro('let-env', function(source, options = {}) {
+        const code = source.cdr;
         const { dynamic_env, use_dynamic, error } = options;
         typecheck('let-env', code, 'pair');
         const ret = evaluate(code.car, { env: this, dynamic_env, error, use_dynamic });
@@ -8647,7 +8654,8 @@ var global_env = new Environment({
          are evaluated in the environment including the previous let variables,
          so you can define one variable, and use it in the next's definition.`),
     // ---------------------------------------------------------------------
-    'let': doc(new Macro('let', function(code, state) {
+    'let': doc(new Macro('let', function(source, state) {
+        const code = source.cdr;
         const env = state.env.inherit('let');
         const vars = code.car;
         let value = nil;
@@ -8655,7 +8663,6 @@ var global_env = new Environment({
         if (is_pair(vars) && is_pair(vars.car)) {
             value = vars.car.cdr.car;
         }
-        const source = new Pair(LSymbol('let'), code);
         state.cc = new Continuation('let', vars, source, state, function(state) {
             if (is_nil(this.__object__)) {
                 state.cc = this.__continuation__;
@@ -8718,9 +8725,10 @@ var global_env = new Environment({
          of the last one. It can be used in places where you can only have a
          single expression, like (if).`),
     // ------------------------------------------------------------------
-    'ignore': new Macro('ignore', function(code, options) {
-        const eval_args = { ...options, env: this, dynamic_env: this };
-        tco_eval(new Pair(new LSymbol('begin'), code), eval_args);
+    'ignore': new Macro('ignore', function(source, state) {
+        const code = source.cdr;
+        state.object = hygienic_begin([state.env], code);
+        return state;
     }, `(ignore . body)
 
         Macro that will evaluate the expression and swallow any promises that may
@@ -8728,20 +8736,21 @@ var global_env = new Environment({
         expression. The code should have side effects and/or when it's promise
         it should resolve to undefined.`),
     // ------------------------------------------------------------------
-    'call/cc': Macro.defmacro('call/cc', async function(code, state) {
+    'call/cc': doc(new Macro('call/cc', function(source, state) {
         const cc = state.cc.clone();
-        state.object = Pair(code.car, Pair(cc, nil));
+        state.object = Pair(source.cdr.car, Pair(cc, nil));
         state.ready = false;
         return state;
-    }, `(call/cc proc)
-        (call-with-current-continuation proc)
+    }), `(call/cc proc)
+         (call-with-current-continuation proc)
 
-        Function capture current continuation and call a procedure with
-        that continuation passed as the only argument. The continuation act
-        like a procedure that can be called to jump back into the place where
-        continuation was captured.`),
+         Function capture current continuation and call a procedure with
+          that continuation passed as the only argument. The continuation act
+         like a procedure that can be called to jump back into the place where
+         continuation was captured.`),
     // ------------------------------------------------------------------
-    parameterize: doc(new Macro('parameterize', function(code, options) {
+    parameterize: doc(new Macro('parameterize', function(source, options) {
+        const code = source.cdr;
         const { dynamic_env } = options;
         const env = dynamic_env.inherit('parameterize').new_frame(null, {});
         const eval_args = { ...options, env: this };
@@ -8775,7 +8784,8 @@ var global_env = new Environment({
 
          Macro that change the dynamic variable created by make-parameter.`),
     // ------------------------------------------------------------------
-    'make-parameter': doc(new Macro('make-parameter', function(code, eval_args) {
+    'make-parameter': doc(new Macro('make-parameter', function(source, eval_args) {
+        const code = source.cdr;
         const dynamic_env = eval_args.dynamic_env;
         const init = tco_eval(code.car, eval_args);
         let fn;
@@ -8792,7 +8802,8 @@ var global_env = new Environment({
 
     The result value is a procedure that return the value of dynamic variable.`),
     // ------------------------------------------------------------------
-    'define-syntax-parameter': doc(new Macro('define-syntax-parameter', function(code, eval_args) {
+    'define-syntax-parameter': doc(new Macro('define-syntax-parameter', function(source, eval_args) {
+        const code = source.cdr;
         const name = code.car;
         const env = this;
         if (!(name instanceof LSymbol)) {
@@ -8817,7 +8828,8 @@ var global_env = new Environment({
          and in the absence of syntax-parameterize, is functionally equivalent to
          define-syntax.`),
     // ------------------------------------------------------------------
-    'syntax-parameterize': doc(new Macro('syntax-parameterize', function(code, eval_args) {
+    'syntax-parameterize': doc(new Macro('syntax-parameterize', function(source, eval_args) {
+        const code = source.cdr;
         const args = global_env.get('list->array')(code.car);
         const env = this.inherit('syntax-parameterize');
         while (args.length) {
@@ -8941,13 +8953,10 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'eval': doc('eval', function(code, env) {
         env = env || this.get('interaction-environment').call(this);
-        return new Promise((resolve, reject) => {
-            const result = tco_eval(code, {
-                env,
-                dynamic_env: env,
-                error: reject
-            });
-            resolve(result);
+        return tco_eval(code, {
+            env,
+            dynamic_env: env,
+            error: reject
         });
     }, `(eval expr)
         (eval expr environment)
@@ -8955,7 +8964,8 @@ var global_env = new Environment({
         Function that evaluates LIPS Scheme code. If the second argument is provided
         it will be the environment that the code is evaluated in.`),
     // ------------------------------------------------------------------
-    lambda: new Macro('lambda', function(code, scope) {
+    lambda: new Macro('lambda', function(source, scope) {
+        const code = source.cdr;
         var self = this;
         var __doc__;
         if (is_pair(code.cdr) &&
@@ -8974,7 +8984,7 @@ var global_env = new Environment({
         read_only(lambda, '_env', self, { hidden: true });
         read_only(lambda, '_body', rest, { hidden: true });
         read_only(lambda, '_code', code, { hidden: true });
-        lambda.__code__ = new Pair(new LSymbol('lambda'), code);
+        lambda.__code__ = source;
         lambda[__lambda__] = true;
         if (!is_pair(code.car)) {
             return doc(lambda, __doc__, true); // variable arguments
@@ -9002,7 +9012,8 @@ var global_env = new Environment({
          Macro similar to macroexpand but it expand macros only one level
          and return single expression as output.`),
     // ------------------------------------------------------------------
-    'define-macro': doc(new Macro(macro, function(macro, { use_dynamic, error }) {
+    'define-macro': doc(new Macro(macro, function(source, { use_dynamic, error }) {
+        const macro = source.cdr;
         let name, __doc__, body, args;
         if (is_named_macro(macro)) {
             name = macro.car.car.__name__;
@@ -9175,7 +9186,8 @@ var global_env = new Environment({
         Special form used in the quasiquote macro. It evaluates the expression inside and
         substitutes the value into quasiquote's result.`),
     // ------------------------------------------------------------------
-    quasiquote: Macro.defmacro('quasiquote', function(arg, env) {
+    quasiquote: Macro.defmacro('quasiquote', function(source, env) {
+        const arg = source.cdr;
         const { use_dynamic, error } = env;
         const self = this;
         //var max_unquote = 1;
@@ -10015,7 +10027,8 @@ var global_env = new Environment({
 
         Function that parses a string into a number.`),
     // ------------------------------------------------------------------
-    'try': doc(new Macro('try', function(code, { use_dynamic, error }) {
+    'try': doc(new Macro('try', function(source, { use_dynamic, error }) {
+        const code = source.cdr;
         // TODO: add continuations or as top level expression
         return new Promise((resolve, reject) => {
             let catch_clause, finally_clause, body_error;
@@ -11519,7 +11532,7 @@ async function evaluate_code(state) {
                     state.ready = false;
                 }
             } else if (first instanceof Macro) {
-                const result = await first.invoke(cdr, state);
+                const result = await first.invoke(code, state);
                 if (!(result instanceof State)) {
                     state.object = result;
                     state.ready = false;
