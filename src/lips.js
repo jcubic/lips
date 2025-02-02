@@ -1754,10 +1754,10 @@ class Parser {
     }
     async _read_object() {
         const token = await this.peek();
-        this._state.line = this.__lexer__.__token__.line;
         if (token === eof) {
             return token;
         }
+        this._state.line = this.__lexer__.__token__.line;
         if (is_special(token)) {
             // Built-in parser extensions are mapping short symbols to longer symbols
             // that can be function or macro. Parser doesn't care

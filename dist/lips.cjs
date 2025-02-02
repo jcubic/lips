@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 31 Jan 2025 13:37:58 +0000
+ * build: Sun, 02 Feb 2025 20:45:50 +0000
  */
 
 'use strict';
@@ -5460,13 +5460,13 @@ var Parser = /*#__PURE__*/function () {
               return this.peek();
             case 2:
               token = _context8.sent;
-              this._state.line = this.__lexer__.__token__.line;
               if (!(token === eof)) {
-                _context8.next = 6;
+                _context8.next = 5;
                 break;
               }
               return _context8.abrupt("return", token);
-            case 6:
+            case 5:
+              this._state.line = this.__lexer__.__token__.line;
               if (!is_special(token)) {
                 _context8.next = 58;
                 break;
@@ -17564,10 +17564,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Fri, 31 Jan 2025 13:37:58 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 02 Feb 2025 20:45:50 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Fri, 31 Jan 2025 13:37:58 +0000').valueOf();
+  var date = LString('Sun, 02 Feb 2025 20:45:50 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17607,7 +17607,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Fri, 31 Jan 2025 13:37:58 +0000';
+var date = 'Sun, 02 Feb 2025 20:45:50 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
