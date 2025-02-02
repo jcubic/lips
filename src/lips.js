@@ -5525,7 +5525,6 @@ function let_macro(symbol) {
             var output = hygienic_begin([env], code.cdr);
             return tco_eval(output, {
                 env,
-                cc: top_cc,
                 dynamic_env: env,
                 use_dynamic,
                 error
@@ -5568,7 +5567,6 @@ function let_macro(symbol) {
                 }
                 const value = tco_eval(pair.cdr.car, {
                     env: var_body_env,
-                    cc: top_cc,
                     dynamic_env,
                     use_dynamic,
                     error
@@ -8732,14 +8730,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'call/cc': Macro.defmacro('call/cc', async function(code, state) {
         const cc = state.cc.clone();
-        const source = Pair(LSymbol('call/cc'), code);
-        state.cc = new Continuation('call/cc', code.car, source, state, function(state) {
-            typecheck('call/cc', state.object, 'function');
-            state.cc = this.__continuation__;
-            state.object = call_function(state.object, [cc], state);
-            state.ready = true;
-        });
-        state.object = code.car;
+        state.object = Pair(code.car, Pair(cc, nil));
         state.ready = false;
         return state;
     }, `(call/cc proc)
