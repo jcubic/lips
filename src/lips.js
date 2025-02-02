@@ -11474,7 +11474,9 @@ const __define__ = global_env.get('define');
 // -------------------------------------------------------------------------
 async function evaluate_code(state) {
     const code = state.object;
-    if (code instanceof LNumber) {
+    if (code instanceof State) {
+        throw new Error('Internal: expecting LIPS expression got State');
+    } else if (code instanceof LNumber) {
         state.ready = true;
     } else if (code instanceof LSymbol) {
         state.object = state.env.get(state.object);
