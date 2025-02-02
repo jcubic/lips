@@ -8195,6 +8195,26 @@ var global_env = new Environment({
         console but it can be defined in user code). This function
         calls \`(newline)\` after printing each input.`),
     // ------------------------------------------------------------------
+    'stack-trace': new Macro('stack-trace', function(code, state) {
+        state.object = code.cdr.car;
+        state.cc = new Continuation('stack-trace', null, code, state, function(state) {
+            state.env = this.__env__
+            state.cc = this.__continuation__;
+            let cc = state.object;
+            const stack = [];
+            typecheck('stack-trace', cc, 'continuation');
+            let i = 0;
+            while (cc._state.name !== 'top') {
+                stack.push(`[${i++}]: ` + to_string(cc.__code__));
+                cc = cc.__continuation__;
+            }
+            state.object = stack.join('\n');
+            state.ready = false;
+        });
+        state.ready = false;
+        return state;
+    }),
+    // ------------------------------------------------------------------
     format: doc('format', function format(str, ...args) {
         typecheck('format', str, 'string');
         const re = /(~[as%~])/g;
