@@ -54,6 +54,21 @@ fact in other programming languages this should be written as:
 
 This is obviously invalid syntax (in most languages).
 
+## Square brackets
+
+Some Scheme implementation supports brackets. They can be used interchangeably with parentheses.
+Some Lisps dialects require square brackets in specific places, example of such lisp is Clojure.
+
+This is example code that mix parentheses and brackets:
+
+```scheme
+(let ([x 10] [y 20])
+  (+ x y))
+```
+
+You can find more example of this in a book [The Scheme Programming
+Language](https://www.scheme.com/tspl4/)
+
 ## Nesting expressions
 
 The S-Expressions can be nested:
