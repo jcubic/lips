@@ -8657,10 +8657,11 @@ var global_env = new Environment({
         if (is_pair(vars) && is_pair(vars.car)) {
             value = vars.car.cdr.car;
         }
-        state.cc = new Continuation('let', vars, env, state.cc, function(state) {
+        const source = new Pair(LSymbol('let'), code);
+        state.cc = new Continuation('let', vars, source, state, function(state) {
             if (is_nil(this.__object__)) {
                 state.cc = this.__continuation__;
-                state.env = this.__env__;
+                state.env = env;
                 state.object = hygienic_begin([state.env], code.cdr);
             } else {
                 this.__env__.set(this.__object__.car.car, state.object);
@@ -8731,13 +8732,14 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'call/cc': Macro.defmacro('call/cc', async function(code, state) {
         const cc = state.cc.clone();
-        state.object = code.car;
-        state.cc = new Continuation('call/cc', null, state.env, state.cc, function(state) {
+        const source = Pair(LSymbol('call/cc'), code);
+        state.cc = new Continuation('call/cc', code.car, source, state, function(state) {
             typecheck('call/cc', state.object, 'function');
             state.cc = this.__continuation__;
             state.object = call_function(state.object, [cc], state);
             state.ready = true;
         });
+        state.object = code.car;
         state.ready = false;
         return state;
     }, `(call/cc proc)
@@ -11241,8 +11243,9 @@ function search_param(env, param) {
 // :: Continuations object from call/cc
 // -------------------------------------------------------------------------
 class Continuation {
-    constructor(name, object, env, cc, next, data) {
+    constructor(name, object, code, { env = null, cc = null }, next, data) {
         read_only(this, '__env__', env);
+        read_only(this, '__code__', code);
         read_only(this, '__object__', object);
         read_only(this, '__continuation__', cc);
         read_only(this, '__next__', next);
@@ -11266,15 +11269,16 @@ class Continuation {
         return result;
     }
     clone(mark = true) {
-        let continuation = this.__continuation__;
-        if (continuation) {
-            continuation = continuation.clone(mark);
+        let cc = this.__continuation__;
+        if (cc) {
+            cc = cc.clone(mark);
         }
+        const env = this.__env__;
         const copy = new Continuation(
             this.__name__,
             this.__object__,
-            this.__env__,
-            continuation,
+            this.__code__,
+            {env, cc},
             this.__next__
         );
         let count = this._state.count;
@@ -11302,9 +11306,12 @@ class State {
     }
     cont() {
         if (is_debug('continuations')) {
-            console.log('[CONTINUE] => ' + this.cc.__name__);
-            const code = to_string(this.cc.__object__);
-            console.log('              ' + code);
+            if (this.cc.__name__ == 'top') {
+                console.log('[CONTINUE] => top');
+            } else {
+                console.log('[CONTINUE] => ' + to_string(this.cc.__code__));
+                console.log('              ' + to_string(this.cc.__object__));
+            }
         }
         return this.cc.__next__(this);
     }
@@ -11328,7 +11335,7 @@ class State {
     }
 }
 // -------------------------------------------------------------------------
-const top_cc = new Continuation('top', null, null, null, (state) => {
+const top_cc = new Continuation('top', null, null, {}, (state) => {
     throw state;
 });
 
@@ -11442,22 +11449,23 @@ const __define__ = global_env.get('define');
 
 // -------------------------------------------------------------------------
 async function evaluate_code(state) {
-    if (state.object instanceof LNumber) {
+    const code = state.object;
+    if (code instanceof LNumber) {
         state.ready = true;
-    } else if (state.object instanceof LSymbol) {
+    } else if (code instanceof LSymbol) {
         state.object = state.env.get(state.object);
         state.ready = true;
-    } else if (is_promise(state.object)) {
-        state.object = await state.object;
+    } else if (is_promise(code)) {
+        state.object = await code;
         state.ready = true;
-    } else if (is_pair(state.object)) {
-        const { car, cdr } = state.object;
+    } else if (is_pair(code)) {
+        const { car, cdr } = code;
         const { env, cc } = state;
         if (car instanceof LSymbol) {
             const first = state.env.get(car);
             if (first === __if__) {
                 state.object = cdr.car;
-                state.cc = new Continuation('if', cdr.cdr, env, cc, next_if);
+                state.cc = new Continuation('if', cdr.cdr, code, state, next_if);
                 state.ready = false;
             } else if (first === __begin__) {
                 if (is_nil(cdr)) {
@@ -11465,7 +11473,7 @@ async function evaluate_code(state) {
                 } else {
                     state.object = cdr.car;
                     if (!is_nil(cdr.cdr)) {
-                        state.cc = new Continuation('begin', cdr.cdr, env, cc, next_begin);
+                        state.cc = new Continuation('begin', cdr.cdr, code, state, next_begin);
                     }
                 }
                 state.ready = false;
@@ -11475,7 +11483,7 @@ async function evaluate_code(state) {
             } else if (first === __set__) {
                 state.object = cdr.cdr.car;
                 state.ready = false;
-                state.cc = new Continuation('set!', cdr.car, env, cc, next_set);
+                state.cc = new Continuation('set!', cdr.car, code, state, next_set);
             } else if (first === __define__) {
                 if (is_pair(cdr.car)) {
                     // (define (foo x) x) => (define foo (lambda (x) x))
@@ -11513,7 +11521,7 @@ async function evaluate_code(state) {
                             name = name.valueOf();
                         }
                     }
-                    state.cc = new Continuation('define', cdr.car, env, cc, next_define, {
+                    state.cc = new Continuation('define', cdr.car, code, state, next_define, {
                         doc,
                         name
                     });
@@ -11527,12 +11535,12 @@ async function evaluate_code(state) {
                 }
             } else {
                 state.object = first;
-                state.cc = new Continuation('pair[a]', cdr, env, cc, next_pair);
+                state.cc = new Continuation('pair[a]', cdr, code, state, next_pair);
                 state.ready = false;
             }
         } else {
             state.object = car;
-            state.cc = new Continuation('pair[b]', cdr, env, cc, next_pair);
+            state.cc = new Continuation('pair[b]', cdr, code, state, next_pair);
             state.ready = false;
         }
     } else {
