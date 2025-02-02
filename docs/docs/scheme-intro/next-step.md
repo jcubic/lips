@@ -17,7 +17,8 @@ There is a free version in Archive.org called [Sketchy Lisp](https://archive.org
 
 * [Structure and Interpretation of Computer Programs](https://web.mit.edu/6.001/6.037/sicp.pdf)
 
-A classic, one of the authors of the book is the author of Scheme language.
+A classic, one of the authors of the book is the author of Scheme language. The book is more about
+general programming than about the Scheme itself.
 
 ![SICP Cover](./img/SICP-cover.jpg)<br/>
 <small><a href="https://commons.wikimedia.org/wiki/File:SICP_cover.jpg">Harold Abelson and Gerald Jay Sussman with Julie Sussman — MIT Press</a>, <a href="https://creativecommons.org/licenses/by-sa/4.0">CC BY-SA 4.0</a>, Wikimedia Commons</small>
@@ -35,6 +36,13 @@ There are also more recent lectures from 2010 at [Berkeley](https://www.berkeley
 [Brian Harvey](https://people.eecs.berkeley.edu/~bh/).  Only a little bit better quality.
 
 [![UC Berkeley CS 61A The Structure and Interpretation of Computer Programs, Spring 2010](./img/SCIP-lectures-berkley.jpg)](https://www.youtube.com/playlist?list=PLhMnuBfGeCDNgVzLPxF9o5UNKG1b-LFY9)
+
+* [The Scheme Programming Language](https://www.scheme.com/tspl4/) by
+[Kent Dybvig](https://en.wikipedia.org/wiki/R._Kent_Dybvig)
+
+![The Scheme Programming Language Cover](./img/scheme-programming.jpg)
+
+This book is completly different than SICP and talk only about Scheme.
 
 ## Lisp Macros
 
