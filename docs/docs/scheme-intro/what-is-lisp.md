@@ -76,12 +76,12 @@ syntax (or lack of).
 
 Scheme was designed by *Guy L. Steele* and *Gerald Jay Sussman* in a 1970s. They were playing with
 an idea called the actor model and trying to understand it by creating a simple implementation. That
-implementation later led to Scheme programming languages.
+implementation later led to Scheme programming language.
 
 ## REPL
 REPL or [Read-Eval-Print Loop](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop),
 is a way to interact with interpreter in an interactive way. Most modern interpreted programming languages
-that some kind of REPL, but it was first introduced in 1964 by
+have some kind of REPL, but it was first introduced in 1964 by
 [L. Peter Deutsch](https://en.wikipedia.org/wiki/L._Peter_Deutsch) and
 [Edmund Berkele](https://en.wikipedia.org/wiki/Edmund_Berkeley) for Lisp implementation on
 [PDP-1](https://en.wikipedia.org/wiki/PDP-1).
@@ -101,7 +101,7 @@ And you can type your scheme code and press enter to execute it (it's often call
 
 You can run [LIPS bookmarklet](/#bookmark) while reading this tutorial. But note that it
 doesn't yet support [continuations](/docs/scheme-intro/continuations) and TCO ([Tail Call
-Optimization](/docs/scheme-intro/core#tail-call-optimization)).
+Optimization](/docs/scheme-intro/core#tail-call-optimization).
 
 :::
 
@@ -115,23 +115,25 @@ The latest standard is R<sup>7</sup>RS Small, and there is version large in the 
 
 ### Scheme Implementations
 
-You can find different implementations of the programming language that re more or less compatible
-with specification.
+You can find different implementations of the Scheme programming language that are more or less
+compatible with R<sup>n</sup>RS specifications.
 
 Example implementations:
 
 * [Guile](https://www.gnu.org/software/guile/)
 * [Kawa](https://www.gnu.org/software/kawa/index.html)
+* [Gambit](https://gambitscheme.org/)
 * [Gauche](https://practical-scheme.net/gauche/)
 * [Chiken](https://www.call-cc.org/)
 * [LIPS](https://lips.js.org/)
 
 The official website for Scheme programming language is [scheme.org](https://www.scheme.org/), which
-contains more up to date [list of Scheme implementations](https://get.scheme.org/).
+contains more up to date [list of Scheme implementations](https://get.scheme.org/) and
+[Surveys](https://docs.scheme.org/surveys/) that compares different quirks between implementations.
 
 ### SRFI Documents
 
 SRFI stands for Scheme Requests for Implementations. And are official documents that add new
-features to the languages. Some of the SRFI may land in new version of R<sup>n</sup>RS
-specification. The website for SRFI documents is located at
-[srfi.schemers.org](https://srfi.schemers.org/).
+features to the languages. Some of the SRFI may land in new version of R<sup>n</sup>RS specification
+(and some of them are part of latest R<sup>7</sup>RS spec). The website for SRFI documents is
+located at [srfi.schemers.org](https://srfi.schemers.org/).
