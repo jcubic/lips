@@ -22,7 +22,7 @@ const example_code = `(define re #/<h1>([^>]+)<\\/h1>/)
     (loop (- i 1))))
 `;
 
-const WIDTH_MIN = 50;
+const WIDTH_MIN = 200;
 
 export default function ScreenShotBox(): JSX.Element {
     const dragging = useRef<boolean>(false);
@@ -48,10 +48,12 @@ export default function ScreenShotBox(): JSX.Element {
                     width = WIDTH_MIN + 1;
                 }
                 boxRef.current.style.setProperty('--width', `${width}px`);
+                document.body.classList.add('dragging');
             }
         }
         function mouseUp() {
             dragging.current = false;
+            document.body.classList.remove('dragging');
         }
         document.addEventListener('mousemove', mouseMove);
         document.addEventListener('mouseup', mouseUp);

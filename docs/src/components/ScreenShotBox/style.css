@@ -45,12 +45,17 @@
 .resizable {
     display: flex;
 }
+
+
 .resizable .resizer {
     width: 5px;
     cursor: ew-resize;
     border-radius: 0 var(--radius) var(--radius) 0;
 }
-.resizable .resizer:hover {
+body.dragging:has(.resizable) * {
+    cursor: ew-resize;
+}
+.resizable .resizer:hover, body.dragging .resizable .resizer {
     background: #bd6b18;
 }
 .position, .cm-shadow-box, .wrapper {
@@ -69,8 +74,11 @@
     z-index: 100;
     overflow: hidden;
 }
-.cm-dialog:has(+.resizer:hover) {
+.cm-dialog:has(+.resizer:hover), body.dragging .cm-dialog {
     border-radius: var(--radius) 0 0 var(--radius);
+}
+.cm-dialog:has(+.resizer:hover) *, body.dragging .cm-dialog * {
+    user-select: none;
 }
 .cm-dialog header {
     padding: 10px;
