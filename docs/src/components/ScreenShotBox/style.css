@@ -40,6 +40,18 @@
 .wrapper {
     background: #ABB8C3;
     padding-block: 50px;
+    --radius: 5px;
+}
+.resizable {
+    display: flex;
+}
+.resizable .resizer {
+    width: 5px;
+    cursor: ew-resize;
+    border-radius: 0 var(--radius) var(--radius) 0;
+}
+.resizable .resizer:hover {
+    background: #bd6b18;
 }
 .position, .cm-shadow-box, .wrapper {
     display: flex;
@@ -50,12 +62,15 @@
 .cm-dialog {
     width: var(--width);
     height: auto;
-    border-radius: 5px;
+    border-radius: var(--radius);
     box-shadow: rgba(0, 0, 0, 0.55) 0px 20px 68px;
     --background: #151718;
     background: var(--background, white);
     z-index: 100;
     overflow: hidden;
+}
+.cm-dialog:has(+.resizer:hover) {
+    border-radius: var(--radius) 0 0 var(--radius);
 }
 .cm-dialog header {
     padding: 10px;

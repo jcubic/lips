@@ -49,5 +49,4 @@ function adjust_height() {
         body.style.setProperty('--height', rect.height + 300);
     }
 }
-
 })();
