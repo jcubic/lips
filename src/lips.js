@@ -5465,32 +5465,14 @@ function is_native_function(fn) {
 // ----------------------------------------------------------------------
 // :: function that return macro for let, let* and letrec
 // ----------------------------------------------------------------------
-function let_macro(symbol) {
-    var name;
-    switch (symbol) {
-        case Symbol.for('letrec'):
-            name = 'letrec';
-            break;
-        case Symbol.for('let'):
-            name = 'let';
-            break;
-        case Symbol.for('let*'):
-            name = 'let*';
-            break;
-        default:
-            throw new Error('Invalid let_macro value');
-    }
-    return Macro.defmacro(name, function(code, state) {
-        let { dynamic_env, cc } = state;
-        const { error, macro_expand, use_dynamic } = state;
-        var args;
-        // named let:
-        // (let loop ((x 10)) (iter (- x 1))) -> (letrec ((loop (lambda (x) ...
+function let_macro(name) {
+    return Macro.defmacro(name, function(source, state) {
+        const code = source.cdr;
         if (code.car instanceof LSymbol) {
             if (!(is_pair(code.cdr.car) || is_nil(code.cdr.car))) {
                 throw new Error('let require list of pairs');
             }
-            var params;
+            let params, args;
             if (is_nil(code.cdr.car)) {
                 args = nil;
                 params = nil;
@@ -5506,86 +5488,45 @@ function let_macro(symbol) {
                         Pair(params, code.cdr.cdr))]],
                     code.car]),
                 args);
-        } else if (macro_expand) {
-            // Macro.defmacro are special macros that should return lips code
-            // here we use evaluate, so we need to check special flag set by
-            // macroexpand to prevent evaluation of code in normal let
-            return;
         }
-        var self = this;
-        args = global_env.get('list->array')(code.car);
-        var env = self.inherit(name);
-        var values, var_body_env;
-        if (name === 'let*') {
-            var_body_env = env;
-        } else if (name === 'let') {
-            values = []; // collect potential promises
+        let i = 0;
+        const star = name.endsWith('*');
+        function new_env() {
+            return state.env.inherit(star ? `${name} [${i++}]` : name);
         }
-        var i = 0;
-        function exec() {
-            var output = hygienic_begin([env], code.cdr);
-            return tco_eval(output, {
-                env,
-                dynamic_env: env,
-                use_dynamic,
-                error
-            });
+        const env = new_env();
+        const vars = code.car;
+        let value = nil;
+        const body = code.cdr;
+        if (is_pair(vars) && is_pair(vars.car)) {
+            value = vars.car.cdr.car;
         }
-        function check_duplicates(name) {
-            if (name in env.__env__) {
-                throw new Error(`Duplicated let variable ${name}`);
-            }
+        if (name === 'letrec') {
+            state.env = env;
         }
-        return (function loop() {
-            var pair = args[i++];
-            dynamic_env = name === 'let*' ? env : self;
-            if (!pair) {
-                if (values && values.length) {
-                    var v = values.map(x => x.value);
-                    // resolve all promises
-                    var promises = v.filter(is_promise);
-                    if (promises.length) {
-                        return promise_all(v).then((arr) => {
-                            for (var i = 0, len = arr.length; i < len; ++i) {
-                                const name = values[i].name;
-                                check_duplicates(name);
-                                env.set(name, arr[i]);
-                            }
-                        }).then(exec);
-                    } else {
-                        for (let { name, value } of values) {
-                            check_duplicates(name);
-                            env.set(name, value);
-                        }
-                    }
-                }
-                return exec();
+        state.cc = new Continuation(name, vars, source, state, function(state) {
+            if (is_nil(this.__object__)) {
+                state.cc = this.__continuation__;
+                state.env = env;
+                state.object = hygienic_begin([state.env], code.cdr);
             } else {
-                if (name === 'let') {
-                    var_body_env = self;
-                } else if (name === 'letrec') {
-                    var_body_env = env;
-                }
-                const value = tco_eval(pair.cdr.car, {
-                    env: var_body_env,
-                    dynamic_env,
-                    use_dynamic,
-                    error
-                });
-                if (name === 'let*') {
-                    var_body_env = env = var_body_env.inherit('let*[' + i + ']');
-                }
-                if (values) {
-                    values.push({ name: pair.car, value });
-                    return loop();
+                this.__env__.set(this.__object__.car.car, state.object);
+                const next = this.__object__.cdr;
+                if (is_nil(next)) {
+                    delete state.object;
                 } else {
-                    return unpromise(value, function(value) {
-                        env.set(pair.car, value);
-                        return loop();
-                    });
+                    state.object = next.car.cdr.car;
                 }
+                if (name === 'let*') {
+                    state.env = new_env();
+                }
+                read_only(this, '__object__', next);
             }
-        })();
+            state.ready = false;
+        });
+        state.object = value;
+        state.ready = false;
+        return state;
     });
 }
 // -------------------------------------------------------------------------
@@ -8649,7 +8590,7 @@ var global_env = new Environment({
         object.`),
     // ------------------------------------------------------------------
     'letrec': doc(
-        let_macro(Symbol.for('letrec')),
+        let_macro('letrec'),
         `(letrec ((a value-a) (b value-b) ...) . body)
 
          Macro that creates a new environment, then evaluates and assigns values to
@@ -8658,7 +8599,7 @@ var global_env = new Environment({
          previous values/names.`),
     // ---------------------------------------------------------------------
     'letrec*': doc(
-        let_macro(Symbol.for('letrec')),
+        let_macro('letrec'),
         `(letrec* ((a value-a) (b value-b) ...) . body)
 
          Same as letrec but the order of execution of the binding is guaranteed,
@@ -8667,43 +8608,16 @@ var global_env = new Environment({
          In LIPS both letrec and letrec* behave the same.`),
     // ---------------------------------------------------------------------
     'let*': doc(
-        let_macro(Symbol.for('let*')),
+        let_macro('let*'),
         `(let* ((a value-a) (b value-b) ...) . body)
 
          Macro similar to \`let\`, but the subsequent bindings after the first
          are evaluated in the environment including the previous let variables,
          so you can define one variable, and use it in the next's definition.`),
     // ---------------------------------------------------------------------
-    'let': doc(new Macro('let', function(source, state) {
-        const code = source.cdr;
-        const env = state.env.inherit('let');
-        const vars = code.car;
-        let value = nil;
-        const body = code.cdr;
-        if (is_pair(vars) && is_pair(vars.car)) {
-            value = vars.car.cdr.car;
-        }
-        state.cc = new Continuation('let', vars, source, state, function(state) {
-            if (is_nil(this.__object__)) {
-                state.cc = this.__continuation__;
-                state.env = env;
-                state.object = hygienic_begin([state.env], code.cdr);
-            } else {
-                this.__env__.set(this.__object__.car.car, state.object);
-                const next = this.__object__.cdr;
-                if (is_nil(next)) {
-                    delete state.object;
-                } else {
-                    state.object = next.car.cdr.car;
-                }
-                read_only(this, '__object__', next);
-            }
-            state.ready = false;
-        });
-        state.object = value;
-        state.ready = false;
-        return state;
-    }), `(let ((a value-a) (b value-b) ...) . body)
+    'let': doc(
+        let_macro('let'),
+        `(let ((a value-a) (b value-b) ...) . body)
 
          Macro that creates a new environment, then evaluates and assigns values to names,
          and then evaluates the body in context of that environment.  Values are evaluated
