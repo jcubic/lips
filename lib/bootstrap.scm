@@ -243,9 +243,8 @@
   "(alist->object alist)
 
    Function that converts alist pairs to a JavaScript object."
-  (if (pair? alist)
-      (alist.to_object)
-      (alist->object (new lips.Pair #void '()))))
+  (typecheck "alist->object" alist '("list" "nil"))
+  (alist.to_object))
 
 ;; -----------------------------------------------------------------------------
 (define (object->alist object)
