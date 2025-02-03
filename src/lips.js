@@ -5501,14 +5501,16 @@ function let_macro(name) {
             }
             const env = state.env = state.env.inherit('let');
             state.object = hygiene([env], ['letrec', 'lambda'], function(letrec, lambda) {
-                return new Pair(
+                return Pair(
                     Pair.fromArray([
                         letrec,
                         [[code.car, Pair(
                             lambda,
                             Pair(params, code.cdr.cdr))]],
-                        code.car]),
-                    args);
+                        code.car
+                    ]),
+                    args
+                );
             });
             return state;
         }
@@ -8553,51 +8555,51 @@ var global_env = new Environment({
 
          Creates a loop, it executes cond and body until cond expression is false.`),
     // ------------------------------------------------------------------
-    'do': doc(new Macro('do', async function(source, { use_dynamic, error }) {
+    'do': doc(new Macro('do', async function(source, state) {
         const code = source.cdr;
-        const self = this;
-        const dynamic_env = self;
-        let scope = self.inherit('do');
-        const vars = code.car;
-        const test = code.cdr.car;
-        let body = code.cdr.cdr;
-        if (!is_nil(body)) {
-            body = new Pair(LSymbol('begin'), body);
-        }
-        let eval_args = { env: self, dynamic_env, use_dynamic, error };
-        let node = vars;
-        // init variables
-        while (!is_nil(node)) {
-            const item = node.car;
-            scope.set(item.car, await evaluate(item.cdr.car, eval_args));
-            node = node.cdr;
-        }
-        eval_args = { env: scope, dynamic_env, error };
-        while ((await evaluate(test.car, eval_args)) === false) {
-            if (!is_nil(body)) {
-                await lips.evaluate(body, eval_args);
-            }
-            let node = vars;
-            const next = {};
-            // next value of variables
-            while (!is_nil(node)) {
-                const item = node.car;
-                if (!is_nil(item.cdr.cdr)) {
-                    const value = await evaluate(item.cdr.cdr.car, eval_args);
-                    next[item.car.valueOf()] = value;
-                }
-                node = node.cdr;
-            }
-            const symbols = Object.getOwnPropertySymbols(next);
-            // new scope for new iteration
-            eval_args.env = scope = self.inherit('do');
-            Object.keys(next).concat(symbols).forEach(key => {
-                scope.set(key, next[key]);
-            });
-        }
-        if (!is_nil(test.cdr)) {
-            return await evaluate(test.cdr.car, eval_args);
-        }
+        state.env = state.env.inherit('do');
+        const loop = gensym('loop');
+        const names = ['let', 'if', 'begin'];
+        const result = is_nil(code.cdr.car.cdr) ? undefined : code.cdr.car.cdr.car;
+        state.object = hygiene([state.env], names, function(_let, _if, _begin) {
+            return Pair.fromArray([
+                _let,
+                loop,
+                code.car.map(list => {
+                    return Pair(
+                        list.car,
+                        Pair(
+                            list.cdr.car,
+                            nil
+                        )
+                    );
+                }),
+                [
+                    _if,
+                    code.cdr.car.car,
+                    result,
+                    Pair(
+                        _begin,
+                        code.cdr.cdr.append(
+                            Pair(
+                                Pair(
+                                    loop,
+                                    code.car.map(list => {
+                                        if (!is_pair(list.cdr.cdr)) {
+                                            return list.car;
+                                        }
+                                        return list.cdr.cdr.car;
+                                    })
+                                ),
+                                nil
+                            )
+                        )
+                    )
+                ]
+            ]);
+        });
+        state.ready = false;
+        return state;
     }), `(do ((<var> <init> <next>)) (test return) . body)
 
          Iteration macro that evaluates the expression body in scope of the variables.
