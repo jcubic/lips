@@ -8599,7 +8599,7 @@ var global_env = new Environment({
          previous values/names.`),
     // ---------------------------------------------------------------------
     'letrec*': doc(
-        let_macro('letrec'),
+        let_macro('letrec*'),
         `(letrec* ((a value-a) (b value-b) ...) . body)
 
          Same as letrec but the order of execution of the binding is guaranteed,
