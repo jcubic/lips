@@ -844,16 +844,35 @@ const gensym = (function() {
         return with_props(count, Symbol(`#:g${count}`));
     };
 })();
+
 // ----------------------------------------------------------------------
 // :: helper function that make symbols in names array hygienic
 // ----------------------------------------------------------------------
 function hygienic_begin(envs, expr) {
-    const begin = global_env.get('begin');
-    const g_begin = gensym('begin');
+    return hygienic_expression(envs, 'begin', expr);
+}
+
+// ----------------------------------------------------------------------
+function hygienic_expression(envs, name, expr) {
+    const value = global_env.get(name);
+    const g_value = gensym(name);
     envs.forEach(env => {
-        env.set(g_begin, begin);
+        env.set(g_value, value);
     });
-    return new Pair(g_begin, expr);
+    return new Pair(g_value, expr);
+}
+
+// ----------------------------------------------------------------------
+// :: function map scope values (functions) into gensyms
+// ----------------------------------------------------------------------
+function hygiene(envs, names, callback) {
+    const args = names.map(gensym);
+    envs.forEach(env => {
+        args.forEach((gensym, i) => {
+            env.set(gensym, global_env.get(names[i]));
+        });
+    });
+    return callback(...args);
 }
 
 // ----------------------------------------------------------------------
@@ -5480,14 +5499,18 @@ function let_macro(name) {
                 params = code.cdr.car.map(pair => pair.car);
                 args = code.cdr.car.map(pair => pair.cdr.car);
             }
-            return new Pair(
-                Pair.fromArray([
-                    LSymbol('letrec'),
-                    [[code.car, Pair(
-                        LSymbol('lambda'),
-                        Pair(params, code.cdr.cdr))]],
-                    code.car]),
-                args);
+            const env = state.env = state.env.inherit('let');
+            state.object = hygiene([env], ['letrec', 'lambda'], function(letrec, lambda) {
+                return new Pair(
+                    Pair.fromArray([
+                        letrec,
+                        [[code.car, Pair(
+                            lambda,
+                            Pair(params, code.cdr.cdr))]],
+                        code.car]),
+                    args);
+            });
+            return state;
         }
         let i = 0;
         const star = name.endsWith('*');
@@ -8496,18 +8519,36 @@ var global_env = new Environment({
         If the second argument is provided and it's an environment the evaluation
         will happen in that environment.`),
     // ------------------------------------------------------------------
-    'while': doc(new Macro('while', function(source, args) {
+    'while': doc(new Macro('while', function(source, state) {
         const code = source.cdr;
-        const test = code.car;
-        const eval_args = { ...args, env: this };
-        const body = new Pair(new LSymbol('begin'), code.cdr);
-        return (function loop() {
-            return unpromise(evaluate(test, eval_args), test => {
-                if (test) {
-                    return unpromise(evaluate(body, eval_args), loop);
-                }
-            });
-        })();
+        const loop = gensym('loop');
+        const env = state.env.inherit('while');
+        state.env = env;
+        state.object = hygiene([env], ['if', 'begin', 'let'], function(_if, _begin, _let) {
+            return Pair.fromArray([
+                _let,
+                loop,
+                [],
+                [
+                    _if,
+                    code.car,
+                    Pair(
+                        _begin,
+                        code.cdr.append(
+                            Pair(
+                                Pair(
+                                    loop,
+                                    nil
+                                ),
+                                nil
+                            )
+                        )
+                    )
+                ]
+            ]);
+        });
+        state.ready = false;
+        return state;
     }), `(while cond body)
 
          Creates a loop, it executes cond and body until cond expression is false.`),
@@ -11428,12 +11469,12 @@ async function evaluate_code(state) {
                 if (is_pair(cdr.car)) {
                     // (define (foo x) x) => (define foo (lambda (x) x))
                     state.object = new Pair(
-                        new LSymbol("define"),
+                        new LSymbol('define'),
                         new Pair(
                             cdr.car.car,
                             new Pair(
                                 new Pair(
-                                    new LSymbol("lambda"),
+                                    new LSymbol('lambda'),
                                     new Pair(
                                         cdr.car.cdr,
                                         cdr.cdr
@@ -11467,7 +11508,7 @@ async function evaluate_code(state) {
                     });
                     state.ready = false;
                 }
-            } else if (first instanceof Macro) {
+            } else if (is_macro(first)) {
                 const result = await first.invoke(code, state);
                 if (!(result instanceof State)) {
                     state.object = result;
@@ -11568,7 +11609,7 @@ function next_pair(state) {
         state.env = this.__env__;
         state.cc = this.__continuation__;
         const [fn, ...args] = this._state.args;
-        if (fn[__lambda__] && fn._body) {
+        if (is_function(fn) && fn[__lambda__] && fn._body) {
             const define_env = fn._env;
             const eval_args = lambda_scope.call(this, define_env, fn, fn._code, args, {
                 error: state.error,
