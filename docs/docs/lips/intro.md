@@ -933,8 +933,8 @@ quoted object literal `` `&() `` with longhand `object` you will get an error be
 
 :::
 
-You can abstract the use of iteration protocol with a macro, but to have real `yield` keyword like
-syntax you need `call/cc`.
+You can abstract the use of iteration protocol with a macro, but to have a real `yield` keyword like
+syntax, you need `call/cc`.
 
 You can also define generators inside JavaScript using `self.eval` (JavaScript global `eval`):
 
