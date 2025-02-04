@@ -8165,25 +8165,16 @@ var global_env = new Environment({
         console but it can be defined in user code). This function
         calls \`(newline)\` after printing each input.`),
     // ------------------------------------------------------------------
-    'stack-trace': new Macro('stack-trace', function(code, state) {
-        state.object = code.cdr.car;
-        state.cc = new Continuation('stack-trace', null, code, state, function(state) {
-            state.env = this.__env__
-            state.cc = this.__continuation__;
-            let cc = state.object;
-            const stack = [];
-            typecheck('stack-trace', cc, 'continuation');
-            let i = 0;
-            while (cc._state.name !== 'top') {
-                stack.push(`[${i++}]: ` + to_string(cc.__code__));
-                cc = cc.__continuation__;
-            }
-            state.object = stack.join('\n');
-            state.ready = false;
-        });
-        state.ready = false;
-        return state;
-    }),
+    'stack-trace': doc(function(cc) {
+        const stack = [];
+        typecheck('stack-trace', cc, 'continuation');
+        return cc.trace(function(cc, i) {
+            const code = to_string(cc.__code__);
+            return `[${i}]: ${code}`;
+        }).join('\n');
+    }, `(stack-trace <continuation>)
+
+        Function return stack trace if given continuation as a string`),
     // ------------------------------------------------------------------
     format: doc('format', function format(str, ...args) {
         typecheck('format', str, 'string');
@@ -11250,6 +11241,16 @@ class Continuation {
         let result = `clone(${this._state.name})`;
         if (this._state.count > 1) {
             result += `[${this._state.count}]`;
+        }
+        return result;
+    }
+    trace(callback) {
+        let cc = this;
+        const result = [];
+        let i = 0;
+        while (cc._state.name !== 'top') {
+            result.push(callback(cc, i++));
+            cc = cc.__continuation__;
         }
         return result;
     }
