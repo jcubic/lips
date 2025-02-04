@@ -8950,7 +8950,7 @@ var global_env = new Environment({
             const eval_args = lambda_scope.call(this, self, lambda, code, args, scope);
             const { env, dynamic_env } = eval_args;
             const body = hygienic_begin([env, dynamic_env], rest);
-            return tco_eval(body, eval_args);
+            return tco_eval(body, { ...eval_args, cc: top_cc });
         }
         var length = is_pair(code.car) ? code.car.length() : null;
         read_only(lambda, '_env', self, { hidden: true });
