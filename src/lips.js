@@ -9224,7 +9224,7 @@ var global_env = new Environment({
                     if (unquote_cnt + 1 < max_unq) {
                         result = recur(x.cdr, unquote_cnt + 1, max_unq);
                     } else {
-                        result = tco_eval(x.cdr.car, {
+                        result = evaluate(x.cdr.car, {
                             env: self,
                             use_dynamic,
                             dynamic_env,
@@ -9255,7 +9255,7 @@ var global_env = new Environment({
                     if (unquote_cnt < max_unq) {
                         output = recur(value.cdr.car, unquote_cnt, max_unq);
                     } else {
-                        output = tco_eval(value.cdr.car, {
+                        output = evaluate(value.cdr.car, {
                             env: self,
                             dynamic_env,
                             use_dynamic,
@@ -9289,7 +9289,7 @@ var global_env = new Environment({
             }
             var lists = [];
             return (function next(node) {
-                var value = tco_eval(node.car, {
+                var value = evaluate(node.car, {
                     env: self,
                     dynamic_env,
                     use_dynamic,
@@ -9378,7 +9378,7 @@ var global_env = new Environment({
                                     if (is_nil(node)) {
                                         return Pair.fromArray(result);
                                     }
-                                    return unpromise(tco_eval(node.car, {
+                                    return unpromise(evauluate(node.car, {
                                         env: self,
                                         dynamic_env,
                                         use_dynamic,
@@ -9432,7 +9432,7 @@ var global_env = new Environment({
                                     if (is_nil(node)) {
                                         return Pair.fromArray(result);
                                     }
-                                    return unpromise(tco_eval(node.car, {
+                                    return unpromise(evaluate(node.car, {
                                         env: self,
                                         dynamic_env,
                                         use_dynamic,
