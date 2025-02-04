@@ -11441,7 +11441,6 @@ async function evaluate_code(state) {
         state.ready = true;
     } else if (is_pair(code)) {
         const { car, cdr } = code;
-        const { env, cc } = state;
         if (car instanceof LSymbol) {
             const first = state.env.get(car);
             if (first === __if__) {
@@ -11558,12 +11557,12 @@ function next_set(state) {
     const ref = env.ref(symbol);
     if (!ref) {
         // case (set! fn.toString (lambda () "xxx"))
-        var parts = symbol.split('.');
+        const parts = symbol.split('.');
         if (parts.length > 1) {
-            var key = parts.pop();
-            var name = parts.join('.');
-            var obj = this.get(name, { throwError: false });
-            if (obj) {
+            const key = parts.pop();
+            const name = parts.join('.');
+            const object = env.get(name, { throwError: false });
+            if (object) {
                 env.get('set-obj!').call(env, object, key, value);
                 state.ready = true;
                 return;
@@ -11629,7 +11628,7 @@ function next_pair(state) {
             state.object = call_function(fn, args, state);
             state.ready = !is_promise(state.object);
         } else {
-            throw new Error(`${type(fn)} is not a function`);
+            throw new Error(`${type(fn)} is not callable`);
         }
     } else {
         state.object = this.__object__.car;
