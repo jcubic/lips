@@ -3945,11 +3945,8 @@ Macro.defmacro = function(name, fn, doc, dump) {
     return macro;
 };
 // ----------------------------------------------------------------------
-Macro.prototype.invoke = function(code, state, macro_expand) {
-    state.macro_expand = macro_expand;
-    const result = this.__fn__.call(state.env, code, state, this.__name__);
-    delete state.macro_expand;
-    return result;
+Macro.prototype.invoke = function(code, state) {
+    return this.__fn__.call(state.env, code, state, this.__name__);
 };
 // ----------------------------------------------------------------------
 Macro.prototype.toString = function() {
@@ -11309,11 +11306,11 @@ class State {
             this.ready = true;
         }
         if (!this.ready) {
-            if (is_debug()) {
+            if (is_debug('eval')) {
                 console.log(`eval: ` + to_string(this.object, true));
             }
             await evaluate_code(this);
-            if (is_debug()) {
+            if (is_debug('eval')) {
                 console.log('result: ' + to_string(this.object, true));
             }
         }
@@ -11328,9 +11325,18 @@ const top_cc = new Continuation('top', null, null, {}, (state) => {
 // -------------------------------------------------------------------------
 // :: Tail Call Optimized eval
 // -------------------------------------------------------------------------
-async function tco_eval(code, eval_args) {
-    eval_args = default_eval_args(eval_args);
-    const state = new State(code, eval_args.cc || top_cc, eval_args);
+async function tco_eval(code, { env, cc, dynamic_env, use_dynamic, macro_expand = false } ) {
+    if (!is_env(dynamic_env)) {
+        dynamic_env = env === true ? user_env : (env || user_env);
+    }
+    if (use_dynamic) {
+        env = dynamic_env;
+    } else if (env === true) {
+        env = user_env;
+    } else {
+        env = env || global_env;
+    }
+    const state = new State(code, cc || top_cc, { env, cc, dynamic_env, macro_expand });
     try {
         while (true) {
             if (await state.eval()) {
@@ -11345,23 +11351,10 @@ async function tco_eval(code, eval_args) {
         }
         console.log({ code: to_string(code) });
         state.error && state.error(e);
+        throw e;
     }
 }
 
-// -------------------------------------------------------------------------
-function default_eval_args({ env, cc, dynamic_env, use_dynamic, error = noop } = {}) {
-    if (!is_env(dynamic_env)) {
-        dynamic_env = env === true ? user_env : (env || user_env);
-    }
-    if (use_dynamic) {
-        env = dynamic_env;
-    } else if (env === true) {
-        env = user_env;
-    } else {
-        env = env || global_env;
-    }
-    return { env, dynamic_env, use_dynamic, error, cc };
-}
 // -------------------------------------------------------------------------
 function lambda_scope(self, fn, code, args, { use_dynamic, error, cc }) {
     // lambda got scopes as context in apply
