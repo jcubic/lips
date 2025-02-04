@@ -3409,6 +3409,59 @@ function function_to_string(fn) {
     }
 }
 // ----------------------------------------------------------------------
+function object_to_string(obj) {
+    var constructor = obj.constructor;
+    if (!constructor) {
+        // This is case of fs.constants in Node.js that is null constructor object.
+        // This object can be handled like normal objects that have properties
+        constructor = Object;
+    }
+    var name;
+    if (typeof constructor.__class__ === 'string') {
+        name = constructor.__class__;
+    } else {
+        var fn = user_repr(obj);
+        if (fn) {
+            if (is_function(fn)) {
+                return fn(obj, quote);
+            } else {
+                throw new Error('toString: Invalid repr value');
+            }
+        }
+        name = constructor.name;
+    }
+    // user defined representation
+    if (is_function(obj.toString) && obj.hasOwnProperty('toString')) {
+        return obj.toString().valueOf();
+    }
+    if (type(obj) === 'instance') {
+        if (is_lambda(constructor) && constructor.__name__) {
+            name = constructor.__name__.valueOf();
+            if (typeof name === 'symbol') {
+                name = name.toString().replace(/^Symbol\((?:#:)?([^\)]+)\)$/, '$1');
+            }
+        } else if (!is_native_function(constructor)) {
+            name = 'instance';
+        }
+    }
+    if (is_iterator(obj, Symbol.iterator) && !is_array) {
+        if (name) {
+            return `#<iterator(${name})>`;
+        }
+        return '#<iterator>';
+    }
+    if (is_iterator(obj, Symbol.asyncIterator)) {
+        if (name) {
+            return `#<asyncIterator(${name})>`;
+        }
+        return '#<asyncIterator>';
+    }
+    if (name !== '') {
+        return '#<' + name + '>';
+    }
+    return '#<Object>';
+}
+// ----------------------------------------------------------------------
 // Instances extracted to make cyclomatic complexity of toString smaller
 const instances = new Map();
 // ----------------------------------------------------------------------
@@ -3495,57 +3548,8 @@ function to_string(obj, quote, skip_cycles, ...pair_args) {
         }
         return function_to_string(obj);
     }
-    if (typeof obj === 'object') {
-        var constructor = obj.constructor;
-        if (!constructor) {
-            // This is case of fs.constants in Node.js that is null constructor object.
-            // This object can be handled like normal objects that have properties
-            constructor = Object;
-        }
-        var name;
-        if (typeof constructor.__class__ === 'string') {
-            name = constructor.__class__;
-        } else {
-            var fn = user_repr(obj);
-            if (fn) {
-                if (is_function(fn)) {
-                    return fn(obj, quote);
-                } else {
-                    throw new Error('toString: Invalid repr value');
-                }
-            }
-            name = constructor.name;
-        }
-        // user defined representation
-        if (is_function(obj.toString) && obj.hasOwnProperty('toString')) {
-            return obj.toString().valueOf();
-        }
-        if (type(obj) === 'instance') {
-            if (is_lambda(constructor) && constructor.__name__) {
-                name = constructor.__name__.valueOf();
-                if (typeof name === 'symbol') {
-                    name = name.toString().replace(/^Symbol\((?:#:)?([^\)]+)\)$/, '$1');
-                }
-            } else if (!is_native_function(constructor)) {
-                name = 'instance';
-            }
-        }
-        if (is_iterator(obj, Symbol.iterator)) {
-            if (name) {
-                return `#<iterator(${name})>`;
-            }
-            return '#<iterator>';
-        }
-        if (is_iterator(obj, Symbol.asyncIterator)) {
-            if (name) {
-                return `#<asyncIterator(${name})>`;
-            }
-            return '#<asyncIterator>';
-        }
-        if (name !== '') {
-            return '#<' + name + '>';
-        }
-        return '#<Object>';
+    if (typeof obj === 'object' && !Array.isArray(obj)) {
+        return object_to_string(obj);
     }
     if (typeof obj !== 'string') {
         return obj.toString();
