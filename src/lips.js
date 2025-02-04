@@ -3977,31 +3977,25 @@ function is_named_macro(macro) {
     return is_pair(macro.car) && macro.car.car instanceof LSymbol;
 }
 // ----------------------------------------------------------------------
-function define_macro(name, args, body, __doc__, { use_dynamic, error }) {
-    const makro_instance = Macro.defmacro(name, function(source) {
+function define_macro(name, args, body, source, __doc__) {
+    const makro_instance = Macro.defmacro(name, function(source, state) {
+        const macro_env = state.env;
         const code = source.cdr;
         const env = macro_args_env(args, code, this);
-        const eval_args = {
-            env,
-            dynamic_env: env,
-            use_dynamic,
-            error
-        };
-        // evaluate macro
         if (is_pair(body)) {
-            // this eval will return lips code
-            const result = body.reduce(function(result, node) {
-                return tco_eval(node, eval_args);
+            state.object = hygienic_begin([env], body);
+            // using continuation to evaluate the result of the macro
+            state.cc = new Continuation(`macro[${name}]`, null, source, state, function(state) {
+                state.cc = this.__continuation__;
+                state.env = this.__env__;
+                state.ready = false;
             });
-            return unpromise(result, function(result) {
-                if (typeof result === 'object') {
-                    delete result[__data__];
-                }
-                return result;
-            });
+            state.env = env;
+            state.ready = false;
+            return state;
         }
     }, __doc__, true);
-    makro_instance.__code__ = new Pair(new LSymbol('define-macro'), macro);
+    makro_instance.__code__ = source;
     return makro_instance;
 }
 // ----------------------------------------------------------------------
@@ -5194,7 +5188,7 @@ function is_env(o) {
 }
 // ----------------------------------------------------------------------
 function is_callable(o) {
-    return is_function(o) || is_continuation(o) || is_parameter(o) || is_macro(o);s
+    return is_function(o) || is_continuation(o) || is_parameter(o) || is_macro(o);
 }
 // ----------------------------------------------------------------------
 function is_macro(o) {
@@ -8981,7 +8975,7 @@ var global_env = new Environment({
          Macro similar to macroexpand but it expand macros only one level
          and return single expression as output.`),
     // ------------------------------------------------------------------
-    'define-macro': doc(new Macro(macro, function(source, { use_dynamic, error }) {
+    'define-macro': doc(new Macro(macro, function(source) {
         const macro = source.cdr;
         let name, __doc__, body, args;
         if (is_named_macro(macro)) {
@@ -8999,9 +8993,7 @@ var global_env = new Environment({
                 __doc__ = body.car.valueOf();
                 body = body.cdr;
             }
-            const macro_instance = define_macro(name, args, body, __doc__, {
-                use_dynamic, error
-            });
+            const macro_instance = define_macro(name, args, body, source, __doc__);
             this.set(name, macro_instance);
         } else {
             throw new Error('Syntax Error: Invalid `define-macro` expression');
@@ -9155,9 +9147,9 @@ var global_env = new Environment({
         Special form used in the quasiquote macro. It evaluates the expression inside and
         substitutes the value into quasiquote's result.`),
     // ------------------------------------------------------------------
-    quasiquote: Macro.defmacro('quasiquote', function(source, env) {
+    quasiquote: Macro.defmacro('quasiquote', function(source, state) {
         const arg = source.cdr;
-        const { use_dynamic, error } = env;
+        const { use_dynamic, error } = state;
         const self = this;
         //var max_unquote = 1;
         const dynamic_env = self;
