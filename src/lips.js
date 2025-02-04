@@ -3444,7 +3444,7 @@ function object_to_string(obj) {
             name = 'instance';
         }
     }
-    if (is_iterator(obj, Symbol.iterator) && !is_array) {
+    if (is_iterator(obj, Symbol.iterator)) {
         if (name) {
             return `#<iterator(${name})>`;
         }
@@ -8531,7 +8531,7 @@ var global_env = new Environment({
                     code.car,
                     Pair(
                         _begin,
-                        code.cdr.append(
+                        code.cdr.clone().append(
                             Pair(
                                 Pair(
                                     loop,
@@ -8575,7 +8575,7 @@ var global_env = new Environment({
                     result,
                     Pair(
                         _begin,
-                        code.cdr.cdr.append(
+                        code.cdr.cdr.clone().append(
                             Pair(
                                 Pair(
                                     loop,
@@ -8869,7 +8869,7 @@ var global_env = new Environment({
         } else {
             obj[key] = value && !is_prototype(value) ? value.valueOf() : value;
         }
-        if (props) {
+        if (options) {
             const value = obj[key];
             Object.defineProperty(obj, key, { ...options, value });
         }
