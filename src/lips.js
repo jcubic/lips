@@ -5514,15 +5514,12 @@ function let_macro(name) {
         function new_env() {
             return state.env.inherit(star ? `${name} [${i++}]` : name);
         }
-        const env = new_env();
+        let env = new_env();
         const vars = code.car;
         let value = nil;
         const body = code.cdr;
         if (is_pair(vars) && is_pair(vars.car)) {
             value = vars.car.cdr.car;
-        }
-        if (name === 'letrec') {
-            state.env = env;
         }
         state.cc = new Continuation(name, vars, source, state, function(state) {
             if (is_nil(this.__object__)) {
@@ -5530,7 +5527,11 @@ function let_macro(name) {
                 state.env = env;
                 state.object = hygienic_begin([state.env], code.cdr);
             } else {
-                this.__env__.set(this.__object__.car.car, state.object);
+                if (name === 'let*') {
+                    env = new_env();
+                }
+                const scope = env;
+                scope.set(this.__object__.car.car, state.object);
                 const next = this.__object__.cdr;
                 if (is_nil(next)) {
                     delete state.object;
@@ -5538,12 +5539,15 @@ function let_macro(name) {
                     state.object = next.car.cdr.car;
                 }
                 if (name === 'let*') {
-                    state.env = new_env();
+                    state.env = env;
                 }
                 read_only(this, '__object__', next);
             }
             state.ready = false;
         });
+        if (name.startsWith('letrec')) {
+            state.env = env;
+        }
         state.object = value;
         state.ready = false;
         return state;
