@@ -8179,7 +8179,7 @@ var global_env = new Environment({
     'stack-trace': doc(function(cc) {
         const stack = [];
         typecheck('stack-trace', cc, 'continuation');
-        return cc.trace(function(cc, i) {
+        return cc._state.state.stack.slice(0, -1).map((cc, i) => {
             const code = to_string(cc.__code__);
             return `[${i}]: ${code}`;
         }).join('\n');
@@ -8721,7 +8721,13 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'call/cc': doc(new Macro('call/cc', function(source, state) {
         const cc = state.cc.clone();
-        state.object = Pair(source.cdr.car, Pair(cc, nil));
+        state.cc = new Continuation('call/cc', null, source, state, function(state) {
+            state.env = this.__env__;
+            state.cc = this.__continuation__;
+            state.object = Pair(state.object, Pair(cc, nil));
+            state.ready = false;
+        });
+        state.object = source.cdr.car;
         state.ready = false;
         return state;
     }), `(call/cc proc)
@@ -11228,7 +11234,8 @@ function search_param(env, param) {
 // :: Continuations object from call/cc
 // -------------------------------------------------------------------------
 class Continuation {
-    constructor(name, object, code, { env = null, cc = null }, next, data) {
+    constructor(name, object, code, state, next, data) {
+        const { env = null, cc = null } = state;
         read_only(this, '__env__', env);
         read_only(this, '__code__', code);
         read_only(this, '__object__', object);
@@ -11239,6 +11246,7 @@ class Continuation {
             ...data,
             i: 0,
             args: [],
+            state,
             name,
             count: 0
         }, { hidden: true });
@@ -11253,15 +11261,8 @@ class Continuation {
         }
         return result;
     }
-    trace(callback) {
-        let cc = this;
-        const result = [];
-        let i = 0;
-        while (cc._state.name !== 'top') {
-            result.push(callback(cc, i++));
-            cc = cc.__continuation__;
-        }
-        return result;
+    track() {
+        return this._state.name !== 'top';
     }
     clone(mark = true) {
         let cc = this.__continuation__;
@@ -11298,10 +11299,12 @@ class State {
         this.error = error;
         this.use_dynamic = use_dynamic;
         this.ready = false;
+        this.macro_expand = macro_expand;
+        this.stack = [];
     }
     cont() {
         if (is_debug('continuations')) {
-            if (this.cc.__name__ == 'top') {
+            if (this.cc._state.name == 'top') {
                 console.log('[CONTINUE] => top');
             } else {
                 console.log('[CONTINUE] => ' + to_string(this.cc.__code__));
@@ -11320,6 +11323,10 @@ class State {
         if (!this.ready) {
             if (is_debug('eval')) {
                 console.log(`eval: ` + to_string(this.object, true));
+            }
+            const cc = this.cc;
+            if (!this.stack.includes(cc) && cc.track()) {
+                this.stack.push(cc);
             }
             yield* evaluate_code(this);
             if (is_debug('eval')) {
