@@ -11641,7 +11641,7 @@ function next_pair(state) {
             state.object = args[0];
             state.cc = fn.clone(false);
         } else if (is_function(fn)) {
-            state.object = call_function(fn, args, state);
+            state.object = call_function(fn, prepare_fn_args(fn, args), state);
             state.ready = !is_promise(state.object);
         } else {
             throw new Error(`${type(fn)} is not callable`);
