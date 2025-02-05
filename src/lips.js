@@ -3289,24 +3289,11 @@ Pair.prototype.map = function(fn) {
 };
 const repr = new Map();
 // ----------------------------------------------------------------------
-function is_plain_object(object) {
-    return object && typeof object === 'object' && object.constructor === Object;
-}
-// ----------------------------------------------------------------------
 var props = Object.getOwnPropertyNames(Array.prototype);
 var array_methods = [];
 props.forEach(x => {
     array_methods.push(Array[x], Array.prototype[x]);
 });
-// ----------------------------------------------------------------------
-function is_array_method(x) {
-    x = unbind(x);
-    return array_methods.includes(x);
-}
-// ----------------------------------------------------------------------
-function is_lips_function(x) {
-    return is_function(x) && (is_lambda(x) || x.__doc__);
-}
 // ----------------------------------------------------------------------
 function user_repr(obj) {
     const constructor = obj.constructor || Object;
@@ -3918,6 +3905,22 @@ var truncate = (function() {
         };
     }
 })();
+// ----------------------------------------------------------------------
+// :: function that run through a generator that use yield as a replacement
+// :: for await, if there is any async call it will return a promise
+// :: but the promise is optional same as with unpromise
+// ----------------------------------------------------------------------
+function uniterate(iterator, error = (e) => { throw e; }) {
+    iterator = iterator[Symbol.iterator]();
+    const result = (function next(value) {
+        const object = iterator.next(value);
+        if (object.done) {
+            return object.value;
+        }
+        return unpromise(object.value, next, error);
+    })();
+    return result;
+}
 // ----------------------------------------------------------------------
 // :: Macro constructor
 // ----------------------------------------------------------------------
@@ -5177,6 +5180,19 @@ function is_context(o) {
 // ----------------------------------------------------------------------
 function is_parameter(o) {
     return o instanceof Parameter;
+}
+// ----------------------------------------------------------------------
+function is_plain_object(object) {
+    return object && typeof object === 'object' && object.constructor === Object;
+}
+// ----------------------------------------------------------------------
+function is_array_method(x) {
+    x = unbind(x);
+    return array_methods.includes(x);
+}
+// ----------------------------------------------------------------------
+function is_lips_function(x) {
+    return is_function(x) && (is_lambda(x) || x.__doc__);
 }
 // ----------------------------------------------------------------------
 function is_pair(o) {
@@ -11294,7 +11310,7 @@ class State {
         }
         return this.cc.__next__(this);
     }
-    async eval() {
+    *eval() {
         if (this.object === null) {
             this.ready = false;
         }
@@ -11305,7 +11321,7 @@ class State {
             if (is_debug('eval')) {
                 console.log(`eval: ` + to_string(this.object, true));
             }
-            await evaluate_code(this);
+            yield* evaluate_code(this);
             if (is_debug('eval')) {
                 console.log('result: ' + to_string(this.object, true));
             }
@@ -11319,9 +11335,13 @@ const top_cc = new Continuation('top', null, null, {}, (state) => {
 });
 
 // -------------------------------------------------------------------------
+function tco_eval(...args) {
+    return uniterate(tco_generator(...args));
+}
+// -------------------------------------------------------------------------
 // :: Tail Call Optimized eval
 // -------------------------------------------------------------------------
-async function tco_eval(code, { env, cc, dynamic_env, use_dynamic, macro_expand = false } ) {
+function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand = false } ) {
     if (!is_env(dynamic_env)) {
         dynamic_env = env === true ? user_env : (env || user_env);
     }
@@ -11335,9 +11355,9 @@ async function tco_eval(code, { env, cc, dynamic_env, use_dynamic, macro_expand 
     const state = new State(code, cc || top_cc, { env, cc, dynamic_env, macro_expand });
     try {
         while (true) {
-            if (await state.eval()) {
+            if (yield* state.eval()) {
                 state.ready = false;
-                await state.cont();
+                yield state.cont();
             }
         }
     } catch(e) {
@@ -11423,7 +11443,7 @@ const __set__ = global_env.get('set!');
 const __define__ = global_env.get('define');
 
 // -------------------------------------------------------------------------
-async function evaluate_code(state) {
+function* evaluate_code(state) {
     const code = state.object;
     if (code instanceof State) {
         throw new Error('Internal: expecting LIPS expression got State');
@@ -11433,7 +11453,7 @@ async function evaluate_code(state) {
         state.object = state.env.get(state.object);
         state.ready = true;
     } else if (is_promise(code)) {
-        state.object = await code;
+        state.object = yield code;
         state.ready = true;
     } else if (is_pair(code)) {
         const { car, cdr } = code;
@@ -11504,7 +11524,7 @@ async function evaluate_code(state) {
                     state.ready = false;
                 }
             } else if (is_macro(first)) {
-                const result = await first.invoke(code, state);
+                const result = yield first.invoke(code, state);
                 if (!(result instanceof State)) {
                     state.object = result;
                     state.ready = false;
