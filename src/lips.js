@@ -3910,16 +3910,15 @@ var truncate = (function() {
 // :: for await, if there is any async call it will return a promise
 // :: but the promise is optional same as with unpromise
 // ----------------------------------------------------------------------
-function uniterate(iterator, error = (e) => { throw e; }) {
-    iterator = iterator[Symbol.iterator]();
-    const result = (function next(value) {
+function uniterate(object, error = (e) => { throw e; }) {
+    const iterator = object[Symbol.iterator]();
+    return (function next(value) {
         const object = iterator.next(value);
         if (object.done) {
             return object.value;
         }
         return unpromise(object.value, next, error);
     })();
-    return result;
 }
 // ----------------------------------------------------------------------
 // :: Macro constructor
