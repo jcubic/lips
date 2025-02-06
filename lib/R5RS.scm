@@ -24,7 +24,6 @@
 (define string-append concat)
 (define = ==)
 (define remainder %)
-(define procedure? function?)
 (define expt **)
 (define list->vector list->array)
 (define vector->list array->list)
