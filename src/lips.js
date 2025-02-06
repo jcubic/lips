@@ -8178,7 +8178,7 @@ var global_env = new Environment({
     'stack-trace': doc(function(cc) {
         const stack = [];
         typecheck('stack-trace', cc, 'continuation');
-        return cc.track((cc, i) => {
+        return cc.trace((cc, i) => {
             const code = to_string(cc.__code__);
             return `[${i}]: ${code}`;
         }).join('\n');
@@ -11275,7 +11275,7 @@ class Continuation {
         // and _ignore that is added in call/cc when invoking argument
         return this._state.name === 'top' || this.__code__._ignore;
     }
-    track(callback) {
+    trace(callback) {
         const state = this._state.state;
         if (!state.stack) {
             return [];
@@ -11390,9 +11390,13 @@ function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand 
             //console.log({ code: to_string(code), result: to_string(e.object) });
             return e.object;
         }
-        e.__code__ = state.cc.track(cc => {
+        e.__code__ = state.cc.trace(cc => {
             return to_string(cc.__code__, true);
         });
+        // save the code if no continuation trace
+        if (!e.__code__.length) {
+            e.__code__ = [to_string(code, true)];
+        }
         state.error && state.error(e);
         throw e;
     }
