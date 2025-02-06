@@ -41,11 +41,8 @@ import os from 'os';
 import path from 'path';
 import { format } from 'util';
 import readline from 'readline';
-import highlight from 'prism-cli';
-import Prism from 'prismjs';
-import 'prismjs/components/prism-scheme.min.js';
+import scheme from './lib/js/pprint.js';
 import { satisfies } from 'compare-versions';
-import '../lib/js/prism.js';
 
 import { createRequire } from 'module';
 
@@ -208,14 +205,6 @@ function doc(fn, doc) {
 }
 
 // -----------------------------------------------------------------------------
-function scheme(str) {
-    return highlight(str, 'scheme', {
-        grammar: Prism.languages.scheme,
-        newlines: true
-    });
-}
-
-// -----------------------------------------------------------------------------
 function log(message) {
     if (typeof message !== 'string') {
         message = message.toString();
@@ -277,7 +266,6 @@ const interp = Interpreter('repl', {
     // -------------------------------------------------------------------------
     pprint: doc(function(arg) {
         if (arg instanceof Pair) {
-            arg = new Formatter(arg.toString(true)).break().format();
             this.get('display').call(this, scheme(arg));
         } else {
             this.get('write').call(this, scheme(arg));
