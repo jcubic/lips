@@ -41,7 +41,7 @@ import os from 'os';
 import path from 'path';
 import { format } from 'util';
 import readline from 'readline';
-import scheme from './lib/js/pprint.js';
+import scheme from '../lib/js/pprint.js';
 import { satisfies } from 'compare-versions';
 
 import { createRequire } from 'module';
