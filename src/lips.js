@@ -11789,23 +11789,16 @@ const exec = exec_collect(function(code, value) {
 });
 // -------------------------------------------------------------------------
 function exec_with_stacktrace(code, { env, dynamic_env, use_dynamic } = {}) {
-    return evaluate(code, {
+    return tco_eval(code, {
         env,
         dynamic_env,
         use_dynamic,
-        error: (e, code) => {
+        error: (e) => {
             if (e && e.message) {
                 if (e.message.match(/^Error:/)) {
                     var re = /^(Error:)\s*([^:]+:\s*)/;
                     // clean duplicated Error: added by JS
                     e.message = e.message.replace(re, '$1 $2');
-                }
-                if (code) {
-                    // LIPS stack trace
-                    if (!(e.__code__ instanceof Array)) {
-                        e.__code__ = [];
-                    }
-                    e.__code__.push(code.toString(true));
                 }
             }
             if (!(e instanceof IgnoreException)) {
