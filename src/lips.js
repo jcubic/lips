@@ -8952,8 +8952,9 @@ var global_env = new Environment({
         Function that evaluates LIPS Scheme code. If the second argument is provided
         it will be the environment that the code is evaluated in.`),
     // ------------------------------------------------------------------
-    lambda: new Macro('lambda', function(source, scope) {
+    lambda: new Macro('lambda', function(source, state) {
         const code = source.cdr;
+        delete state.object;
         var self = this;
         var __doc__;
         if (is_pair(code.cdr) &&
@@ -8963,7 +8964,7 @@ var global_env = new Environment({
         }
         const rest = __doc__ ? code.cdr.cdr : code.cdr;
         function lambda(...args) {
-            const eval_args = lambda_scope.call(this, self, lambda, code, args, scope);
+            const eval_args = lambda_scope.call(this, self, lambda, code, args, state);
             const { env, dynamic_env } = eval_args;
             const body = hygienic_begin([env, dynamic_env], rest);
             return tco_eval(body, { ...eval_args, cc: top_cc });
@@ -8974,11 +8975,19 @@ var global_env = new Environment({
         read_only(lambda, '_code', code, { hidden: true });
         lambda.__code__ = source;
         lambda[__lambda__] = true;
-        if (!is_pair(code.car)) {
-            return doc(lambda, __doc__, true); // variable arguments
+        if (is_pair(code.car)) {
+            // lambda have list of argumnets
+            lambda = set_fn_length(lambda, length);
         }
-        // wrap and decorate with __doc__
-        return doc(set_fn_length(lambda, length), __doc__, true);
+        lambda = doc(lambda, __doc__, true);
+        // continuation for stack trace
+        state.cc = new Continuation('lambda', null, source, state, function(state) {
+            state.object = lambda;
+            state.env = this.__env__;
+            state.cc = this.__continuation__;
+            state.ready = true;
+        });
+        return state;
     }, `(lambda (a b) body)
         (lambda args body)
         (lambda (a b . rest) body)
@@ -11319,13 +11328,13 @@ class State {
         if (this.object === undefined) {
             this.ready = true;
         }
+        const cc = this.cc;
+        if (!this.stack.includes(cc) && cc.track()) {
+            this.stack.push(cc);
+        }
         if (!this.ready) {
             if (is_debug('eval')) {
                 console.log(`eval: ` + to_string(this.object, true));
-            }
-            const cc = this.cc;
-            if (!this.stack.includes(cc) && cc.track()) {
-                this.stack.push(cc);
             }
             yield* evaluate_code(this);
             if (is_debug('eval')) {
