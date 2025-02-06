@@ -11375,7 +11375,7 @@ function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand 
     } else if (env === true) {
         env = user_env;
     } else {
-        env = env || global_env;
+        env = env || user_env;
     }
     const state = new State(code, cc || top_cc, { env, cc, dynamic_env, macro_expand });
     try {
@@ -11390,11 +11390,9 @@ function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand 
             //console.log({ code: to_string(code), result: to_string(e.object) });
             return e.object;
         }
-        // TODO: add strack trace to exception
-        console.log(state.cc.track(cc => {
-            return '' + cc.__code__;
-        }).join('\n'));
-        console.log({ code: to_string(code) });
+        e.__code__ = state.cc.track(cc => {
+            return to_string(cc.__code__, true);
+        });
         state.error && state.error(e);
         throw e;
     }
