@@ -11510,6 +11510,8 @@ function* evaluate_code(state) {
                     typecheck('define', car, 'symbol');
                     let doc;
                     if (is_pair(cdr.cdr.car) &&
+                        LSymbol.is(cdr.cdr.car.car, 'lambda') &&
+                        is_pair(cdr.cdr.car.cdr) &&
                         LString.isString(cdr.cdr.car.cdr.cdr.car)) {
                         doc = cdr.cdr.car.cdr.cdr.car.valueOf();
                     }
