@@ -8178,7 +8178,7 @@ var global_env = new Environment({
     'stack-trace': doc(function(cc) {
         const stack = [];
         typecheck('stack-trace', cc, 'continuation');
-        return cc._state.state.stack.slice(0, -1).map((cc, i) => {
+        return cc.track((cc, i) => {
             const code = to_string(cc.__code__);
             return `[${i}]: ${code}`;
         }).join('\n');
@@ -8724,6 +8724,7 @@ var global_env = new Environment({
             state.env = this.__env__;
             state.cc = this.__continuation__;
             state.object = Pair(state.object, Pair(cc, nil));
+            read_only(state.object, '_ignore', true, { hidden: true });
             state.ready = false;
         });
         state.object = source.cdr.car;
@@ -11269,8 +11270,17 @@ class Continuation {
         }
         return result;
     }
-    track() {
-        return this._state.name !== 'top';
+    hidden() {
+        // we ignore top continuations that have no data
+        // and _ignore that is added in call/cc when invoking argument
+        return this._state.name === 'top' || this.__code__._ignore;
+    }
+    track(callback) {
+        const state = this._state.state;
+        if (!state.stack) {
+            return [];
+        }
+        return state.stack.map(callback);
     }
     clone(mark = true) {
         let cc = this.__continuation__;
@@ -11329,7 +11339,7 @@ class State {
             this.ready = true;
         }
         const cc = this.cc;
-        if (!this.stack.includes(cc) && cc.track()) {
+        if (!this.stack.includes(cc) && !cc.hidden()) {
             this.stack.push(cc);
         }
         if (!this.ready) {
@@ -11380,6 +11390,10 @@ function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand 
             //console.log({ code: to_string(code), result: to_string(e.object) });
             return e.object;
         }
+        // TODO: add strack trace to exception
+        console.log(state.cc.track(cc => {
+            return '' + cc.__code__;
+        }).join('\n'));
         console.log({ code: to_string(code) });
         state.error && state.error(e);
         throw e;
@@ -12524,3 +12538,5 @@ const lips = {
     rationalize
 };
 global_env.set('lips', lips);
+
+export default lips;
