@@ -3913,11 +3913,21 @@ var truncate = (function() {
 function uniterate(object, error = (e) => { throw e; }) {
     const iterator = object[Symbol.iterator]();
     return (function next(value) {
-        const object = iterator.next(value);
-        if (object.done) {
-            return object.value;
+        try {
+            let object = iterator.next(value);
+            while (!object.done) {
+                value = object.value;
+                if (is_promise(value)) {
+                    return unpromise(value, next, error);
+                }
+                object = iterator.next(value);
+            }
+            if (object.done) {
+                return object.value;
+            }
+        } catch(e) {
+            error(e);
         }
-        return unpromise(object.value, next, error);
     })();
 }
 // ----------------------------------------------------------------------
