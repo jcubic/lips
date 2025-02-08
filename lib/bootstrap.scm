@@ -62,33 +62,32 @@
        ,@rest)))
 
 ;; -----------------------------------------------------------------------------
-;; and/or macro definitions taken from R7RS spec
-;; -----------------------------------------------------------------------------
-(define-syntax and
-  (syntax-rules ()
-    ((and) #t)
-    ((and test) test)
-    ((and test1 test2 ...)
-     (if test1 (and test2 ...) #f)))
+(define-macro (and . args)
   "(and expr1 expr2 ...)
 
    Macro that evaluates each expression in sequence and if any value returns false
    it will stop and return false. If each value returns true it will return the
-   last value. If it's called without arguments it will return true.")
+   last value. If it's called without arguments it will return true."
+  (if (null? args)
+      #t
+      (if (null? (cdr args))
+          (car args)
+          `(if ,(car args) (and ,@(cdr args)) #f))))
 
 ;; -----------------------------------------------------------------------------
-(define-syntax or
-  (syntax-rules ()
-    ((or) #f)
-    ((or test) test)
-    ((or test1 test2 ...)
-     (let ((x test1))
-       (if x x (or test2 ...)))))
+(define-macro (or . args)
   "(or expr1 expr2 ...)
 
    Macro that executes the values one by one and returns the first that is
    a truthy value. If there are no expressions that evaluate to true it
-   returns false.")
+   returns false."
+  (if (null? args)
+      #f
+      (if (null? (cdr args))
+          (car args)
+          (let ((name (gensym)))
+            `(let ((,name ,(car args)))
+               (if ,name ,name (or ,@(cdr args))))))))
 
 ;; -----------------------------------------------------------------------------
 (define (quoted-symbol? x)
