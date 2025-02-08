@@ -389,6 +389,35 @@
           result)
         '("start" "next" "last"))
 
+;;(define (make-iterator lst)
+;;
+;;  (define state
+;;    (lambda (return)
+;;      (for-each
+;;       (lambda (element)
+;;         (set! return (call/cc (lambda (resume)
+;;                                 (set! state resume)
+;;                                 (return element)))))
+;;       lst)
+;;
+;;      (return 'end)))
+;;
+;;  (lambda ()
+;;    (call/cc state)))
+;;
+;;(define gen (make-iterator '(0 1 2)))
+;;
+;;(assert 0 (gen))
+;;(assert 1 (gen))
+;;(assert 2 (gen))
+;;(assert 'end (gen))
+
+(call/cc (lambda (exit)
+           (for-each (lambda (x)
+                       (assert x 1)
+                       (exit))
+                     (list 1 2 3 4))))
+
 (define $:import (global.eval "(x) => import(x)"))
 
 (define scheme (. ($:import "../lib/js/pprint.js") "default"))
@@ -408,9 +437,6 @@
           (code.replace #/\n/ prefix))
         code)))
 
-(pprint '(define foo (lambda (x)
-                       (+ x x))))
-
 #;(let-env lips.env.__parent__
          (define DEBUG "promise"))
 
@@ -419,9 +445,6 @@
                                              (resolve 10))
                                            1000))))
         "#<js-promise (pending)>")
-
-#;(let-env lips.env.__parent__
-         (define DEBUG "continuations"))
 
 (let ((result ()) (promise #f))
   (let ((value (ignore (let ((p '>(new Promise (lambda (resolve)
