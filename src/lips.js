@@ -3922,9 +3922,7 @@ function uniterate(object, error = (e) => { throw e; }) {
                 }
                 object = iterator.next(value);
             }
-            if (object.done) {
-                return object.value;
-            }
+            return object.value;
         } catch(e) {
             error(e);
         }
