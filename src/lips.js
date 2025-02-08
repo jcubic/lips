@@ -9183,6 +9183,16 @@ var global_env = new Environment({
          with a JavaScript class that behaves like Promise but will not be automatically
          resolved by LIPS like normal promises are.`),
     // ------------------------------------------------------------------
+    'await': doc(function(object) {
+        if (object instanceof QuotedPromise) {
+            return object.valueOf();
+        }
+        return object;
+    }, `(await value)
+
+        Unquotes a quoted promise so it can be automagically evaluated (resolved
+        to its value).`),
+    // ------------------------------------------------------------------
     quote: doc(
         Macro.internal('quote'),
         `(quote expression) or 'expression

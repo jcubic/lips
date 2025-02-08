@@ -954,16 +954,6 @@
   `(promise (timer ,time (resolve (begin ,@expr)))))
 
 ;; -----------------------------------------------------------------------------
-(define (await value)
-  "(await value)
-
-   Unquotes a quoted promise so it can be automagically evaluated (resolved
-   to its value)."
-  (if (instanceof lips.QuotedPromise value)
-      (value.valueOf)
-      value))
-
-;; -----------------------------------------------------------------------------
 (define (defmacro? obj)
   "(defmacro? expression)
 
