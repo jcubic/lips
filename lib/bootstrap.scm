@@ -90,6 +90,58 @@
                (if ,name ,name (or ,@(cdr args))))))))
 
 ;; -----------------------------------------------------------------------------
+;; map implementation based on https://stackoverflow.com/a/21629316/387194
+;; -----------------------------------------------------------------------------
+(define (%some? function list)
+  "(%some? function lst)
+
+   Help function that check if function predicate return true for every elemet
+   of the list. If argument is not a list it returns #f."
+  (and (pair? list)
+       (or (function (car list))
+           (%some? function (cdr list)))))
+
+;; -----------------------------------------------------------------------------
+(define (%map1 function list)
+  "(%map1 function list)
+
+   Helper single list map function, used by map."
+  (let loop ((list list) (result ()))
+    (if (null? list)
+        (reverse result)
+        (loop (cdr list)
+              (cons (function (car list))
+                    result)))))
+
+;; -----------------------------------------------------------------------------
+(define (map function . lists)
+  "(map fn list1 list2 ...)
+
+   Higher-order function that calls function `fn` with each
+   value of the list. If you provide more then one list as argument
+   it will take each value from each list and call `fn` function
+   with that many argument as number of list arguments. The return
+   values of the fn calls are accumulated in a result list and
+   returned by map."
+  (let loop ((lists lists) (result '()))
+    (if (%some? null? lists)
+      (reverse result)
+      (loop (%map1 cdr lists)
+            (cons (apply function (%map1 car lists))
+                  result)))))
+
+;; -----------------------------------------------------------------------------
+(define (for-each . args)
+  "(for-each fn list1 list2 ...)
+
+   Higher-order function that calls function `fn` on each
+   value of the argument. If you provide more than one list
+   it will take each value from each list and call `fn` function
+   with that many arguments as number of list arguments."
+  (apply map args)
+  #void)
+
+;; -----------------------------------------------------------------------------
 (define (quoted-symbol? x)
    "(quoted-symbol? code)
 
