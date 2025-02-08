@@ -9166,6 +9166,23 @@ var global_env = new Environment({
         Base of hygienic macros, it will return a new syntax expander
         that works like Lisp macros.`),
     // ------------------------------------------------------------------
+    'quote-promise': doc(new Macro('quote-promise', function(source, state) {
+        const code = source.cdr;
+        state.cc = new Continuation('quote-promise', null, source, state, function(state) {
+            state.cc = this.__continuation__;
+            state.env = this.__env__;
+            state.ready = true;
+            state.promise_quote = false;
+        });
+        state.object = code.car;
+        state.promise_quote = true;
+        return state;
+    }), `(quote-promise expr) or '>expr
+
+         Macro used to escape automati awaiting of the expression. It will be wrapped
+         with a JavaScript class that behaves like Promise but will not be automatically
+         resolved by LIPS like normal promises are.`),
+    // ------------------------------------------------------------------
     quote: doc(
         Macro.internal('quote'),
         `(quote expression) or 'expression
