@@ -7,7 +7,9 @@ description: Powerful feature of Scheme that allow to add new control flows
 
 ## What is continuation?
 
-In Scheme a continuation is a thing that is waiting for an expression to be evaluated.
+In Scheme a continuation is a thing that is waiting for an expression to be evaluated. When you have
+an expression the arguments are evaluated first, so the function application is waiting for the
+arguments to get evaluated before the function can be applied.
 
 If you have code like this:
 
