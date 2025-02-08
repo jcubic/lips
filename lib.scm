@@ -13,22 +13,3 @@
                           ,a_expr
                           " != "
                           ,b_expr))))))
-
-(define-macro (quote-promise expr)
-  "(quote-promise expr) or '>expr
-
-  Macro used to escape automati awaiting of the expression. It will be wrapped
-  with a JavaScript class that behaves like Promise but will not be automatically
-  resolved by LIPS like normal promises are."
-  `(let ((env))
-      (set! env (current-environment))
-      (env.set (Symbol.for "__promise__") #t)
-      (let ((env))
-        (set! env (current-environment))
-        (env.set (Symbol.for "__promise__") #f)
-        ,expr)))
-
-#;(define-macro (ignore expr)
-  `(begin
-     '>(begin ,@expr)
-     #void))

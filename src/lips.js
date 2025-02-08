@@ -3911,6 +3911,9 @@ var truncate = (function() {
 // :: but the promise is optional same as with unpromise
 // ----------------------------------------------------------------------
 function uniterate(object, error = (e) => { throw e; }) {
+    if (!(object && is_function(object[Symbol.iterator]))) {
+        return object;
+    }
     const iterator = object[Symbol.iterator]();
     return (function next(value) {
         try {
@@ -8715,16 +8718,21 @@ var global_env = new Environment({
          of the last one. It can be used in places where you can only have a
          single expression, like (if).`),
     // ------------------------------------------------------------------
-    'ignore': new Macro('ignore', function(source, state) {
+    ignore: new Macro('ignore', function(source, state) {
         const code = source.cdr;
-        state.object = hygienic_begin([state.env], code);
-        return state;
+        const env = this.inherit('ignore');
+        const eval_args = { ...state, env, dynamic_env: env, cc: top_cc };
+        tco_eval(hygienic_begin([env], code), eval_args);
     }, `(ignore . body)
 
         Macro that will evaluate the expression and swallow any promises that may
         be created. It will discard any value that may be returned by the last body
         expression. The code should have side effects and/or when it's promise
-        it should resolve to undefined.`),
+        it should resolve to undefined. Macro ignore don't capture any continuations,
+        so it work like top level expression.
+
+        You can use call/cc inside ignore, but capturing continuations and
+        using it outside of ignore can give unspecified results.`),
     // ------------------------------------------------------------------
     'call/cc': doc(new Macro('call/cc', function(source, state) {
         const cc = state.cc.clone();
@@ -11353,6 +11361,7 @@ class State {
         this.use_dynamic = use_dynamic;
         this.ready = false;
         this.macro_expand = macro_expand;
+        this.promise_quote = false;
         this.stack = [];
     }
     cont() {
@@ -11364,7 +11373,9 @@ class State {
                 console.log('              ' + to_string(this.cc.__object__));
             }
         }
-        return this.cc.__next__(this);
+        // we use uniterate becuase ignore need to be generator but all other
+        // callbacks are normal functions, so yield* will not work
+        return uniterate(this.cc.__next__(this));
     }
     *eval() {
         if (this.object === null) {
@@ -11519,7 +11530,11 @@ function* evaluate_code(state) {
         state.object = state.env.get(state.object);
         state.ready = true;
     } else if (is_promise(code)) {
-        state.object = yield code;
+        if (state.promise_quote) {
+            state.object = new QuotedPromise(code);
+        } else {
+            state.object = yield code;
+        }
         state.ready = true;
     } else if (is_pair(code)) {
         const { car, cdr } = code;
@@ -11592,7 +11607,10 @@ function* evaluate_code(state) {
                     state.ready = false;
                 }
             } else if (is_macro(first)) {
-                const result = yield first.invoke(code, state);
+                let result = first.invoke(code, state);
+                if (is_promise(result)) {
+                    result = yield result;
+                }
                 if (!(result instanceof State)) {
                     state.object = result;
                     state.ready = false;

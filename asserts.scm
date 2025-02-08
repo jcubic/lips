@@ -411,27 +411,31 @@
 (pprint '(define foo (lambda (x)
                        (+ x x))))
 
-#;(print '>(new Promise (lambda (resolve)
-                        (setTimeout (lambda ()
-                                      (print "<XXX>")
-                                      (resolve 10))
-                                    1000))))
+#;(let-env lips.env.__parent__
+         (define DEBUG "promise"))
 
+(assert (repr '>(new Promise (lambda (resolve)
+                               (setTimeout (lambda ()
+                                             (resolve 10))
+                                           1000))))
+        "#<js-promise (pending)>")
 
-#;(let ((x 10))
-  (let ((y 20))
-    (ignore (print (stack-trace (call/cc (lambda (cc) cc)))))))
+#;(let-env lips.env.__parent__
+         (define DEBUG "continuations"))
 
-#;(let ((result ()))
-  (let ((value (ignore (new Promise (lambda (resolve)
-                                      (setTimeout (lambda ()
-                                                    (set! result (cons "x" result))
-                                                    (resolve))
-                                                  1000)))
-                       (print result)
-                       (assert result (list "x" #void)))))
+(let ((result ()) (promise #f))
+  (let ((value (ignore (let ((p '>(new Promise (lambda (resolve)
+                                                 (setTimeout (lambda ()
+                                                               (set! result (cons "x" result))
+                                                               (resolve))
+                                                             1000)))))
+                         (set! promise p)
+                         (await p)
+                         (assert result (list "x" #void))))))
+    (set! value (await value))
     (set! result (cons value result))
-    (assert result '(#void))))
+    (assert result '(#void))
+    (await promise)))
 
 #;(print (try
         (throw "Nasty")
