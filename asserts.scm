@@ -1,5 +1,22 @@
 (load "./lib.scm")
 
+(define-macro (test x)
+  (let ((name (gensym "name")))
+    `(let ((,name ,x))
+       (list ,name))))
+
+(assert (let ((foo 'hello))
+          (test foo))
+        '(hello))
+
+(define-macro (def name value)
+  (let ()
+    `(define ,name ,value)))
+
+(def foo 10)
+(assert foo 10)
+
+
 (define-macro (hello x)
   (let ((a (gensym)))
     (list 'let (list (list a x))
@@ -44,6 +61,7 @@
 (assert ((lambda (x) (* x x)) 10) 100)
 
 (assert (Promise.resolve 10) 10)
+
 
 (assert (let ((count 0) (flip #t) (x #f) (y #f) (result '()))
           (set! result (cons (list (call/cc (lambda (cc) (set! x cc) count))
@@ -128,7 +146,7 @@
   (list 'list x))
 
 (assert (test 10) '(10))
-(assert `(list ,(+ 1 2) ,@(list 1 2 3)) '(3 1 2 3))
+(assert `(list ,(+ 1 2) ,@(list 1 2 3)) '(list 3 1 2 3))
 (assert (array->list (list->array (list 1 2 3))) '(1 2 3))
 
 (define (eof-object)
@@ -322,6 +340,7 @@
 (assert (Array.from (alist->object (list (cons "length" 10))) (lambda (_ i) i))
         (list->array (list 0 1 2 3 4 5 6 7 8 9)))
 
+
 (let ((test (list->array (list 1 2 3 4))) (y 10))
   (assert (test.map (lambda (x)
                       (call/cc (lambda (return)
@@ -412,12 +431,6 @@
 ;;(assert 2 (gen))
 ;;(assert 'end (gen))
 
-(call/cc (lambda (exit)
-           (for-each (lambda (x)
-                       (assert x 1)
-                       (exit))
-                     (list 1 2 3 4))))
-
 (define $:import (global.eval "(x) => import(x)"))
 
 (define scheme (. ($:import "../lib/js/pprint.js") "default"))
@@ -436,9 +449,6 @@
         (let ((prefix (concat "\n" (car rest))))
           (code.replace #/\n/ prefix))
         code)))
-
-#;(let-env lips.env.__parent__
-         (define DEBUG "promise"))
 
 (assert (repr '>(new Promise (lambda (resolve)
                                (setTimeout (lambda ()
@@ -459,6 +469,41 @@
     (set! result (cons value result))
     (assert result '(#void))
     (await promise)))
+
+#;(let-env lips.env.__parent__
+         (define DEBUG "continuations"))
+
+(call/cc (lambda (exit)
+           (let loop ((lst (list 1 2 3 4)))
+             (if (not (null? lst))
+                 (let ((x (car lst)))
+                   (assert x 1)
+                   (exit)
+                   (loop (cdr lst)))))))
+
+(define (loop fn lst)
+  (if (not (null? lst))
+      (let ((x (car lst)))
+        (fn x)
+        (apply loop fn (list (cdr lst))))))
+
+(call/cc (lambda (exit)
+           (loop (lambda (x)
+                   (assert x 1)
+                   (exit))
+                 (list 1 2 3 4))))
+
+(call/cc (lambda (exit)
+           (for-each (lambda (x)
+                       (assert x 1)
+                       (exit))
+                     (list 1 2 3 4))))
+
+
+;;(print (let ((str "=")) (str.repeat 80)))
+
+;;(print (my-map (lambda (x) (+ x 10)) (list 1 2 3 4)))
+
 
 #;(print (try
         (throw "Nasty")

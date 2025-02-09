@@ -14,18 +14,6 @@
                           " != "
                           ,b_expr))))))
 
-(define-macro (and . args)
-  "(and expr1 expr2 ...)
-
-   Macro that evaluates each expression in sequence and if any value returns false
-   it will stop and return false. If each value returns true it will return the
-   last value. If it's called without arguments it will return true."
-  (if (null? args)
-      #t
-      (if (null? (cdr args))
-          (car args)
-          `(if ,(car args) (and ,@(cdr args)) #f))))
-
 (define-macro (or . args)
   "(or expr1 expr2 ...)
 
@@ -39,6 +27,18 @@
           (let ((name (gensym)))
             `(let ((,name ,(car args)))
                (if ,name ,name (or ,@(cdr args))))))))
+
+(define-macro (and . args)
+  "(and expr1 expr2 ...)
+
+   Macro that evaluates each expression in sequence and if any value returns false
+   it will stop and return false. If each value returns true it will return the
+   last value. If it's called without arguments it will return true."
+  (if (null? args)
+      #t
+      (if (null? (cdr args))
+          (car args)
+          `(if ,(car args) (and ,@(cdr args)) #f))))
 
 ;; map implementation based on https://stackoverflow.com/a/21629316/387194
 (define (%some? function list)

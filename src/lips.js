@@ -133,11 +133,15 @@ function log(x, ...args) {
 // ----------------------------------------------------------------------
 /* c8 ignore next */
 function is_debug(n = null) {
-    const debug = user_env && user_env.get('DEBUG', { throwError: false });
+    let debug = (user_env && user_env.get('DEBUG', { throwError: false }));
     if (n === null) {
         return debug === true;
     }
-    return debug?.valueOf() === n.valueOf();
+    debug = debug?.valueOf();
+    if (Array.isArray(n)) {
+        return n.includes(debug);
+    }
+    return debug === n;
 }
 /* eslint-enable */
 /* eslint-disable max-len */
@@ -3990,13 +3994,12 @@ function is_named_macro(macro) {
     return is_pair(macro.car) && macro.car.car instanceof LSymbol;
 }
 // ----------------------------------------------------------------------
-function define_macro(name, args, body, source, __doc__) {
+function define_macro(name, args, body, source, __doc__, state) {
+    const define_env = state.env;
     const makro_instance = Macro.defmacro(name, function(source, state) {
-        const macro_env = state.env;
         const code = source.cdr;
-        const env = macro_args_env(args, code, this);
+        const env = macro_args_env(args, code, define_env);
         if (is_pair(body)) {
-            state.object = hygienic_begin([env], body);
             // using continuation to evaluate the result of the macro
             state.cc = new Continuation(`macro[${name}]`, null, source, state, function(state) {
                 state.cc = this.__continuation__;
@@ -4004,7 +4007,7 @@ function define_macro(name, args, body, source, __doc__) {
                 state.ready = false;
             });
             state.env = env;
-            state.ready = false;
+            state.object = hygienic_begin([env], body);
             return state;
         }
     }, __doc__, true);
@@ -4013,7 +4016,7 @@ function define_macro(name, args, body, source, __doc__) {
 }
 // ----------------------------------------------------------------------
 function macro_args_env(params, code, scope) {
-    const env = new Environment({}, scope, 'defmacro');
+    const env = scope.inherit('defmacro');
     let arg = code;
     while (true) {
         if (is_nil(params)) {
@@ -5537,10 +5540,10 @@ function let_macro(name) {
         }
         let i = 0;
         const star = name.endsWith('*');
-        function new_env() {
-            return state.env.inherit(star ? `${name} [${i++}]` : name);
+        function new_env(env) {
+            return env.inherit(star ? `${name} [${i++}]` : name);
         }
-        let env = new_env();
+        let env = new_env(state.env);
         const vars = code.car;
         let value = nil;
         const body = code.cdr;
@@ -5554,7 +5557,7 @@ function let_macro(name) {
                 state.object = hygienic_begin([state.env], code.cdr);
             } else {
                 if (name === 'let*') {
-                    env = new_env();
+                    env = new_env(env);
                 }
                 const scope = env;
                 scope.set(this.__object__.car.car, state.object);
@@ -7712,6 +7715,16 @@ Environment.prototype.list = function() {
     return get_props(this.__env__);
 };
 // -------------------------------------------------------------------------
+Environment.prototype.names = function() {
+    let env = this;
+    const result = [];
+    while (env !== user_env) {
+        result.push(...Object.keys(env.__env__));
+        env = env.__parent__;
+    }
+    return result;
+}
+// -------------------------------------------------------------------------
 Environment.prototype.fs = function() {
     return this.get('**fs**');
 };
@@ -9026,7 +9039,7 @@ var global_env = new Environment({
          Macro similar to macroexpand but it expand macros only one level
          and return single expression as output.`),
     // ------------------------------------------------------------------
-    'define-macro': doc(new Macro(macro, function(source) {
+    'define-macro': doc(new Macro(macro, function(source, state) {
         const macro = source.cdr;
         let name, __doc__, body, args;
         if (is_named_macro(macro)) {
@@ -9044,7 +9057,7 @@ var global_env = new Environment({
                 __doc__ = body.car.valueOf();
                 body = body.cdr;
             }
-            const macro_instance = define_macro(name, args, body, source, __doc__);
+            const macro_instance = define_macro(name, args, body, source, __doc__, state);
             this.set(name, macro_instance);
         } else {
             throw new Error('Syntax Error: Invalid `define-macro` expression');
@@ -9562,11 +9575,13 @@ var global_env = new Environment({
             return quote(arg.car);
         }
         var x = recur(arg.car, 0, 1);
-        return unpromise(x, value => {
+        state.object = unpromise(x, value => {
             // clear nested data for tests
             clear(value);
-            return quote(value);
+            return value;
         });
+        state.ready = true;
+        return state;
     }, `(quasiquote list)
 
         Similar macro to \`quote\` but inside it you can use special expressions (unquote
@@ -11335,7 +11350,7 @@ class Continuation {
             this.__name__,
             this.__object__,
             this.__code__,
-            {env, cc},
+            { env, cc },
             this.__next__
         );
         let count = this._state.count;
@@ -11389,11 +11404,12 @@ class State {
             this.stack.push(cc);
         }
         if (!this.ready) {
-            if (is_debug('eval')) {
+            if (is_debug(['eval', 'macro'])) {
                 console.log(`eval: ` + to_string(this.object, true));
+                console.log('scope: ' + JSON.stringify(this.env.names()));
             }
             yield* evaluate_code(this);
-            if (is_debug('eval')) {
+            if (is_debug(['eval', 'macro'])) {
                 console.log('result: ' + to_string(this.object, true));
             }
         }
@@ -11433,7 +11449,6 @@ function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand 
         }
     } catch(e) {
         if (e instanceof State) {
-            //console.log({ code: to_string(code), result: to_string(e.object) });
             return e.object;
         }
         e.__code__ = state.cc.trace(cc => {
@@ -11611,7 +11626,7 @@ function* evaluate_code(state) {
                 if (is_promise(result)) {
                     result = yield result;
                 }
-                if (!(result instanceof State)) {
+                if (result !== state) {
                     state.object = result;
                     state.ready = false;
                 }
@@ -11634,6 +11649,7 @@ function* evaluate_code(state) {
 function next_if(state) {
     state.object = state.object ? this.__object__.car : this.__object__.cdr.car;
     state.cc = this.__continuation__;
+    state.env = this.__env__;
     state.ready = false;
 }
 
@@ -11708,9 +11724,9 @@ function next_pair(state) {
     this._state.args[this._state.i++] = state.object;
     if (is_nil(this.__object__)) {
         state.env = this.__env__;
-        state.cc = this.__continuation__;
         const [fn, ...args] = this._state.args;
         if (is_function(fn) && fn[__lambda__] && fn._body) {
+            state.cc = this.__continuation__;
             const define_env = fn._env;
             const eval_args = lambda_scope.call(this, define_env, fn, fn._code, args, {
                 error: state.error,
@@ -11727,6 +11743,7 @@ function next_pair(state) {
             state.object = args[0];
             state.cc = fn.clone(false);
         } else if (is_function(fn)) {
+            state.cc = this.__continuation__;
             state.object = call_function(fn, prepare_fn_args(fn, args), state);
             state.ready = !is_promise(state.object);
         } else {
