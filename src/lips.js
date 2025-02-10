@@ -4193,6 +4193,24 @@ function macro_expand(single) {
     };
 }
 // ----------------------------------------------------------------------
+// :: Quasiquote helpers
+// ----------------------------------------------------------------------
+function unquoted_arr(arr) {
+    return !!arr.filter(value => {
+        return is_pair(value) &&
+            LSymbol.is(value.car, /^(unquote|unquote-splicing)$/);
+    }).length;
+}
+// ----------------------------------------------------------------------
+function plain_quasiquote(code) {
+    return (is_plain_object(code) && !unquoted_arr(Object.values(code))) ||
+        (Array.isArray(code) && !unquoted_arr(code)) ||
+        (is_pair(code) &&
+         !code.find('unquote') &&
+         !code.find('unquote-splicing') &&
+         !code.find('quasiquote'));
+}
+// ----------------------------------------------------------------------
 // TODO: Don't put Syntax as Macro they are not runtime
 // ----------------------------------------------------------------------
 function Syntax(fn, env) {
@@ -9026,11 +9044,19 @@ var global_env = new Environment({
         the body is a string and there is more elements the string is used as the
         documentation string, that can be read using (help fn).`),
     // ------------------------------------------------------------------
-    'macroexpand': doc(
-        new Macro('macroexpand', macro_expand()),
-        `(macroexpand expr)
+    macroexpand: doc(async function(code, level = true) {
+        level = level.valueOf();
+        let expansion;
+        return await tco_eval(code, {
+            macro_expand: level,
+            env: this.env,
+            error: (e) => {
+                throw e;
+            }
+        });
+    }, `(macroexpand expr)
 
-         Macro that expand all macros inside and return single expression as output.`),
+        Macro that expand all macros inside and return single expression as output.`),
     // ------------------------------------------------------------------
     'macroexpand-1': doc(
         new Macro('macroexpand-1', macro_expand(true)),
@@ -9287,13 +9313,6 @@ var global_env = new Environment({
                 );
             }
             return eval_pair;
-        }
-        // -----------------------------------------------------------------
-        function unquoted_arr(arr) {
-            return !!arr.filter(value => {
-                return is_pair(value) &&
-                    LSymbol.is(value.car, /^(unquote|unquote-splicing)$/);
-            }).length;
         }
         // -----------------------------------------------------------------
         function quote_vector(arr, unquote_cnt, max_unq) {
@@ -9562,24 +9581,11 @@ var global_env = new Environment({
             }
         }
         // -----------------------------------------------------------------
-        if (is_plain_object(arg.car) && !unquoted_arr(Object.values(arg.car))) {
-            return quote(arg.car);
+        if (plain_quasiquote(arg.car)) {
+            state.object = arg.car;
+        } else {
+            state.object = recur(arg.car, 0, 1);
         }
-        if (Array.isArray(arg.car) && !unquoted_arr(arg.car)) {
-            return quote(arg.car);
-        }
-        if (is_pair(arg.car) &&
-            !arg.car.find('unquote') &&
-            !arg.car.find('unquote-splicing') &&
-            !arg.car.find('quasiquote')) {
-            return quote(arg.car);
-        }
-        var x = recur(arg.car, 0, 1);
-        state.object = unpromise(x, value => {
-            // clear nested data for tests
-            clear(value);
-            return value;
-        });
         state.ready = true;
         return state;
     }, `(quasiquote list)
@@ -10207,58 +10213,6 @@ var global_env = new Environment({
         Higher-order function that finds the first value for which fn return true.
         If called with a regex it will create a matcher function.`),
     // ------------------------------------------------------------------
-    'for-each': doc('for-each', function(fn, ...lists) {
-        typecheck('for-each', fn, 'function');
-        lists.forEach((arg, i) => {
-            typecheck('for-each', arg, ['pair', 'nil'], i + 1);
-        });
-        // we need to use call(this because babel transpile this code into:
-        // var ret = map.apply(void 0, [fn].concat(lists));
-        // it don't work with weakBind
-        var ret = global_env.get('map').call(this, fn, ...lists);
-        if (is_promise(ret)) {
-            return ret.then(() => {});
-        }
-    }, `(for-each fn . lists)
-
-        Higher-order function that calls function \`fn\` on each
-        value of the argument. If you provide more than one list
-        it will take each value from each list and call \`fn\` function
-        with that many arguments as number of list arguments.`),
-    // ------------------------------------------------------------------
-    map: doc('map', function map(fn, ...lists) {
-        typecheck('map', fn, 'function');
-        var is_list = global_env.get('list?');
-        lists.forEach((arg, i) => {
-            typecheck('map', arg, ['pair', 'nil'], i + 1);
-            // detect cycles
-            if (is_pair(arg) && !is_list.call(this, arg)) {
-                throw new Error(`map: argument ${i + 1} is not a list`);
-            }
-        });
-        if (lists.length === 0) {
-            return nil;
-        }
-        if (lists.some(is_nil)) {
-            return nil;
-        }
-        var args = lists.map(l => l.car);
-        const { env, dynamic_env, use_dynamic } = this;
-        const result = call_function(fn, args, { env, dynamic_env, use_dynamic });
-        return unpromise(result, (head) => {
-            return unpromise(map.call(this, fn, ...lists.map(l => l.cdr)), (rest) => {
-                return new Pair(head, rest);
-            });
-        });
-    }, `(map fn . lists)
-
-        Higher-order function that calls function \`fn\` with each
-        value of the list. If you provide more then one list as argument
-        it will take each value from each list and call \`fn\` function
-        with that many argument as number of list arguments. The return
-        values of the fn calls are accumulated in a result list and
-        returned by map.`),
-    // ------------------------------------------------------------------
     'list?': doc('list?', function(obj) {
         var node = obj;
         while (true) {
@@ -10645,6 +10599,76 @@ var global_env = new Environment({
         `(eq? a b)
 
          Function that compares two values if they are identical.`),
+    // ------------------------------------------------------------------
+    or: doc(new Macro('or', function(code, { use_dynamic, error }) {
+        var args = global_env.get('list->array')(code);
+        var self = this;
+        const dynamic_env = self;
+        if (!args.length) {
+            return false;
+        }
+        var result;
+        return (function loop() {
+            function next(value) {
+                result = value;
+                if (!is_false(result)) {
+                    return result;
+                } else {
+                    return loop();
+                }
+            }
+            if (!args.length) {
+                if (!is_false(result)) {
+                    return result;
+                } else {
+                    return false;
+                }
+            } else {
+                var arg = args.shift();
+                var value = evaluate(arg, { env: self, dynamic_env, use_dynamic, error });
+                return unpromise(value, next);
+            }
+        })();
+    }), `(or . expressions)
+
+         Macro that executes the values one by one and returns the first that is
+         a truthy value. If there are no expressions that evaluate to true it
+         returns false.`),
+    // ------------------------------------------------------------------
+    and: doc(new Macro('and', function(code, { use_dynamic, error } = {}) {
+        const args = global_env.get('list->array')(code);
+        const self = this;
+        const dynamic_env = self;
+        if (!args.length) {
+            return true;
+        }
+        let result;
+        const eval_args = { env: self, dynamic_env, use_dynamic, error };
+        return (function loop() {
+            function next(value) {
+                result = value;
+                if (is_false(result)) {
+                    return result;
+                } else {
+                    return loop();
+                }
+            }
+            if (!args.length) {
+                if (!is_false(result)) {
+                    return result;
+                } else {
+                    return false;
+                }
+            } else {
+                const arg = args.shift();
+                return unpromise(evaluate(arg, eval_args), next);
+            }
+        })();
+    }), `(and . expressions)
+
+         Macro that evaluates each expression in sequence and if any value returns false
+         it will stop and return false. If each value returns true it will return the
+         last value. If it's called without arguments it will return true.`),
     // ------------------------------------------------------------------
     // bit operations
     '|': doc('|', function(a, b) {
@@ -11367,7 +11391,11 @@ class Continuation {
 // :: code based on ideas from jsScheme by Alex Yakovlev
 // -------------------------------------------------------------------------
 class State {
-    constructor(object, cc, { env, dynamic_env, use_dynamic, error }) {
+    constructor(object, cc, { env, dynamic_env, use_dynamic, error, macro_expand }) {
+        if (is_debug('continuations')) {
+            console.log('[STATE] ' + macro_expand);
+            console.trace();
+        }
         this.env = env;
         this.object = object;
         this.cc = cc;
@@ -11534,9 +11562,64 @@ const __quote__ = global_env.get('quote');
 const __set__ = global_env.get('set!');
 const __define__ = global_env.get('define');
 
+const iternal_macros = [
+    __if__,
+    __begin__,
+    __set__,
+    __define__,
+    global_env.get('let')
+];
+
+function is_internal_macro(macro) {
+    return iternal_macros.includes(macro);
+}
 // -------------------------------------------------------------------------
 function* evaluate_code(state) {
     const code = state.object;
+    /*
+    if (is_debug('expander')) {
+    }
+    if (state.macro_expand) {
+        if (is_pair(code)) {
+            const { car, cdr } = code;
+            if (car instanceof LSymbol) {
+                const first = state.env.get(car, { throwError: false });
+                if (is_macro(first) && !is_internal_macro(first)) {
+                    if (first === __quote__) {
+                        state.object = cdr.car;
+                        state.ready = true;
+                        return;
+                    }
+                    const result = yield first.invoke(code, state);
+                    if (!(result instanceof State)) {
+                        state.object = result;
+                        state.ready = true;
+                    }
+                    return;
+                }
+            }
+            state.object = car;
+            state.cc = new Continuation('expand(pair)', cdr, code, state, function(state) {
+                this._state.args[this._state.i++] = state.object;
+                if (is_nil(this.__object__)) {
+                    state.object = global_env.get('array->list')(this._state.args);
+                    state.ready = true;
+                    state.env = this.__env__;
+                    state.cc = this.__continuation__;
+                } else {
+                    state.object = this.__object__.car;
+                    state.env = this.__env__;
+                    state.cc = this;
+                    read_only(this, '__object__', this.__object__.cdr);
+                    state.ready = false;
+                }
+            });
+            state.ready = false;
+        } else {
+            state.ready = true;
+        }
+    } else if (code instanceof State) {
+    */
     if (code instanceof State) {
         throw new Error('Internal: expecting LIPS expression got State');
     } else if (code instanceof LNumber) {

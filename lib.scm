@@ -14,6 +14,8 @@
                           " != "
                           ,b_expr))))))
 
+(define string-append concat)
+
 (define-macro (or . args)
   "(or expr1 expr2 ...)
 

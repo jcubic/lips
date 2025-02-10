@@ -493,11 +493,23 @@
                    (exit))
                  (list 1 2 3 4))))
 
-(call/cc (lambda (exit)
+#;(call/cc (lambda (exit)
            (for-each (lambda (x)
                        (assert x 1)
                        (exit))
                      (list 1 2 3 4))))
+
+(define saved #f)
+(define str (string-append
+             "foo "
+             (call/cc (lambda (k)
+                        (set! saved k)
+                        "bar "))
+             "boo")) ; => "foo bar boo"
+(assert str "foo bar boo")
+(saved "BAR ")
+(assert str "foo BAR boo")
+
 
 
 ;;(print (let ((str "=")) (str.repeat 80)))

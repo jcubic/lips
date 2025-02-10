@@ -275,7 +275,7 @@
   (typecheck "number->string" x "number" 1)
   (let ((radix (if (null? rest) 10 (car rest))))
     (typecheck "number->string" radix "number" 2)
-    (--> x (toString (--> radix (valueOf))))))
+    (x.toString (radix.valueOf))))
 
 ;; -----------------------------------------------------------------------------
 (define (boolean? x)
