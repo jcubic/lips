@@ -194,7 +194,6 @@
 (assert (counter) 2)
 (assert (counter) (eof-object))
 
-
 (assert (let* ((a 10) (b (* a a)))
           (+ a b))
         110)
@@ -317,6 +316,7 @@
                  ((>= i n) #null)
                  (yield i)))))
 
+
 (define-macro (lambda* args . body)
   `(lambda ,(cdr args)
      (generator (lambda (,(car args))
@@ -335,7 +335,6 @@
 
 (assert (Array.fromAsync (range 10))
         (list->array (list 0 1 2 3 4 5 6 7 8 9)))
-
 
 (assert (Array.from (alist->object (list (cons "length" 10))) (lambda (_ i) i))
         (list->array (list 0 1 2 3 4 5 6 7 8 9)))
@@ -408,28 +407,28 @@
           result)
         '("start" "next" "last"))
 
-;;(define (make-iterator lst)
-;;
-;;  (define state
-;;    (lambda (return)
-;;      (for-each
-;;       (lambda (element)
-;;         (set! return (call/cc (lambda (resume)
-;;                                 (set! state resume)
-;;                                 (return element)))))
-;;       lst)
-;;
-;;      (return 'end)))
-;;
-;;  (lambda ()
-;;    (call/cc state)))
-;;
-;;(define gen (make-iterator '(0 1 2)))
-;;
-;;(assert 0 (gen))
-;;(assert 1 (gen))
-;;(assert 2 (gen))
-;;(assert 'end (gen))
+(define (make-iterator lst)
+
+  (define state
+    (lambda (return)
+      (for-each
+       (lambda (element)
+         (set! return (call/cc (lambda (resume)
+                                 (set! state resume)
+                                 (return element)))))
+       lst)
+
+      (return 'end)))
+
+  (lambda ()
+    (call/cc state)))
+
+(define gen (make-iterator '(0 1 2)))
+
+(assert 0 (gen))
+(assert 1 (gen))
+(assert 2 (gen))
+(assert 'end (gen))
 
 (define $:import (global.eval "(x) => import(x)"))
 
@@ -470,9 +469,6 @@
     (assert result '(#void))
     (await promise)))
 
-#;(let-env lips.env.__parent__
-         (define DEBUG "continuations"))
-
 (call/cc (lambda (exit)
            (let loop ((lst (list 1 2 3 4)))
              (if (not (null? lst))
@@ -493,7 +489,7 @@
                    (exit))
                  (list 1 2 3 4))))
 
-#;(call/cc (lambda (exit)
+(call/cc (lambda (exit)
            (for-each (lambda (x)
                        (assert x 1)
                        (exit))
@@ -528,6 +524,28 @@
 (counter 0)
 (counter 0)
 (assert result (list 3 2 1))
+
+
+(define (loop fn lst)
+  (if (not (null? lst))
+      (begin
+        (fn (car lst))
+        (loop fn (cdr lst)))))
+
+(define (iterate list)
+  (make-coroutine-generator (lambda (yield)
+                              (for-each yield list))))
+
+(define iter (iterate '(1 2 3)))
+(assert (iter) 1)
+(assert (iter) 2)
+(assert (iter) 3)
+(assert (iter) (eof-object))
+
+(assert (map apply
+            (list + - * /)
+            (list (list 1 2) (list 10 5) (list 3 4) (list 20 2)))
+        '(3 5 12 10))
 
 
 ;;(print (let ((str "=")) (str.repeat 80)))

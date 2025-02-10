@@ -5504,7 +5504,7 @@ function set_fn_length(fn, length) {
 }
 // ----------------------------------------------------------------------
 function is_lambda(obj) {
-    return obj && obj[__lambda__];
+    return obj && obj[__lambda__] && obj._body;
 }
 // ----------------------------------------------------------------------
 function is_method(obj) {
@@ -10040,7 +10040,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     apply: doc('apply', function apply(fn, ...args) {
         typecheck('apply', fn, 'function', 1);
-        var last = args.pop();
+        const last = args.pop();
         typecheck('apply', last, ['pair', 'nil'], args.length + 2);
         args = args.concat(global_env.get('list->array').call(this, last));
         return fn.apply(this, prepare_fn_args(fn, args));
@@ -11561,6 +11561,7 @@ const __begin__ = global_env.get('begin');
 const __quote__ = global_env.get('quote');
 const __set__ = global_env.get('set!');
 const __define__ = global_env.get('define');
+const __apply__ = global_env.get('apply');
 
 const iternal_macros = [
     __if__,
@@ -11803,28 +11804,40 @@ async function next_macro(state) {
 }
 
 // -------------------------------------------------------------------------
+function evaluate_lambda(fn, args, state, cc) {
+    state.cc = cc.__continuation__;
+    const define_env = fn._env;
+    const eval_args = lambda_scope.call(cc, define_env, fn, fn._code, args, {
+        error: state.error,
+        use_dynamic: state.use_dynamic
+    });
+    const { env, dynamic_env } = eval_args;
+    const body = hygienic_begin([env, dynamic_env], fn._body);
+    state.env = env;
+    state.dynamic_env = dynamic_env;
+    state.object = body;
+    state.ready = false;
+}
+
+// -------------------------------------------------------------------------
 function next_pair(state) {
     this._state.args[this._state.i++] = state.object;
     if (is_nil(this.__object__)) {
         state.env = this.__env__;
         const [fn, ...args] = this._state.args;
-        if (is_function(fn) && fn[__lambda__] && fn._body) {
-            state.cc = this.__continuation__;
-            const define_env = fn._env;
-            const eval_args = lambda_scope.call(this, define_env, fn, fn._code, args, {
-                error: state.error,
-                use_dynamic: state.use_dynamic
-            });
-            const { env, dynamic_env } = eval_args;
-            const body = hygienic_begin([env, dynamic_env], fn._body);
-            state.env = env;
-            state.dynamic_env = dynamic_env;
-            state.object = body;
-            state.ready = false;
+        if (is_lambda(fn)) {
+            evaluate_lambda(fn, args, state, this);
         } else if (is_continuation(fn)) {
             state.ready = true;
             state.object = args[0];
             state.cc = fn.clone(false);
+        } else if (fn === (__apply__) && is_lambda(args[0])) {
+            const fn = args.shift();
+            typecheck('apply', fn, 'function', 1);
+            let last = args.pop();
+            typecheck('apply', last, ['pair', 'nil'], args.length + 2);
+            last = global_env.get('list->array').call(global_env, last);
+            evaluate_lambda(fn, args.concat(last), state, this);
         } else if (is_function(fn)) {
             state.cc = this.__continuation__;
             state.object = call_function(fn, prepare_fn_args(fn, args), state);
