@@ -1,3 +1,20 @@
+(define cc/counter '())
+(define cc/result '())
+
+(define (make-counter n)
+  (let ((m (call/cc
+            (lambda (cont)
+              (begin
+                (set! cc/counter cont)
+                0)))))
+    (begin
+      (set! n (+ n 1))
+      (+ m n))))
+
+(set! cc/result (cons (make-counter 0) cc/result))
+(cc/counter 0)
+(cc/counter 0)
+
 (test "contanation: procedure"
       (lambda (t)
         (t.is (procedure? (call/cc identity)) #t)))
@@ -119,21 +136,7 @@
 
 (test.failing "continuations: scope mutation"
       (lambda (t)
-        (define counter '())
-
-        (define (make-counter n)
-          (let ((m (call/cc
-                    (lambda (cont)
-                      (begin
-                        (set! counter cont)
-                        0)))))
-            (begin
-              (set! n (+ n 1))
-              (+ m n))))
-
-        (t.is (make-counter 0) 1)
-        (t.is (counter 0) 2)
-        (t.is (counter 0) 3)))
+        (t.is cc/result (list 3 2 1))))
 
 
 (test.failing "continuations: coroutine generator"
