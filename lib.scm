@@ -14,6 +14,13 @@
                           " != "
                           ,b_expr))))))
 
+(define (zero? x)
+  (== x 0))
+
+(define = ==)
+(define list->vector list->array)
+(define vector->list array->list)
+(define call-with-current-continuation call/cc)
 (define string-append concat)
 
 (define-macro (or . args)

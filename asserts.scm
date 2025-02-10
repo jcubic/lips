@@ -505,11 +505,29 @@
              (call/cc (lambda (k)
                         (set! saved k)
                         "bar "))
-             "boo")) ; => "foo bar boo"
+             "boo"))
+
 (assert str "foo bar boo")
 (saved "BAR ")
 (assert str "foo BAR boo")
 
+(define counter '())
+(define result '())
+
+(define (make-counter n)
+  (let ((m (call/cc
+            (lambda (cont)
+              (begin
+                (set! counter cont)
+                0)))))
+    (begin
+      (set! n (+ n 1))
+      (+ m n))))
+
+(set! result (cons (make-counter 0) result))
+(counter 0)
+(counter 0)
+(assert result (list 3 2 1))
 
 
 ;;(print (let ((str "=")) (str.repeat 80)))
