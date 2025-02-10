@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.20-blue.svg)](https://www.npmjs.com/package/@jcubic/lips)
 ![1.0.0 Complete](https://img.shields.io/github/milestones/progress-percent/jcubic/lips/1?label=1.0.0%20Complete)
 [![Build and test](https://github.com/jcubic/lips/actions/workflows/build.yaml/badge.svg?branch=devel&event=push)](https://github.com/jcubic/lips/actions/workflows/build.yaml)
-[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=devel&14d2447b7d3d7df91714763491e3e914)](https://coveralls.io/github/jcubic/lips?branch=devel)
+[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=devel&e76792d938ccbb151cb1ae9255e7e272)](https://coveralls.io/github/jcubic/lips?branch=devel)
 [![Join Gitter Chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jcubic/lips)
 ![NPM Download Count](https://img.shields.io/npm/dm/@jcubic/lips)
 ![JSDelivr Download count](https://img.shields.io/jsdelivr/npm/hm/@jcubic/lips)
@@ -33,13 +33,13 @@ The name is a recursive acronym which stands for LIPS Is Pretty Simple.
 
 ## Features
 
-* Literal regular expression.
+* Literal regular expressions.
 * Asynchronous execution (auto resolving of promises).
 * Possibility to add new syntax (similar to vectors and object).
-* Numerical tower and Big Integer support.
+* Full numerical tower and Big Integer support.
 * Powerful introspection.
 * Great integration with JavaScript.
-* Auto formatting lisp of code (pretty print)
+* Code formatting (pretty print).
 * Lisp and hygienic Scheme macros and macroexpand.
 * Builtin help system.
 
@@ -47,7 +47,6 @@ The name is a recursive acronym which stands for LIPS Is Pretty Simple.
 
 To install you can use npm (or yarn)<br/>
 **NOTE:** The version that is on NPM is heavily outdated, use beta version:
-
 
 ```
 npm install @jcubic/lips@beta

@@ -33,13 +33,13 @@ The name is a recursive acronym which stands for LIPS Is Pretty Simple.
 
 ## Features
 
-* Literal regular expression.
+* Literal regular expressions.
 * Asynchronous execution (auto resolving of promises).
 * Possibility to add new syntax (similar to vectors and object).
-* Numerical tower and Big Integer support.
+* Full numerical tower and Big Integer support.
 * Powerful introspection.
 * Great integration with JavaScript.
-* Auto formatting lisp of code (pretty print)
+* Code formatting (pretty print).
 * Lisp and hygienic Scheme macros and macroexpand.
 * Builtin help system.
 
@@ -47,7 +47,6 @@ The name is a recursive acronym which stands for LIPS Is Pretty Simple.
 
 To install you can use npm (or yarn)<br/>
 **NOTE:** The version that is on NPM is heavily outdated, use beta version:
-
 
 ```
 npm install @jcubic/lips@beta
