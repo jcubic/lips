@@ -21,6 +21,7 @@ and `<slot>` is an expression: (e.g.: `(/ 1 10)`)
 
 ```scheme
 (+ 1 2 (/ 1 10))
+;; ==> 31/10
 ```
 
 then continuation for expression `(/ 1 10)` is `(+ 1 2 <slot>)`. Continuations is the next
@@ -29,6 +30,16 @@ expression that needs to be evaluated.
 Scheme is unique because it allows accessing continuations. They are first class objects like
 numbers or functions.
 
+You can be represented continuation as a function:
+
+if `(/ 1 10)` is `z` the contunuation of the whole expression can be represented as a function,
+that may look like this:
+
+```scheme
+(lambda (z)
+  (+ 1 2 z))
+```
+
 ## Accessing current continuation
 
 To access the current continuation for an expression, you need to use `call-with-current-continuation`
@@ -36,8 +47,17 @@ or its abbreviation `call/cc`. The procedure `call/cc` accepts a single procedur
 continuation as first argument:
 
 ```scheme
-(call/cc (lambda (c)
+(call/cc (lambda (cc)
            ...))
+```
+
+So to capute the continuation expressed as a function you can use code like this:
+
+```scheme
+(+ 1 2 (call/cc
+        (lambda (c)
+          (/ 1 10))))
+;; ==> 31/10
 ```
 
 The continuation saved in `c` capture whole state of the Scheme interpreter. The continuation act as
@@ -51,22 +71,36 @@ You can save continuation inside a variable and call it later like a procedure.
 ```scheme
 (define k #f)
 
-(+ 1 (call/cc
-       (lambda (continuation)
-         (set! k continuation)
-         2)))
-;; ==> 3
-(k 10)
-;; ==> 11
+(display (+ 1 2 (call/cc
+                 (lambda (continuation)
+                   (set! k continuation)
+                   (/ 1 10)))))
+;; ==> 31/10
+(k 3)
+;; ==> 6
 ```
 
-Here when you call a continuation `k` with value 10 it restores the state in `(+ 1 <slot>)` and
-execute that expression again with a value `10` (expression `(+ 1 10)`).
+Here when you call a continuation `k` with value 6 it restores the state in `(+ 1 2 <slot>)` and
+execute that expression again with a value `3` (expression `(+ 1 2 3)`).
 
 :::info
 
-Note that the above code will create an infinite loop when called inside an expression like `let`.
-It will only work at top level.
+Note that the above code will create an infinite loop when called inside an expression like `let`:
+
+```scheme
+(let ()
+  (define k #f)
+  (display (+ 1 2 (call/cc
+                   (lambda (continuation)
+                     (set! k continuation)
+                     (/ 1 10)))))
+
+  (newline)
+  (k 3)) ;; start infinite loop
+```
+
+Above code will print 6 in an ifnite loop, because the contination don't end at display, like in
+previous exaple, only continue executing newline and next call to the continuation.
 
 :::
 
