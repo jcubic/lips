@@ -95,7 +95,7 @@ Note that the above code will create an infinite loop when called inside an expr
                      (set! k continuation)
                      (/ 1 10)))))
 
-  (newlin)e
+  (newline)
   (k 3)) ;; start infinite loop
 ```
 
