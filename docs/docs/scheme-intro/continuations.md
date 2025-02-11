@@ -95,12 +95,12 @@ Note that the above code will create an infinite loop when called inside an expr
                      (set! k continuation)
                      (/ 1 10)))))
 
-  (newline)
+  (newlin)e
   (k 3)) ;; start infinite loop
 ```
 
-Above code will print 6 in an ifnite loop, because the contination don't end at display, like in
-previous exaple, only continue executing newline and next call to the continuation.
+Above code will print 6 in an ifnite loop, because the continuation don't end at display, like in
+previous example, only continue executing newline and next call to the continuation.
 
 :::
 
