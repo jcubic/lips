@@ -11332,10 +11332,12 @@ class Continuation {
         read_only(this, '__object__', object);
         read_only(this, '__continuation__', cc);
         read_only(this, '__next__', next);
+        const n = state.cc ? state.cc._state.n + 1 : 0;
         // for list
         read_only(this, '_state', {
             ...data,
             i: 0,
+            n,
             args: [],
             state,
             name,
