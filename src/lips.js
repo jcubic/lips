@@ -1672,7 +1672,7 @@ class Parser {
         return token.match(/^;/) || (token.match(/^#\|/) && token.match(/\|#$/));
     }
     evaluate(code) {
-        return evaluate(code, { env: this.__env__, error: (e) => {
+        return tco_eval(code, { env: this.__env__, error: (e) => {
             throw e;
         } });
     }
