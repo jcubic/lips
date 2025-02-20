@@ -19,9 +19,8 @@
 input string into tokens. In this article I will show the internals of the new
 <a href="https://en.wikipedia.org/wiki/Lexical_analysis">Lexer</a> in LIPS Scheme.</p>
 <br/><a href="/blog/lexer">see the rest of the article</a>]]></content:encoded>
-            <category>lips</category>
-            <category>scheme</category>
             <category>lexer</category>
+            <category>javascript</category>
             <category>internals</category>
         </item>
         <item>
