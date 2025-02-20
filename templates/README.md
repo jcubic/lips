@@ -308,9 +308,6 @@ in Web (e.g. in Web REPL) you can also use full URL:
 * [Hacker News](https://news.ycombinator.com/item?id=38819212)
 * [Brian Lovin](https://brianlovin.com/hn/38819212) (HN clone)
 
-## Projects that use LIPS
-* [Conzept](https://conze.pt) - Topic exploration system for the 21st century (see also their [Twitter account](https://twitter.com/conzept__) and [Command API Documentation](https://conze.pt/guide/command_api))
-
 ## Roadmap
 ### 1.0
 - [x] Full support for R5RS
