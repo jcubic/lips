@@ -39,3 +39,7 @@ body .feedback-btn {
     right: auto !important;
     left: 20px !important;
 }
+
+.cp_embed_wrapper {
+    margin: 0 0 var(--ifm-paragraph-margin-bottom);
+}
