@@ -4,11 +4,26 @@
         <title>LIPS Scheme blog</title>
         <link>https://lips.js.org/blog</link>
         <description>LIPS Scheme blog RSS Feed</description>
-        <lastBuildDate>Sat, 09 Mar 2024 00:00:00 GMT</lastBuildDate>
+        <lastBuildDate>Thu, 20 Feb 2025 00:00:00 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
         <generator>https://github.com/jpmonette/feed</generator>
         <language>en</language>
         <copyright>Copyright © 2025 Jakub T. Jankiewicz</copyright>
+        <item>
+            <title><![CDATA[Internals: State Machine Lexer]]></title>
+            <link>https://lips.js.org/blog/lexer</link>
+            <guid>https://lips.js.org/blog/lexer</guid>
+            <pubDate>Thu, 20 Feb 2025 00:00:00 GMT</pubDate>
+            <description><![CDATA[The first version of LIPS Scheme had regex based tokenizer. It was using a single regex to split the]]></description>
+            <content:encoded><![CDATA[<p>The first version of LIPS Scheme had regex based tokenizer. It was using a single regex to split the
+input string into tokens. In this article I will show the internals of the new
+<a href="https://en.wikipedia.org/wiki/Lexical_analysis">Lexer</a> in LIPS Scheme.</p>
+<br/><a href="/blog/lexer">see the rest of the article</a>]]></content:encoded>
+            <category>lips</category>
+            <category>scheme</category>
+            <category>lexer</category>
+            <category>internals</category>
+        </item>
         <item>
             <title><![CDATA[Scheme Regex literals in Emacs]]></title>
             <link>https://lips.js.org/blog/emacs-scheme-regex</link>
