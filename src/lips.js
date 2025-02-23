@@ -5471,6 +5471,7 @@ function filter_fn_names(name) {
 function enumerable(object, name, value) {
     Object.defineProperty(object, name, {
         value,
+        configurable: true,
         enumerable: true
     });
 }
@@ -11210,14 +11211,18 @@ function prepare_fn_args(fn, args) {
 
 // -------------------------------------------------------------------------
 function call_function(fn, args, { env, dynamic_env, use_dynamic } = {}) {
-    const scope = env?.new_frame(fn, args);
-    const dynamic_scope = dynamic_env?.new_frame(fn, args);
-    const context = new LambdaContext({
-        env: scope,
-        use_dynamic,
-        dynamic_env: dynamic_scope
-    });
-    return resolve_promises(fn.apply(context, args));
+    if (!fn._context) {
+        const scope = env?.new_frame(fn, args);
+        const dynamic_scope = dynamic_env?.new_frame(fn, args);
+        read_only(fn, '_context', new LambdaContext({
+            env: scope,
+            use_dynamic,
+            dynamic_env: dynamic_scope
+        }), { hidden: true });
+    } else if (use_dynamic) {
+        fn._context.dynamic_env = dynamic_env?.new_frame(fn, args);
+    }
+    return resolve_promises(fn.apply(fn._context, args));
 }
 
 // -------------------------------------------------------------------------
@@ -11407,7 +11412,6 @@ class State {
         this.ready = false;
         this.macro_expand = macro_expand;
         this.promise_quote = false;
-        this.stack = [];
     }
     cont() {
         if (is_debug('continuations')) {
@@ -11428,10 +11432,6 @@ class State {
         }
         if (this.object === undefined) {
             this.ready = true;
-        }
-        const cc = this.cc;
-        if (!this.stack.includes(cc) && !cc.hidden()) {
-            this.stack.push(cc);
         }
         if (!this.ready) {
             if (is_debug(['eval', 'macro'])) {
@@ -11533,7 +11533,7 @@ function lambda_scope(self, fn, code, args, { use_dynamic, error, cc }) {
             if (!is_nil(name.car)) {
                 if (name instanceof LSymbol) {
                     // rest argument,  can also be first argument
-                    const value = quote(Pair.fromArray(args.slice(i), false));
+                    const value = Pair.fromArray(args.slice(i), false);
                     set(name, value);
                     break;
                 } else if (is_pair(name)) {
@@ -11809,11 +11809,11 @@ async function next_macro(state) {
 function evaluate_lambda(fn, args, state, cc) {
     state.cc = cc.__continuation__;
     const define_env = fn._env;
-    const eval_args = lambda_scope.call(cc, define_env, fn, fn._code, args, {
+    const scope = lambda_scope.call(cc, define_env, fn, fn._code, args, {
         error: state.error,
         use_dynamic: state.use_dynamic
     });
-    const { env, dynamic_env } = eval_args;
+    const { env, dynamic_env } = scope;
     const body = hygienic_begin([env, dynamic_env], fn._body);
     state.env = env;
     state.dynamic_env = dynamic_env;
@@ -12563,6 +12563,7 @@ export {
     tokenize,
     evaluate,
     compile,
+    type,
 
     serialize,
     unserialize,
@@ -12637,6 +12638,7 @@ const lips = {
     tokenize,
     evaluate,
     compile,
+    type,
 
     serialize,
     unserialize,
@@ -12701,5 +12703,3 @@ const lips = {
     rationalize
 };
 global_env.set('lips', lips);
-
-export default lips;
