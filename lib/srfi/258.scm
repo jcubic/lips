@@ -10,7 +10,7 @@
    Returns #t if symbol is an interned (ordinary) symbol, and #f
    if it is uninterned."
   (typecheck "symbol-interned?" symbol "symbol")
-  symbol.__interned__)
+  (symbol.is_interned))
 
 (define generate-uninterned-symbol
   (let ((count 0))

@@ -759,7 +759,6 @@ function LSymbol(name, interned = true) {
         typeof this === 'undefined') {
         return new LSymbol(name, interned);
     }
-    read_only(this, '__interned__', interned);
     this.__name__ = name;
     if (interned && typeof name === 'string') {
         LSymbol.list[name] = this;
@@ -768,6 +767,10 @@ function LSymbol(name, interned = true) {
 LSymbol.list = {};
 LSymbol.literal = Symbol.for('__literal__');
 LSymbol.object = Symbol.for('__object__');
+// ----------------------------------------------------------------------
+LSymbol.prototype.is_interned = function() {
+    return LSymbol.list[this.__name__] == this;
+};
 // ----------------------------------------------------------------------
 LSymbol.is = function(symbol, name) {
     return symbol instanceof LSymbol &&
@@ -782,9 +785,6 @@ LSymbol.prototype.toString = function(quote) {
         return symbol_to_string(this.__name__);
     }
     var str = this.valueOf();
-    if (!this.__interned__) {
-        return `:|${str}|`;
-    }
     // those special characters can be normal symbol when printed
     if (quote && str.match(/(^;|[\s()[\]'])/)) {
         return `|${str}|`;
@@ -4026,14 +4026,22 @@ function macro_args_env(params, code, scope) {
 const recur_guard = -10000;
 function macro_expand(single) {
     return async function(code, args) {
-        var env = args['env'] = this;
-        var bindings = [];
-        var let_macros = ['let', 'let*', 'letrec'];
+        const env = args['env'] = this;
+        let bindings = [];
+        const let_names = ['let', 'let*', 'letrec', 'letrec*'];
+        const let_macros = let_names.map(name => {
+            return global_env.get(name);
+        });
         var lambda = global_env.get('lambda');
         var define = global_env.get('define');
-        function is_let_macro(symbol) {
-            var name = symbol.valueOf();
-            return let_macros.includes(name);
+        function is_let_macro(name) {
+            return let_names.includes(name);
+        }
+        function builtin_let(name) {
+            if (!is_let_macro(name)) {
+                return false;
+            }
+            return let_macros.includes(env.get(name));
         }
         function is_procedure(value, node) {
             return value === define && is_pair(node.cdr.car);
@@ -4092,13 +4100,13 @@ function macro_expand(single) {
                 }
                 var name = node.car.valueOf();
                 var value = env.get(node.car, { throwError: false });
-                var is_let = is_let_macro(node.car);
+                var is_let = is_let_macro(name);
 
                 var is_binding = is_let ||
                     is_procedure(value, node) ||
                     is_lambda(value);
 
-                if (is_macro(name, value)) {
+                if (is_macro(name, value) && !builtin_let(name)) {
                     var code = value instanceof Syntax ? node : node.cdr;
                     var result = await value.invoke(code, { ...args, env }, true);
                     if (value instanceof Syntax) {

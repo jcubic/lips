@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 02 Feb 2025 20:45:50 +0000
+ * build: Mon, 24 Feb 2025 15:12:52 +0000
  */
 
 'use strict';
@@ -4179,7 +4179,6 @@ function LSymbol(name) {
   if (typeof this !== 'undefined' && this.constructor !== LSymbol || typeof this === 'undefined') {
     return new LSymbol(name, interned);
   }
-  read_only(this, '__interned__', interned);
   this.__name__ = name;
   if (interned && typeof name === 'string') {
     LSymbol.list[name] = this;
@@ -4188,6 +4187,10 @@ function LSymbol(name) {
 LSymbol.list = {};
 LSymbol.literal = Symbol["for"]('__literal__');
 LSymbol.object = Symbol["for"]('__object__');
+// ----------------------------------------------------------------------
+LSymbol.prototype.is_interned = function () {
+  return LSymbol.list[this.__name__] == this;
+};
 // ----------------------------------------------------------------------
 LSymbol.is = function (symbol, name) {
   return symbol instanceof LSymbol && (name instanceof LSymbol && symbol.__name__ === name.__name__ || typeof name === 'string' && symbol.__name__ === name || name instanceof RegExp && name.test(symbol.__name__));
@@ -4199,9 +4202,6 @@ LSymbol.prototype.toString = function (quote) {
     return symbol_to_string(this.__name__);
   }
   var str = this.valueOf();
-  if (!this.__interned__) {
-    return ":|".concat(str, "|");
-  }
   // those special characters can be normal symbol when printed
   if (quote && str.match(/(^;|[\s()[\]'])/)) {
     return "|".concat(str, "|");
@@ -8935,7 +8935,7 @@ var recur_guard = -10000;
 function macro_expand(single) {
   return /*#__PURE__*/function () {
     var _ref22 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee12(code, args) {
-      var env, bindings, let_macros, lambda, define, is_let_macro, is_procedure, is_lambda, proc_bindings, let_binding, is_macro, expand_let_binding, _expand_let_binding, traverse, _traverse;
+      var env, bindings, let_names, let_macros, lambda, define, is_let_macro, builtin_let, is_procedure, is_lambda, proc_bindings, let_binding, is_macro, expand_let_binding, _expand_let_binding, traverse, _traverse;
       return _regeneratorRuntime.wrap(function _callee12$(_context12) {
         while (1) switch (_context12.prev = _context12.next) {
           case 0:
@@ -8959,9 +8959,9 @@ function macro_expand(single) {
                       value = env.get(node.car, {
                         throwError: false
                       });
-                      is_let = is_let_macro(node.car);
+                      is_let = is_let_macro(name);
                       is_binding = is_let || is_procedure(value, node) || is_lambda(value);
-                      if (!is_macro(name, value)) {
+                      if (!(is_macro(name, value) && !builtin_let(name))) {
                         _context11.next = 31;
                         break;
                       }
@@ -9160,44 +9160,52 @@ function macro_expand(single) {
             is_procedure = function _is_procedure(value, node) {
               return value === define && is_pair(node.cdr.car);
             };
-            is_let_macro = function _is_let_macro(symbol) {
-              var name = symbol.valueOf();
-              return let_macros.includes(name);
+            builtin_let = function _builtin_let(name) {
+              if (!is_let_macro(name)) {
+                return false;
+              }
+              return let_macros.includes(env.get(name));
+            };
+            is_let_macro = function _is_let_macro(name) {
+              return let_names.includes(name);
             };
             env = args['env'] = this;
             bindings = [];
-            let_macros = ['let', 'let*', 'letrec'];
+            let_names = ['let', 'let*', 'letrec', 'letrec*'];
+            let_macros = let_names.map(function (name) {
+              return global_env.get(name);
+            });
             lambda = global_env.get('lambda');
             define = global_env.get('define'); //var this.__code__ = code;
             if (!(is_pair(code.cdr) && LNumber.isNumber(code.cdr.car))) {
-              _context12.next = 21;
+              _context12.next = 23;
               break;
             }
             _context12.t0 = quote;
-            _context12.next = 19;
+            _context12.next = 21;
             return traverse(code, code.cdr.car.valueOf(), env);
-          case 19:
+          case 21:
             _context12.t1 = _context12.sent.car;
             return _context12.abrupt("return", (0, _context12.t0)(_context12.t1));
-          case 21:
+          case 23:
             if (!single) {
-              _context12.next = 27;
+              _context12.next = 29;
               break;
             }
             _context12.t2 = quote;
-            _context12.next = 25;
+            _context12.next = 27;
             return traverse(code, 1, env);
-          case 25:
+          case 27:
             _context12.t3 = _context12.sent.car;
             return _context12.abrupt("return", (0, _context12.t2)(_context12.t3));
-          case 27:
+          case 29:
             _context12.t4 = quote;
-            _context12.next = 30;
+            _context12.next = 32;
             return traverse(code, -1, env);
-          case 30:
+          case 32:
             _context12.t5 = _context12.sent.car;
             return _context12.abrupt("return", (0, _context12.t4)(_context12.t5));
-          case 32:
+          case 34:
           case "end":
             return _context12.stop();
         }
@@ -17564,10 +17572,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 02 Feb 2025 20:45:50 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Mon, 24 Feb 2025 15:12:52 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 02 Feb 2025 20:45:50 +0000').valueOf();
+  var date = LString('Mon, 24 Feb 2025 15:12:52 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17607,7 +17615,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 02 Feb 2025 20:45:50 +0000';
+var date = 'Mon, 24 Feb 2025 15:12:52 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

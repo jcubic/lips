@@ -43,12 +43,6 @@
                         (t.is (symbol=? a b) #f)
                         (t.is (equal? a.__name__ b.__name__) #f)))))))
 
-(test "symbols: it should create uninterned literals"
-      (lambda (t)
-        (let ((x :|foo|))
-          (t.is (symbol-interned? :|foo|) #f)
-          (t.is (symbol-interned? x) #f))))
-
 (test "symbols: gensyms should be uninterned"
       (lambda (t)
         (t.is (symbol-interned? #:foo) #f)

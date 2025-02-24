@@ -243,7 +243,7 @@
   "(alist->object alist)
 
    Function that converts alist pairs to a JavaScript object."
-  (typecheck "alist->object" alist '("list" "nil"))
+  (typecheck "alist->object" alist '("pair" "nil"))
   (alist.to_object))
 
 ;; -----------------------------------------------------------------------------
