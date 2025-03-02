@@ -7,6 +7,7 @@ export default function Acknowledgment(): JSX.Element {
         <Heading as="h2" id="acknowledgment" className={styles.header}>Acknowledgments</Heading>
         <ul>
           <li>Font used in logo is <a href="https://www.dafont.com/telegrafico.font">Telegrafico</a> by <a href="https://www.deviantart.com/ficod">ficod</a>.</li>
+          <li>Cover image for GitHub and blog posts use clipart by <a href="https://openclipart.org/artist/b.gaultier">Baptiste Gaultier</a></li>
           <li>Part of the current parser is inspired by implementation in <a href="https://www.biwascheme.org/">BiwaScheme</a> by Yutaka HARA (yhara).</li>
           <li><code>fetch</code> polyfill use <a href="https://github.com/developit/unfetch">unfetch</a> by Jason Miller.</li>
           <li>Browser <code>init</code> function use <a href="http://javascript.nwbox.com/ContentLoaded/">ContentLoaded</a>.</li>

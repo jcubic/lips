@@ -351,6 +351,7 @@ I would also love to see if you use the library, I may even share the links of p
 
 ## Acknowledgments
 * Font used in logo is [Telegrafico](https://www.dafont.com/telegrafico.font) by [ficod](https://www.deviantart.com/ficod).
+* The cover image for GitHub and Blog Posts use clipart by [Baptiste Gaultier](https://openclipart.org/artist/b.gaultier)
 * Part of the current Parser is inspired by implementation in [BiwaScheme](https://www.biwascheme.org/) by Yutaka HARA (yhara).
 * `fetch` polyfill use [unfetch](https://github.com/developit/unfetch) by Jason Miller.
 * Browser `init` function use [ContentLoaded](http://javascript.nwbox.com/ContentLoaded/).
