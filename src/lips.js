@@ -2007,8 +2007,18 @@ function matcher(name, arg) {
     if (arg instanceof RegExp) {
         return x => String(x).match(arg);
     } else if (is_function(arg)) {
-        // it will always be function
         return arg;
+    } else if (arg instanceof LNumber) {
+        return x => LNumber(x).cmp(arg) === 0;
+    } else if (arg instanceof LString) {
+        const string = arg.__value__;
+        return x => LString.is(x, string);
+    } else if (arg instanceof LSymbol) {
+        const name = arg.__name__;
+        return x => LSymbol.is(x, name);
+    } else if (arg instanceof LCharacter) {
+        const char = arg.__char__;
+        return x => LCharacter.is(x, char);
     }
     throw new Error('Invalid matcher');
 }
@@ -5743,6 +5753,10 @@ function LCharacter(char) {
         enumerable(this, '__name__', name);
     }
 }
+LCharacter.is = function(character, value) {
+    return character instanceof LCharacter &&
+        character.__char__ === value;
+};
 LCharacter.__names__ = characters;
 LCharacter.__rev_names__ = {};
 Object.keys(LCharacter.__names__).forEach(key => {
@@ -5798,6 +5812,10 @@ LString.prototype[Symbol.iterator] = function*() {
 };
 LString.prototype.serialize = function() {
     return this.valueOf();
+};
+LString.is = function(string, value) {
+    return string instanceof LString &&
+        string.__string__ === value;
 };
 LString.isString = function(x) {
     return x instanceof LString || typeof x === 'string';
@@ -10284,7 +10302,6 @@ var global_env = new Environment({
         Throws a new exception.`),
     // ------------------------------------------------------------------
     find: doc('find', function find(arg, list) {
-        typecheck('find', arg, ['regex', 'function']);
         typecheck('find', list, ['pair', 'nil']);
         if (is_null(list)) {
             return nil;
@@ -10298,9 +10315,10 @@ var global_env = new Environment({
         });
     }, `(find fn list)
         (find regex list)
+        (find atom list)
 
         Higher-order function that finds the first value for which fn return true.
-        If called with a regex it will create a matcher function.`),
+        If called with a regex or any atom it will create a matcher function.`),
     // ------------------------------------------------------------------
     'for-each': doc('for-each', function(fn, ...lists) {
         typecheck('for-each', fn, 'function');
@@ -10697,7 +10715,7 @@ var global_env = new Environment({
     '==': doc('==', function(...args) {
         typecheck_args('==', args, 'number');
         return seq_compare((a, b) => LNumber(a).cmp(b) === 0, args);
-    }, `(== x1 x2 ...)
+    }, `(== x1 x2 ...)}
 
         Function that compares its numerical arguments and checks if they are
         all equal.`),

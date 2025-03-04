@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Mon, 24 Feb 2025 15:12:52 +0000
+ * build: Tue, 04 Mar 2025 22:13:39 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -5876,8 +5876,26 @@ function matcher(name, arg) {
       return String(x).match(arg);
     };
   } else if (is_function(arg)) {
-    // it will always be function
     return arg;
+  } else if (arg instanceof LNumber) {
+    return function (x) {
+      return LNumber(x).cmp(arg) === 0;
+    };
+  } else if (arg instanceof LString) {
+    var string = arg.__value__;
+    return function (x) {
+      return LString.is(x, string);
+    };
+  } else if (arg instanceof LSymbol) {
+    var _name = arg.__name__;
+    return function (x) {
+      return LSymbol.is(x, _name);
+    };
+  } else if (arg instanceof LCharacter) {
+    var _char7 = arg.__char__;
+    return function (x) {
+      return LCharacter.is(x, _char7);
+    };
   }
   throw new Error('Invalid matcher');
 }
@@ -8337,12 +8355,12 @@ function function_to_string(fn) {
     }
   }
   if (fn.hasOwnProperty('__name__')) {
-    var _name = fn.__name__;
-    if (_typeof$1(_name) === 'symbol') {
-      _name = symbol_to_string(_name);
+    var _name2 = fn.__name__;
+    if (_typeof$1(_name2) === 'symbol') {
+      _name2 = symbol_to_string(_name2);
     }
-    if (typeof _name === 'string') {
-      return "#<procedure:".concat(_name, ">");
+    if (typeof _name2 === 'string') {
+      return "#<procedure:".concat(_name2, ">");
     }
   }
   if (has_own_function(fn, 'toString')) {
@@ -9367,11 +9385,11 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
           pattern: pattern
         });
         if (pattern.car.car instanceof LSymbol) {
-          var _name2 = pattern.car.car.valueOf();
-          if (bindings['...'].symbols[_name2]) {
+          var _name3 = pattern.car.car.valueOf();
+          if (bindings['...'].symbols[_name3]) {
             throw new Error('syntax: named ellipsis can only ' + 'appear onces');
           }
-          bindings['...'].symbols[_name2] = code;
+          bindings['...'].symbols[_name3] = code;
         }
       }
     }
@@ -9405,8 +9423,8 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
         }
       }
       if (pattern.car instanceof LSymbol) {
-        var _name3 = pattern.car.__name__;
-        if (bindings['...'].symbols[_name3] && !pattern_names.includes(_name3) && !ellipsis) {
+        var _name4 = pattern.car.__name__;
+        if (bindings['...'].symbols[_name4] && !pattern_names.includes(_name4) && !ellipsis) {
           throw new Error('syntax: named ellipsis can only appear onces');
         }
         log('>> 1 (next)');
@@ -9414,28 +9432,28 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
           log('>> 2');
           if (ellipsis) {
             log('NIL');
-            bindings['...'].symbols[_name3] = _nil;
+            bindings['...'].symbols[_name4] = _nil;
           } else {
             log('NULL');
-            bindings['...'].symbols[_name3] = null;
+            bindings['...'].symbols[_name4] = null;
           }
         } else if (is_pair(code) && (is_pair(code.car) || is_nil(code.car))) {
           log('>> 3 ' + ellipsis);
           if (ellipsis) {
-            if (bindings['...'].symbols[_name3]) {
-              var _node = bindings['...'].symbols[_name3];
+            if (bindings['...'].symbols[_name4]) {
+              var _node = bindings['...'].symbols[_name4];
               if (is_nil(_node)) {
                 _node = new Pair(_nil, new Pair(code, _nil));
               } else {
                 _node = _node.append(new Pair(code, _nil));
               }
-              bindings['...'].symbols[_name3] = _node;
+              bindings['...'].symbols[_name4] = _node;
             } else {
-              bindings['...'].symbols[_name3] = new Pair(code, _nil);
+              bindings['...'].symbols[_name4] = new Pair(code, _nil);
             }
           } else {
             log('>> 4');
-            bindings['...'].symbols[_name3] = new Pair(code, _nil);
+            bindings['...'].symbols[_name4] = new Pair(code, _nil);
           }
         } else {
           log('>> 6');
@@ -9446,8 +9464,8 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
               log('>> 7 (b)');
               if (is_nil(pattern.cdr.cdr)) {
                 return false;
-              } else if (!bindings['...'].symbols[_name3]) {
-                bindings['...'].symbols[_name3] = new Pair(code.car, _nil);
+              } else if (!bindings['...'].symbols[_name4]) {
+                bindings['...'].symbols[_name4] = new Pair(code.car, _nil);
                 return traverse(pattern.cdr.cdr, code.cdr, state);
               }
             }
@@ -9466,26 +9484,26 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
                 // case (a ... . b) for (a b . x)
                 var copy = code.clone();
                 copy.last_pair().cdr = _nil;
-                bindings['...'].symbols[_name3] = copy;
+                bindings['...'].symbols[_name4] = copy;
                 return traverse(pattern.cdr.cdr, last_pair.cdr, state);
               }
             }
-            pattern_names.push(_name3);
-            if (!bindings['...'].symbols[_name3]) {
+            pattern_names.push(_name4);
+            if (!bindings['...'].symbols[_name4]) {
               log('>> 7 (e)');
-              bindings['...'].symbols[_name3] = new Pair(code, _nil);
+              bindings['...'].symbols[_name4] = new Pair(code, _nil);
             } else {
               log('>> 7 (f)');
-              var _node2 = bindings['...'].symbols[_name3];
-              bindings['...'].symbols[_name3] = _node2.append(new Pair(code, _nil));
+              var _node2 = bindings['...'].symbols[_name4];
+              bindings['...'].symbols[_name4] = _node2.append(new Pair(code, _nil));
             }
             log({
-              IIIIII: bindings['...'].symbols[_name3]
+              IIIIII: bindings['...'].symbols[_name4]
             });
           } else if (pattern.car instanceof LSymbol && is_pair(pattern.cdr) && LSymbol.is(pattern.cdr.car, ellipsis_symbol)) {
             // empty ellipsis with rest  (a b ... . d) #290
             log('>> 8');
-            bindings['...'].symbols[_name3] = null;
+            bindings['...'].symbols[_name4] = null;
             return traverse(pattern.cdr.cdr, code, state);
           } else {
             log('>> 9');
@@ -9537,17 +9555,17 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
         throw new Error('syntax: invalid usage of ellipsis');
       }
       log('>> 12');
-      var _name4 = pattern.__name__;
-      if (symbols.includes(_name4)) {
+      var _name5 = pattern.__name__;
+      if (symbols.includes(_name5)) {
         return true;
       }
       if (ellipsis) {
         var _bindings$$symbols, _bindings$$symbols$_n;
-        log(bindings['...'].symbols[_name4]);
-        (_bindings$$symbols$_n = (_bindings$$symbols = bindings['...'].symbols)[_name4]) !== null && _bindings$$symbols$_n !== void 0 ? _bindings$$symbols$_n : _bindings$$symbols[_name4] = [];
-        bindings['...'].symbols[_name4].push(code);
+        log(bindings['...'].symbols[_name5]);
+        (_bindings$$symbols$_n = (_bindings$$symbols = bindings['...'].symbols)[_name5]) !== null && _bindings$$symbols$_n !== void 0 ? _bindings$$symbols$_n : _bindings$$symbols[_name5] = [];
+        bindings['...'].symbols[_name5].push(code);
       } else {
-        bindings.symbols[_name4] = code;
+        bindings.symbols[_name5] = code;
       }
       return true;
     }
@@ -9584,13 +9602,13 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
             return false;
           }
           log('>> 14');
-          var _name5 = pattern.cdr.valueOf();
-          if (!(_name5 in bindings.symbols)) {
-            bindings.symbols[_name5] = _nil;
+          var _name6 = pattern.cdr.valueOf();
+          if (!(_name6 in bindings.symbols)) {
+            bindings.symbols[_name6] = _nil;
           }
-          _name5 = pattern.car.valueOf();
-          if (!(_name5 in bindings.symbols)) {
-            bindings.symbols[_name5] = code.car;
+          _name6 = pattern.car.valueOf();
+          if (!(_name6 in bindings.symbols)) {
+            bindings.symbols[_name6] = code.car;
           }
           return true;
         }
@@ -9604,16 +9622,16 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
       if (is_pair(pattern.cdr) && is_pair(pattern.cdr.cdr) && pattern.cdr.car instanceof LSymbol && LSymbol.is(pattern.cdr.cdr.car, ellipsis_symbol) && is_pair(pattern.cdr.cdr.cdr) && !LSymbol.is(pattern.cdr.cdr.cdr.car, ellipsis_symbol) && traverse(pattern.car, code.car, state) && traverse(pattern.cdr.cdr.cdr, code.cdr, _objectSpread(_objectSpread({}, state), {}, {
         trailing: true
       }))) {
-        var _name6 = pattern.cdr.car.__name__;
+        var _name7 = pattern.cdr.car.__name__;
         log({
           pattern: pattern,
           code: code,
-          name: _name6
+          name: _name7
         });
-        if (symbols.includes(_name6)) {
+        if (symbols.includes(_name7)) {
           return true;
         }
-        bindings['...'].symbols[_name6] = null;
+        bindings['...'].symbols[_name7] = null;
         return true;
       }
       log('recur');
@@ -9817,14 +9835,14 @@ function transform_syntax() {
       if (first instanceof LSymbol && LSymbol.is(second, ellipsis_symbol)) {
         is_array ? expr.slice(2) : expr.cdr.cdr;
         log('[t 2');
-        var _name7 = first.valueOf();
-        var item = bindings[_name7];
+        var _name8 = first.valueOf();
+        var item = bindings[_name8];
         if (item === null) {
           return;
-        } else if (_name7 in bindings) {
+        } else if (_name8 in bindings) {
           log({
-            name: _name7,
-            binding: bindings[_name7]
+            name: _name8,
+            binding: bindings[_name8]
           });
           if (is_pair(item)) {
             log('[t 2 Pair ' + nested);
@@ -9834,7 +9852,7 @@ function transform_syntax() {
             if (nested) {
               if (!is_nil(_cdr2)) {
                 log('|| next 1');
-                next(_name7, _cdr2);
+                next(_name8, _cdr2);
               }
               if (is_array && _rest_expr.length || !is_nil(_rest_expr) && !is_array) {
                 var _rest7 = transform_ellipsis_expr(_rest_expr, bindings, state, next);
@@ -9850,7 +9868,7 @@ function transform_syntax() {
             } else if (is_pair(_car2)) {
               if (!is_nil(_car2.cdr)) {
                 log('|| next 2');
-                next(_name7, new Pair(_car2.cdr, _cdr2));
+                next(_name8, new Pair(_car2.cdr, _cdr2));
               }
               // wrap with Value to handle undefined
               return new Value(_car2.car);
@@ -9860,19 +9878,19 @@ function transform_syntax() {
               var last_pair = expr.last_pair();
               if (last_pair.cdr instanceof LSymbol) {
                 log('|| next 3');
-                next(_name7, item.last_pair());
+                next(_name8, item.last_pair());
                 return _car2;
               }
             }
           } else if (item instanceof Array) {
             log('[t 2 Array ' + nested);
             if (nested) {
-              next(_name7, item.slice(1));
+              next(_name8, item.slice(1));
               return Pair.fromArray(item);
             } else {
               var _rest8 = item.slice(1);
               if (_rest8.length) {
-                next(_name7, _rest8);
+                next(_name8, _rest8);
               }
               return item[0];
             }
@@ -10201,9 +10219,9 @@ function transform_syntax() {
         return expr;
       }
       var _symbols3 = Object.keys(bindings['...'].symbols);
-      var _name8 = expr.literal(); // TODO: slow
-      if (_symbols3.includes(_name8)) {
-        var msg = "missing ellipsis symbol next to name `".concat(_name8, "'");
+      var _name9 = expr.literal(); // TODO: slow
+      if (_symbols3.includes(_name9)) {
+        var msg = "missing ellipsis symbol next to name `".concat(_name9, "'");
         throw new Error("syntax-rules: ".concat(msg));
       }
       var _value2 = transform(expr);
@@ -10639,9 +10657,9 @@ function let_macro(symbol) {
           if (promises.length) {
             return promise_all(v).then(function (arr) {
               for (var i = 0, len = arr.length; i < len; ++i) {
-                var _name9 = values[i].name;
-                check_duplicates(_name9);
-                env.set(_name9, arr[i]);
+                var _name10 = values[i].name;
+                check_duplicates(_name10);
+                env.set(_name10, arr[i]);
               }
             }).then(exec);
           } else {
@@ -10650,10 +10668,10 @@ function let_macro(symbol) {
             try {
               for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
                 var _step9$value = _step9.value,
-                  _name10 = _step9$value.name,
+                  _name11 = _step9$value.name,
                   _value3 = _step9$value.value;
-                check_duplicates(_name10);
-                env.set(_name10, _value3);
+                check_duplicates(_name11);
+                env.set(_name11, _value3);
               }
             } catch (err) {
               _iterator9.e(err);
@@ -10846,33 +10864,36 @@ function limit(n, fn) {
 // -------------------------------------------------------------------------
 // :: Character object representation
 // -------------------------------------------------------------------------
-function LCharacter(_char7) {
+function LCharacter(_char8) {
   if (typeof this !== 'undefined' && !(this instanceof LCharacter) || typeof this === 'undefined') {
-    return new LCharacter(_char7);
+    return new LCharacter(_char8);
   }
-  if (_char7 instanceof LString) {
-    _char7 = _char7.valueOf();
+  if (_char8 instanceof LString) {
+    _char8 = _char8.valueOf();
   }
   var name;
-  if (Array.from(_char7).length > 1) {
+  if (Array.from(_char8).length > 1) {
     // this is name
-    _char7 = _char7.toLowerCase();
-    if (LCharacter.__names__[_char7]) {
-      name = _char7;
-      _char7 = LCharacter.__names__[_char7];
+    _char8 = _char8.toLowerCase();
+    if (LCharacter.__names__[_char8]) {
+      name = _char8;
+      _char8 = LCharacter.__names__[_char8];
     } else {
       // this should never happen
       // parser don't allow not defined named characters
       throw new Error('Internal: Unknown named character');
     }
   } else {
-    name = LCharacter.__rev_names__[_char7];
+    name = LCharacter.__rev_names__[_char8];
   }
-  enumerable(this, '__char__', _char7);
+  enumerable(this, '__char__', _char8);
   if (name) {
     enumerable(this, '__name__', name);
   }
 }
+LCharacter.is = function (character, value) {
+  return character instanceof LCharacter && character.__char__ === value;
+};
 LCharacter.__names__ = characters;
 LCharacter.__rev_names__ = {};
 Object.keys(LCharacter.__names__).forEach(function (key) {
@@ -10934,7 +10955,7 @@ function LString(string) {
   }
 }
 LString.prototype[Symbol.iterator] = /*#__PURE__*/_regeneratorRuntime.mark(function _callee13() {
-  var chars, _i4, _chars, _char8;
+  var chars, _i4, _chars, _char9;
   return _regeneratorRuntime.wrap(function _callee13$(_context13) {
     while (1) switch (_context13.prev = _context13.next) {
       case 0:
@@ -10945,9 +10966,9 @@ LString.prototype[Symbol.iterator] = /*#__PURE__*/_regeneratorRuntime.mark(funct
           _context13.next = 9;
           break;
         }
-        _char8 = _chars[_i4];
+        _char9 = _chars[_i4];
         _context13.next = 6;
-        return LCharacter(_char8);
+        return LCharacter(_char9);
       case 6:
         _i4++;
         _context13.next = 2;
@@ -10960,6 +10981,9 @@ LString.prototype[Symbol.iterator] = /*#__PURE__*/_regeneratorRuntime.mark(funct
 });
 LString.prototype.serialize = function () {
   return this.valueOf();
+};
+LString.is = function (string, value) {
+  return string instanceof LString && string.__string__ === value;
 };
 LString.isString = function (x) {
   return x instanceof LString || typeof x === 'string';
@@ -10991,18 +11015,18 @@ LString.prototype.lower = function () {
 LString.prototype.upper = function () {
   return LString(this.__string__.toUpperCase());
 };
-LString.prototype.set = function (n, _char9) {
+LString.prototype.set = function (n, _char10) {
   typecheck('LString::set', n, 'number');
-  typecheck('LString::set', _char9, ['string', 'character']);
+  typecheck('LString::set', _char10, ['string', 'character']);
   n = n.valueOf();
-  if (_char9 instanceof LCharacter) {
-    _char9 = _char9.__char__;
+  if (_char10 instanceof LCharacter) {
+    _char10 = _char10.__char__;
   }
   var string = [];
   if (n > 0) {
     string.push(this.__string__.substring(0, n));
   }
-  string.push(_char9);
+  string.push(_char10);
   if (n < this.__string__.length - 1) {
     string.push(this.__string__.substring(n + 1));
   }
@@ -11016,13 +11040,13 @@ Object.defineProperty(LString.prototype, "length", {
 LString.prototype.clone = function () {
   return LString(this.valueOf());
 };
-LString.prototype.fill = function (_char10) {
-  typecheck('LString::fill', _char10, ['string', 'character']);
-  if (_char10 instanceof LCharacter) {
-    _char10 = _char10.valueOf();
+LString.prototype.fill = function (_char11) {
+  typecheck('LString::fill', _char11, ['string', 'character']);
+  if (_char11 instanceof LCharacter) {
+    _char11 = _char11.valueOf();
   }
   var len = this.__string__.length;
-  this.__string__ = _char10.repeat(len);
+  this.__string__ = _char11.repeat(len);
 };
 // -------------------------------------------------------------------------
 // :: Number wrapper that handle BigNumbers
@@ -15533,7 +15557,6 @@ var global_env = new Environment({
   }, "(throw string)\n\n        Throws a new exception."),
   // ------------------------------------------------------------------
   find: doc('find', function find(arg, list) {
-    typecheck('find', arg, ['regex', 'function']);
     typecheck('find', list, ['pair', 'nil']);
     if (is_null(list)) {
       return _nil;
@@ -15545,7 +15568,7 @@ var global_env = new Environment({
       }
       return find(arg, list.cdr);
     });
-  }, "(find fn list)\n        (find regex list)\n\n        Higher-order function that finds the first value for which fn return true.\n        If called with a regex it will create a matcher function."),
+  }, "(find fn list)\n        (find regex list)\n        (find atom list)\n\n        Higher-order function that finds the first value for which fn return true.\n        If called with a regex or any atom it will create a matcher function."),
   // ------------------------------------------------------------------
   'for-each': doc('for-each', function (fn) {
     var _global_env$get3;
@@ -15917,7 +15940,7 @@ var global_env = new Environment({
     return seq_compare(function (a, b) {
       return LNumber(a).cmp(b) === 0;
     }, args);
-  }, "(== x1 x2 ...)\n\n        Function that compares its numerical arguments and checks if they are\n        all equal."),
+  }, "(== x1 x2 ...)}\n\n        Function that compares its numerical arguments and checks if they are\n        all equal."),
   // ------------------------------------------------------------------
   '>': doc('>', function () {
     for (var _len42 = arguments.length, args = new Array(_len42), _key43 = 0; _key43 < _len42; _key43++) {
@@ -17569,10 +17592,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Mon, 24 Feb 2025 15:12:52 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Tue, 04 Mar 2025 22:13:39 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Mon, 24 Feb 2025 15:12:52 +0000').valueOf();
+  var date = LString('Tue, 04 Mar 2025 22:13:39 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17612,7 +17635,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Mon, 24 Feb 2025 15:12:52 +0000';
+var date = 'Tue, 04 Mar 2025 22:13:39 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
