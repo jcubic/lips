@@ -2,6 +2,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 import marked from 'marked';
+import { Event } from "@sentry/browser";
 
 import renderSocialCards from './src/utils';
 
@@ -190,8 +191,27 @@ const config: Config = {
     prism: {
       theme: prismThemes.dracula,
       additionalLanguages: ['scheme', 'lisp', 'bash']
-    },
+    }
   } satisfies Preset.ThemeConfig,
+  plugins: [
+    [
+      'docusaurus-plugin-sentry',
+      {
+        DSN: 'c6868ced9c228b7da5e50196c0ab2f14@o4508899181723648.ingest.de.sentry.io/4508899184607312',
+        beforeSend(event: Event) {
+          const ignoredUrls = [
+            'https://cloud.umami.is/script.js',
+            'https://cdn.jsdelivr.net/gh/jcubic/lips@devel/lib/js/bookmark.js',
+          ];
+
+          if (event.request?.url && ignoredUrls.some(url => event.request.url.includes(url))) {
+            return null;
+          }
+          return event;
+        }
+      }
+    ]
+  ]
 };
 
 export default config;
