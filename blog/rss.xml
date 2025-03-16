@@ -10,13 +10,13 @@
         <language>en</language>
         <copyright>Copyright © 2025 Jakub T. Jankiewicz</copyright>
         <item>
-            <title><![CDATA[Internals: State Machine Lexer]]></title>
+            <title><![CDATA[Internals: Finite-State Machine Lexer]]></title>
             <link>https://lips.js.org/blog/lexer</link>
             <guid>https://lips.js.org/blog/lexer</guid>
             <pubDate>Thu, 20 Feb 2025 00:00:00 GMT</pubDate>
             <description><![CDATA[The first version of LIPS Scheme had regex based tokenizer. It was using a single regex to split the]]></description>
             <content:encoded><![CDATA[<p>The first version of LIPS Scheme had regex based tokenizer. It was using a single regex to split the
-input string into tokens. In this article I will show the internals of the new
+input string into tokens. In this article, I will show the internals of the new
 <a href="https://en.wikipedia.org/wiki/Lexical_analysis">Lexer</a> in LIPS Scheme.</p>
 <br/><a href="/blog/lexer">see the rest of the article</a>]]></content:encoded>
             <category>lexer</category>
