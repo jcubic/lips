@@ -2001,7 +2001,9 @@ async function uniterate_async(object) {
     return result;
 }
 // ----------------------------------------------------------------------
-// :: Function that return matcher function that match string against string
+// :: Function that return matcher function that match any value
+// :: the function is used in find Scheme function to find an item
+// :: in the list
 // ----------------------------------------------------------------------
 function matcher(name, arg) {
     if (arg instanceof RegExp) {
