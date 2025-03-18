@@ -2011,7 +2011,7 @@ function matcher(name, arg) {
     } else if (arg instanceof LNumber) {
         return x => LNumber(x).cmp(arg) === 0;
     } else if (arg instanceof LString) {
-        const string = arg.__value__;
+        const string = arg.__string__;
         return x => LString.is(x, string);
     } else if (arg instanceof LSymbol) {
         const name = arg.__name__;
@@ -2020,7 +2020,7 @@ function matcher(name, arg) {
         const char = arg.__char__;
         return x => LCharacter.is(x, char);
     }
-    throw new Error('Invalid matcher');
+    return x => arg === x;
 }
 // ----------------------------------------------------------------------
 // :: Documentation decorator to LIPS functions if lines starts with :
@@ -10304,7 +10304,7 @@ var global_env = new Environment({
     find: doc('find', function find(arg, list) {
         typecheck('find', list, ['pair', 'nil']);
         if (is_null(list)) {
-            return nil;
+            return false;
         }
         var fn = matcher('find', arg);
         return unpromise(fn(list.car), function(value) {

@@ -68,10 +68,15 @@
 (test "std: find"
       (lambda (t)
         (t.is (find odd? (list 1 2 3)) 1)
+        (t.is (find 2 (list 1 2 3)) 2)
+        (t.is (find 2+10i (list 1/2 2 2+10i)) 2+10i)
+        (t.is (find #\c (list #\a #\b #\c)) #\c)
+        (t.is (find 'x (list 10 20 'x)) 'x)
+        (t.is (find #t (list #f #f #t)) #t)
         (t.is (find #/^[0-9]+$/ (list "foo" "bar" "10")) "10")
-        (t.is (to.throw (find "xxx" (list 1 2 3))) true)
+        (t.is (find "10" (list "foo" "bar" "10")) "10")
         (t.is (find odd? (list 0 2 4 3)) 3)
-        (t.is (find odd? (list 0 2 4 6)) '())))
+        (t.is (find odd? (list 0 2 4 6)) #f)))
 
 (test "std: typecheck"
       (lambda (t)

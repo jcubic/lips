@@ -1,6 +1,7 @@
 ## 1.0.0-beta.21
 ### Breaking
 * `(range n 0 -1)` don't include 0 like in Python [#442](https://github.com/jcubic/lips/issues/442)
+* `find` now return `false` when item not found
 ### Feature
 * allow to use auto-indent with Node >=18.19.0
 * add metadata to the parser [#414](https://github.com/jcubic/lips/issues/414), [#416](https://github.com/jcubic/lips/issues/416)

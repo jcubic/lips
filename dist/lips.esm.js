@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Tue, 04 Mar 2025 22:13:39 +0000
+ * build: Tue, 18 Mar 2025 13:14:19 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -5882,7 +5882,7 @@ function matcher(name, arg) {
       return LNumber(x).cmp(arg) === 0;
     };
   } else if (arg instanceof LString) {
-    var string = arg.__value__;
+    var string = arg.__string__;
     return function (x) {
       return LString.is(x, string);
     };
@@ -5897,7 +5897,9 @@ function matcher(name, arg) {
       return LCharacter.is(x, _char7);
     };
   }
-  throw new Error('Invalid matcher');
+  return function (x) {
+    return arg === x;
+  };
 }
 // ----------------------------------------------------------------------
 // :: Documentation decorator to LIPS functions if lines starts with :
@@ -11585,8 +11587,8 @@ var pow = function pow(a, b) {
 // -------------------------------------------------------------------------
 // use native exponential operator if possible (it's way faster)
 // -------------------------------------------------------------------------
-var exp_op = new Function('a,b', 'return a ** b');
 try {
+  var exp_op = new Function('a,b', 'return a ** b');
   if (exp_op(2, 2) === 4) {
     pow = exp_op;
   }
@@ -15559,7 +15561,7 @@ var global_env = new Environment({
   find: doc('find', function find(arg, list) {
     typecheck('find', list, ['pair', 'nil']);
     if (is_null(list)) {
-      return _nil;
+      return false;
     }
     var fn = matcher('find', arg);
     return unpromise(fn(list.car), function (value) {
@@ -17592,10 +17594,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Tue, 04 Mar 2025 22:13:39 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Tue, 18 Mar 2025 13:14:19 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Tue, 04 Mar 2025 22:13:39 +0000').valueOf();
+  var date = LString('Tue, 18 Mar 2025 13:14:19 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17635,7 +17637,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Tue, 04 Mar 2025 22:13:39 +0000';
+var date = 'Tue, 18 Mar 2025 13:14:19 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
