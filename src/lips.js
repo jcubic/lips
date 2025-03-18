@@ -6353,8 +6353,8 @@ var pow = function(a, b) {
 // -------------------------------------------------------------------------
 // use native exponential operator if possible (it's way faster)
 // -------------------------------------------------------------------------
-var exp_op = new Function('a,b', 'return a ** b');
 try {
+    var exp_op = new Function('a,b', 'return a ** b');
     if (exp_op(2, 2) === 4) {
         pow = exp_op;
     }
