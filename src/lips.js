@@ -1986,6 +1986,7 @@ function unpromise_object(object, fn, error) {
 function read_only(object, property, value, { hidden = false } = {}) {
     Object.defineProperty(object, property, {
         value,
+        writable: false,
         configurable: true,
         enumerable: !hidden
     });
