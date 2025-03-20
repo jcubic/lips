@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Tue, 18 Mar 2025 13:14:19 +0000
+ * build: Thu, 20 Mar 2025 16:18:53 +0000
  */
 
 (function (global, factory) {
@@ -5802,6 +5802,7 @@
       hidden = _ref10$hidden === void 0 ? false : _ref10$hidden;
     Object.defineProperty(object, property, {
       value: value,
+      writable: false,
       configurable: true,
       enumerable: !hidden
     });
@@ -5812,7 +5813,9 @@
   function uniterate_async(_x5) {
     return _uniterate_async.apply(this, arguments);
   } // ----------------------------------------------------------------------
-  // :: Function that return matcher function that match string against string
+  // :: Function that return matcher function that match any value
+  // :: the function is used in find Scheme function to find an item
+  // :: in the list
   // ----------------------------------------------------------------------
   function _uniterate_async() {
     _uniterate_async = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee22(object) {
@@ -8034,6 +8037,24 @@
       node = node.cdr;
     }
     return len;
+  };
+  // ----------------------------------------------------------------------
+  Pair.prototype.freeze = function () {
+    var node = this;
+    while (true) {
+      read_only(node, 'car', node.car);
+      if (is_pair(node.car) && !node.have_cycles('car')) {
+        node.car.freeze();
+      }
+      read_only(node, 'cdr', node.cdr);
+      if (node.have_cycles('cdr')) {
+        break;
+      }
+      node = node.cdr;
+      if (!is_pair(node)) {
+        break;
+      }
+    }
   };
   // ----------------------------------------------------------------------
   Pair.match = function (obj, item) {
@@ -13474,7 +13495,8 @@
     return result;
   };
   // -------------------------------------------------------------------------
-  // :: Quote function used to pause evaluation from Macro
+  // :: quote function used to pause evaluation from Macro
+  // :: and making lists read only
   // -------------------------------------------------------------------------
   function quote(value) {
     if (is_promise(value)) {
@@ -17601,10 +17623,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Tue, 18 Mar 2025 13:14:19 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Thu, 20 Mar 2025 16:18:53 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Tue, 18 Mar 2025 13:14:19 +0000').valueOf();
+    var date = LString('Thu, 20 Mar 2025 16:18:53 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -17644,7 +17666,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Tue, 18 Mar 2025 13:14:19 +0000';
+  var date = 'Thu, 20 Mar 2025 16:18:53 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);
