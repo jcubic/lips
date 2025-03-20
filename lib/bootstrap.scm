@@ -1255,11 +1255,7 @@
   "(freeze-list! list)
 
    Function make the whole list read only. It mutates the list and returns #void."
-  (let loop ((list list))
-     (when (not (null? list))
-           (freeze-prop! list "car")
-           (freeze-prop! list "cdr")
-           (loop (cdr list)))))
+  (list.freeze))
 
 ;; -----------------------------------------------------------------------------
 (define (degree->radians x)
