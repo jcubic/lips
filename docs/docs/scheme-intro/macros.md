@@ -180,7 +180,7 @@ If you try to evaluate the macro, you will get proper results:
 
 :::warning
 
-You can think that `gensym` is the ultime soltuion to variable capture in Scheme, but it's
+You can think that `gensym` is the ultime solution to variable capture in Scheme, but it's
 not. Consider a macro that use `list` or `begin` or any common name, inside and if user decide to
 use them as a variable. It's hard to write any complex code without so called [Hygienic
 Macros](#scheme-hygienic-macros).
