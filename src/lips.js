@@ -3065,6 +3065,24 @@ Pair.prototype.length = function() {
     return len;
 };
 // ----------------------------------------------------------------------
+Pair.prototype.freeze = function() {
+    let node = this;
+    while (true) {
+        read_only(node, 'car', node.car);
+        if (is_pair(node.car) && !node.have_cycles('car')) {
+            node.car.freeze();
+        }
+        read_only(node, 'cdr', node.cdr);
+        if (node.have_cycles('cdr')) {
+            break;
+        }
+        node = node.cdr;
+        if (!is_pair(node)) {
+            break;
+        }
+    }
+};
+// ----------------------------------------------------------------------
 Pair.match = function(obj, item) {
     if (obj instanceof LSymbol) {
         return LSymbol.is(obj, item);

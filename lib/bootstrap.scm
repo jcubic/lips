@@ -1241,6 +1241,27 @@
   (and (symbol? value) (--> value (is_gensym))))
 
 ;; -----------------------------------------------------------------------------
+(define (freeze-prop! object property)
+  "(freeze-prop! object property)
+
+   Function make an object property read only."
+  (Object.defineProperty object property `&(:value ,(. object property)
+                                            :writable #f
+                                            :configurable #f
+                                            :enumerable #t)))
+
+;; -----------------------------------------------------------------------------
+(define (freeze-list! list)
+  "(freeze-list! list)
+
+   Function make the whole list read only. It mutates the list and returns #void."
+  (let loop ((list list))
+     (when (not (null? list))
+           (freeze-prop! list "car")
+           (freeze-prop! list "cdr")
+           (loop (cdr list)))))
+
+;; -----------------------------------------------------------------------------
 (define (degree->radians x)
   "(degree->radians x)
 
