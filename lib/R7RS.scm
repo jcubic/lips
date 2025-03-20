@@ -647,10 +647,12 @@
   "(features)
 
    Function returns implemented features as a list."
-  '(r7rs srfi-0 srfi-2 srfi-4 srfi-6 srfi-10 srfi-22 srfi-23 srfi-28 srfi-46 srfi-69
-         srfi-98 srfi-111 srfi-139 srfi-147 srfi-156 srfi-176 srfi-193 srfi-195
-         srfi-210 srfi-236 lips complex full-unicode ieee-float ratios exact-complex
-         full-numeric-tower))
+  (let ((result '(r7rs srfi-0 srfi-2 srfi-4 srfi-6 srfi-10 srfi-22 srfi-23 srfi-28 srfi-46 srfi-69
+                  srfi-98 srfi-111 srfi-139 srfi-147 srfi-156 srfi-176 srfi-193 srfi-195 srfi-210
+                  srfi-236 lips complex exact-complex full-unicode ieee-float ratios
+                  full-numeric-tower)))
+    (freeze-list! result)
+    result))
 
 ;; -----------------------------------------------------------------------------
 ;; the numerals can be generated using scripts/numerals.scm to get latest version

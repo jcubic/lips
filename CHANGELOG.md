@@ -25,6 +25,7 @@
 * fix parsing syntax extension [#432](https://github.com/jcubic/lips/issues/432), [#433](https://github.com/jcubic/lips/issues/433)
 * fix macroexpand on let macro defined in Scheme
 * fix error when evaluating empty string [#434](https://github.com/jcubic/lips/issues/434)
+* make `(features)` read only [#447](https://github.com/jcubic/lips/issues/447)
 
 ## 1.0.0-beta.20
 ### Feature
