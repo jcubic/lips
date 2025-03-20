@@ -178,6 +178,15 @@ If you try to evaluate the macro, you will get proper results:
 ;; ==> 1000
 ```
 
+:::warning
+
+You can think that `gensym` is the ultime soltuion to variable capture in Scheme, but it's
+not. Consider a macro that use `list` or `begin` or any common name, inside and if user decide to
+use them as a variable. It's hard to write any complex code without so called [Hygienic
+Macros](#scheme-hygienic-macros).
+
+:::
+
 ### Recursive Macros
 
 You can define recursive macros similarly to recursive function. But you need to make sure that the
