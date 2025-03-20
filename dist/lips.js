@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Thu, 20 Mar 2025 16:18:53 +0000
+ * build: Thu, 20 Mar 2025 16:36:15 +0000
  */
 
 (function (global, factory) {
@@ -13495,8 +13495,7 @@
     return result;
   };
   // -------------------------------------------------------------------------
-  // :: quote function used to pause evaluation from Macro
-  // :: and making lists read only
+  // :: Quote function used to pause evaluation from Macro
   // -------------------------------------------------------------------------
   function quote(value) {
     if (is_promise(value)) {
@@ -17623,10 +17622,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Thu, 20 Mar 2025 16:18:53 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Thu, 20 Mar 2025 16:36:15 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Thu, 20 Mar 2025 16:18:53 +0000').valueOf();
+    var date = LString('Thu, 20 Mar 2025 16:36:15 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -17666,7 +17665,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Thu, 20 Mar 2025 16:18:53 +0000';
+  var date = 'Thu, 20 Mar 2025 16:36:15 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

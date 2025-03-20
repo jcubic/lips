@@ -756,13 +756,13 @@
         (t.is (try (eval '(+ x x)) (catch (e) e.message))
               "Unbound variable `x'")))
 
-(test.only "core: quoted list mutation"
+(test "core: quoted list mutation"
       (lambda (t)
         (let ((list '(1 2 3 4)))
           (set-car! list 10)
           (t.is list '(10 2 3 4)))))
 
-(test.only "core: freeze list"
+(test "core: freeze list"
       (lambda (t)
         (let ((lst '(1 2 3 4)))
           (lst.freeze)
@@ -771,7 +771,7 @@
               (let ((item (car lst)))
                 (t.is (vector item (to.throw (set-car! lst 10)))
                       (vector item true)))
-              (loop (cdr list)))))))
+              (loop (cdr lst)))))))
 
 ;; TODO
 ;; begin*
