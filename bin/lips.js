@@ -51,10 +51,20 @@ import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
 
-const kDebounceHistoryMS = 15;
+const DEBOUNCE_HISTORY = 15;
+const HISTORY_SEPARATOR = os.EOL;
+const HISTORY_FILE = '.lips_history';
+const ERROR_FILE = '.lips_error'
+const SUPPORTS_PASTE_BRACKETS = test_brackets();
 
-const supports_paste_brackets = satisfies(process.version, '>=18.19.0 <19') ||
-      satisfies(process.version, '>=20.6.0');
+// -----------------------------------------------------------------------------
+function test_brackets() {
+    if (process.versions.bun) {
+        return false;
+    }
+    return satisfies(process.version, '>=18.19.0 <19') ||
+        satisfies(process.version, '>=20.6.0');
+}
 
 // -----------------------------------------------------------------------------
 process.on('uncaughtException', function (err) {
@@ -68,7 +78,7 @@ function log_error(message) {
     message = message.split('\n').map(line => {
         return `${date}: ${line}`;
     }).join('\n');
-    fs.appendFileSync(home_file('lips.error.log'), message + '\n');
+    fs.appendFileSync(home_file(ERROR_FILE), message + '\n');
 }
 
 function home_file(filename) {
@@ -474,21 +484,13 @@ function debug_log(filename) {
 
 // buffer Proxy to prevent flicker when Node writes to stdout
 function make_buffer(stream) {
-    const DEBUG = false;
     const buffer = [];
-    const fname = home_file('lips__debug.log');
-    if (DEBUG) {
-        fs.truncate(fname, 0, () => {});
-    }
-    const log = DEBUG ? debug_log(fname) : () => {};
     function flush(data, ...args) {
         if (buffer.length) {
             const payload = buffer.join('') + data;
             buffer.length = 0;
-            log(`flush ::: ${payload}`);
             stream.write(payload, ...args);
         } else {
-            log('write :::');
             stream.write(data, ...args);
         }
     }
@@ -502,7 +504,6 @@ function make_buffer(stream) {
                     log(data);
                     if (data.match(/\x1b\[(?:1G|0J)|(^(?:lips>|\.\.\.) )/)) {
                         buffer.push(data);
-                        log('buffer :::');
                     } else {
                         flush(data, ...args);
                     }
@@ -595,7 +596,7 @@ function run_repl(err, rl) {
         // we don't do indentation for paste bracket mode
         // indentation will also not work for old Node.js
         // because it's too problematice to make it right
-        if ((is_brackets_mode() || !supports_paste_brackets)) {
+        if ((is_brackets_mode() || !SUPPORTS_PASTE_BRACKETS)) {
             rl.prompt();
             if (is_emacs) {
                 rl.setPrompt('');
@@ -696,7 +697,7 @@ function run_repl(err, rl) {
         }, 0);
     });
     bootstrap(interp).then(function() {
-        if (supports_paste_brackets) {
+        if (SUPPORTS_PASTE_BRACKETS) {
             // this make sure that the paste brackets ANSI escape
             // is added to cmd so they can be processed in 'line' event
             process.stdin.on('keypress', (key, meta) => {
@@ -775,6 +776,14 @@ function run_repl(err, rl) {
     });
 }
 
+function unserialize_history(data, repl) {
+    return data.split(HISTORY_SEPARATOR, repl.historySize);
+}
+
+function serialize_history(history) {
+    return history.join(HISTORY_SEPARATOR);
+}
+
 // source: Node.js https://github.com/nodejs/node/blob/master/lib/internal/repl/history.js
 function _writeToOutput(repl, message) {
   repl._writeToOutput(message);
@@ -793,7 +802,7 @@ function setupHistory(repl, historyPath, ready) {
 
   if (!historyPath) {
     try {
-      historyPath = path.join(os.homedir(), '.lips_repl_history');
+      historyPath = path.join(os.homedir(), HISTORY_FILE);
     } catch (err) {
       _writeToOutput(repl, '\nError: Could not get the home directory.\n' +
         'REPL session history will not be persisted.\n');
@@ -841,7 +850,7 @@ function setupHistory(repl, historyPath, ready) {
     }
 
     if (data) {
-      repl.history = data.split(/[\n\r]+/, repl.historySize);
+      repl.history = unserialize_history(data, repl);
     } else {
       repl.history = [];
     }
@@ -875,7 +884,7 @@ function setupHistory(repl, historyPath, ready) {
       clearTimeout(timer);
     }
 
-    timer = setTimeout(flushHistory, kDebounceHistoryMS);
+    timer = setTimeout(flushHistory, DEBOUNCE_HISTORY);
   }
 
   function flushHistory() {
@@ -885,7 +894,7 @@ function setupHistory(repl, historyPath, ready) {
       return;
     }
     writing = true;
-    const historyData = repl.history.join(os.EOL);
+    const historyData = serialize_history(repl.history);
     fs.write(repl._historyHandle, historyData, 0, 'utf8', onwritten);
   }
 

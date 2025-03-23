@@ -8056,6 +8056,7 @@ Unquote.prototype.toString = function() {
 const native_lambda = _parse(tokenize(`(lambda ()
                                         "[native code]"
                                         (throw "Invalid Invocation"))`))[0];
+
 // -------------------------------------------------------------------------------
 var get = doc('get', function get(object, ...args) {
     var value;
