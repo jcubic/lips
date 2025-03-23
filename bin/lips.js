@@ -597,12 +597,12 @@ function run_repl(err, rl) {
         // indentation will also not work for old Node.js
         // because it's too problematice to make it right
         if ((is_brackets_mode() || !SUPPORTS_PASTE_BRACKETS)) {
-            rl.prompt();
             if (is_emacs) {
                 rl.setPrompt('');
             } else {
                 rl.setPrompt(continue_prompt);
             }
+            rl.prompt();
             if (terminal) {
                 rl.write(' '.repeat(prompt.length - continue_prompt.length));
             }
