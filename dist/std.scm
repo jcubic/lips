@@ -190,11 +190,11 @@
             `(. ,(string->symbol (car parts)) ,@(cdr parts))))))
 
 ;; -----------------------------------------------------------------------------
-(set-special! "#:" 'gensym-interal)
+(set-special! "#:" 'gensym-literal)
 
 ;; -----------------------------------------------------------------------------
-(define (gensym-interal symbol)
-  "(gensym-interal symbol)
+(define (gensym-literal symbol)
+  "(gensym-literal symbol)
 
    Parser extension that creates a new quoted named gensym."
   `(quote ,(gensym symbol)))

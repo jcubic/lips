@@ -1052,6 +1052,7 @@ Object.freeze(builtins);
 
 Object.defineProperty(specials, '__builtins__', {
     writable: false,
+    enumerable: true,
     value: builtins
 });
 defined_specials.forEach(([seq, symbol, type]) => {

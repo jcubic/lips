@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Thu, 20 Mar 2025 16:36:15 +0000
+ * build: Mon, 21 Apr 2025 21:43:48 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -4483,6 +4483,7 @@ var builtins = defined_specials.map(function (arr) {
 Object.freeze(builtins);
 Object.defineProperty(specials, '__builtins__', {
   writable: false,
+  enumerable: true,
   value: builtins
 });
 defined_specials.forEach(function (_ref5) {
@@ -13501,6 +13502,7 @@ function quote(value) {
 }
 // -------------------------------------------------------------------------------
 var native_lambda = _parse(tokenize("(lambda ()\n                                        \"[native code]\"\n                                        (throw \"Invalid Invocation\"))"))[0];
+
 // -------------------------------------------------------------------------------
 var get = doc('get', function get(object) {
   var value;
@@ -17615,10 +17617,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Thu, 20 Mar 2025 16:36:15 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Mon, 21 Apr 2025 21:43:48 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Thu, 20 Mar 2025 16:36:15 +0000').valueOf();
+  var date = LString('Mon, 21 Apr 2025 21:43:48 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17658,7 +17660,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Thu, 20 Mar 2025 16:36:15 +0000';
+var date = 'Mon, 21 Apr 2025 21:43:48 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
