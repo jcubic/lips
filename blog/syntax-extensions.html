@@ -9,7 +9,7 @@
 
 
 <script crossorigin="anonymous" src="https://js.sentry-cdn.com/c6868ced9c228b7da5e50196c0ab2f14@o4508899181723648.ingest.de.sentry.io/4508899184607312.min.js"></script><link rel="stylesheet" href="/assets/css/styles.a8feca21.css">
-<script src="/assets/js/runtime~main.a5a48687.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.11cb81c5.js" defer="defer"></script>
 <script src="/assets/js/main.df8cb97c.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -20,7 +20,8 @@ returned by the parser in place of the sequence of defined characters.</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="usage-of-syntax-extension">Usage of syntax extension<a href="#usage-of-syntax-extension" class="hash-link" aria-label="Direct link to Usage of syntax extension" title="Direct link to Usage of syntax extension">​</a></h2>
 <p>And Example of syntax extension used by LIPS Scheme are gensym literals.</p>
 <p>If you look at the source code in lib/bootstrap.scm file, you will see this code:</p>
-<div><div><pre tabindex="0"><code><span class="token-line" style="color:#F8F8F2"><span class="token punctuation" style="color:rgb(248, 248, 242)">(</span><span class="token function" style="color:rgb(80, 250, 123)">set-special!</span><span class="token plain"> </span><span class="token string" style="color:rgb(255, 121, 198)">&quot;#:&quot;</span><span class="token plain"> </span><span class="token symbol" style="color:rgb(248, 248, 242)">&#x27;gensym-interal</span><span class="token punctuation" style="color:rgb(248, 248, 242)">)</span><span class="token plain"></span>
+<div><div><pre tabindex="0"><code><span class="token-line" style="color:#F8F8F2"><span class="token comment" style="color:rgb(98, 114, 164)">;; the name should probably be gensym-literal</span><span class="token plain"></span>
+</span><span class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token punctuation" style="color:rgb(248, 248, 242)">(</span><span class="token function" style="color:rgb(80, 250, 123)">set-special!</span><span class="token plain"> </span><span class="token string" style="color:rgb(255, 121, 198)">&quot;#:&quot;</span><span class="token plain"> </span><span class="token symbol" style="color:rgb(248, 248, 242)">&#x27;gensym-interal</span><span class="token punctuation" style="color:rgb(248, 248, 242)">)</span><span class="token plain"></span>
 </span><span class="token-line" style="color:#F8F8F2"><span class="token plain" style="display:inline-block"></span>
 </span><span class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token punctuation" style="color:rgb(248, 248, 242)">(</span><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">define</span><span class="token plain"> </span><span class="token punctuation" style="color:rgb(248, 248, 242)">(</span><span class="token function" style="color:rgb(80, 250, 123)">gensym-interal</span><span class="token plain"> </span><span class="token name">symbol</span><span class="token punctuation" style="color:rgb(248, 248, 242)">)</span><span class="token plain"></span>
 </span><span class="token-line" style="color:#F8F8F2"><span class="token plain">  </span><span class="token string" style="color:rgb(255, 121, 198)">&quot;(gensym-interal symbol)</span>
