@@ -74,6 +74,7 @@ This led to the creation of a new Lexer and a new parsing approach.
 In the current form `specials` is an inline object that implements an Event Emitter:
 
 ```javascript
+// var is a lefover from the time when the codebase was only ES5
 var specials = {
     LITERAL: Symbol.for('literal'),
     SPLICE: Symbol.for('splice'),
