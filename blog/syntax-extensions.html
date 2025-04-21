@@ -9,7 +9,7 @@
 
 
 <script crossorigin="anonymous" src="https://js.sentry-cdn.com/c6868ced9c228b7da5e50196c0ab2f14@o4508899181723648.ingest.de.sentry.io/4508899184607312.min.js"></script><link rel="stylesheet" href="/assets/css/styles.a8feca21.css">
-<script src="/assets/js/runtime~main.28aaffcf.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.a5a48687.js" defer="defer"></script>
 <script src="/assets/js/main.df8cb97c.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -32,7 +32,7 @@ returned by the parser in place of the sequence of defined characters.</p>
 <div><div><pre tabindex="0"><code><span class="token-line" style="color:#F8F8F2"><span class="token plain">#</span><span class="token variable" style="color:rgb(189, 147, 249);font-style:italic">:foo</span><span class="token plain"></span>
 </span><span class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token comment" style="color:rgb(98, 114, 164)">;; ==&gt; #:foo</span>
 </span></code></pre><div class="buttonGroup_6DOT"><button type="button" aria-label="Copy code to clipboard" title="Copy" class="clean-btn"><span class="copyButtonIcons_FhaS" aria-hidden="true"><svg viewBox="0 0 24 24" class="copyButtonIcon_phi_"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"></path></svg><svg viewBox="0 0 24 24" class="copyButtonSuccessIcon_FfTR"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"></path></svg></span></button></div></div></div>
-<p>Which is represention of named gensyms.</p>
+<p>Which is representation of named gensyms.</p>
 <div><div><pre tabindex="0"><code><span class="token-line" style="color:#F8F8F2"><span class="token punctuation" style="color:rgb(248, 248, 242)">(</span><span class="token function" style="color:rgb(80, 250, 123)">gensym</span><span class="token plain"> </span><span class="token string" style="color:rgb(255, 121, 198)">&quot;foo&quot;</span><span class="token punctuation" style="color:rgb(248, 248, 242)">)</span><span class="token plain"></span>
 </span><span class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token comment" style="color:rgb(98, 114, 164)">;; ==&gt;&gt; #:foo</span><span class="token plain"></span>
 </span><span class="token-line" style="color:#F8F8F2"><span class="token plain"></span><span class="token punctuation" style="color:rgb(248, 248, 242)">(</span><span class="token builtin" style="color:rgb(189, 147, 249)">eq?</span><span class="token plain"> #</span><span class="token variable" style="color:rgb(189, 147, 249);font-style:italic">:foo</span><span class="token plain"> #</span><span class="token variable" style="color:rgb(189, 147, 249);font-style:italic">:foo)</span><span class="token plain"></span>
@@ -56,7 +56,7 @@ about this in previous blog post about <a href="/blog/lexer">Finite-State Machin
 old regex based tokenize was that the content of the file needed to be converted to tokens before it
 was passed to the parser. And because of this the code that added new special sequence, like <code>&quot;#:&quot;</code>,
 could not be part of the same file as the code that used the new syntax.</p>
-<p>This leaded to the creation of a new Lexer and a new parsing approach.</p>
+<p>This led to the creation of a new Lexer and a new parsing approach.</p>
 <p>In the current form <code>specials</code> is an inline object that implements an Event Emitter:</p>
 <div><div><pre tabindex="0"><code><span class="token-line" style="color:#F8F8F2"><span class="token keyword" style="color:rgb(189, 147, 249);font-style:italic">var</span><span class="token plain"> specials </span><span class="token operator">=</span><span class="token plain"> </span><span class="token punctuation" style="color:rgb(248, 248, 242)">{</span><span class="token plain"></span>
 </span><span class="token-line" style="color:#F8F8F2"><span class="token plain">    </span><span class="token constant" style="color:rgb(189, 147, 249)">LITERAL</span><span class="token operator">:</span><span class="token plain"> </span><span class="token known-class-name class-name">Symbol</span><span class="token punctuation" style="color:rgb(248, 248, 242)">.</span><span class="token keyword control-flow" style="color:rgb(189, 147, 249);font-style:italic">for</span><span class="token punctuation" style="color:rgb(248, 248, 242)">(</span><span class="token string" style="color:rgb(255, 121, 198)">&#x27;literal&#x27;</span><span class="token punctuation" style="color:rgb(248, 248, 242)">)</span><span class="token punctuation" style="color:rgb(248, 248, 242)">,</span><span class="token plain"></span>
