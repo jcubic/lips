@@ -4,11 +4,26 @@
         <title>LIPS Scheme blog</title>
         <link>https://lips.js.org/blog</link>
         <description>LIPS Scheme blog RSS Feed</description>
-        <lastBuildDate>Thu, 20 Feb 2025 00:00:00 GMT</lastBuildDate>
+        <lastBuildDate>Mon, 21 Apr 2025 00:00:00 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
         <generator>https://github.com/jpmonette/feed</generator>
         <language>en</language>
         <copyright>Copyright © 2025 Jakub T. Jankiewicz</copyright>
+        <item>
+            <title><![CDATA[Internals: Syntax Extensions]]></title>
+            <link>https://lips.js.org/blog/syntax-extensions</link>
+            <guid>https://lips.js.org/blog/syntax-extensions</guid>
+            <pubDate>Mon, 21 Apr 2025 00:00:00 GMT</pubDate>
+            <description><![CDATA[Syntax extensions are a feature in LIPS Scheme that allow users to add new syntax. They work similar]]></description>
+            <content:encoded><![CDATA[<p>Syntax extensions are a feature in LIPS Scheme that allow users to add new syntax. They work similar
+to readers, macro in Common Lisp. You create a sequence of characters that maps to a function that
+is executed by the parser, the function works similar to a macro and a result of the function is
+returned by the parser in place of the sequence of defined characters.</p>
+<br/><a href="/blog/syntax-extensions">see the rest of the article</a>]]></content:encoded>
+            <category>parser</category>
+            <category>javascript</category>
+            <category>internals</category>
+        </item>
         <item>
             <title><![CDATA[Internals: Finite-State Machine Lexer]]></title>
             <link>https://lips.js.org/blog/lexer</link>
