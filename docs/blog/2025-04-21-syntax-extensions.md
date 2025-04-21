@@ -20,6 +20,7 @@ And Example of syntax extension used by LIPS Scheme are gensym literals.
 If you look at the source code in lib/bootstrap.scm file, you will see this code:
 
 ```scheme
+;; the name should probably be gensym-literal
 (set-special! "#:" 'gensym-interal)
 
 (define (gensym-interal symbol)
