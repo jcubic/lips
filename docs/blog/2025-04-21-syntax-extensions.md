@@ -35,7 +35,7 @@ And when you evaluate:
 ;; ==> #:foo
 ```
 
-Which is represention of named gensyms.
+Which is representation of named gensyms.
 
 ```scheme
 (gensym "foo")
@@ -68,7 +68,7 @@ old regex based tokenize was that the content of the file needed to be converted
 was passed to the parser. And because of this the code that added new special sequence, like `"#:"`,
 could not be part of the same file as the code that used the new syntax.
 
-This leaded to the creation of a new Lexer and a new parsing approach.
+This led to the creation of a new Lexer and a new parsing approach.
 
 In the current form `specials` is an inline object that implements an Event Emitter:
 
