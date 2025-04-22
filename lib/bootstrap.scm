@@ -852,8 +852,7 @@
    Checks if any of elements in the list is null."
   (if (null? lst)
       false
-      (if (null? (car lst))
-          true
+      (or (null? (car lst))
           (%any-null? (cdr lst)))))
 
 ;; -----------------------------------------------------------------------------
@@ -863,8 +862,7 @@
    version of some without typechecking."
   (if (or (null? lists) (%any-null? lists))
       false
-      (if (apply fn (map car lists))
-          true
+      (or (apply fn (map car lists))
           (%some fn (map cdr lists)))))
 
 ;; -----------------------------------------------------------------------------
@@ -883,9 +881,10 @@
   "(%every fn lists)
 
    version of every without typechecking."
-  (if (or (null? lists) (%any-null? lists))
-      true
-      (and (apply fn (map car lists)) (%every fn (map cdr lists)))))
+  (or (null? lists)
+      (%any-null? lists)
+      (and (apply fn (map car lists))
+           (%every fn (map cdr lists)))))
 
 ;; -----------------------------------------------------------------------------
 (define (every fn . lists)
