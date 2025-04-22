@@ -236,3 +236,58 @@ The procedure `make-coroutine-generator` allows defining generators:
 ```
 
 With continuations, you can do a lot of cool new flow control structures.
+
+## Generator macro
+
+With help from macros and
+[SRFI-139](https://srfi.schemers.org/srfi-139/srfi-139.html) described in section about [Anaphoric Hygienic Macros](/docs/scheme-intro/macros#anaphoric-hygienic-macros) you can create an abstraction over generators:
+
+```scheme
+(define-syntax-parameter yield
+  (syntax-rules ()
+    ((_)
+     (syntax-error "Use outside lambda*"))))
+
+(define-syntax lambda*
+  (syntax-rules ()
+    ((_ args body ...)
+     (lambda args
+       (make-coroutine-generator
+        (lambda (cc)
+          (syntax-parameterize
+           ((yield (syntax-rules ()
+                     ((_ x) (cc x))
+                     ((_) (cc)))))
+           body ...)))))))
+
+(define gen (lambda* (start end)
+              (do ((i start (+ i 1)))
+                ((> i end))
+                (yield i))))
+
+(define (generator->list gen)
+  (let loop ((item (gen))
+             (result '()))
+    (if (eof-object? item)
+        (reverse result)
+        (loop (gen) (cons item result)))))
+
+(let ((counter (gen 1 10)))
+  (display (generator->list counter))
+  (newline))
+;; ==> (1 2 3 4 5 6 7 8 9 10)
+```
+
+`lambda*` works similar to
+[JavaScript generators](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator):
+
+```javascript
+function* gen(start, end) {
+    for (let i = start; i <= end; ++i) {
+        yield i;
+    }
+}
+
+Array.from(gen(1, 10));
+// ==> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+```
