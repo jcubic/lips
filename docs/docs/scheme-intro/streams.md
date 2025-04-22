@@ -105,7 +105,13 @@ You can define procedures that operate on streams, like procedure that add two s
      (add-streams (stream-cdr s1) (stream-cdr s2)))))
 ```
 
-You can sue this function to create stream of integers:
+:::info
+
+This function don't check if any of the streams are not empty. So it will only work on infnite streams.
+
+:::
+
+You can use this function to create stream of integers:
 
 ```scheme
 (define integers (stream-cons 1 (stream-add integers ones)))
@@ -136,10 +142,22 @@ creates a single list in output stream.
 
 ```scheme
 (define (stream-zip . streams)
-  (if (empty-stream? streams)
+  (if (or (null? streams) (some empty-stream? streams))
       the-empty-stream
       (stream-cons (apply list (map stream-car streams))
                    (apply stream-zip (map stream-cdr streams)))))
+
+(define (some fn lists)
+  (if (or (null? lists) (some/1 null? lists))
+      #f
+      (or (apply fn (map car lists))
+          (some fn (map cdr lists)))))
+
+(define (some/1 fn lst)
+  (if (fn lst)
+      #f
+      (or (fn (car lst))
+          (some/1 (cdr lst)))))
 ```
 
 The function work like this:
@@ -156,7 +174,7 @@ With map, you can simplify `stream-add` with `stream-map`:
   (stream-map + s1 s2))
 ```
 
-Another useful procedures that accept stream are stream-limit and force-stream:
+Another useful procedures that accept stream are `stream-limit` and `force-stream`:
 
 ```scheme
 (define (stream-limit n stream)
@@ -175,11 +193,14 @@ Another useful procedures that accept stream are stream-limit and force-stream:
               (loop (stream-cdr stream))))))
 ```
 
+:::info
+
 If you call `force-stream` on infinite stream it will create infinite loop, but note that the
 procedure force-stream is not tail recursive. The recursive call to named `let` is not the last
-expression. The last expression is `cons`.
+expression. The last expression is `cons`, so it will throw stack overflow error.
 
 You can try to create a tail recursive version of the procedure as an exercise.
+:::
 
 If you combine both procedures, you can create the same effect as with `stream-take`:
 
@@ -188,7 +209,7 @@ If you combine both procedures, you can create the same effect as with `stream-t
 ;; ==> (1 2 3 4 5 6 7 8 9 10)
 ```
 
-So you can implement stream-take with above procedures:
+So you can implement `stream-take` with above procedures:
 
 ```scheme
 (define (stream-take n stream)
@@ -198,7 +219,7 @@ So you can implement stream-take with above procedures:
 ;; ==> (1 2 3 4 5 6 7 8 9 10)
 ```
 
-Another useful procedure is `stream-reduce` in Scheme often called `fold`:
+Another useful procedure is `stream-reduce`:
 
 ```scheme
 (define (stream-reduce fun stream)
