@@ -16977,7 +16977,7 @@ function bootstrap() {
     } else if (is_dev()) {
       url = "https://cdn.jsdelivr.net/gh/jcubic/lips@devel/".concat(std);
     } else {
-      url = "https://cdn.jsdelivr.net/npm/@jcubic/lips@".concat(lips.version, "/").concat(std);
+      url = "https://cdn.jsdelivr.net/npm/lips@".concat(lips.version, "/").concat(std);
     }
   }
   global_env.set('__dirname', url.replace(/[^/]+$/, ''));

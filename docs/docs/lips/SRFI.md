@@ -45,7 +45,7 @@ Those SRFI are included as files that can be loaded into LIPS Scheme system:
 On the Web you can use this code to load above SRFI:
 
 ```scheme
-(load "https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/lib/srfi/<NUMBER>.scm")
+(load "https://cdn.jsdelivr.net/npm/lips@beta/lib/srfi/<NUMBER>.scm")
 ```
 
 In NodeJS you can use this code:

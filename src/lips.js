@@ -11566,7 +11566,7 @@ function bootstrap(url = '') {
         } else if (is_dev()) {
             url = `https://cdn.jsdelivr.net/gh/jcubic/lips@devel/${std}`;
         } else {
-            url = `https://cdn.jsdelivr.net/npm/@jcubic/lips@${lips.version}/${std}`;
+            url = `https://cdn.jsdelivr.net/npm/lips@${lips.version}/${std}`;
         }
     }
     global_env.set('__dirname', url.replace(/[^/]+$/, ''));

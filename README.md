@@ -4,13 +4,13 @@
 </h1>
 
 [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/LIPS_scheme)](https://twitter.com/LIPS_scheme)
-[![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.20-blue.svg)](https://www.npmjs.com/package/@jcubic/lips)
+[![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.20-blue.svg)](https://www.npmjs.com/package/lips)
 ![1.0.0 Complete](https://img.shields.io/github/milestones/progress-percent/jcubic/lips/1?label=1.0.0%20Complete)
 [![Build and test](https://github.com/jcubic/lips/actions/workflows/build.yaml/badge.svg?branch=master&event=push)](https://github.com/jcubic/lips/actions/workflows/build.yaml)
 [![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=master&dd93e2ed5fe4147ff629f2673e56de90)](https://coveralls.io/github/jcubic/lips?branch=master)
 [![Join Gitter Chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jcubic/lips)
-![NPM Download Count](https://img.shields.io/npm/dm/@jcubic/lips)
-![JSDelivr Download count](https://img.shields.io/jsdelivr/npm/hm/@jcubic/lips)
+![NPM Download Count](https://img.shields.io/npm/dm/lips)
+![JSDelivr Download count](https://img.shields.io/jsdelivr/npm/hm/lips)
 <a href="https://codeclimate.com/github/jcubic/lips/maintainability"><img src="https://api.codeclimate.com/v1/badges/876398746c020dd1bb97/maintainability" /></a>
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fjcubic%2Flips.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fjcubic%2Flips?ref=badge_shield)
 
@@ -50,25 +50,25 @@ To install you can use npm (or yarn)<br/>
 
 
 ```
-npm install @jcubic/lips@beta
+npm install lips@beta
 ```
 
 or yarn:
 
 ```
-yarn add @jcubic/lips@beta
+yarn add lips@beta
 ```
 
 then include the file in the script tag. You can grab the version from unpkg.com
 
 ```
-https://unpkg.com/@jcubic/lips@beta
+https://unpkg.com/lips@beta
 ```
 
 or from jsDelivr (that's seems a bit faster)
 
 ```
-https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/dist/lips.min.js
+https://cdn.jsdelivr.net/npm/lips@beta/dist/lips.min.js
 ```
 
 ## Bookmarklet REPL
@@ -116,14 +116,14 @@ on first script tag with `text/x-scheme` type. By default, it will use CDN from
 (that will fetch the file using AJAX and evaluate it).
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/dist/lips.min.js" bootstrap></script>
+<script src="https://cdn.jsdelivr.net/npm/lips@beta/dist/lips.min.js" bootstrap></script>
 ```
 
 You can also specify the path where LIPS should search for standard library.
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/dist/lips.min.js"
-        bootstrap="https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/dist/std.xcb">
+<script src="https://cdn.jsdelivr.net/npm/lips@beta/dist/lips.min.js"
+        bootstrap="https://cdn.jsdelivr.net/npm/lips@beta/dist/std.xcb">
 </script>
 ```
 
@@ -134,7 +134,7 @@ because it's already parsed and compiled into binary format.
 ## Running LIPS programmatically
 
 ```javascript
-var {exec} = require('@jcubic/lips'); // node
+var {exec} = require('lips'); // node
 // or
 var {exec} = lips; // browser
 
@@ -157,7 +157,7 @@ Documentation about beta version can be found in
 If you install lips globally with:
 
 ```
-npm install -g @jcubic/lips@beta
+npm install -g lips@beta
 ```
 
 you can run the interpreter from the terminal:
@@ -291,7 +291,7 @@ They should be loaded as R7RS libraries in final 1.0.0 version
 in Web (e.g. in Web REPL) you can also use full URL:
 
 ```scheme
-(load "https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/lib/srfi/<NUMBER>.scm")
+(load "https://cdn.jsdelivr.net/npm/lips@beta/lib/srfi/<NUMBER>.scm")
 ```
 
 ## Links

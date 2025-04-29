@@ -150,7 +150,7 @@ function bootstrap(interpreter) {
             try {
                 path = require.resolve(`../${name}`);
             } catch (e) {
-                path = require.resolve(`@jcubic/lips/../${name}`);
+                path = require.resolve(`lips/../${name}`);
             }
         }
         return readCode(path);

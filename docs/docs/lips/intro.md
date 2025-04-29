@@ -1065,7 +1065,7 @@ But it will also work with ESM only module that can't be imported with `require`
 With help from `(require.resolve)` you can get the path of the root directory of LIPS Scheme:
 
 ```scheme
-(--> (require.resolve "@jcubic/lips") (replace #/dist\/[^\/]+$/ ""))
+(--> (require.resolve "lips") (replace #/dist\/[^\/]+$/ ""))
 ```
 
 Node.js REPL load lips from Common.jS file and `require.resolve` returns path to file

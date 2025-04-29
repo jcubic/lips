@@ -9,13 +9,13 @@ sidebar_position: 1
 When using the LIPS Scheme interpreter in a browser, you need to include the main script file.
 
 ```html
-<script src="https://unpkg.com/@jcubic/lips@beta/dist/lips.min.js"></script>
+<script src="https://unpkg.com/lips@beta/dist/lips.min.js"></script>
 ```
 
 or [jsDelivr](https://www.jsdelivr.com/) that is somewhat faster:
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/dist/lips.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lips@beta/dist/lips.min.js"></script>
 ```
 
 After adding the script tag with the main file, you can use Scheme code within a script tag.
@@ -41,7 +41,7 @@ file.
 :::
 
 ```html
-<script type="text/x-scheme" bootstrap="https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/dist/std.xcb">
+<script type="text/x-scheme" bootstrap="https://cdn.jsdelivr.net/npm/lips@beta/dist/std.xcb">
 (let ((what "world")
       (greet "hello"))
    (display (string-append "hello" " " what))
@@ -74,7 +74,7 @@ you first need to
 [install Node.js](https://www.freecodecamp.org/news/how-to-install-node-js-and-npm-on-windows-2/).
 
 ```bash
-npm install -g @jcubic/lips@beta
+npm install -g lips@beta
 ```
 
 You should use beta, because the so call stable version is really old and outdated. Because of so
@@ -163,7 +163,7 @@ export $PATH=".:$PATH"
 If you prefer to install lips locally instead of globally you can use this shebang:
 
 ```scheme
-#!/usr/bin/env -S npx @jcubic/lips@beta
+#!/usr/bin/env -S npx lips@beta
 (let ((what "World"))
   (print (string-append "Hello " what)))
 ```
@@ -215,9 +215,9 @@ TailwindCSS](https://shubhamjain.co/2024/02/29/why-is-number-package-have-59m-do
 You can also execute LIPS from JavaScript:
 
 ```javascript
-const { exec } = require('@jcubic/lips');
+const { exec } = require('lips');
 // or
-import { exec } from '@jcubic/lips';
+import { exec } from 'lips';
 
 exec('(let ((a 10) (b 20)) (* a b))').then(result => {
     results.forEach(function(result) {
@@ -237,7 +237,7 @@ If you want to create REPL or similar thing you can use Interpreter interface wh
 stdin and stdout.
 
 ```javascript
-import { Interpreter, InputPort, OutputPort } from '@jcubic/lips';
+import { Interpreter, InputPort, OutputPort } from 'lips';
 
 const interpreter = Interpreter('<name>', {
     stdin: InputPort(function() {
@@ -345,7 +345,7 @@ interpreter.exec('code', { use_dynamic: true });
 When using `lips.exec` you can also use option `use_dynamic`:
 
 ```javascript
-import { exec } from '@jcubic/lips';
+import { exec } from 'lips';
 
 exec('(define (foo) (* x x)) (let ((x 10)) (print (foo)))', { use_dynamic: true });
 ```
