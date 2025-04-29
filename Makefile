@@ -96,12 +96,12 @@ README.md: templates/README.md dist/lips.js .$(VERSION)
 
 publish-beta:
 	$(GIT) clone $(URL) --depth 1 npm
-	$(CD) npm && $(NPM) publish --access=public --tag beta
+	$(CD) npm && $(NPM) publish --tag beta
 	$(RM) -rf npm
 
 publish:
 	$(GIT) clone $(URL) --depth 1 npm
-	$(CD) npm && $(NPM) publish --access=public
+	$(CD) npm && $(NPM) publish
 	$(RM) -rf npm
 
 jest-test: dist/lips.js
