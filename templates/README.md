@@ -351,6 +351,7 @@ I would also love to see if you use the library, I may even share the links of p
 
 ## Acknowledgments
 * Font used in logo is [Telegrafico](https://www.dafont.com/telegrafico.font) by [ficod](https://www.deviantart.com/ficod).
+* The cover image for GitHub and Blog Posts use clipart by [Baptiste Gaultier](https://openclipart.org/artist/b.gaultier).
 * Part of the current Parser is inspired by implementation in [BiwaScheme](https://www.biwascheme.org/) by Yutaka HARA (yhara).
 * `fetch` polyfill use [unfetch](https://github.com/developit/unfetch) by Jason Miller.
 * Browser `init` function use [ContentLoaded](http://javascript.nwbox.com/ContentLoaded/).
@@ -368,7 +369,9 @@ I would also love to see if you use the library, I may even share the links of p
 * Code formatter is roughly based on [scheme-style](http://community.schemewiki.org/?scheme-style) and GNU Emacs scheme mode.
 * Some helpers in standard library are inspired by same functions from [RamdaJS library](https://ramdajs.com/).
 
-Special thanks to [Lassi Kortela](https://github.com/lassik) for helping with Scheme code.
+Special thanks:
+* [Lassi Kortela](https://github.com/lassik) for helping with Scheme code.
+* [Niels Wijers](https://github.com/nielswijers) for handing over the [lips npm name](https://www.npmjs.com/package/lips).
 
 Thanks for [Algolia DocSearch](https://docsearch.algolia.com/) for providing free search on LIPS website.
 
