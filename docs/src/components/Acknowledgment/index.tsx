@@ -30,7 +30,12 @@ export default function Acknowledgment(): JSX.Element {
           <li>Code formatter is roughly based on <a href="http://community.schemewiki.org/?scheme-style">scheme-style</a> and GNU Emacs scheme mode.</li>
           <li>Some helpers in standard library are inspired by same functions from <a href="https://ramdajs.com/">RamdaJS library</a>.</li>
           <li>Thanks to <a href="https://js.org/">JS.org</a> for providing free domain.</li>
-          <li>Special thanks to <a href="https://github.com/lassik">Lassi Kortela</a> for helping with Scheme code.</li>
+          <li>Special thanks:
+            <ul>
+              <li><a href="https://github.com/lassik">Lassi Kortela</a> for helping with Scheme code.</li>
+              <li><a href="https://github.com/nielswijers">Niels Wijers</a> for handing over the <a href="https://www.npmjs.com/package/lips">lips npm name</a></li>
+            </ul>
+          </li>
         </ul>
       </div>
     );
