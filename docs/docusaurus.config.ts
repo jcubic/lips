@@ -200,7 +200,7 @@ const config: Config = {
         DSN: 'c6868ced9c228b7da5e50196c0ab2f14@o4508899181723648.ingest.de.sentry.io/4508899184607312',
         beforeSend(event: Event) {
           const ignoredUrls = [
-            'https://cloud.umami.is/script.js',
+            'https://umami.jcubic.pl/script.js',
             'https://cdn.jsdelivr.net/gh/jcubic/lips@devel/lib/js/bookmark.js',
           ];
 
