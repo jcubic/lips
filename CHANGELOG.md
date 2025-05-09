@@ -12,6 +12,7 @@
 * add uninterned symbols SRFI-258
 * allow using find with any atom [#394](https://github.com/jcubic/lips/issues/394)
 * add `freeze-prop!` and `freeze-list!` functions
+* add default export
 ### Bugfix
 * fix exception when handling parse error for lonely `)` [#417](https://github.com/jcubic/lips/issues/417)
 * fix unboxing arguments of LIPS created classes [#411](https://github.com/jcubic/lips/issues/411)
