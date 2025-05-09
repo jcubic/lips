@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Mon, 21 Apr 2025 21:43:48 +0000
+ * build: Fri, 09 May 2025 12:45:32 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -3951,7 +3951,7 @@ function parse_symbol(arg) {
 // ----------------------------------------------------------------------
 function parse_argument(arg) {
   var meta = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
-  var token = meta ? arg.token : arg;
+  var token = arg.token;
   if (constants.hasOwnProperty(token)) {
     return constants[token];
   }
@@ -4960,6 +4960,15 @@ var Parser = /*#__PURE__*/function () {
     });
   }
   return _createClass(Parser, [{
+    key: "prepare",
+    value: function prepare(arg) {
+      if (arg instanceof LString) {
+        arg = arg.toString();
+      }
+      this._reset_state();
+      read_only(this, '__lexer__', new Lexer(arg));
+    }
+  }, {
     key: "_with_syntax_scope",
     value: function _with_syntax_scope(fn) {
       // expose parser and change stdin so parser extension can use current-input
@@ -4980,33 +4989,24 @@ var Parser = /*#__PURE__*/function () {
       }, cleanup);
     }
   }, {
-    key: "reset_state",
-    value: function reset_state() {
+    key: "_reset_state",
+    value: function _reset_state() {
       Object.assign(this._state, {
         parentheses: 0,
         line: 0
       });
     }
   }, {
-    key: "prepare",
-    value: function prepare(arg) {
-      if (arg instanceof LString) {
-        arg = arg.toString();
-      }
-      this.reset_state();
-      read_only(this, '__lexer__', new Lexer(arg));
-    }
-  }, {
-    key: "resolve",
-    value: function resolve(name) {
+    key: "_resolve",
+    value: function _resolve(name) {
       return this.__env__ && this.__env__.get(name, {
         throwError: false
       });
     }
   }, {
-    key: "peek",
+    key: "_peek",
     value: function () {
-      var _peek = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee() {
+      var _peek2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee() {
         var token;
         return _regeneratorRuntime.wrap(function _callee$(_context) {
           while (1) switch (_context.prev = _context.next) {
@@ -5018,7 +5018,7 @@ var Parser = /*#__PURE__*/function () {
               }
               return _context.abrupt("return", eof);
             case 4:
-              if (!this.is_comment(token.token)) {
+              if (!this._is_comment(token.token)) {
                 _context.next = 7;
                 break;
               }
@@ -5059,27 +5059,48 @@ var Parser = /*#__PURE__*/function () {
               if (this._state.fold_case) {
                 token.token = foldcase_string(token.token);
               }
-              if (!this._meta) {
-                _context.next = 25;
-                break;
-              }
               return _context.abrupt("return", token);
-            case 25:
-              return _context.abrupt("return", token.token);
-            case 26:
+            case 24:
             case "end":
               return _context.stop();
           }
         }, _callee, this);
       }));
+      function _peek() {
+        return _peek2.apply(this, arguments);
+      }
+      return _peek;
+    }()
+  }, {
+    key: "peek",
+    value: function () {
+      var _peek3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee2() {
+        var token;
+        return _regeneratorRuntime.wrap(function _callee2$(_context2) {
+          while (1) switch (_context2.prev = _context2.next) {
+            case 0:
+              token = this._peek();
+              if (!this._meta) {
+                _context2.next = 3;
+                break;
+              }
+              return _context2.abrupt("return", token);
+            case 3:
+              return _context2.abrupt("return", token.token);
+            case 4:
+            case "end":
+              return _context2.stop();
+          }
+        }, _callee2, this);
+      }));
       function peek() {
-        return _peek.apply(this, arguments);
+        return _peek3.apply(this, arguments);
       }
       return peek;
     }()
   }, {
-    key: "reset",
-    value: function reset() {
+    key: "_reset",
+    value: function _reset() {
       this._refs.length = 0;
     }
   }, {
@@ -5088,115 +5109,128 @@ var Parser = /*#__PURE__*/function () {
       this.__lexer__.skip();
     }
   }, {
-    key: "read",
+    key: "_read",
     value: function () {
-      var _read = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee2() {
+      var _read2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee3() {
         var token;
-        return _regeneratorRuntime.wrap(function _callee2$(_context2) {
-          while (1) switch (_context2.prev = _context2.next) {
+        return _regeneratorRuntime.wrap(function _callee3$(_context3) {
+          while (1) switch (_context3.prev = _context3.next) {
             case 0:
-              _context2.next = 2;
-              return this.peek();
+              _context3.next = 2;
+              return this._peek();
             case 2:
-              token = _context2.sent;
+              token = _context3.sent;
               this.skip();
-              return _context2.abrupt("return", token);
+              return _context3.abrupt("return", token);
             case 5:
             case "end":
-              return _context2.stop();
+              return _context3.stop();
           }
-        }, _callee2, this);
+        }, _callee3, this);
+      }));
+      function _read() {
+        return _read2.apply(this, arguments);
+      }
+      return _read;
+    }()
+  }, {
+    key: "read",
+    value: function () {
+      var _read3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee4() {
+        var token;
+        return _regeneratorRuntime.wrap(function _callee4$(_context4) {
+          while (1) switch (_context4.prev = _context4.next) {
+            case 0:
+              _context4.next = 2;
+              return this.peek();
+            case 2:
+              token = _context4.sent;
+              this.skip();
+              return _context4.abrupt("return", token);
+            case 5:
+            case "end":
+              return _context4.stop();
+          }
+        }, _callee4, this);
       }));
       function read() {
-        return _read.apply(this, arguments);
+        return _read3.apply(this, arguments);
       }
       return read;
     }()
   }, {
-    key: "match_datum_label",
-    value: function match_datum_label(token) {
-      if (this._meta) {
-        token = token.token;
-      }
-      var m = token.match(/^#([0-9]+)=$/);
+    key: "_match_datum_label",
+    value: function _match_datum_label(token) {
+      var m = token.token.match(/^#([0-9]+)=$/);
       return m && m[1];
     }
   }, {
-    key: "match_datum_ref",
-    value: function match_datum_ref(token) {
-      if (this._meta) {
-        token = token.token;
-      }
-      var m = token.match(/^#([0-9]+)#$/);
+    key: "_match_datum_ref",
+    value: function _match_datum_ref(token) {
+      var m = token.token.match(/^#([0-9]+)#$/);
       return m && m[1];
     }
   }, {
-    key: "is_open",
-    value: function is_open(token) {
-      if (this._meta) {
-        token = token.token;
-      }
-      return ['(', '['].includes(token);
+    key: "_is_open",
+    value: function _is_open(token) {
+      return ['(', '['].includes(token.token);
     }
   }, {
-    key: "is_close",
-    value: function is_close(token) {
-      if (this._meta) {
-        token = token.token;
-      }
-      return [')', ']'].includes(token);
+    key: "_is_close",
+    value: function _is_close(token) {
+      return [')', ']'].includes(token.token);
     }
   }, {
-    key: "read_list",
+    key: "_read_list",
     value: function () {
-      var _read_list = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee3() {
+      var _read_list2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee5() {
         var head, prev, dot, token, node, cur;
-        return _regeneratorRuntime.wrap(function _callee3$(_context3) {
-          while (1) switch (_context3.prev = _context3.next) {
+        return _regeneratorRuntime.wrap(function _callee5$(_context5) {
+          while (1) switch (_context5.prev = _context5.next) {
             case 0:
               head = _nil, prev = head;
             case 1:
-              _context3.next = 4;
-              return this.peek();
+              _context5.next = 4;
+              return this._peek();
             case 4:
-              token = _context3.sent;
+              token = _context5.sent;
               if (!(token === eof)) {
-                _context3.next = 7;
+                _context5.next = 7;
                 break;
               }
-              return _context3.abrupt("break", 31);
+              return _context5.abrupt("break", 31);
             case 7:
-              if (!this.is_close(token)) {
-                _context3.next = 11;
+              if (!this._is_close(token)) {
+                _context5.next = 11;
                 break;
               }
               --this._state.parentheses;
               this.skip();
-              return _context3.abrupt("break", 31);
+              return _context5.abrupt("break", 31);
             case 11:
-              if (!(token === '.' && !is_nil(head))) {
-                _context3.next = 19;
+              if (!(token.token === '.' && !is_nil(head))) {
+                _context5.next = 19;
                 break;
               }
               this.skip();
-              _context3.next = 15;
+              _context5.next = 15;
               return this._read_object();
             case 15:
-              prev.cdr = _context3.sent;
+              prev.cdr = _context5.sent;
               dot = true;
-              _context3.next = 29;
+              _context5.next = 29;
               break;
             case 19:
               if (!dot) {
-                _context3.next = 23;
+                _context5.next = 23;
                 break;
               }
               throw new Error('Parser: syntax error more than one element after dot');
             case 23:
-              _context3.next = 25;
+              _context5.next = 25;
               return this._read_object();
             case 25:
-              node = _context3.sent;
+              node = _context5.sent;
               cur = new Pair(node, _nil);
               if (is_nil(head)) {
                 head = cur;
@@ -5205,54 +5239,54 @@ var Parser = /*#__PURE__*/function () {
               }
               prev = cur;
             case 29:
-              _context3.next = 1;
+              _context5.next = 1;
               break;
             case 31:
-              return _context3.abrupt("return", head);
+              return _context5.abrupt("return", head);
             case 32:
             case "end":
-              return _context3.stop();
+              return _context5.stop();
           }
-        }, _callee3, this);
+        }, _callee5, this);
       }));
-      function read_list() {
-        return _read_list.apply(this, arguments);
+      function _read_list() {
+        return _read_list2.apply(this, arguments);
       }
-      return read_list;
+      return _read_list;
     }()
   }, {
-    key: "read_value",
+    key: "_read_value",
     value: function () {
-      var _read_value = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee4() {
+      var _read_value2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee6() {
         var token;
-        return _regeneratorRuntime.wrap(function _callee4$(_context4) {
-          while (1) switch (_context4.prev = _context4.next) {
+        return _regeneratorRuntime.wrap(function _callee6$(_context6) {
+          while (1) switch (_context6.prev = _context6.next) {
             case 0:
-              _context4.next = 2;
-              return this.read();
+              _context6.next = 2;
+              return this._read();
             case 2:
-              token = _context4.sent;
+              token = _context6.sent;
               if (!(token === eof || token.token === eof)) {
-                _context4.next = 5;
+                _context6.next = 5;
                 break;
               }
               throw new Error('Parser: Expected token eof found');
             case 5:
-              return _context4.abrupt("return", parse_argument(token, this._meta));
+              return _context6.abrupt("return", parse_argument(token, this._meta));
             case 6:
             case "end":
-              return _context4.stop();
+              return _context6.stop();
           }
-        }, _callee4, this);
+        }, _callee6, this);
       }));
-      function read_value() {
-        return _read_value.apply(this, arguments);
+      function _read_value() {
+        return _read_value2.apply(this, arguments);
       }
-      return read_value;
+      return _read_value;
     }()
   }, {
-    key: "is_comment",
-    value: function is_comment(token) {
+    key: "_is_comment",
+    value: function _is_comment(token) {
       return token.match(/^;/) || token.match(/^#\|/) && token.match(/\|#$/);
     }
   }, {
@@ -5269,24 +5303,24 @@ var Parser = /*#__PURE__*/function () {
   }, {
     key: "read_object",
     value: function () {
-      var _read_object2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee5() {
+      var _read_object2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee7() {
         var object;
-        return _regeneratorRuntime.wrap(function _callee5$(_context5) {
-          while (1) switch (_context5.prev = _context5.next) {
+        return _regeneratorRuntime.wrap(function _callee7$(_context7) {
+          while (1) switch (_context7.prev = _context7.next) {
             case 0:
-              this.reset();
-              _context5.next = 3;
+              this._reset();
+              _context7.next = 3;
               return this._read_object();
             case 3:
-              object = _context5.sent;
+              object = _context7.sent;
               if (object instanceof DatumReference) {
                 object = object.valueOf();
               }
               if (!this._refs.length) {
-                _context5.next = 7;
+                _context7.next = 7;
                 break;
               }
-              return _context5.abrupt("return", unpromise(this._resolve_object(object), function (object) {
+              return _context7.abrupt("return", unpromise(this._resolve_object(object), function (object) {
                 if (is_pair(object)) {
                   // mark cycles on parser level
                   object.mark_cycles();
@@ -5294,12 +5328,12 @@ var Parser = /*#__PURE__*/function () {
                 return object;
               }));
             case 7:
-              return _context5.abrupt("return", object);
+              return _context7.abrupt("return", object);
             case 8:
             case "end":
-              return _context5.stop();
+              return _context7.stop();
           }
-        }, _callee5, this);
+        }, _callee7, this);
       }));
       function read_object() {
         return _read_object2.apply(this, arguments);
@@ -5312,8 +5346,8 @@ var Parser = /*#__PURE__*/function () {
       return this._state.parentheses === 0;
     }
   }, {
-    key: "ballancing_error",
-    value: function ballancing_error(expr, prev) {
+    key: "_ballancing_error",
+    value: function _ballancing_error(expr, prev) {
       var count = this._state.parentheses;
       var e;
       if (count < 0) {
@@ -5349,42 +5383,42 @@ var Parser = /*#__PURE__*/function () {
   }, {
     key: "_resolve_object",
     value: function () {
-      var _resolve_object2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee6(object) {
+      var _resolve_object2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee8(object) {
         var _this5 = this;
         var result;
-        return _regeneratorRuntime.wrap(function _callee6$(_context6) {
-          while (1) switch (_context6.prev = _context6.next) {
+        return _regeneratorRuntime.wrap(function _callee8$(_context8) {
+          while (1) switch (_context8.prev = _context8.next) {
             case 0:
               if (!Array.isArray(object)) {
-                _context6.next = 2;
+                _context8.next = 2;
                 break;
               }
-              return _context6.abrupt("return", object.map(function (item) {
+              return _context8.abrupt("return", object.map(function (item) {
                 return _this5._resolve_object(item);
               }));
             case 2:
               if (!is_plain_object(object)) {
-                _context6.next = 6;
+                _context8.next = 6;
                 break;
               }
               result = {};
               Object.keys(object).forEach(function (key) {
                 result[key] = _this5._resolve_object(object[key]);
               });
-              return _context6.abrupt("return", result);
+              return _context8.abrupt("return", result);
             case 6:
               if (!is_pair(object)) {
-                _context6.next = 8;
+                _context8.next = 8;
                 break;
               }
-              return _context6.abrupt("return", this._resolve_pair(object));
+              return _context8.abrupt("return", this._resolve_pair(object));
             case 8:
-              return _context6.abrupt("return", object);
+              return _context8.abrupt("return", object);
             case 9:
             case "end":
-              return _context6.stop();
+              return _context8.stop();
           }
-        }, _callee6, this);
+        }, _callee8, this);
       }));
       function _resolve_object(_x3) {
         return _resolve_object2.apply(this, arguments);
@@ -5394,46 +5428,46 @@ var Parser = /*#__PURE__*/function () {
   }, {
     key: "_resolve_pair",
     value: function () {
-      var _resolve_pair2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee7(pair) {
-        return _regeneratorRuntime.wrap(function _callee7$(_context7) {
-          while (1) switch (_context7.prev = _context7.next) {
+      var _resolve_pair2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee9(pair) {
+        return _regeneratorRuntime.wrap(function _callee9$(_context9) {
+          while (1) switch (_context9.prev = _context9.next) {
             case 0:
               if (!is_pair(pair)) {
-                _context7.next = 15;
+                _context9.next = 15;
                 break;
               }
               if (!(pair.car instanceof DatumReference)) {
-                _context7.next = 7;
+                _context9.next = 7;
                 break;
               }
-              _context7.next = 4;
+              _context9.next = 4;
               return pair.car.valueOf();
             case 4:
-              pair.car = _context7.sent;
-              _context7.next = 8;
+              pair.car = _context9.sent;
+              _context9.next = 8;
               break;
             case 7:
               this._resolve_pair(pair.car);
             case 8:
               if (!(pair.cdr instanceof DatumReference)) {
-                _context7.next = 14;
+                _context9.next = 14;
                 break;
               }
-              _context7.next = 11;
+              _context9.next = 11;
               return pair.cdr.valueOf();
             case 11:
-              pair.cdr = _context7.sent;
-              _context7.next = 15;
+              pair.cdr = _context9.sent;
+              _context9.next = 15;
               break;
             case 14:
               this._resolve_pair(pair.cdr);
             case 15:
-              return _context7.abrupt("return", pair);
+              return _context9.abrupt("return", pair);
             case 16:
             case "end":
-              return _context7.stop();
+              return _context9.stop();
           }
-        }, _callee7, this);
+        }, _callee9, this);
       }));
       function _resolve_pair(_x4) {
         return _resolve_pair2.apply(this, arguments);
@@ -5448,25 +5482,25 @@ var Parser = /*#__PURE__*/function () {
   }, {
     key: "_read_object",
     value: function () {
-      var _read_object3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee8() {
+      var _read_object3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee10() {
         var _this6 = this;
         var token, special, builtin, expr, extension, _is_symbol, was_close_paren, object, args, e, _e, result, _e2, ref, _e3, ref_label;
-        return _regeneratorRuntime.wrap(function _callee8$(_context8) {
-          while (1) switch (_context8.prev = _context8.next) {
+        return _regeneratorRuntime.wrap(function _callee10$(_context10) {
+          while (1) switch (_context10.prev = _context10.next) {
             case 0:
-              _context8.next = 2;
-              return this.peek();
+              _context10.next = 2;
+              return this._peek();
             case 2:
-              token = _context8.sent;
+              token = _context10.sent;
               if (!(token === eof)) {
-                _context8.next = 5;
+                _context10.next = 5;
                 break;
               }
-              return _context8.abrupt("return", token);
+              return _context10.abrupt("return", token);
             case 5:
               this._state.line = this.__lexer__.__token__.line;
-              if (!is_special(token)) {
-                _context8.next = 58;
+              if (!is_special(token.token)) {
+                _context10.next = 58;
                 break;
               }
               // Built-in parser extensions are mapping short symbols to longer symbols
@@ -5476,46 +5510,46 @@ var Parser = /*#__PURE__*/function () {
               // result is returned by parser as is the macro.
               // MACRO: if macro is used, then it is evaluated in place and the
               // result is returned by parser and it is quoted.
-              special = specials.get(token);
-              builtin = is_builtin(token);
+              special = specials.get(token.token);
+              builtin = is_builtin(token.token);
               this.skip();
-              _is_symbol = is_symbol_extension(token);
-              _context8.t0 = this;
-              _context8.next = 14;
-              return this.peek();
+              _is_symbol = is_symbol_extension(token.token);
+              _context10.t0 = this;
+              _context10.next = 14;
+              return this._peek();
             case 14:
-              _context8.t1 = _context8.sent;
-              was_close_paren = _context8.t0.is_close.call(_context8.t0, _context8.t1);
+              _context10.t1 = _context10.sent;
+              was_close_paren = _context10.t0._is_close.call(_context10.t0, _context10.t1);
               if (!_is_symbol) {
-                _context8.next = 20;
+                _context10.next = 20;
                 break;
               }
-              _context8.t2 = undefined;
-              _context8.next = 23;
+              _context10.t2 = undefined;
+              _context10.next = 23;
               break;
             case 20:
-              _context8.next = 22;
+              _context10.next = 22;
               return this._read_object();
             case 22:
-              _context8.t2 = _context8.sent;
+              _context10.t2 = _context10.sent;
             case 23:
-              object = _context8.t2;
+              object = _context10.t2;
               if (!(object === eof)) {
-                _context8.next = 26;
+                _context10.next = 26;
                 break;
               }
               throw new Unterminated('Expecting expression eof found');
             case 26:
               if (builtin) {
-                _context8.next = 35;
+                _context10.next = 35;
                 break;
               }
               extension = this.__env__.get(special.symbol);
               if (!(typeof extension === 'function')) {
-                _context8.next = 35;
+                _context10.next = 35;
                 break;
               }
-              if (is_literal(token)) {
+              if (is_literal(token.token)) {
                 args = [object];
               } else if (is_nil(object)) {
                 args = [];
@@ -5523,10 +5557,10 @@ var Parser = /*#__PURE__*/function () {
                 args = object.to_array(false);
               }
               if (!(args || _is_symbol)) {
-                _context8.next = 32;
+                _context10.next = 32;
                 break;
               }
-              return _context8.abrupt("return", this._with_syntax_scope(function () {
+              return _context10.abrupt("return", this._with_syntax_scope(function () {
                 return call_function(extension, _is_symbol ? [] : args, {
                   env: _this6.__env__,
                   dynamic_env: _this6.__env__,
@@ -5538,12 +5572,12 @@ var Parser = /*#__PURE__*/function () {
               this._agument_exception(e);
               throw e;
             case 35:
-              if (!is_literal(token)) {
-                _context8.next = 43;
+              if (!is_literal(token.token)) {
+                _context10.next = 43;
                 break;
               }
               if (!was_close_paren) {
-                _context8.next = 40;
+                _context10.next = 40;
                 break;
               }
               _e = new Error('Parse Error: expecting datum');
@@ -5551,88 +5585,88 @@ var Parser = /*#__PURE__*/function () {
               throw _e;
             case 40:
               expr = new Pair(special.symbol, new Pair(object, _nil));
-              _context8.next = 44;
+              _context10.next = 44;
               break;
             case 43:
               expr = new Pair(special.symbol, object);
             case 44:
               if (!builtin) {
-                _context8.next = 46;
+                _context10.next = 46;
                 break;
               }
-              return _context8.abrupt("return", expr);
+              return _context10.abrupt("return", expr);
             case 46:
               if (!(extension instanceof Macro)) {
-                _context8.next = 55;
+                _context10.next = 55;
                 break;
               }
-              _context8.next = 49;
+              _context10.next = 49;
               return this._with_syntax_scope(function () {
                 return _this6.evaluate(expr);
               });
             case 49:
-              result = _context8.sent;
+              result = _context10.sent;
               if (!(is_pair(result) || result instanceof LSymbol)) {
-                _context8.next = 52;
+                _context10.next = 52;
                 break;
               }
-              return _context8.abrupt("return", Pair.fromArray([LSymbol('quote'), result]));
+              return _context10.abrupt("return", Pair.fromArray([LSymbol('quote'), result]));
             case 52:
-              return _context8.abrupt("return", result);
+              return _context10.abrupt("return", result);
             case 55:
               _e2 = new Error('Parse Error: invalid parser extension: ' + special.symbol);
               this._agument_exception(_e2);
               throw _e2;
             case 58:
-              ref = this.match_datum_ref(token);
+              ref = this._match_datum_ref(token);
               if (!(ref !== null)) {
-                _context8.next = 66;
+                _context10.next = 66;
                 break;
               }
               this.skip();
               if (!this._refs[ref]) {
-                _context8.next = 63;
+                _context10.next = 63;
                 break;
               }
-              return _context8.abrupt("return", new DatumReference(ref, this._refs[ref]));
+              return _context10.abrupt("return", new DatumReference(ref, this._refs[ref]));
             case 63:
               _e3 = new Error("Parse Error: invalid datum label #".concat(ref, "#"));
               this._agument_exception(_e3);
               throw _e3;
             case 66:
-              ref_label = this.match_datum_label(token);
+              ref_label = this._match_datum_label(token);
               if (!(ref_label !== null)) {
-                _context8.next = 73;
+                _context10.next = 73;
                 break;
               }
               this.skip();
               this._refs[ref_label] = this._read_object();
-              return _context8.abrupt("return", this._refs[ref_label]);
+              return _context10.abrupt("return", this._refs[ref_label]);
             case 73:
-              if (!this.is_close(token)) {
-                _context8.next = 78;
+              if (!this._is_close(token)) {
+                _context10.next = 78;
                 break;
               }
               --this._state.parentheses;
               this.skip();
               // invalid state, we don't need to return anything
-              _context8.next = 85;
+              _context10.next = 85;
               break;
             case 78:
-              if (!this.is_open(token)) {
-                _context8.next = 84;
+              if (!this._is_open(token)) {
+                _context10.next = 84;
                 break;
               }
               ++this._state.parentheses;
               this.skip();
-              return _context8.abrupt("return", this.read_list());
+              return _context10.abrupt("return", this._read_list());
             case 84:
-              return _context8.abrupt("return", this.read_value());
+              return _context10.abrupt("return", this._read_value());
             case 85:
             case "end":
-              return _context8.stop();
+              return _context10.stop();
           }
-        }, _callee8, this);
+        }, _callee10, this);
       }));
       function _read_object() {
         return _read_object3.apply(this, arguments);
@@ -5677,10 +5711,10 @@ function _parse(_x, _x2) {
   return _parse2.apply(this, arguments);
 } // ----------------------------------------------------------------------
 function _parse2() {
-  _parse2 = _wrapAsyncGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee9(arg, env) {
+  _parse2 = _wrapAsyncGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee11(arg, env) {
     var parser, prev, expr;
-    return _regeneratorRuntime.wrap(function _callee9$(_context9) {
-      while (1) switch (_context9.prev = _context9.next) {
+    return _regeneratorRuntime.wrap(function _callee11$(_context11) {
+      while (1) switch (_context11.prev = _context11.next) {
         case 0:
           if (!env) {
             if (global_env) {
@@ -5700,30 +5734,30 @@ function _parse2() {
             parser.prepare(arg);
           }
         case 2:
-          _context9.next = 5;
+          _context11.next = 5;
           return _awaitAsyncGenerator(parser.read_object());
         case 5:
-          expr = _context9.sent;
+          expr = _context11.sent;
           if (!parser.balanced()) {
-            parser.ballancing_error(expr, prev);
+            parser._ballancing_error(expr, prev);
           }
           if (!(expr === eof)) {
-            _context9.next = 9;
+            _context11.next = 9;
             break;
           }
-          return _context9.abrupt("break", 14);
+          return _context11.abrupt("break", 14);
         case 9:
           prev = expr;
-          _context9.next = 12;
+          _context11.next = 12;
           return expr;
         case 12:
-          _context9.next = 2;
+          _context11.next = 2;
           break;
         case 14:
         case "end":
-          return _context9.stop();
+          return _context11.stop();
       }
-    }, _callee9);
+    }, _callee11);
   }));
   return _parse2.apply(this, arguments);
 }
@@ -5812,65 +5846,65 @@ function uniterate_async(_x5) {
 // :: in the list
 // ----------------------------------------------------------------------
 function _uniterate_async() {
-  _uniterate_async = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee22(object) {
+  _uniterate_async = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee24(object) {
     var result, _iteratorAbruptCompletion, _didIteratorError, _iteratorError, _iterator, _step, item;
-    return _regeneratorRuntime.wrap(function _callee22$(_context23) {
-      while (1) switch (_context23.prev = _context23.next) {
+    return _regeneratorRuntime.wrap(function _callee24$(_context25) {
+      while (1) switch (_context25.prev = _context25.next) {
         case 0:
           result = [];
           _iteratorAbruptCompletion = false;
           _didIteratorError = false;
-          _context23.prev = 3;
+          _context25.prev = 3;
           _iterator = _asyncIterator(object);
         case 5:
-          _context23.next = 7;
+          _context25.next = 7;
           return _iterator.next();
         case 7:
-          if (!(_iteratorAbruptCompletion = !(_step = _context23.sent).done)) {
-            _context23.next = 13;
+          if (!(_iteratorAbruptCompletion = !(_step = _context25.sent).done)) {
+            _context25.next = 13;
             break;
           }
           item = _step.value;
           result.push(item);
         case 10:
           _iteratorAbruptCompletion = false;
-          _context23.next = 5;
+          _context25.next = 5;
           break;
         case 13:
-          _context23.next = 19;
+          _context25.next = 19;
           break;
         case 15:
-          _context23.prev = 15;
-          _context23.t0 = _context23["catch"](3);
+          _context25.prev = 15;
+          _context25.t0 = _context25["catch"](3);
           _didIteratorError = true;
-          _iteratorError = _context23.t0;
+          _iteratorError = _context25.t0;
         case 19:
-          _context23.prev = 19;
-          _context23.prev = 20;
+          _context25.prev = 19;
+          _context25.prev = 20;
           if (!(_iteratorAbruptCompletion && _iterator["return"] != null)) {
-            _context23.next = 24;
+            _context25.next = 24;
             break;
           }
-          _context23.next = 24;
+          _context25.next = 24;
           return _iterator["return"]();
         case 24:
-          _context23.prev = 24;
+          _context25.prev = 24;
           if (!_didIteratorError) {
-            _context23.next = 27;
+            _context25.next = 27;
             break;
           }
           throw _iteratorError;
         case 27:
-          return _context23.finish(24);
+          return _context25.finish(24);
         case 28:
-          return _context23.finish(19);
+          return _context25.finish(19);
         case 29:
-          return _context23.abrupt("return", result);
+          return _context25.abrupt("return", result);
         case 30:
         case "end":
-          return _context23.stop();
+          return _context25.stop();
       }
-    }, _callee22, null, [[3, 15, 19, 29], [20,, 24, 28]]);
+    }, _callee24, null, [[3, 15, 19, 29], [20,, 24, 28]]);
   }));
   return _uniterate_async.apply(this, arguments);
 }
@@ -8757,9 +8791,9 @@ function abs(x) {
 }
 // ----------------------------------------------------------------------
 function seq_compare(fn, args) {
-  var _args11 = _toArray(args),
-    a = _args11[0],
-    rest = _args11.slice(1);
+  var _args13 = _toArray(args),
+    a = _args13[0],
+    rest = _args13.slice(1);
   while (rest.length > 0) {
     var _rest = rest,
       _rest2 = _slicedToArray(_rest, 1),
@@ -8973,26 +9007,26 @@ function macro_args_env(params, code, scope) {
 var recur_guard = -10000;
 function macro_expand(single) {
   return /*#__PURE__*/function () {
-    var _ref22 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee12(code, args) {
+    var _ref22 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee14(code, args) {
       var env, bindings, let_names, let_macros, lambda, define, is_let_macro, builtin_let, is_procedure, is_lambda, proc_bindings, let_binding, is_macro, expand_let_binding, _expand_let_binding, traverse, _traverse;
-      return _regeneratorRuntime.wrap(function _callee12$(_context12) {
-        while (1) switch (_context12.prev = _context12.next) {
+      return _regeneratorRuntime.wrap(function _callee14$(_context14) {
+        while (1) switch (_context14.prev = _context14.next) {
           case 0:
             _traverse = function _traverse3() {
-              _traverse = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee11(node, n, env) {
+              _traverse = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee13(node, n, env) {
                 var name, value, is_let, is_binding, code, result, _result, expr, scope, second, car, cdr, pair;
-                return _regeneratorRuntime.wrap(function _callee11$(_context11) {
-                  while (1) switch (_context11.prev = _context11.next) {
+                return _regeneratorRuntime.wrap(function _callee13$(_context13) {
+                  while (1) switch (_context13.prev = _context13.next) {
                     case 0:
                       if (!(is_pair(node) && node.car instanceof LSymbol)) {
-                        _context11.next = 50;
+                        _context13.next = 50;
                         break;
                       }
                       if (!node[__data__]) {
-                        _context11.next = 3;
+                        _context13.next = 3;
                         break;
                       }
-                      return _context11.abrupt("return", node);
+                      return _context13.abrupt("return", node);
                     case 3:
                       name = node.car.valueOf();
                       value = env.get(node.car, {
@@ -9001,126 +9035,126 @@ function macro_expand(single) {
                       is_let = is_let_macro(name);
                       is_binding = is_let || is_procedure(value, node) || is_lambda(value);
                       if (!(is_macro(name, value) && !builtin_let(name))) {
-                        _context11.next = 31;
+                        _context13.next = 31;
                         break;
                       }
                       code = value instanceof Syntax ? node : node.cdr;
-                      _context11.next = 11;
+                      _context13.next = 11;
                       return value.invoke(code, _objectSpread(_objectSpread({}, args), {}, {
                         env: env
                       }), true);
                     case 11:
-                      result = _context11.sent;
+                      result = _context13.sent;
                       if (!(value instanceof Syntax)) {
-                        _context11.next = 20;
+                        _context13.next = 20;
                         break;
                       }
                       _result = result, expr = _result.expr, scope = _result.scope;
                       if (!is_pair(expr)) {
-                        _context11.next = 19;
+                        _context13.next = 19;
                         break;
                       }
                       if (!(n !== -1 && n <= 1 || n < recur_guard)) {
-                        _context11.next = 17;
+                        _context13.next = 17;
                         break;
                       }
-                      return _context11.abrupt("return", expr);
+                      return _context13.abrupt("return", expr);
                     case 17:
                       if (n !== -1) {
                         n = n - 1;
                       }
-                      return _context11.abrupt("return", traverse(expr, n, scope));
+                      return _context13.abrupt("return", traverse(expr, n, scope));
                     case 19:
                       result = expr;
                     case 20:
                       if (!(result instanceof LSymbol)) {
-                        _context11.next = 22;
+                        _context13.next = 22;
                         break;
                       }
-                      return _context11.abrupt("return", quote(result));
+                      return _context13.abrupt("return", quote(result));
                     case 22:
                       if (!is_pair(result)) {
-                        _context11.next = 27;
+                        _context13.next = 27;
                         break;
                       }
                       if (!(n !== -1 && n <= 1 || n < recur_guard)) {
-                        _context11.next = 25;
+                        _context13.next = 25;
                         break;
                       }
-                      return _context11.abrupt("return", result);
+                      return _context13.abrupt("return", result);
                     case 25:
                       if (n !== -1) {
                         n = n - 1;
                       }
-                      return _context11.abrupt("return", traverse(result, n, env));
+                      return _context13.abrupt("return", traverse(result, n, env));
                     case 27:
                       if (!is_atom(result)) {
-                        _context11.next = 29;
+                        _context13.next = 29;
                         break;
                       }
-                      return _context11.abrupt("return", result);
+                      return _context13.abrupt("return", result);
                     case 29:
-                      _context11.next = 50;
+                      _context13.next = 50;
                       break;
                     case 31:
                       if (!(is_binding && is_pair(node.cdr.car))) {
-                        _context11.next = 50;
+                        _context13.next = 50;
                         break;
                       }
                       if (!is_let) {
-                        _context11.next = 39;
+                        _context13.next = 39;
                         break;
                       }
                       bindings = let_binding(node.cdr.car);
-                      _context11.next = 36;
+                      _context13.next = 36;
                       return expand_let_binding(node.cdr.car, n);
                     case 36:
-                      second = _context11.sent;
-                      _context11.next = 41;
+                      second = _context13.sent;
+                      _context13.next = 41;
                       break;
                     case 39:
                       bindings = proc_bindings(node.cdr.car);
                       second = node.cdr.car;
                     case 41:
-                      _context11.t0 = Pair;
-                      _context11.t1 = node.car;
-                      _context11.t2 = Pair;
-                      _context11.t3 = second;
-                      _context11.next = 47;
+                      _context13.t0 = Pair;
+                      _context13.t1 = node.car;
+                      _context13.t2 = Pair;
+                      _context13.t3 = second;
+                      _context13.next = 47;
                       return traverse(node.cdr.cdr, n, env);
                     case 47:
-                      _context11.t4 = _context11.sent;
-                      _context11.t5 = new _context11.t2(_context11.t3, _context11.t4);
-                      return _context11.abrupt("return", new _context11.t0(_context11.t1, _context11.t5));
+                      _context13.t4 = _context13.sent;
+                      _context13.t5 = new _context13.t2(_context13.t3, _context13.t4);
+                      return _context13.abrupt("return", new _context13.t0(_context13.t1, _context13.t5));
                     case 50:
                       // TODO: CYCLE DETECT
                       car = node.car;
                       if (!is_pair(car)) {
-                        _context11.next = 55;
+                        _context13.next = 55;
                         break;
                       }
-                      _context11.next = 54;
+                      _context13.next = 54;
                       return traverse(car, n, env);
                     case 54:
-                      car = _context11.sent;
+                      car = _context13.sent;
                     case 55:
                       cdr = node.cdr;
                       if (!is_pair(cdr)) {
-                        _context11.next = 60;
+                        _context13.next = 60;
                         break;
                       }
-                      _context11.next = 59;
+                      _context13.next = 59;
                       return traverse(cdr, n, env);
                     case 59:
-                      cdr = _context11.sent;
+                      cdr = _context13.sent;
                     case 60:
                       pair = new Pair(car, cdr);
-                      return _context11.abrupt("return", pair);
+                      return _context13.abrupt("return", pair);
                     case 62:
                     case "end":
-                      return _context11.stop();
+                      return _context13.stop();
                   }
-                }, _callee11);
+                }, _callee13);
               }));
               return _traverse.apply(this, arguments);
             };
@@ -9128,36 +9162,36 @@ function macro_expand(single) {
               return _traverse.apply(this, arguments);
             };
             _expand_let_binding = function _expand_let_binding3() {
-              _expand_let_binding = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee10(node, n) {
+              _expand_let_binding = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee12(node, n) {
                 var pair;
-                return _regeneratorRuntime.wrap(function _callee10$(_context10) {
-                  while (1) switch (_context10.prev = _context10.next) {
+                return _regeneratorRuntime.wrap(function _callee12$(_context12) {
+                  while (1) switch (_context12.prev = _context12.next) {
                     case 0:
                       if (!is_nil(node)) {
-                        _context10.next = 2;
+                        _context12.next = 2;
                         break;
                       }
-                      return _context10.abrupt("return", _nil);
+                      return _context12.abrupt("return", _nil);
                     case 2:
                       pair = node.car;
-                      _context10.t0 = Pair;
-                      _context10.t1 = Pair;
-                      _context10.t2 = pair.car;
-                      _context10.next = 8;
+                      _context12.t0 = Pair;
+                      _context12.t1 = Pair;
+                      _context12.t2 = pair.car;
+                      _context12.next = 8;
                       return traverse(pair.cdr, n, env);
                     case 8:
-                      _context10.t3 = _context10.sent;
-                      _context10.t4 = new _context10.t1(_context10.t2, _context10.t3);
-                      _context10.next = 12;
+                      _context12.t3 = _context12.sent;
+                      _context12.t4 = new _context12.t1(_context12.t2, _context12.t3);
+                      _context12.next = 12;
                       return expand_let_binding(node.cdr);
                     case 12:
-                      _context10.t5 = _context10.sent;
-                      return _context10.abrupt("return", new _context10.t0(_context10.t4, _context10.t5));
+                      _context12.t5 = _context12.sent;
+                      return _context12.abrupt("return", new _context12.t0(_context12.t4, _context12.t5));
                     case 14:
                     case "end":
-                      return _context10.stop();
+                      return _context12.stop();
                   }
-                }, _callee10);
+                }, _callee12);
               }));
               return _expand_let_binding.apply(this, arguments);
             };
@@ -9217,38 +9251,38 @@ function macro_expand(single) {
             lambda = global_env.get('lambda');
             define = global_env.get('define'); //var this.__code__ = code;
             if (!(is_pair(code.cdr) && LNumber.isNumber(code.cdr.car))) {
-              _context12.next = 23;
+              _context14.next = 23;
               break;
             }
-            _context12.t0 = quote;
-            _context12.next = 21;
+            _context14.t0 = quote;
+            _context14.next = 21;
             return traverse(code, code.cdr.car.valueOf(), env);
           case 21:
-            _context12.t1 = _context12.sent.car;
-            return _context12.abrupt("return", (0, _context12.t0)(_context12.t1));
+            _context14.t1 = _context14.sent.car;
+            return _context14.abrupt("return", (0, _context14.t0)(_context14.t1));
           case 23:
             if (!single) {
-              _context12.next = 29;
+              _context14.next = 29;
               break;
             }
-            _context12.t2 = quote;
-            _context12.next = 27;
+            _context14.t2 = quote;
+            _context14.next = 27;
             return traverse(code, 1, env);
           case 27:
-            _context12.t3 = _context12.sent.car;
-            return _context12.abrupt("return", (0, _context12.t2)(_context12.t3));
+            _context14.t3 = _context14.sent.car;
+            return _context14.abrupt("return", (0, _context14.t2)(_context14.t3));
           case 29:
-            _context12.t4 = quote;
-            _context12.next = 32;
+            _context14.t4 = quote;
+            _context14.next = 32;
             return traverse(code, -1, env);
           case 32:
-            _context12.t5 = _context12.sent.car;
-            return _context12.abrupt("return", (0, _context12.t4)(_context12.t5));
+            _context14.t5 = _context14.sent.car;
+            return _context14.abrupt("return", (0, _context14.t4)(_context14.t5));
           case 34:
           case "end":
-            return _context12.stop();
+            return _context14.stop();
         }
-      }, _callee12, this);
+      }, _callee14, this);
     }));
     return function (_x6, _x7) {
       return _ref22.apply(this, arguments);
@@ -10978,30 +11012,30 @@ function LString(string) {
     _iterator10.f();
   }
 }
-LString.prototype[Symbol.iterator] = /*#__PURE__*/_regeneratorRuntime.mark(function _callee13() {
+LString.prototype[Symbol.iterator] = /*#__PURE__*/_regeneratorRuntime.mark(function _callee15() {
   var chars, _i4, _chars, _char9;
-  return _regeneratorRuntime.wrap(function _callee13$(_context13) {
-    while (1) switch (_context13.prev = _context13.next) {
+  return _regeneratorRuntime.wrap(function _callee15$(_context15) {
+    while (1) switch (_context15.prev = _context15.next) {
       case 0:
         chars = Array.from(this.__string__);
         _i4 = 0, _chars = chars;
       case 2:
         if (!(_i4 < _chars.length)) {
-          _context13.next = 9;
+          _context15.next = 9;
           break;
         }
         _char9 = _chars[_i4];
-        _context13.next = 6;
+        _context15.next = 6;
         return LCharacter(_char9);
       case 6:
         _i4++;
-        _context13.next = 2;
+        _context15.next = 2;
         break;
       case 9:
       case "end":
-        return _context13.stop();
+        return _context15.stop();
     }
-  }, _callee13, this);
+  }, _callee15, this);
 });
 LString.prototype.serialize = function () {
   return this.valueOf();
@@ -12526,30 +12560,30 @@ function InputPort(read) {
     }
   });
   this._read = read;
-  this._with_parser = this._with_init_parser.bind(this, /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee14() {
+  this._with_parser = this._with_init_parser.bind(this, /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee16() {
     var line;
-    return _regeneratorRuntime.wrap(function _callee14$(_context14) {
-      while (1) switch (_context14.prev = _context14.next) {
+    return _regeneratorRuntime.wrap(function _callee16$(_context16) {
+      while (1) switch (_context16.prev = _context16.next) {
         case 0:
           if (_this10.char_ready()) {
-            _context14.next = 6;
+            _context16.next = 6;
             break;
           }
-          _context14.next = 3;
+          _context16.next = 3;
           return _this10._read();
         case 3:
-          line = _context14.sent;
+          line = _context16.sent;
           parser = new Parser({
             env: env
           });
           parser.prepare(line);
         case 6:
-          return _context14.abrupt("return", _this10.__parser__);
+          return _context16.abrupt("return", _this10.__parser__);
         case 7:
         case "end":
-          return _context14.stop();
+          return _context16.stop();
       }
-    }, _callee14);
+    }, _callee16);
   })));
   this.char_ready = function () {
     return !!this.__parser__ && this.__parser__.__lexer__.peek() !== eof;
@@ -12579,28 +12613,28 @@ InputPort.prototype._make_defaults = function () {
 };
 InputPort.prototype._with_init_parser = function (make_parser, fn) {
   var self = this;
-  return /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee15() {
+  return /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee17() {
     var parser,
       _len17,
       args,
       _key17,
-      _args17 = arguments;
-    return _regeneratorRuntime.wrap(function _callee15$(_context15) {
-      while (1) switch (_context15.prev = _context15.next) {
+      _args19 = arguments;
+    return _regeneratorRuntime.wrap(function _callee17$(_context17) {
+      while (1) switch (_context17.prev = _context17.next) {
         case 0:
-          _context15.next = 2;
+          _context17.next = 2;
           return make_parser.call(self);
         case 2:
-          parser = _context15.sent;
-          for (_len17 = _args17.length, args = new Array(_len17), _key17 = 0; _key17 < _len17; _key17++) {
-            args[_key17] = _args17[_key17];
+          parser = _context17.sent;
+          for (_len17 = _args19.length, args = new Array(_len17), _key17 = 0; _key17 < _len17; _key17++) {
+            args[_key17] = _args19[_key17];
           }
-          return _context15.abrupt("return", fn.apply(void 0, [parser].concat(args)));
+          return _context17.abrupt("return", fn.apply(void 0, [parser].concat(args)));
         case 5:
         case "end":
-          return _context15.stop();
+          return _context17.stop();
       }
-    }, _callee15);
+    }, _callee17);
   }));
 };
 InputPort.prototype.is_open = function () {
@@ -13092,10 +13126,10 @@ Interpreter.prototype.exec = /*#__PURE__*/function () {
   var _ref29 = _asyncToGenerator(function (arg) {
     var _this22 = this;
     var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-    return /*#__PURE__*/_regeneratorRuntime.mark(function _callee16() {
+    return /*#__PURE__*/_regeneratorRuntime.mark(function _callee18() {
       var _options$use_dynamic, use_dynamic, dynamic_env, env, _e$message, location;
-      return _regeneratorRuntime.wrap(function _callee16$(_context16) {
-        while (1) switch (_context16.prev = _context16.next) {
+      return _regeneratorRuntime.wrap(function _callee18$(_context18) {
+        while (1) switch (_context18.prev = _context18.next) {
           case 0:
             _options$use_dynamic = options.use_dynamic, use_dynamic = _options$use_dynamic === void 0 ? false : _options$use_dynamic, dynamic_env = options.dynamic_env, env = options.env;
             typecheck('Interpreter::exec', arg, ['string', 'array'], 1);
@@ -13110,38 +13144,38 @@ Interpreter.prototype.exec = /*#__PURE__*/function () {
             }
             global_env.set('**interaction-environment**', _this22.__env__);
             if (!Array.isArray(arg)) {
-              _context16.next = 10;
+              _context18.next = 10;
               break;
             }
-            return _context16.abrupt("return", exec(arg, {
+            return _context18.abrupt("return", exec(arg, {
               env: env,
               dynamic_env: dynamic_env,
               use_dynamic: use_dynamic
             }));
           case 10:
-            _context16.prev = 10;
+            _context18.prev = 10;
             _this22.__parser__.prepare(arg);
-            _context16.next = 14;
+            _context18.next = 14;
             return exec(_this22.__parser__, {
               env: env,
               dynamic_env: dynamic_env,
               use_dynamic: use_dynamic
             });
           case 14:
-            return _context16.abrupt("return", _context16.sent);
+            return _context18.abrupt("return", _context18.sent);
           case 17:
-            _context16.prev = 17;
-            _context16.t0 = _context16["catch"](10);
-            if (!((_e$message = _context16.t0.message) !== null && _e$message !== void 0 && _e$message.includes('at line'))) {
+            _context18.prev = 17;
+            _context18.t0 = _context18["catch"](10);
+            if (!((_e$message = _context18.t0.message) !== null && _e$message !== void 0 && _e$message.includes('at line'))) {
               location = " at line ".concat(_this22.__parser__.get_line() + 1);
-              _context16.t0.message += location;
+              _context18.t0.message += location;
             }
-            throw _context16.t0;
+            throw _context18.t0;
           case 21:
           case "end":
-            return _context16.stop();
+            return _context18.stop();
         }
-      }, _callee16, null, [[10, 17]]);
+      }, _callee18, null, [[10, 17]]);
     })();
   });
   return function (_x13) {
@@ -13627,13 +13661,13 @@ var global_env = new Environment({
   }, "(read-char port)\n\n        This function reads and returns the next character from the\n        input port."),
   // ------------------------------------------------------------------
   read: doc('read', /*#__PURE__*/function () {
-    var _read2 = _asyncToGenerator(function () {
+    var _read4 = _asyncToGenerator(function () {
       var _this25 = this;
       var arg = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
-      return /*#__PURE__*/_regeneratorRuntime.mark(function _callee17() {
+      return /*#__PURE__*/_regeneratorRuntime.mark(function _callee19() {
         var env, port;
-        return _regeneratorRuntime.wrap(function _callee17$(_context17) {
-          while (1) switch (_context17.prev = _context17.next) {
+        return _regeneratorRuntime.wrap(function _callee19$(_context19) {
+          while (1) switch (_context19.prev = _context19.next) {
             case 0:
               env = _this25.env;
               if (arg === null) {
@@ -13642,16 +13676,16 @@ var global_env = new Environment({
                 port = arg;
               }
               typecheck_text_port('read', port, 'input-port');
-              return _context17.abrupt("return", port.read.call(env));
+              return _context19.abrupt("return", port.read.call(env));
             case 4:
             case "end":
-              return _context17.stop();
+              return _context19.stop();
           }
-        }, _callee17);
+        }, _callee19);
       })();
     });
     function read() {
-      return _read2.apply(this, arguments);
+      return _read4.apply(this, arguments);
     }
     return read;
   }(), "(read [port])\n\n        This function, if called with a port, it will parse the next\n        item from the port. If called without an input, it will read\n        a string from standard input (using the browser's prompt or\n        a user defined input method) and parse it. This function can be\n        used together with `eval` to evaluate code from port."),
@@ -13985,13 +14019,13 @@ var global_env = new Environment({
     }
     if (is_node()) {
       return new Promise(/*#__PURE__*/function () {
-        var _ref32 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee18(resolve, reject) {
-          var _path, _fs, root_dir, cmd, _args20;
-          return _regeneratorRuntime.wrap(function _callee18$(_context18) {
-            while (1) switch (_context18.prev = _context18.next) {
+        var _ref32 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee20(resolve, reject) {
+          var _path, _fs, root_dir, cmd, _args22;
+          return _regeneratorRuntime.wrap(function _callee20$(_context20) {
+            while (1) switch (_context20.prev = _context20.next) {
               case 0:
-                _context18.prev = 0;
-                _context18.next = 3;
+                _context20.prev = 0;
+                _context20.next = 3;
                 return node_ready;
               case 3:
                 _path = nodeRequire('path');
@@ -14001,35 +14035,35 @@ var global_env = new Environment({
                   file = file.replace(package_name, root_dir);
                 }
                 if (!module_path) {
-                  _context18.next = 12;
+                  _context20.next = 12;
                   break;
                 }
                 module_path = module_path.valueOf();
                 if (!file.startsWith('/')) {
                   file = _path.join(module_path, file);
                 }
-                _context18.next = 19;
+                _context20.next = 19;
                 break;
               case 12:
                 if (file.startsWith('/')) {
-                  _context18.next = 19;
+                  _context20.next = 19;
                   break;
                 }
                 cmd = g_env.get('command-line', {
                   throwError: false
                 });
                 if (!cmd) {
-                  _context18.next = 18;
+                  _context20.next = 18;
                   break;
                 }
-                _context18.next = 17;
+                _context20.next = 17;
                 return cmd();
               case 17:
-                _args20 = _context18.sent;
+                _args22 = _context20.sent;
               case 18:
-                if (_args20 && !is_nil(_args20)) {
+                if (_args22 && !is_nil(_args22)) {
                   process.cwd();
-                  file = _path.join(_path.dirname(_args20.car.valueOf()), file);
+                  file = _path.join(_path.dirname(_args22.car.valueOf()), file);
                 }
               case 19:
                 global_env.set(PATH, _path.dirname(file));
@@ -14048,17 +14082,17 @@ var global_env = new Environment({
                     }
                   }
                 });
-                _context18.next = 26;
+                _context20.next = 26;
                 break;
               case 23:
-                _context18.prev = 23;
-                _context18.t0 = _context18["catch"](0);
-                console.error(_context18.t0);
+                _context20.prev = 23;
+                _context20.t0 = _context20["catch"](0);
+                console.error(_context20.t0);
               case 26:
               case "end":
-                return _context18.stop();
+                return _context20.stop();
             }
-          }, _callee18, null, [[0, 23]]);
+          }, _callee20, null, [[0, 23]]);
         }));
         return function (_x14, _x15) {
           return _ref32.apply(this, arguments);
@@ -14108,10 +14142,10 @@ var global_env = new Environment({
       var _this27 = this;
       var use_dynamic = _ref34.use_dynamic,
         error = _ref34.error;
-      return /*#__PURE__*/_regeneratorRuntime.mark(function _callee19() {
+      return /*#__PURE__*/_regeneratorRuntime.mark(function _callee21() {
         var self, dynamic_env, scope, vars, test, body, eval_args, node, item, _loop3;
-        return _regeneratorRuntime.wrap(function _callee19$(_context20) {
-          while (1) switch (_context20.prev = _context20.next) {
+        return _regeneratorRuntime.wrap(function _callee21$(_context22) {
+          while (1) switch (_context22.prev = _context22.next) {
             case 0:
               self = _this27;
               dynamic_env = self;
@@ -14131,19 +14165,19 @@ var global_env = new Environment({
               node = vars; // init variables
             case 9:
               if (is_nil(node)) {
-                _context20.next = 20;
+                _context22.next = 20;
                 break;
               }
               item = node.car;
-              _context20.t0 = scope;
-              _context20.t1 = item.car;
-              _context20.next = 15;
+              _context22.t0 = scope;
+              _context22.t1 = item.car;
+              _context22.next = 15;
               return _evaluate(item.cdr.car, eval_args);
             case 15:
-              _context20.t2 = _context20.sent;
-              _context20.t0.set.call(_context20.t0, _context20.t1, _context20.t2);
+              _context22.t2 = _context22.sent;
+              _context22.t0.set.call(_context22.t0, _context22.t1, _context22.t2);
               node = node.cdr;
-              _context20.next = 9;
+              _context22.next = 9;
               break;
             case 20:
               eval_args = {
@@ -14153,36 +14187,36 @@ var global_env = new Environment({
               };
               _loop3 = /*#__PURE__*/_regeneratorRuntime.mark(function _loop3() {
                 var node, next, _item, value, symbols;
-                return _regeneratorRuntime.wrap(function _loop3$(_context19) {
-                  while (1) switch (_context19.prev = _context19.next) {
+                return _regeneratorRuntime.wrap(function _loop3$(_context21) {
+                  while (1) switch (_context21.prev = _context21.next) {
                     case 0:
                       if (is_nil(body)) {
-                        _context19.next = 3;
+                        _context21.next = 3;
                         break;
                       }
-                      _context19.next = 3;
+                      _context21.next = 3;
                       return lips.evaluate(body, eval_args);
                     case 3:
                       node = vars;
                       next = {}; // next value of variables
                     case 5:
                       if (is_nil(node)) {
-                        _context19.next = 15;
+                        _context21.next = 15;
                         break;
                       }
                       _item = node.car;
                       if (is_nil(_item.cdr.cdr)) {
-                        _context19.next = 12;
+                        _context21.next = 12;
                         break;
                       }
-                      _context19.next = 10;
+                      _context21.next = 10;
                       return _evaluate(_item.cdr.cdr.car, eval_args);
                     case 10:
-                      value = _context19.sent;
+                      value = _context21.sent;
                       next[_item.car.valueOf()] = value;
                     case 12:
                       node = node.cdr;
-                      _context19.next = 5;
+                      _context21.next = 5;
                       break;
                     case 15:
                       symbols = Object.getOwnPropertySymbols(next); // new scope for new iteration
@@ -14192,37 +14226,37 @@ var global_env = new Environment({
                       });
                     case 18:
                     case "end":
-                      return _context19.stop();
+                      return _context21.stop();
                   }
                 }, _loop3);
               });
             case 22:
-              _context20.next = 24;
+              _context22.next = 24;
               return _evaluate(test.car, eval_args);
             case 24:
-              _context20.t3 = _context20.sent;
-              if (!(_context20.t3 === false)) {
-                _context20.next = 29;
+              _context22.t3 = _context22.sent;
+              if (!(_context22.t3 === false)) {
+                _context22.next = 29;
                 break;
               }
-              return _context20.delegateYield(_loop3(), "t4", 27);
+              return _context22.delegateYield(_loop3(), "t4", 27);
             case 27:
-              _context20.next = 22;
+              _context22.next = 22;
               break;
             case 29:
               if (is_nil(test.cdr)) {
-                _context20.next = 33;
+                _context22.next = 33;
                 break;
               }
-              _context20.next = 32;
+              _context22.next = 32;
               return _evaluate(test.cdr.car, eval_args);
             case 32:
-              return _context20.abrupt("return", _context20.sent);
+              return _context22.abrupt("return", _context22.sent);
             case 33:
             case "end":
-              return _context20.stop();
+              return _context22.stop();
           }
-        }, _callee19);
+        }, _callee21);
       })();
     });
     return function (_x16, _x17) {
@@ -16216,25 +16250,25 @@ function node_specific() {
 } // -------------------------------------------------------------------------
 /* c8 ignore next 15 */
 function _node_specific() {
-  _node_specific = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee23() {
+  _node_specific = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee25() {
     var _yield$import, createRequire, moduleURL, __dirname__, __filename__;
-    return _regeneratorRuntime.wrap(function _callee23$(_context24) {
-      while (1) switch (_context24.prev = _context24.next) {
+    return _regeneratorRuntime.wrap(function _callee25$(_context26) {
+      while (1) switch (_context26.prev = _context26.next) {
         case 0:
-          _context24.next = 2;
+          _context26.next = 2;
           return import('mod' + 'ule');
         case 2:
-          _yield$import = _context24.sent;
+          _yield$import = _context26.sent;
           createRequire = _yield$import.createRequire;
           nodeRequire = createRequire(import.meta.url);
-          _context24.next = 7;
+          _context26.next = 7;
           return import('fs');
         case 7:
-          fs = _context24.sent;
-          _context24.next = 10;
+          fs = _context26.sent;
+          _context26.next = 10;
           return import('path');
         case 10:
-          path = _context24.sent;
+          path = _context26.sent;
           global_env.set('global', global);
           global_env.set('self', global);
           global_env.set('window', undefined);
@@ -16282,9 +16316,9 @@ function _node_specific() {
           });
         case 22:
         case "end":
-          return _context24.stop();
+          return _context26.stop();
       }
-    }, _callee23);
+    }, _callee25);
   }));
   return _node_specific.apply(this, arguments);
 }
@@ -16499,50 +16533,50 @@ function resolve_promises(arg) {
     return _promise.apply(this, arguments);
   }
   function _promise() {
-    _promise = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee20(node) {
+    _promise = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee22(node) {
       var pair;
-      return _regeneratorRuntime.wrap(function _callee20$(_context21) {
-        while (1) switch (_context21.prev = _context21.next) {
+      return _regeneratorRuntime.wrap(function _callee22$(_context23) {
+        while (1) switch (_context23.prev = _context23.next) {
           case 0:
-            _context21.t0 = Pair;
+            _context23.t0 = Pair;
             if (!node.have_cycles('car')) {
-              _context21.next = 5;
+              _context23.next = 5;
               break;
             }
-            _context21.t1 = node.car;
-            _context21.next = 8;
+            _context23.t1 = node.car;
+            _context23.next = 8;
             break;
           case 5:
-            _context21.next = 7;
+            _context23.next = 7;
             return resolve(node.car);
           case 7:
-            _context21.t1 = _context21.sent;
+            _context23.t1 = _context23.sent;
           case 8:
-            _context21.t2 = _context21.t1;
+            _context23.t2 = _context23.t1;
             if (!node.have_cycles('cdr')) {
-              _context21.next = 13;
+              _context23.next = 13;
               break;
             }
-            _context21.t3 = node.cdr;
-            _context21.next = 16;
+            _context23.t3 = node.cdr;
+            _context23.next = 16;
             break;
           case 13:
-            _context21.next = 15;
+            _context23.next = 15;
             return resolve(node.cdr);
           case 15:
-            _context21.t3 = _context21.sent;
+            _context23.t3 = _context23.sent;
           case 16:
-            _context21.t4 = _context21.t3;
-            pair = new _context21.t0(_context21.t2, _context21.t4);
+            _context23.t4 = _context23.t3;
+            pair = new _context23.t0(_context23.t2, _context23.t4);
             if (node[__data__]) {
               pair[__data__] = true;
             }
-            return _context21.abrupt("return", pair);
+            return _context23.abrupt("return", pair);
           case 20:
           case "end":
-            return _context21.stop();
+            return _context23.stop();
         }
-      }, _callee20);
+      }, _callee22);
     }));
     return _promise.apply(this, arguments);
   }
@@ -16988,10 +17022,10 @@ function exec_collect(collect_callback) {
         env = _ref50.env,
         dynamic_env = _ref50.dynamic_env,
         use_dynamic = _ref50.use_dynamic;
-      return /*#__PURE__*/_regeneratorRuntime.mark(function _callee21() {
+      return /*#__PURE__*/_regeneratorRuntime.mark(function _callee23() {
         var results, input, _iteratorAbruptCompletion2, _didIteratorError2, _iteratorError2, _iterator2, _step2, code, value;
-        return _regeneratorRuntime.wrap(function _callee21$(_context22) {
-          while (1) switch (_context22.prev = _context22.next) {
+        return _regeneratorRuntime.wrap(function _callee23$(_context24) {
+          while (1) switch (_context24.prev = _context24.next) {
             case 0:
               if (!is_env(dynamic_env)) {
                 dynamic_env = env === true ? user_env : env || user_env;
@@ -17003,81 +17037,81 @@ function exec_collect(collect_callback) {
               }
               results = [];
               if (!is_pair(arg)) {
-                _context22.next = 8;
+                _context24.next = 8;
                 break;
               }
-              _context22.next = 6;
+              _context24.next = 6;
               return exec_with_stacktrace(arg, {
                 env: env,
                 dynamic_env: dynamic_env,
                 use_dynamic: use_dynamic
               });
             case 6:
-              _context22.t0 = _context22.sent;
-              return _context22.abrupt("return", [_context22.t0]);
+              _context24.t0 = _context24.sent;
+              return _context24.abrupt("return", [_context24.t0]);
             case 8:
               input = Array.isArray(arg) ? arg : _parse(arg);
               _iteratorAbruptCompletion2 = false;
               _didIteratorError2 = false;
-              _context22.prev = 11;
+              _context24.prev = 11;
               _iterator2 = _asyncIterator(input);
             case 13:
-              _context22.next = 15;
+              _context24.next = 15;
               return _iterator2.next();
             case 15:
-              if (!(_iteratorAbruptCompletion2 = !(_step2 = _context22.sent).done)) {
-                _context22.next = 24;
+              if (!(_iteratorAbruptCompletion2 = !(_step2 = _context24.sent).done)) {
+                _context24.next = 24;
                 break;
               }
               code = _step2.value;
-              _context22.next = 19;
+              _context24.next = 19;
               return exec_with_stacktrace(code, {
                 env: env,
                 dynamic_env: dynamic_env,
                 use_dynamic: use_dynamic
               });
             case 19:
-              value = _context22.sent;
+              value = _context24.sent;
               results.push(collect_callback(code, value));
             case 21:
               _iteratorAbruptCompletion2 = false;
-              _context22.next = 13;
+              _context24.next = 13;
               break;
             case 24:
-              _context22.next = 30;
+              _context24.next = 30;
               break;
             case 26:
-              _context22.prev = 26;
-              _context22.t1 = _context22["catch"](11);
+              _context24.prev = 26;
+              _context24.t1 = _context24["catch"](11);
               _didIteratorError2 = true;
-              _iteratorError2 = _context22.t1;
+              _iteratorError2 = _context24.t1;
             case 30:
-              _context22.prev = 30;
-              _context22.prev = 31;
+              _context24.prev = 30;
+              _context24.prev = 31;
               if (!(_iteratorAbruptCompletion2 && _iterator2["return"] != null)) {
-                _context22.next = 35;
+                _context24.next = 35;
                 break;
               }
-              _context22.next = 35;
+              _context24.next = 35;
               return _iterator2["return"]();
             case 35:
-              _context22.prev = 35;
+              _context24.prev = 35;
               if (!_didIteratorError2) {
-                _context22.next = 38;
+                _context24.next = 38;
                 break;
               }
               throw _iteratorError2;
             case 38:
-              return _context22.finish(35);
+              return _context24.finish(35);
             case 39:
-              return _context22.finish(30);
+              return _context24.finish(30);
             case 40:
-              return _context22.abrupt("return", results);
+              return _context24.abrupt("return", results);
             case 41:
             case "end":
-              return _context22.stop();
+              return _context24.stop();
           }
-        }, _callee21, null, [[11, 26, 30, 40], [31,, 35, 39]]);
+        }, _callee23, null, [[11, 26, 30, 40], [31,, 35, 39]]);
       })();
     });
     function exec_lambda(_x19) {
@@ -17617,10 +17651,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Mon, 21 Apr 2025 21:43:48 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Fri, 09 May 2025 12:45:32 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Mon, 21 Apr 2025 21:43:48 +0000').valueOf();
+  var date = LString('Fri, 09 May 2025 12:45:32 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17660,7 +17694,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Mon, 21 Apr 2025 21:43:48 +0000';
+var date = 'Fri, 09 May 2025 12:45:32 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

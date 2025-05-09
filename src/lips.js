@@ -538,7 +538,7 @@ function parse_symbol(arg) {
 }
 // ----------------------------------------------------------------------
 function parse_argument(arg, meta = false) {
-    const token = meta ? arg.token : arg;
+    const token = arg.token;
     if (constants.hasOwnProperty(token)) {
         return constants[token];
     }
@@ -1514,6 +1514,13 @@ class Parser {
             fold_case: false
         }, { hidden: true });
     }
+    prepare(arg) {
+        if (arg instanceof LString) {
+            arg = arg.toString();
+        }
+        this._reset_state();
+        read_only(this, '__lexer__', new Lexer(arg));
+    }
     _with_syntax_scope(fn) {
         // expose parser and change stdin so parser extension can use current-input
         // to read data from the parser stream #150
@@ -1530,30 +1537,23 @@ class Parser {
             return result;
         }, cleanup);
     }
-    reset_state() {
+    _reset_state() {
         Object.assign(this._state, {
             parentheses: 0,
             line: 0
         });
     }
-    prepare(arg) {
-        if (arg instanceof LString) {
-            arg = arg.toString();
-        }
-        this.reset_state();
-        read_only(this, '__lexer__', new Lexer(arg));
-    }
-    resolve(name) {
+    _resolve(name) {
         return this.__env__ && this.__env__.get(name, { throwError: false });
     }
-    async peek() {
+    async _peek() {
         let token;
         while (true) {
             token = this.__lexer__.peek(true);
             if (token === eof) {
                 return eof;
             }
-            if (this.is_comment(token.token)) {
+            if (this._is_comment(token.token)) {
                 this.skip();
                 continue;
             }
@@ -1580,61 +1580,58 @@ class Parser {
         if (this._state.fold_case) {
             token.token = foldcase_string(token.token);
         }
+        return token;
+    }
+    async peek() {
+        const token = this._peek();
         if (this._meta) {
             return token;
         }
         return token.token;
     }
-    reset() {
+    _reset() {
         this._refs.length = 0;
     }
     skip() {
         this.__lexer__.skip();
+    }
+    async _read() {
+        const token = await this._peek();
+        this.skip();
+        return token;
     }
     async read() {
         const token = await this.peek();
         this.skip();
         return token;
     }
-    match_datum_label(token) {
-        if (this._meta) {
-            token = token.token;
-        }
-        var m = token.match(/^#([0-9]+)=$/);
+    _match_datum_label(token) {
+        var m = token.token.match(/^#([0-9]+)=$/);
         return m && m[1];
     }
-    match_datum_ref(token) {
-        if (this._meta) {
-            token = token.token;
-        }
-        var m = token.match(/^#([0-9]+)#$/);
+    _match_datum_ref(token) {
+        var m = token.token.match(/^#([0-9]+)#$/);
         return m && m[1];
     }
-    is_open(token) {
-        if (this._meta) {
-            token = token.token;
-        }
-        return ['(', '['].includes(token);
+    _is_open(token) {
+        return ['(', '['].includes(token.token);
     }
-    is_close(token) {
-        if (this._meta) {
-            token = token.token;
-        }
-        return [')', ']'].includes(token);
+    _is_close(token) {
+        return [')', ']'].includes(token.token);
     }
-    async read_list() {
+    async _read_list() {
         let head = nil, prev = head, dot;
         while (true) {
-            const token = await this.peek();
+            const token = await this._peek();
             if (token === eof) {
                 break;
             }
-            if (this.is_close(token)) {
+            if (this._is_close(token)) {
                 --this._state.parentheses;
                 this.skip();
                 break;
             }
-            if (token === '.' && !is_nil(head)) {
+            if (token.token === '.' && !is_nil(head)) {
                 this.skip();
                 prev.cdr = await this._read_object();
                 dot = true;
@@ -1653,14 +1650,14 @@ class Parser {
         }
         return head;
     }
-    async read_value() {
-        let token = await this.read();
+    async _read_value() {
+        let token = await this._read();
         if (token === eof || token.token === eof) {
             throw new Error('Parser: Expected token eof found');
         }
         return parse_argument(token, this._meta);
     }
-    is_comment(token) {
+    _is_comment(token) {
         return token.match(/^;/) || (token.match(/^#\|/) && token.match(/\|#$/));
     }
     evaluate(code) {
@@ -1670,7 +1667,7 @@ class Parser {
     }
     // public API that handle R7RS datum labels
     async read_object() {
-        this.reset();
+        this._reset();
         var object = await this._read_object();
         if (object instanceof DatumReference) {
             object = object.valueOf();
@@ -1689,7 +1686,7 @@ class Parser {
     balanced() {
         return this._state.parentheses === 0;
     }
-    ballancing_error(expr, prev) {
+    _ballancing_error(expr, prev) {
         const count = this._state.parentheses;
         let e;
         if (count < 0) {
@@ -1719,7 +1716,6 @@ class Parser {
     }
     // TODO: Cover This function (array and object branch)
     async _resolve_object(object) {
-
         if (Array.isArray(object)) {
             return object.map(item => this._resolve_object(item));
         }
@@ -1754,12 +1750,12 @@ class Parser {
         return this._state.line;
     }
     async _read_object() {
-        const token = await this.peek();
+        const token = await this._peek();
         if (token === eof) {
             return token;
         }
         this._state.line = this.__lexer__.__token__.line;
-        if (is_special(token)) {
+        if (is_special(token.token)) {
             // Built-in parser extensions are mapping short symbols to longer symbols
             // that can be function or macro. Parser doesn't care
             // if it's not built-in and the extension can be macro or function.
@@ -1767,12 +1763,12 @@ class Parser {
             // result is returned by parser as is the macro.
             // MACRO: if macro is used, then it is evaluated in place and the
             // result is returned by parser and it is quoted.
-            const special = specials.get(token);
-            const builtin = is_builtin(token);
+            const special = specials.get(token.token);
+            const builtin = is_builtin(token.token);
             this.skip();
             let expr, extension;
-            const is_symbol = is_symbol_extension(token);
-            const was_close_paren = this.is_close(await this.peek());
+            const is_symbol = is_symbol_extension(token.token);
+            const was_close_paren = this._is_close(await this._peek());
             const object = is_symbol ? undefined : await this._read_object();
             if (object === eof) {
                 throw new Unterminated('Expecting expression eof found');
@@ -1781,7 +1777,7 @@ class Parser {
                 extension = this.__env__.get(special.symbol);
                 if (typeof extension === 'function') {
                     let args;
-                    if (is_literal(token)) {
+                    if (is_literal(token.token)) {
                         args = [object];
                     } else if (is_nil(object)) {
                         args = [];
@@ -1803,7 +1799,7 @@ class Parser {
                     throw e;
                 }
             }
-            if (is_literal(token)) {
+            if (is_literal(token.token)) {
                 if (was_close_paren) {
                     const e = new Error('Parse Error: expecting datum');
                     this._agument_exception(e);
@@ -1845,7 +1841,7 @@ class Parser {
                 throw e;
             }
         }
-        var ref = this.match_datum_ref(token);
+        const ref = this._match_datum_ref(token);
         if (ref !== null) {
             this.skip();
             if (this._refs[ref]) {
@@ -1855,21 +1851,21 @@ class Parser {
             this._agument_exception(e);
             throw e;
         }
-        var ref_label = this.match_datum_label(token);
+        const ref_label = this._match_datum_label(token);
         if (ref_label !== null) {
             this.skip();
             this._refs[ref_label] = this._read_object();
             return this._refs[ref_label];
-        } else if (this.is_close(token)) {
+        } else if (this._is_close(token)) {
             --this._state.parentheses;
             this.skip();
             // invalid state, we don't need to return anything
-        } else if (this.is_open(token)) {
+        } else if (this._is_open(token)) {
             ++this._state.parentheses;
             this.skip();
-            return this.read_list();
+            return this._read_list();
         } else {
-            return this.read_value();
+            return this._read_value();
         }
     }
 }
@@ -1916,7 +1912,7 @@ async function* _parse(arg, env) {
     while (true) {
         const expr = await parser.read_object();
         if (!parser.balanced()) {
-            parser.ballancing_error(expr, prev);
+            parser._ballancing_error(expr, prev);
         }
         if (expr === eof) {
             break;
