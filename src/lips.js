@@ -2410,12 +2410,13 @@ const identifiers = [p_o, symbols, p_e];
 const let_value = new Pattern([p_o, Symbol.for('symbol'), glob, p_e], '+');
 const syntax_rules = keywords_re('syntax-rules');
 // rules for breaking S-Expressions into lines
-var def_lambda_re = keywords_re('define', 'lambda', 'define-macro', 'syntax-rules');
+const def_lambda_re = keywords_re('define', 'lambda', 'define-macro', 'syntax-rules');
 /* eslint-disable max-len */
-var non_def = /^(?!.*\b(?:[()[\]]|define(?:-macro)?|let(?:\*|rec|-env|-syntax|)?|lambda|syntax-rules)\b).*$/;
+const non_def = /^(?!.*\b(?:[()[\]]|define(?:-macro)?|let(?:\*|rec|-env|-syntax|)?|lambda|syntax-rules)\b).*$/;
 /* eslint-enable */
-var let_re = /^(?:#:)?(let(?:\*|rec|-env|-syntax)?)$/;
+const let_re = /^(?:#:)?(let(?:\*|rec|-env|-syntax)?)$/;
 // match keyword if it's normal token or gensym (prefixed with #:)
+const comment_re = /^;.*/;
 function keywords_re(...args) {
     return new RegExp(`^(?:#:)?(?:${args.join('|')})$`);
 }
@@ -2430,6 +2431,7 @@ Formatter.rules = [
     [[p_o, syntax_rules, not_p, identifiers], 1],
     [[p_o, syntax_rules, not_p, identifiers, sexp], 1, not_close],
     [[p_o, syntax_rules, identifiers], 1],
+    [comment_re, -1],
     [[p_o, syntax_rules, identifiers, sexp], 1, not_close],
     [[p_o, non_def, new Pattern([/[^()[\]]/], '+'), sexp], 1, not_close],
     [[p_o, sexp], 1, not_close],
@@ -2444,7 +2446,7 @@ Formatter.rules = [
 ];
 // ----------------------------------------------------------------------
 Formatter.prototype.break = function() {
-    var code = this.__code__.replace(/\n[ \t]*/g, '\n ').replace(/^\s+/, '');
+    var code = this.__code__.replace(/\n[ \t]*/g, '\n ').trim();
     // function that work when calling tokenize with meta data or not
     const token = t => {
         if (t.token.match(string_re) || t.token.match(re_re)) {
@@ -2480,13 +2482,24 @@ Formatter.prototype.break = function() {
             }
         });
         for (let [pattern, count, ext] of rules) {
+            const debug = pattern === comment_re;
             count = count.valueOf();
             // 0 count mean ignore the previous S-Expression
-            var test_sexp = count > 0 ? sexp[count] : sub;
-            const input = test_sexp.filter(t => t.trim() && !is_special(t));
+            // -1 count mean check a single token
+            const test_sexp = count > 0 ? sexp[count] : sub;
+            let input = test_sexp.filter(t => t.trim() && !is_special(t));
+            if (!input.length) {
+                continue;
+            }
+            if (count === -1) {
+                // NOTE: match work with arrays but since we check for a single token
+                //       we allow to use a single regex and wrap it with an array here
+                pattern = [pattern];
+                input = input.slice(-1);
+            }
             const inc = first_token_index(test_sexp);
-            var m = match(pattern, input);
-            var next = tokens.slice(i).find(t => t.trim() && !is_special(t));
+            const m = match(pattern, input);
+            const next = tokens.slice(i).find(t => t.trim() && !is_special(t));
             if (m && (ext instanceof Ahead && ext.match(next) || !ext)) {
                 const index = i - inc;
                 if (tokens[index] !== '\n') {
@@ -2515,7 +2528,7 @@ Formatter.prototype._spaces = function(i) {
 Formatter.prototype.format = function format(options) {
     // prepare code with single space after newline
     // so we have space token to align
-    var code = this.__code__.replace(/[ \t]*\n[ \t]*/g, '\n ');
+    var code = this.__code__.trim().replace(/[ \t]*\n[ \t]*/g, '\n ');
     var tokens = tokenize(code, true);
     var settings = this._options(options);
     var indent = 0;

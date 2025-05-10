@@ -109,3 +109,10 @@
       (lambda (t)
 
         (t.snapshot (pretty-format '((1 2 3) (1 2 3) (1 2 3))))))
+
+(test "formatter: string"
+      (lambda (t)
+        (let ((code ";; bar
+                     (define i 0) ;; foo
+                     (define i (let ((i 2)) (+ i 3)))"))
+          (t.snapshot (--> (new lips.Formatter code) (break) (format))))))
