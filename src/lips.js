@@ -1519,7 +1519,11 @@ class Parser {
             arg = arg.toString();
         }
         this._reset_state();
-        read_only(this, '__lexer__', new Lexer(arg));
+        if (arg instanceof Lexer) {
+            read_only(this, '__lexer__', arg);
+        } else {
+            read_only(this, '__lexer__', new Lexer(arg));
+        }
     }
     _with_syntax_scope(fn) {
         // expose parser and change stdin so parser extension can use current-input

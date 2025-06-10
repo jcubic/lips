@@ -13,6 +13,7 @@
 * allow using find with any atom [#394](https://github.com/jcubic/lips/issues/394)
 * add `freeze-prop!` and `freeze-list!` functions
 * add default export
+* allow to pass instance of Lexer to parser (so you can extend it)
 ### Bugfix
 * fix exception when handling parse error for lonely `)` [#417](https://github.com/jcubic/lips/issues/417)
 * fix unboxing arguments of LIPS created classes [#411](https://github.com/jcubic/lips/issues/411)
