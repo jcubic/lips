@@ -6156,9 +6156,12 @@ LNumber.prototype.isBigNumber = function() {
     LNumber.prototype[fn] = function() {
         if (this.float || LNumber.isFloat(this.__value__)) {
             return LNumber(Math[fn](this.__value__));
-        } else {
-            return LNumber(Math[fn](this.valueOf()));
         }
+        const val = this.valueOf(true);
+        if (LNumber.isBigInteger(val)) {
+            return val;
+        }
+        return LNumber(Math[fn](val));
     };
 });
 // -------------------------------------------------------------------------
@@ -6974,6 +6977,26 @@ LRational.prototype.sqrt = function() {
     return LRational({ num, denom });
 };
 // -------------------------------------------------------------------------
+LRational.prototype.quotient = function() {
+    const num = this.__num__;
+    const denom = this.__denom__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+        if (denom.cmp(0) === 0) {
+            throw new Error("quotient: division by zero");
+        }
+        const div = num / denom;
+        if (LNumber.isBigInteger(div)) {
+            return div;
+        }
+        if (div > 0) {
+            return Math.floor(div);
+        } else {
+            return Math.ceil(div);
+        }
+    }
+    throw new Error('quotient: Invalid argument');
+};
+// -------------------------------------------------------------------------
 LRational.prototype.abs = function() {
     var num = this.__num__;
     var denom = this.__denom__;
@@ -7025,7 +7048,11 @@ LRational.prototype.valueOf = function(exact) {
         return Number.POSITIVE_INFINITY;
     }
     if (exact) {
-        return LNumber._ops['/'](this.__num__.value, this.__denom__.value);
+        const num = this.__num__.__value__;
+        const denom = this.__denom__.__value__;
+        if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+            return LNumber._ops['/'](num, denom);
+        }
     }
     return LFloat(this.__num__.valueOf()).div(this.__denom__.valueOf());
 };

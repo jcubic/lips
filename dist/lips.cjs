@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 10 May 2025 19:46:53 +0000
+ * build: Tue, 10 Jun 2025 11:53:26 +0000
  */
 
 'use strict';
@@ -11374,9 +11374,12 @@ LNumber.prototype.isBigNumber = function () {
   LNumber.prototype[fn] = function () {
     if (this["float"] || LNumber.isFloat(this.__value__)) {
       return LNumber(Math[fn](this.__value__));
-    } else {
-      return LNumber(Math[fn](this.valueOf()));
     }
+    var val = this.valueOf(true);
+    if (LNumber.isBigInteger(val)) {
+      return val;
+    }
+    return LNumber(Math[fn](val));
   };
 });
 // -------------------------------------------------------------------------
@@ -12309,6 +12312,26 @@ LRational.prototype.sqrt = function () {
   });
 };
 // -------------------------------------------------------------------------
+LRational.prototype.quotient = function () {
+  var num = this.__num__;
+  var denom = this.__denom__;
+  if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+    if (denom.cmp(0) === 0) {
+      throw new Error("quotient: division by zero");
+    }
+    var div = num / denom;
+    if (LNumber.isBigInteger(div)) {
+      return div;
+    }
+    if (div > 0) {
+      return Math.floor(div);
+    } else {
+      return Math.ceil(div);
+    }
+  }
+  throw new Error('quotient: Invalid argument');
+};
+// -------------------------------------------------------------------------
 LRational.prototype.abs = function () {
   var num = this.__num__;
   var denom = this.__denom__;
@@ -12363,7 +12386,11 @@ LRational.prototype.valueOf = function (exact) {
     return Number.POSITIVE_INFINITY;
   }
   if (exact) {
-    return LNumber._ops['/'](this.__num__.value, this.__denom__.value);
+    var num = this.__num__.__value__;
+    var denom = this.__denom__.__value__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+      return LNumber._ops['/'](num, denom);
+    }
   }
   return LFloat(this.__num__.valueOf()).div(this.__denom__.valueOf());
 };
@@ -17668,10 +17695,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 10 May 2025 19:46:53 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Tue, 10 Jun 2025 11:53:26 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 10 May 2025 19:46:53 +0000').valueOf();
+  var date = LString('Tue, 10 Jun 2025 11:53:26 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17711,7 +17738,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 10 May 2025 19:46:53 +0000';
+var date = 'Tue, 10 Jun 2025 11:53:26 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
