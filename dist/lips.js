@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Tue, 10 Jun 2025 11:54:55 +0000
+ * build: Tue, 10 Jun 2025 14:19:23 +0000
  */
 
 (function (global, factory) {
@@ -11381,11 +11381,7 @@
       if (this["float"] || LNumber.isFloat(this.__value__)) {
         return LNumber(Math[fn](this.__value__));
       }
-      var val = this.valueOf(true);
-      if (LNumber.isBigInteger(val)) {
-        return val;
-      }
-      return LNumber(Math[fn](val));
+      return LNumber(Math[fn](this.valueOf()));
     };
   });
   // -------------------------------------------------------------------------
@@ -12394,11 +12390,67 @@
     if (exact) {
       var num = this.__num__.__value__;
       var denom = this.__denom__.__value__;
-      if (LNumber.isNative(num) && LNumber.isNative(denom)) {
-        return LNumber._ops['/'](num, denom);
-      }
+      return LNumber(LNumber._ops['/'](num, denom));
     }
     return LFloat(this.__num__.valueOf()).div(this.__denom__.valueOf());
+  };
+  // -------------------------------------------------------------------------
+  LRational.prototype._rem_quot = function () {
+    var num = this.__num__.__value__;
+    var denom = this.__denom__.__value__;
+    var quotient = LNumber._ops['/'](num, denom);
+    var remainder = LNumber._ops['%'](num, denom);
+    return {
+      remainder: remainder,
+      quotient: quotient
+    };
+  };
+  // -------------------------------------------------------------------------
+  LRational.prototype.floor = function () {
+    var num = this.__num__.__value__;
+    var denom = this.__denom__.__value__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+      var _this$_rem_quot = this._rem_quot(),
+        remainder = _this$_rem_quot.remainder,
+        quotient = _this$_rem_quot.quotient;
+      if (quotient < 0 && remainder !== 0) {
+        if (LNumber.isBigInteger(quotient)) {
+          return LNumber(quotient - 1n);
+        }
+        return LNumber(quotient - 1);
+      }
+      return LNumber(quotient);
+    }
+    return LNumber(Math.floor(this.valueOf()));
+  };
+  // -------------------------------------------------------------------------
+  LRational.prototype.round = function () {
+    var num = this.__num__.__value__;
+    var denom = this.__denom__.__value__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+      var _this$_rem_quot2 = this._rem_quot(),
+        quotient = _this$_rem_quot2.quotient;
+      return LNumber(quotient);
+    }
+    return LNumber(Math.round(this.valueOf()));
+  };
+  // -------------------------------------------------------------------------
+  LRational.prototype.ceil = function () {
+    var num = this.__num__.__value__;
+    var denom = this.__denom__.__value__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+      var _this$_rem_quot3 = this._rem_quot(),
+        remainder = _this$_rem_quot3.remainder,
+        quotient = _this$_rem_quot3.quotient;
+      if (quotient > 0 && remainder !== 0) {
+        if (LNumber.isBigInteger(quotient)) {
+          return LNumber(quotient + 1n);
+        }
+        return LNumber(quotient + 1);
+      }
+      return LNumber(quotient);
+    }
+    return LNumber(Math.ceil(this.valueOf()));
   };
   // -------------------------------------------------------------------------
   LRational.prototype.mul = function (n) {
@@ -17701,10 +17753,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Tue, 10 Jun 2025 11:54:55 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Tue, 10 Jun 2025 14:19:23 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Tue, 10 Jun 2025 11:54:55 +0000').valueOf();
+    var date = LString('Tue, 10 Jun 2025 14:19:23 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -17744,7 +17796,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Tue, 10 Jun 2025 11:54:55 +0000';
+  var date = 'Tue, 10 Jun 2025 14:19:23 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

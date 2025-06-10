@@ -6161,11 +6161,7 @@ LNumber.prototype.isBigNumber = function() {
         if (this.float || LNumber.isFloat(this.__value__)) {
             return LNumber(Math[fn](this.__value__));
         }
-        const val = this.valueOf(true);
-        if (LNumber.isBigInteger(val)) {
-            return val;
-        }
-        return LNumber(Math[fn](val));
+        return LNumber(Math[fn](this.valueOf()));
     };
 });
 // -------------------------------------------------------------------------
@@ -7054,11 +7050,59 @@ LRational.prototype.valueOf = function(exact) {
     if (exact) {
         const num = this.__num__.__value__;
         const denom = this.__denom__.__value__;
-        if (LNumber.isNative(num) && LNumber.isNative(denom)) {
-            return LNumber._ops['/'](num, denom);
-        }
+        return LNumber(LNumber._ops['/'](num, denom));
     }
     return LFloat(this.__num__.valueOf()).div(this.__denom__.valueOf());
+};
+// -------------------------------------------------------------------------
+LRational.prototype._rem_quot = function() {
+    const num = this.__num__.__value__;
+    const denom = this.__denom__.__value__;
+    const quotient = LNumber._ops['/'](num, denom);
+    const remainder = LNumber._ops['%'](num, denom);
+    return { remainder, quotient };
+};
+// -------------------------------------------------------------------------
+LRational.prototype.floor = function() {
+    const num = this.__num__.__value__;
+    const denom = this.__denom__.__value__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+        const { remainder, quotient } = this._rem_quot();
+        if (quotient < 0 && remainder !== 0) {
+            if (LNumber.isBigInteger(quotient)) {
+                return LNumber(quotient - 1n);
+            }
+            return LNumber(quotient - 1);
+        }
+        return LNumber(quotient);
+    }
+    return LNumber(Math.floor(this.valueOf()));
+};
+// -------------------------------------------------------------------------
+LRational.prototype.round = function() {
+    const num = this.__num__.__value__;
+    const denom = this.__denom__.__value__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+        const { quotient } = this._rem_quot();
+        return LNumber(quotient);
+    }
+    return LNumber(Math.round(this.valueOf()));
+};
+// -------------------------------------------------------------------------
+LRational.prototype.ceil = function() {
+    const num = this.__num__.__value__;
+    const denom = this.__denom__.__value__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+        const { remainder, quotient } = this._rem_quot();
+        if (quotient > 0 && remainder !== 0) {
+            if (LNumber.isBigInteger(quotient)) {
+                return LNumber(quotient + 1n);
+            }
+            return LNumber(quotient + 1);
+        }
+        return LNumber(quotient);
+    }
+    return LNumber(Math.ceil(this.valueOf()));
 };
 // -------------------------------------------------------------------------
 LRational.prototype.mul = function(n) {
