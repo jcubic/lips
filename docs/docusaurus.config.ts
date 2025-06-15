@@ -189,7 +189,8 @@ const config: Config = {
       copyright: `Copyright (c) 2018-${new Date().getFullYear()} <a href="https://jakub.jankiewicz.org">Jakub T. Jankiewicz</a><br/>Website content licensed with <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a> unless noted otherwise.`,
     },
     prism: {
-      theme: prismThemes.dracula,
+      theme: prismThemes.github,
+      darkTheme: prismThemes.dracula,
       additionalLanguages: ['scheme', 'lisp', 'bash']
     }
   } satisfies Preset.ThemeConfig,
