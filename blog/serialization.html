@@ -9,7 +9,7 @@
 
 
 <script crossorigin="anonymous" src="https://js.sentry-cdn.com/c6868ced9c228b7da5e50196c0ab2f14@o4508899181723648.ingest.de.sentry.io/4508899184607312.min.js"></script><link rel="stylesheet" href="/assets/css/styles.a8feca21.css">
-<script src="/assets/js/runtime~main.87d1dcc6.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.48c19031.js" defer="defer"></script>
 <script src="/assets/js/main.fd208b28.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -173,7 +173,7 @@ found about <a href="https://en.wikipedia.org/wiki/CBOR" target="_blank" rel="no
 <p>But the CBOR output data was still big, it could be compressed (I could also do the same with JSON files).</p>
 <p>I was searching for good and fast compression library and found implementation of
 <a href="https://en.wikipedia.org/wiki/Jeff_Bonwick#LZJB" target="_blank" rel="noopener noreferrer">LZJB</a> and a library <a href="https://github.com/copy/jslzjb-k" target="_blank" rel="noopener noreferrer">lzjb-k</a>
-on GitHub. I coverted it into a module and published to NPM as <a href="https://www.npmjs.com/package/lzjb-pack" target="_blank" rel="noopener noreferrer">lzjb-pack</a>.</p>
+on GitHub. I converted it into a module and published to NPM as <a href="https://www.npmjs.com/package/lzjb-pack" target="_blank" rel="noopener noreferrer">lzjb-pack</a>.</p>
 <p>To create a binary file I compressed the output CBOR data and add a magic number in front.</p>
 <div><div><pre tabindex="0"><code><span class="token-line" style="color:#393A34"><span class="token keyword module" style="color:#00009f">import</span><span class="token plain"> </span><span class="token imports punctuation" style="color:#393A34">{</span><span class="token imports"> addExtension</span><span class="token imports punctuation" style="color:#393A34">,</span><span class="token imports"> </span><span class="token imports maybe-class-name">Encoder</span><span class="token imports"> </span><span class="token imports punctuation" style="color:#393A34">}</span><span class="token plain"> </span><span class="token keyword module" style="color:#00009f">from</span><span class="token plain"> </span><span class="token string" style="color:#e3116c">&#x27;cbor-x&#x27;</span><span class="token punctuation" style="color:#393A34">;</span><span class="token plain"></span>
 </span><span class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span>
