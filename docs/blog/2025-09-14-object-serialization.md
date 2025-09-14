@@ -200,7 +200,7 @@ But the CBOR output data was still big, it could be compressed (I could also do 
 
 I was searching for good and fast compression library and found implementation of
 [LZJB](https://en.wikipedia.org/wiki/Jeff_Bonwick#LZJB) and a library [lzjb-k](https://github.com/copy/jslzjb-k)
-on GitHub. I coverted it into a module and published to NPM as [lzjb-pack](https://www.npmjs.com/package/lzjb-pack).
+on GitHub. I converted it into a module and published to NPM as [lzjb-pack](https://www.npmjs.com/package/lzjb-pack).
 
 To create a binary file I compressed the output CBOR data and add a magic number in front.
 
