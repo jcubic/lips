@@ -9,7 +9,7 @@
 
 
 <script crossorigin="anonymous" src="https://js.sentry-cdn.com/c6868ced9c228b7da5e50196c0ab2f14@o4508899181723648.ingest.de.sentry.io/4508899184607312.min.js"></script><link rel="stylesheet" href="/assets/css/styles.a8feca21.css">
-<script src="/assets/js/runtime~main.6d3b621a.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.c3eab5db.js" defer="defer"></script>
 <script src="/assets/js/main.fd208b28.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -22,8 +22,8 @@ code instead of a value. So if there are any side effects, they will happen duri
 That&#x27;s why it&#x27;s a dump compiler, where the output code is serialized into a file, that can then later
 be unserialized.</p>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="serialization-with-json">Serialization with JSON<a href="#serialization-with-json" class="hash-link" aria-label="Direct link to Serialization with JSON" title="Direct link to Serialization with JSON">​</a></h2>
-<p>The first approach was to use JSON and take the benefit of the second argument in
-JSON.stringify and JSON.parse.</p>
+<p>The first approach, to serialize the data, was to use JSON and take the benefit of the second
+argument in JSON.stringify and JSON.parse.</p>
 <p>Each object was saved as <code>{&quot;@&quot;: &quot;class&quot;, &quot;#&quot;: data}</code>.</p>
 <p>So the Pair class was saved as:</p>
 <div><div><pre tabindex="0"><code><span class="token-line" style="color:#393A34"><span class="token punctuation" style="color:#393A34">{</span><span class="token property" style="color:#36acaa">&quot;@&quot;</span><span class="token operator" style="color:#393A34">:</span><span class="token plain"> </span><span class="token string" style="color:#e3116c">&quot;Pair&quot;</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> </span><span class="token property" style="color:#36acaa">&quot;#&quot;</span><span class="token operator" style="color:#393A34">:</span><span class="token plain"> </span><span class="token punctuation" style="color:#393A34">[</span><span class="token plain">car</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> cdr</span><span class="token punctuation" style="color:#393A34">]</span><span class="token punctuation" style="color:#393A34">}</span>
