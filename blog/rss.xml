@@ -4,11 +4,22 @@
         <title>LIPS Scheme blog</title>
         <link>https://lips.js.org/blog</link>
         <description>LIPS Scheme blog RSS Feed</description>
-        <lastBuildDate>Mon, 21 Apr 2025 00:00:00 GMT</lastBuildDate>
+        <lastBuildDate>Sun, 14 Sep 2025 00:00:00 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
         <generator>https://github.com/jpmonette/feed</generator>
         <language>en</language>
         <copyright>Copyright © 2025 Jakub T. Jankiewicz</copyright>
+        <item>
+            <title><![CDATA[How to serialize any object in JavaScript?]]></title>
+            <link>https://lips.js.org/blog/serialization</link>
+            <guid>https://lips.js.org/blog/serialization</guid>
+            <pubDate>Sun, 14 Sep 2025 00:00:00 GMT</pubDate>
+            <description><![CDATA[In this article, I will explain how the serialization of objects (in dump compiler) works in LIPS.]]></description>
+            <content:encoded><![CDATA[<p>In this article, I will explain how the serialization of objects (in dump compiler) works in LIPS.</p>
+<br/><a href="/blog/serialization">see the rest of the article</a>]]></content:encoded>
+            <category>javascript</category>
+            <category>internals</category>
+        </item>
         <item>
             <title><![CDATA[Internals: Syntax Extensions]]></title>
             <link>https://lips.js.org/blog/syntax-extensions</link>
