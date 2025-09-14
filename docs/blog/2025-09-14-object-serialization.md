@@ -12,13 +12,18 @@ In this article, I will explain how the serialization of objects (in dump compil
 
 As a way of optimization, I decided to save the representation of the parsed code as a file.
 
-The input Scheme code was read, parsed, and the Tree structure was then serialized. The code had
+The input Scheme code was read, parsed, and the tree structure was then serialized. The code had
 objects, like a Pair, that needed to be saved and restored to and from a file.
+
+The compiler in LIPS, is the same code that evaluate the code, it only returns different results, the
+code instead of a value. So if there are any side effects, they will happen during compilation.
+That's why it's a dump compiler, where the output code is serialized into a file, that can then later
+be unserialized.
 
 ## Serialization with JSON
 
-The first approach was to use JSON and take the benefit of the second argument in
-JSON.stringify and JSON.parse.
+The first approach, to serialize the data, was to use JSON and take the benefit of the second
+argument in JSON.stringify and JSON.parse.
 
 Each object was saved as `{"@": "class", "#": data}`.
 
