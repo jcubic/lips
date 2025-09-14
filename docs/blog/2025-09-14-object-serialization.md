@@ -2,7 +2,7 @@
 slug: serialization
 title: "How to serialize any object in JavaScript?"
 authors: jcubic
-image: /img/object-serialization.png
+image: /img/serialization.png
 tags: [javascript, internals]
 ---
 
