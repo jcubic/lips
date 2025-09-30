@@ -353,7 +353,7 @@ name to define anonymous function (example in languages like python or Java), bu
 There is also a shortcut to define procedure/function:
 
 ```scheme
-(define (square (x) (* x x)))
+(define (square x) (* x x))
 ```
 
 There are no explicit `return` statement. Only the last expression of the function is the result value.
