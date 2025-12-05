@@ -210,7 +210,7 @@ TailwindCSS](https://shubhamjain.co/2024/02/29/why-is-number-package-have-59m-do
 
 :::
 
-## Executing LIPS prammatically
+## Executing LIPS programatically
 
 You can also execute LIPS from JavaScript:
 
