@@ -1320,9 +1320,13 @@
 
 ;; -----------------------------------------------------------------------------
 ;; ref: https://stackoverflow.com/a/14675103/387194
+;; the constant are suggested by ChatGPT (he referenced Knuth TAOCP Vol. 2)
 ;; -----------------------------------------------------------------------------
 (define random
-  (let ((a 69069) (c 1) (m (expt 2 32)) (seed 19380110))
+  (let ((a 6364136223846793005)
+        (c 1442695040888963407)
+        (m (expt 2 64))
+        (seed 88172645463325252))
     (lambda new-seed
       "(random)
        (random seed)

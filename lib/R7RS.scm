@@ -1762,7 +1762,8 @@
   "(current-second)
 
    Functionn return exact integer of the seconds since January 1, 1970"
-  (inexact->exact (truncate (/ (+ %%start-jiffy (current-jiffy)) (jiffies-per-second)))))
+  (inexact->exact (truncate (/ (+ %%start-jiffy (current-jiffy))
+                               (jiffies-per-second)))))
 
 ;; -----------------------------------------------------------------------------
 (define %%start-jiffy
@@ -1784,3 +1785,54 @@
 ;; -----------------------------------------------------------------------------
 (define (jiffies-per-second)
   1000000)
+
+;; -----------------------------------------------------------------------------
+;; ref: https://stackoverflow.com/a/14675103/387194
+;; A better random generator improved by ChatGPT
+;; the constant based on Knuth TAOCP Vol. 2
+;; -----------------------------------------------------------------------------
+(define (bitwise-xor a b)
+  (let loop ((a a) (b b) (result 0) (bit 1))
+    (if (and (= a 0) (= b 0))
+        result
+        (let* ((abit (modulo a 2))
+               (bbit (modulo b 2))
+               (x (if (= (modulo (+ abit bbit) 2) 1) 1 0)))
+          (loop (quotient a 2) (quotient b 2)
+                (+ result (* bit x))
+                (* bit 2))))))
+
+;; -----------------------------------------------------------------------------
+(define (pseudo-random-seed)
+  "(pseudo-random-seed)
+
+   Generate a new pseudo random seed for random."
+  ;; Get current time in seconds
+  (let* ((sec (current-second))
+         ;; Get current jiffy (fine time unit)
+         (jiff (current-jiffy))
+         ;; Mix seconds and jiffy by scaling seconds with a large prime number
+         ;; and adding jiffy
+         (seed1 (+ (* sec 1000003) jiff))
+         ;; Mix further by applying XOR between seed1 and
+         ;; seed1 multiplied by Knuth's LCG multiplier to spread bits
+         (seed2 (bitwise-xor seed1
+                             (* seed1 6364136223846793005))))
+    ;; Ensure the result fits into 64 bits by taking modulo 2^64
+    (modulo seed2 (expt 2 64))))
+
+;; -----------------------------------------------------------------------------
+(define random
+  (let ((a 6364136223846793005)
+        (c 1442695040888963407)
+        (m (expt 2 64))
+        (seed (pseudo-random-seed)))
+    (lambda new-seed
+      "(random)
+       (random seed)
+
+       Function that generates new random real number using Knuth algorithm."
+      (if (pair? new-seed)
+          (set! seed (car new-seed))
+          (set! seed (modulo (+ (* seed a) c) m)))
+      (exact->inexact (/ seed m)))))
