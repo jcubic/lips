@@ -137,7 +137,7 @@
               (equal? (cdr a) (cdr b))))
         ((symbol? a)
          (and (symbol? b)
-              (equal? a.__name__ b.__name__)))
+              (eq? a b)))
         ((regex? a)
          (and (regex? b)
               (equal? (. a 'source) (. b 'source))))
@@ -1305,25 +1305,28 @@
   "(angle x)
 
    Returns angle of the complex number in polar coordinate system."
-  ;; TODO: replace %number-type with typechecking
-  (if (not (%number-type "complex" x))
+  (if (not (complex? x))
       (error "angle: number need to be complex")
-      (Math.atan2 x.__im__ x.__re__)))
+      (Math.atan2 (imag-part x) (real-part x))))
 
 ;; -----------------------------------------------------------------------------
 (define (magnitude x)
   "(magnitude x)
 
    Returns magnitude of the complex number in polar coordinate system."
-  (if (not (%number-type "complex" x))
+  (if (not (complex? x))
       (error "magnitude: number need to be complex")
-      (sqrt (+ (* x.__im__ x.__im__) (* x.__re__ x.__re__)))))
+      (sqrt (+ (expt (imag-part x) 2) (expt (real-part x) 2)))))
 
 ;; -----------------------------------------------------------------------------
 ;; ref: https://stackoverflow.com/a/14675103/387194
+;; the constant are suggested by ChatGPT (he referenced Knuth TAOCP Vol. 2)
 ;; -----------------------------------------------------------------------------
 (define random
-  (let ((a 69069) (c 1) (m (expt 2 32)) (seed 19380110))
+  (let ((a 6364136223846793005)
+        (c 1442695040888963407)
+        (m (expt 2 64))
+        (seed 88172645463325252))
     (lambda new-seed
       "(random)
        (random seed)
@@ -1403,10 +1406,14 @@
    Procedure open file for reading, call user defined procedure with given port
    and then close the port. It return value that was returned by user proc
    and it close the port even if user proc throw exception."
-  (let ((p (open-input-file filename)))
+  (let ((p (open-input-file filename))
+        (throw #f))
     (try (proc p)
+         (catch (e)
+                (set! throw #t))
          (finally
-          (close-input-port p)))))
+          (if (not throw)
+              (close-input-port p))))))
 
 ;; -----------------------------------------------------------------------------
 (define (call-with-output-file filename proc)
@@ -1415,10 +1422,13 @@
    Procedure open file for writing, call user defined procedure with port
    and then close the port. It return value that was returned by user proc
    and it close the port even if user proc throw exception."
-  (let ((p (open-output-file filename)))
+  (let ((p (open-output-file filename)) (throw #f))
     (try (proc p)
+         (catch (e)
+                (set! throw #t))
          (finally
-          (close-output-port p)))))
+          (if (not throw)
+              (close-output-port p))))))
 
 ;; -----------------------------------------------------------------------------
 (define (with-input-from-port port thunk)

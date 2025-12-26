@@ -190,11 +190,11 @@
             `(. ,(string->symbol (car parts)) ,@(cdr parts))))))
 
 ;; -----------------------------------------------------------------------------
-(set-special! "#:" 'gensym-interal)
+(set-special! "#:" 'gensym-literal)
 
 ;; -----------------------------------------------------------------------------
-(define (gensym-interal symbol)
-  "(gensym-interal symbol)
+(define (gensym-literal symbol)
+  "(gensym-literal symbol)
 
    Parser extension that creates a new quoted named gensym."
   `(quote ,(gensym symbol)))
@@ -243,9 +243,8 @@
   "(alist->object alist)
 
    Function that converts alist pairs to a JavaScript object."
-  (if (pair? alist)
-      (alist.to_object)
-      (alist->object (new lips.Pair #void '()))))
+  (typecheck "alist->object" alist '("pair" "nil"))
+  (alist.to_object))
 
 ;; -----------------------------------------------------------------------------
 (define (object->alist object)
@@ -754,12 +753,17 @@
                   (char=? (peek-char port) #\{))
              (read-char)
              (let ((expr (read port)))
-               (let ((next (peek-char port)))
-                 (if (char=? next #\})
-                     (begin
-                       (read-char)
-                       (loop "" (vector-append result (vector part expr)) (read-char)))
-                     (error (string-append "Parse Error: expecting } got " (repr next)))))))
+               (if (symbol? expr)
+                   (let* ((expr (--> (symbol->string expr) (replace #/\}$/ "")))
+                          (value (read (open-input-string expr))))
+                     (loop "" (vector-append result (vector part expr)) (read-char)))
+                   (let inner ((next (peek-char port)))
+                     (cond ((char=? next #\space) (read-char) (inner (peek-char port)))
+                           ((char=? next #\})
+                            (read-char)
+                            (loop "" (vector-append result (vector part expr)) (read-char)))
+                           (else
+                            (error (string-append "Parse Error: expecting } got " (repr next)))))))))
             ((char=? char #\\)
              (loop (string-append part (repr (read-char))) result (read-char)))
             ((char=? char #\")
@@ -769,6 +773,7 @@
             (else
              (loop (string-append part (repr char)) result (read-char)))))))
 
+;; -----------------------------------------------------------------------------
 (define (%string-interpolation)
   "(%string-interpolation)
 
@@ -836,19 +841,13 @@
     (qsort list predicate)))
 
 ;; -----------------------------------------------------------------------------
-(define-macro (%any lists)
-  `(or ,@lists))
-
-
-;; -----------------------------------------------------------------------------
 (define (%any-null? lst)
   "(%any-null? lst)
 
    Checks if any of elements in the list is null."
   (if (null? lst)
       false
-      (if (null? (car lst))
-          true
+      (or (null? (car lst))
           (%any-null? (cdr lst)))))
 
 ;; -----------------------------------------------------------------------------
@@ -858,8 +857,7 @@
    version of some without typechecking."
   (if (or (null? lists) (%any-null? lists))
       false
-      (if (apply fn (map car lists))
-          true
+      (or (apply fn (map car lists))
           (%some fn (map cdr lists)))))
 
 ;; -----------------------------------------------------------------------------
@@ -878,9 +876,10 @@
   "(%every fn lists)
 
    version of every without typechecking."
-  (if (or (null? lists) (%any-null? lists))
-      true
-      (and (apply fn (map car lists)) (%every fn (map cdr lists)))))
+  (or (null? lists)
+      (%any-null? lists)
+      (and (apply fn (map car lists))
+           (%every fn (map cdr lists)))))
 
 ;; -----------------------------------------------------------------------------
 (define (every fn . lists)
@@ -1236,6 +1235,23 @@
   (and (symbol? value) (--> value (is_gensym))))
 
 ;; -----------------------------------------------------------------------------
+(define (freeze-prop! object property)
+  "(freeze-prop! object property)
+
+   Function make an object property read only."
+  (Object.defineProperty object property `&(:value ,(. object property)
+                                            :writable #f
+                                            :configurable #f
+                                            :enumerable #t)))
+
+;; -----------------------------------------------------------------------------
+(define (freeze-list! list)
+  "(freeze-list! list)
+
+   Function make the whole list read only. It mutates the list and returns #void."
+  (list.freeze))
+
+;; -----------------------------------------------------------------------------
 (define (degree->radians x)
   "(degree->radians x)
 
@@ -1318,9 +1334,9 @@
                    (cadr rest)))
          (test (cond
                 ((> i stop) (lambda (i)
-                              (and (< step 0) (>= i stop))))
-                ((< i stop) (lambda
-                              (i) (and (> step 0) (< i stop))))
+                              (and (< step 0) (> i stop))))
+                ((< i stop) (lambda (i)
+                              (and (> step 0) (< i stop))))
                 (else (lambda () false))))
          (result (vector)))
     (typecheck "range" i "number" 1)
@@ -1914,7 +1930,7 @@
               (equal? (cdr a) (cdr b))))
         ((symbol? a)
          (and (symbol? b)
-              (equal? a.__name__ b.__name__)))
+              (eq? a b)))
         ((regex? a)
          (and (regex? b)
               (equal? (. a 'source) (. b 'source))))
@@ -3082,25 +3098,28 @@
   "(angle x)
 
    Returns angle of the complex number in polar coordinate system."
-  ;; TODO: replace %number-type with typechecking
-  (if (not (%number-type "complex" x))
+  (if (not (complex? x))
       (error "angle: number need to be complex")
-      (Math.atan2 x.__im__ x.__re__)))
+      (Math.atan2 (imag-part x) (real-part x))))
 
 ;; -----------------------------------------------------------------------------
 (define (magnitude x)
   "(magnitude x)
 
    Returns magnitude of the complex number in polar coordinate system."
-  (if (not (%number-type "complex" x))
+  (if (not (complex? x))
       (error "magnitude: number need to be complex")
-      (sqrt (+ (* x.__im__ x.__im__) (* x.__re__ x.__re__)))))
+      (sqrt (+ (expt (imag-part x) 2) (expt (real-part x) 2)))))
 
 ;; -----------------------------------------------------------------------------
 ;; ref: https://stackoverflow.com/a/14675103/387194
+;; the constant are suggested by ChatGPT (he referenced Knuth TAOCP Vol. 2)
 ;; -----------------------------------------------------------------------------
 (define random
-  (let ((a 69069) (c 1) (m (expt 2 32)) (seed 19380110))
+  (let ((a 6364136223846793005)
+        (c 1442695040888963407)
+        (m (expt 2 64))
+        (seed 88172645463325252))
     (lambda new-seed
       "(random)
        (random seed)
@@ -3180,10 +3199,14 @@
    Procedure open file for reading, call user defined procedure with given port
    and then close the port. It return value that was returned by user proc
    and it close the port even if user proc throw exception."
-  (let ((p (open-input-file filename)))
+  (let ((p (open-input-file filename))
+        (throw #f))
     (try (proc p)
+         (catch (e)
+                (set! throw #t))
          (finally
-          (close-input-port p)))))
+          (if (not throw)
+              (close-input-port p))))))
 
 ;; -----------------------------------------------------------------------------
 (define (call-with-output-file filename proc)
@@ -3192,10 +3215,13 @@
    Procedure open file for writing, call user defined procedure with port
    and then close the port. It return value that was returned by user proc
    and it close the port even if user proc throw exception."
-  (let ((p (open-output-file filename)))
+  (let ((p (open-output-file filename)) (throw #f))
     (try (proc p)
+         (catch (e)
+                (set! throw #t))
          (finally
-          (close-output-port p)))))
+          (if (not throw)
+              (close-output-port p))))))
 
 ;; -----------------------------------------------------------------------------
 (define (with-input-from-port port thunk)
@@ -4140,10 +4166,12 @@
   "(features)
 
    Function returns implemented features as a list."
-  '(r7rs srfi-0 srfi-2 srfi-4 srfi-6 srfi-10 srfi-22 srfi-23 srfi-28 srfi-46 srfi-69
-         srfi-98 srfi-111 srfi-139 srfi-147 srfi-156 srfi-176 srfi-193 srfi-195
-         srfi-210 srfi-236 lips complex full-unicode ieee-float ratios exact-complex
-         full-numeric-tower))
+  (let ((result '(r7rs srfi-0 srfi-2 srfi-4 srfi-6 srfi-10 srfi-22 srfi-23 srfi-28 srfi-46 srfi-69
+                  srfi-98 srfi-111 srfi-139 srfi-147 srfi-156 srfi-176 srfi-193 srfi-195 srfi-210
+                  srfi-236 lips complex exact-complex full-unicode ieee-float ratios
+                  full-numeric-tower)))
+    (freeze-list! result)
+    result))
 
 ;; -----------------------------------------------------------------------------
 ;; the numerals can be generated using scripts/numerals.scm to get latest version
@@ -4763,11 +4791,34 @@
   "(call-with-port port proc)
 
    Proc is executed with given port and after it returns, the port is closed."
-  (try
-   (proc port)
-   (finally
-    (if (procedure? port.close)
-        (port.close)))))
+  (let ((throw #f))
+    (try
+     (proc port)
+     (catch (e)
+            (set! throw #t))
+     (finally
+      (if (and (procedure? port.close) (not throw))
+          (port.close))))))
+
+;; -----------------------------------------------------------------------------
+(define (call-with-input-file filename proc)
+  "(call-with-input-file filename proc)
+
+   Procedure open file for reading, call user defined procedure with given port
+   and then close the port. It return value that was returned by user proc
+   and it close the port even if user proc throw exception."
+  (let ((p (open-input-file filename)))
+    (call-with-port p proc)))
+
+;; -----------------------------------------------------------------------------
+(define (call-with-output-file filename proc)
+  "(call-with-output-file filename proc)
+
+   Procedure open file for writing, call user defined procedure with port
+   and then close the port. It return value that was returned by user proc
+   and it close the port even if user proc throw exception."
+  (let ((p (open-output-file filename)))
+    (call-with-port p proc)))
 
 ;; -----------------------------------------------------------------------------
 (define (close-port port)
@@ -5230,7 +5281,8 @@
   "(current-second)
 
    Functionn return exact integer of the seconds since January 1, 1970"
-  (inexact->exact (truncate (/ (+ %%start-jiffy (current-jiffy)) (jiffies-per-second)))))
+  (inexact->exact (truncate (/ (+ %%start-jiffy (current-jiffy))
+                               (jiffies-per-second)))))
 
 ;; -----------------------------------------------------------------------------
 (define %%start-jiffy
@@ -5252,6 +5304,57 @@
 ;; -----------------------------------------------------------------------------
 (define (jiffies-per-second)
   1000000)
+
+;; -----------------------------------------------------------------------------
+;; ref: https://stackoverflow.com/a/14675103/387194
+;; A better random generator improved by ChatGPT
+;; the constant based on Knuth TAOCP Vol. 2
+;; -----------------------------------------------------------------------------
+(define (bitwise-xor a b)
+  (let loop ((a a) (b b) (result 0) (bit 1))
+    (if (and (= a 0) (= b 0))
+        result
+        (let* ((abit (modulo a 2))
+               (bbit (modulo b 2))
+               (x (if (= (modulo (+ abit bbit) 2) 1) 1 0)))
+          (loop (quotient a 2) (quotient b 2)
+                (+ result (* bit x))
+                (* bit 2))))))
+
+;; -----------------------------------------------------------------------------
+(define (pseudo-random-seed)
+  "(pseudo-random-seed)
+
+   Generate a new pseudo random seed for random."
+  ;; Get current time in seconds
+  (let* ((sec (current-second))
+         ;; Get current jiffy (fine time unit)
+         (jiff (current-jiffy))
+         ;; Mix seconds and jiffy by scaling seconds with a large prime number
+         ;; and adding jiffy
+         (seed1 (+ (* sec 1000003) jiff))
+         ;; Mix further by applying XOR between seed1 and
+         ;; seed1 multiplied by Knuth's LCG multiplier to spread bits
+         (seed2 (bitwise-xor seed1
+                             (* seed1 6364136223846793005))))
+    ;; Ensure the result fits into 64 bits by taking modulo 2^64
+    (modulo seed2 (expt 2 64))))
+
+;; -----------------------------------------------------------------------------
+(define random
+  (let ((a 6364136223846793005)
+        (c 1442695040888963407)
+        (m (expt 2 64))
+        (seed (pseudo-random-seed)))
+    (lambda new-seed
+      "(random)
+       (random seed)
+
+       Function that generates new random real number using Knuth algorithm."
+      (if (pair? new-seed)
+          (set! seed (car new-seed))
+          (set! seed (modulo (+ (* seed a) c) m)))
+      (exact->inexact (/ seed m)))))
 ;; -----------------------------------------------------------------------------
 ;; init internal fs for LIPS Scheme Input/Output functions
 ;; -----------------------------------------------------------------------------

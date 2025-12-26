@@ -33,13 +33,13 @@ The name is a recursive acronym which stands for LIPS Is Pretty Simple.
 
 ## Features
 
-* Literal regular expression.
+* Literal regular expressions.
 * Asynchronous execution (auto resolving of promises).
 * Possibility to add new syntax (similar to vectors and object).
-* Numerical tower and Big Integer support.
+* Full numerical tower and Big Integer support.
 * Powerful introspection.
 * Great integration with JavaScript.
-* Auto formatting lisp of code (pretty print)
+* Code formatting (pretty print).
 * Lisp and hygienic Scheme macros and macroexpand.
 * Builtin help system.
 
@@ -47,7 +47,6 @@ The name is a recursive acronym which stands for LIPS Is Pretty Simple.
 
 To install you can use npm (or yarn)<br/>
 **NOTE:** The version that is on NPM is heavily outdated, use beta version:
-
 
 ```
 npm install lips@beta
@@ -287,6 +286,7 @@ They should be loaded as R7RS libraries in final 1.0.0 version
 | Procedures and Syntax for Multiple Values | [SRFI-210](https://srfi.schemers.org/srfi-210/) |
 | Evaluating expressions in an unspecified order | [SRFI-236](https://srfi.schemers.org/srfi-236) |
 | Destructuring Lists | [SRFI 239](https://srfi.schemers.org/srfi-239/) |
+| Uninterned Symbols | [SRFI 258](https://srfi.schemers.org/srfi-258/) |
 
 in Web (e.g. in Web REPL) you can also use full URL:
 

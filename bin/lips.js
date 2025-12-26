@@ -14,6 +14,7 @@ import {
     compile,
     parse,
     Parser,
+    Values,
     Formatter,
     serialize,
     unserialize,
@@ -50,14 +51,27 @@ import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
 
-const kDebounceHistoryMS = 15;
+const DEBOUNCE_HISTORY = 15;
+const HISTORY_SEPARATOR = os.EOL;
+const HISTORY_FILE = '.lips_history';
+const ERROR_FILE = '.lips_error'
+const SUPPORTS_PASTE_BRACKETS = test_brackets();
 
-const supports_paste_brackets = satisfies(process.version, '>=v20.6.0');
+// -----------------------------------------------------------------------------
+function test_brackets() {
+    if (process.versions.bun) {
+        return false;
+    }
+    return satisfies(process.version, '>=18.19.0 <19') ||
+        satisfies(process.version, '>=20.6.0');
+}
 
 // -----------------------------------------------------------------------------
 process.on('uncaughtException', function (err) {
     log_error(err.message);
     log_error(err.stack);
+    console.error(err.message);
+    console.error(err.stack);
 });
 
 // -----------------------------------------------------------------------------
@@ -66,7 +80,7 @@ function log_error(message) {
     message = message.split('\n').map(line => {
         return `${date}: ${line}`;
     }).join('\n');
-    fs.appendFileSync(home_file('lips.error.log'), message + '\n');
+    fs.appendFileSync(home_file(ERROR_FILE), message + '\n');
 }
 
 function home_file(filename) {
@@ -125,8 +139,14 @@ function print(result) {
         const last = result.pop();
         if (last !== undefined) {
             try {
-                const ret = env.get('repr')(last, true);
-                process.stdout.write('\x1b[K' + ret.toString());
+                let value;
+                if (last instanceof Values) {
+                    value = last.toString();
+                } else {
+                    value = env.get('repr')(last, true);
+                    value = value.toString();
+                }
+                process.stdout.write('\x1b[K' + value);
                 return true;
             } catch(e) {
                 print_error(e, options.t || options.trace);
@@ -328,10 +348,11 @@ if (options.version || options.V) {
         return [LSymbol(key), ...values];
     }));
     bootstrap(interp).then(function() {
+        // Scheme can access JS global.output
         return run('(for-each (lambda (x) (write x) (newline)) output)', interp, options.d || options.dynamic);
     });
 } else if (options.e || options.eval) {
-    // from 1.0 documentation should use -e but it's not breaking change
+    // from 1.0 documentation should use -e but it's not a breaking change
     bootstrap(interp).then(function() {
         const code = options.e || options.eval;
         const dynamic = options.d || options.dynamic;
@@ -425,10 +446,13 @@ if (options.version || options.V) {
     var continue_prompt = '... ';
     var terminal = !!process.stdin.isTTY && !(process.env.EMACS || process.env.INSIDE_EMACS);
     buffer = make_buffer(process.stdout);
+    const history_size = Number(env.LIPS_REPL_HISTORY_SIZE);
+    const history_size_valid = !Number.isNaN(history_size) && history_size > 0;
     rl = readline.createInterface({
         input: process.stdin,
         output: buffer,
         prompt: prompt,
+        historySize: history_size_valid ? historySize : 1000,
         terminal
     });
     rl.on('close', () => {
@@ -437,12 +461,6 @@ if (options.version || options.V) {
             buffer.flush('\n');
         }, 10);
     });
-    const historySize = Number(env.LIPS_REPL_HISTORY_SIZE);
-    if (!Number.isNaN(historySize) && historySize > 0) {
-        rl.historySize = historySize;
-    } else {
-        rl.historySize = 1000;
-    }
     setupHistory(rl, terminal ? env.LIPS_REPL_HISTORY : '', run_repl);
 }
 
@@ -465,21 +483,13 @@ function debug_log(filename) {
 
 // buffer Proxy to prevent flicker when Node writes to stdout
 function make_buffer(stream) {
-    const DEBUG = false;
     const buffer = [];
-    const fname = home_file('lips__debug.log');
-    if (DEBUG) {
-        fs.truncate(fname, 0, () => {});
-    }
-    const log = DEBUG ? debug_log(fname) : () => {};
     function flush(data, ...args) {
         if (buffer.length) {
             const payload = buffer.join('') + data;
             buffer.length = 0;
-            log(`flush ::: ${payload}`);
             stream.write(payload, ...args);
         } else {
-            log('write :::');
             stream.write(data, ...args);
         }
     }
@@ -493,7 +503,6 @@ function make_buffer(stream) {
                     log(data);
                     if (data.match(/\x1b\[(?:1G|0J)|(^(?:lips>|\.\.\.) )/)) {
                         buffer.push(data);
-                        log('buffer :::');
                     } else {
                         flush(data, ...args);
                     }
@@ -557,7 +566,7 @@ function ansi_rewrite_above(ansi_code) {
     const lines = ansi_code.split('\n');
     const stdout = lines.map((line, i) => {
         const prefix = i === 0 ? prompt : continue_prompt;
-        return prefix + line;
+        return prefix + line + '\x1b[K';
     }).join('\x1b[E') + '\x1b[E';
     const len = lines.length;
     // overwrite all lines to get rid of any artifacts left my stdin
@@ -572,12 +581,12 @@ function run_repl(err, rl) {
     let resolve;
     const brackets_re = /\x1b\[(200|201)~/g;
     // we use promise loop to fix issue when copy paste list of S-Expression
+    const is_emacs = process.env.EMACS || process.env.INSIDE_EMACS;
     let prev_eval = Promise.resolve();
-    if (process.stdin.isTTY) {
+    if (process.stdin.isTTY || is_emacs) {
         rl.prompt();
     }
     let prev_line;
-    const is_emacs = process.env.INSIDE_EMACS;
     function is_brackets_mode() {
         return !!cmd.match(brackets_re);
     }
@@ -586,13 +595,13 @@ function run_repl(err, rl) {
         // we don't do indentation for paste bracket mode
         // indentation will also not work for old Node.js
         // because it's too problematice to make it right
-        if ((is_brackets_mode() || !supports_paste_brackets)) {
-            rl.prompt();
+        if ((is_brackets_mode() || !SUPPORTS_PASTE_BRACKETS)) {
             if (is_emacs) {
                 rl.setPrompt('');
             } else {
                 rl.setPrompt(continue_prompt);
             }
+            rl.prompt();
             if (terminal) {
                 rl.write(' '.repeat(prompt.length - continue_prompt.length));
             }
@@ -673,22 +682,26 @@ function run_repl(err, rl) {
             console.error(e);
         }
     };
-    process.stdin.on('keypress', (c, k) => {
+    process.stdin.on('keypress', (key) => {
         setTimeout(function() {
             // we force triggering rl._writeToOutput function
-            // so we have the change to syntax highlight the command line
+            // so we have the change to syntax highlight of the command line
             // this needs to happen on next tick so the string have time
             // to updated with a given key
-            rl._refreshLine();
+            if (key !== '\r') {
+                // we don't want to run on enter, since _refreshLine
+                // prints space at the beginning of the line #406
+                rl._refreshLine();
+            }
         }, 0);
     });
     bootstrap(interp).then(function() {
-        if (supports_paste_brackets) {
+        if (SUPPORTS_PASTE_BRACKETS) {
             // this make sure that the paste brackets ANSI escape
             // is added to cmd so they can be processed in 'line' event
-            process.stdin.on('keypress', (c, k) => {
-                if (k?.name?.match(/^paste-/)) {
-                    cmd += k.sequence;
+            process.stdin.on('keypress', (key, meta) => {
+                if (meta?.name?.match(/^paste-/)) {
+                    cmd += meta.sequence;
                 }
             });
             // enable paste bracket mode by the terminal
@@ -696,6 +709,11 @@ function run_repl(err, rl) {
         }
         rl.on('line', function(line) {
             try {
+                // user pressed enter without any code
+                if (!line) {
+                    rl.prompt();
+                    return;
+                }
                 cmd += line;
                 const code = cmd.replace(brackets_re, '');
                 if (cmd.match(/\x1b\[201~$/)) {
@@ -712,9 +730,9 @@ function run_repl(err, rl) {
                     // https://github.com/nodejs/node/issues/11699
                     rl.setPrompt('');
                     rl.pause();
+                    cmd = '';
                     prev_eval = prev_eval.then(function() {
                         const result = run(code, interp, dynamic, null, options.t || options.trace, false);
-                        cmd = '';
                         return result;
                     }).then(function(result) {
                         if (process.stdin.isTTY) {
@@ -757,6 +775,14 @@ function run_repl(err, rl) {
     });
 }
 
+function unserialize_history(data, repl) {
+    return data.split(HISTORY_SEPARATOR, repl.historySize);
+}
+
+function serialize_history(history) {
+    return history.join(HISTORY_SEPARATOR);
+}
+
 // source: Node.js https://github.com/nodejs/node/blob/master/lib/internal/repl/history.js
 function _writeToOutput(repl, message) {
   repl._writeToOutput(message);
@@ -775,7 +801,7 @@ function setupHistory(repl, historyPath, ready) {
 
   if (!historyPath) {
     try {
-      historyPath = path.join(os.homedir(), '.lips_repl_history');
+      historyPath = path.join(os.homedir(), HISTORY_FILE);
     } catch (err) {
       _writeToOutput(repl, '\nError: Could not get the home directory.\n' +
         'REPL session history will not be persisted.\n');
@@ -823,7 +849,7 @@ function setupHistory(repl, historyPath, ready) {
     }
 
     if (data) {
-      repl.history = data.split(/[\n\r]+/, repl.historySize);
+      repl.history = unserialize_history(data, repl);
     } else {
       repl.history = [];
     }
@@ -857,7 +883,7 @@ function setupHistory(repl, historyPath, ready) {
       clearTimeout(timer);
     }
 
-    timer = setTimeout(flushHistory, kDebounceHistoryMS);
+    timer = setTimeout(flushHistory, DEBOUNCE_HISTORY);
   }
 
   function flushHistory() {
@@ -867,7 +893,7 @@ function setupHistory(repl, historyPath, ready) {
       return;
     }
     writing = true;
-    const historyData = repl.history.join(os.EOL);
+    const historyData = serialize_history(repl.history);
     fs.write(repl._historyHandle, historyData, 0, 'utf8', onwritten);
   }
 

@@ -316,3 +316,19 @@
                             (loop (read-char) (cons c a))))))
                   str)
             (delete-file fname)))))
+
+(test "ports: read after exception"
+      (lambda (t)
+        (let ((fname "./tests/__x8__.scm")
+              (str "Lorem")
+              (port #f))
+          (if (file-exists? fname)
+              (delete-file fname))
+          (call-with-output-file fname (lambda (p) (write str p)))
+          (call-with-input-file fname
+            (lambda (p)
+              (set! port p)
+              (+ 'a 'b)))
+          (t.is (read port) str)
+          (close-port port)
+          (delete-file fname))))

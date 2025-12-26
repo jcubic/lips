@@ -190,11 +190,11 @@
             `(. ,(string->symbol (car parts)) ,@(cdr parts))))))
 
 ;; -----------------------------------------------------------------------------
-(set-special! "#:" 'gensym-interal)
+(set-special! "#:" 'gensym-literal)
 
 ;; -----------------------------------------------------------------------------
-(define (gensym-interal symbol)
-  "(gensym-interal symbol)
+(define (gensym-literal symbol)
+  "(gensym-literal symbol)
 
    Parser extension that creates a new quoted named gensym."
   `(quote ,(gensym symbol)))
@@ -243,9 +243,8 @@
   "(alist->object alist)
 
    Function that converts alist pairs to a JavaScript object."
-  (if (pair? alist)
-      (alist.to_object)
-      (alist->object (new lips.Pair #void '()))))
+  (typecheck "alist->object" alist '("pair" "nil"))
+  (alist.to_object))
 
 ;; -----------------------------------------------------------------------------
 (define (object->alist object)
@@ -754,12 +753,17 @@
                   (char=? (peek-char port) #\{))
              (read-char)
              (let ((expr (read port)))
-               (let ((next (peek-char port)))
-                 (if (char=? next #\})
-                     (begin
-                       (read-char)
-                       (loop "" (vector-append result (vector part expr)) (read-char)))
-                     (error (string-append "Parse Error: expecting } got " (repr next)))))))
+               (if (symbol? expr)
+                   (let* ((expr (--> (symbol->string expr) (replace #/\}$/ "")))
+                          (value (read (open-input-string expr))))
+                     (loop "" (vector-append result (vector part expr)) (read-char)))
+                   (let inner ((next (peek-char port)))
+                     (cond ((char=? next #\space) (read-char) (inner (peek-char port)))
+                           ((char=? next #\})
+                            (read-char)
+                            (loop "" (vector-append result (vector part expr)) (read-char)))
+                           (else
+                            (error (string-append "Parse Error: expecting } got " (repr next)))))))))
             ((char=? char #\\)
              (loop (string-append part (repr (read-char))) result (read-char)))
             ((char=? char #\")
@@ -769,6 +773,7 @@
             (else
              (loop (string-append part (repr char)) result (read-char)))))))
 
+;; -----------------------------------------------------------------------------
 (define (%string-interpolation)
   "(%string-interpolation)
 
@@ -836,19 +841,13 @@
     (qsort list predicate)))
 
 ;; -----------------------------------------------------------------------------
-(define-macro (%any lists)
-  `(or ,@lists))
-
-
-;; -----------------------------------------------------------------------------
 (define (%any-null? lst)
   "(%any-null? lst)
 
    Checks if any of elements in the list is null."
   (if (null? lst)
       false
-      (if (null? (car lst))
-          true
+      (or (null? (car lst))
           (%any-null? (cdr lst)))))
 
 ;; -----------------------------------------------------------------------------
@@ -858,8 +857,7 @@
    version of some without typechecking."
   (if (or (null? lists) (%any-null? lists))
       false
-      (if (apply fn (map car lists))
-          true
+      (or (apply fn (map car lists))
           (%some fn (map cdr lists)))))
 
 ;; -----------------------------------------------------------------------------
@@ -878,9 +876,10 @@
   "(%every fn lists)
 
    version of every without typechecking."
-  (if (or (null? lists) (%any-null? lists))
-      true
-      (and (apply fn (map car lists)) (%every fn (map cdr lists)))))
+  (or (null? lists)
+      (%any-null? lists)
+      (and (apply fn (map car lists))
+           (%every fn (map cdr lists)))))
 
 ;; -----------------------------------------------------------------------------
 (define (every fn . lists)
@@ -1236,6 +1235,23 @@
   (and (symbol? value) (--> value (is_gensym))))
 
 ;; -----------------------------------------------------------------------------
+(define (freeze-prop! object property)
+  "(freeze-prop! object property)
+
+   Function make an object property read only."
+  (Object.defineProperty object property `&(:value ,(. object property)
+                                            :writable #f
+                                            :configurable #f
+                                            :enumerable #t)))
+
+;; -----------------------------------------------------------------------------
+(define (freeze-list! list)
+  "(freeze-list! list)
+
+   Function make the whole list read only. It mutates the list and returns #void."
+  (list.freeze))
+
+;; -----------------------------------------------------------------------------
 (define (degree->radians x)
   "(degree->radians x)
 
@@ -1318,9 +1334,9 @@
                    (cadr rest)))
          (test (cond
                 ((> i stop) (lambda (i)
-                              (and (< step 0) (>= i stop))))
-                ((< i stop) (lambda
-                              (i) (and (> step 0) (< i stop))))
+                              (and (< step 0) (> i stop))))
+                ((< i stop) (lambda (i)
+                              (and (> step 0) (< i stop))))
                 (else (lambda () false))))
          (result (vector)))
     (typecheck "range" i "number" 1)

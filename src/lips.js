@@ -121,11 +121,11 @@ function contentLoaded(win, fn) {
 function log(x, ...args) {
     if (is_plain_object(x) && is_debug(args[0])) {
         console.log(map_object(x, function(value) {
-            return toString(value, true);
+            return to_string(value, true);
         }));
     } else if (is_debug()) {
-        console.log(toString(x, true), ...args.map(item => {
-            return toString(item, true);
+        console.log(to_string(x, true), ...args.map(item => {
+            return to_string(item, true);
         }));
     }
 }
@@ -537,40 +537,51 @@ function parse_symbol(arg) {
     return new LSymbol(arg);
 }
 // ----------------------------------------------------------------------
-function parse_argument(arg) {
-    if (constants.hasOwnProperty(arg)) {
-        return constants[arg];
+function parse_argument(arg, meta = false) {
+    const token = arg.token;
+    if (constants.hasOwnProperty(token)) {
+        return constants[token];
     }
-    if (arg.match(/^"[\s\S]*"$/)) {
-        return parse_string(arg);
-    } else if (arg[0] === '#') {
-        var regex = arg.match(re_re);
+    let result;
+    if (token.match(/^"[\s\S]*"$/)) {
+        result = parse_string(token);
+    } else if (token[0] === '#') {
+        var regex = token.match(re_re);
         if (regex) {
-            return new RegExp(regex[1], regex[2]);
-        } else if (arg.match(char_re)) {
-            return parse_character(arg);
+            result = new RegExp(regex[1], regex[2]);
+        } else if (token.match(char_re)) {
+            result = parse_character(token);
         }
         // characters with more than one codepoint
-        var m = arg.match(/#\\(.+)/);
+        var m = token.match(/#\\(.+)/);
         if (m && ucs2decode(m[1]).length === 1) {
-            return parse_character(arg);
+            result = parse_character(token);
         }
     }
-    if (arg.match(/[0-9a-f]|[+-]i/i)) {
-        if (arg.match(int_re)) {
-            return parse_integer(arg);
-        } else if (arg.match(float_re)) {
-            return parse_float(arg);
-        } else if (arg.match(rational_re)) {
-            return parse_rational(arg);
-        } else if (arg.match(complex_re)) {
-            return parse_complex(arg);
+    if (token.match(/[0-9a-f]|[+-]i/i)) {
+        if (token.match(int_re)) {
+            result = parse_integer(token);
+        } else if (token.match(float_re)) {
+            result = parse_float(token);
+        } else if (token.match(rational_re)) {
+            result = parse_rational(token);
+        } else if (token.match(complex_re)) {
+            result = parse_complex(token);
         }
     }
-    if (arg.match(/^#[iexobd]/)) {
+    if (!result && token.match(/^#[iexobd]/)) {
         throw new Error('Invalid numeric constant: ' + arg);
     }
-    return parse_symbol(arg);
+    if (!result) {
+        result = parse_symbol(token);
+    }
+    if (meta) {
+        const { col, offset, line } = arg;
+        read_only(result, '__col__', col);
+        read_only(result, '__offset__', offset);
+        read_only(result, '__line__', line);
+    }
+    return result;
 }
 // ----------------------------------------------------------------------
 function is_atom_string(str) {
@@ -729,7 +740,7 @@ function strip_s_comments(tokens) {
 // ----------------------------------------------------------------------
 // Detect if object is ES6 Symbol that work with polyfills
 // ----------------------------------------------------------------------
-function isSymbol(x) {
+function is_symbol(x) {
     return typeof x === 'symbol' ||
         typeof x === 'object' &&
         Object.prototype.toString.call(x) === '[object Symbol]';
@@ -737,25 +748,29 @@ function isSymbol(x) {
 // ----------------------------------------------------------------------
 // :: LSymbol constructor
 // ----------------------------------------------------------------------
-function LSymbol(name) {
+function LSymbol(name, interned = true) {
     if (name instanceof LString) {
         name = name.valueOf();
     }
-    if (LSymbol.list[name] instanceof LSymbol) {
+    if (interned && LSymbol.list[name] instanceof LSymbol) {
         return LSymbol.list[name];
     }
     if (typeof this !== 'undefined' && this.constructor !== LSymbol ||
         typeof this === 'undefined') {
-        return new LSymbol(name);
+        return new LSymbol(name, interned);
     }
     this.__name__ = name;
-    if (typeof name === 'string') {
+    if (interned && typeof name === 'string') {
         LSymbol.list[name] = this;
     }
 }
 LSymbol.list = {};
 LSymbol.literal = Symbol.for('__literal__');
 LSymbol.object = Symbol.for('__object__');
+// ----------------------------------------------------------------------
+LSymbol.prototype.is_interned = function() {
+    return LSymbol.list[this.__name__] == this;
+};
 // ----------------------------------------------------------------------
 LSymbol.is = function(symbol, name) {
     return symbol instanceof LSymbol &&
@@ -766,7 +781,7 @@ LSymbol.is = function(symbol, name) {
 // ----------------------------------------------------------------------
 LSymbol.prototype.toString = function(quote) {
     //return '#<symbol \'' + this.name + '\'>';
-    if (isSymbol(this.__name__)) {
+    if (is_symbol(this.__name__)) {
         return symbol_to_string(this.__name__);
     }
     var str = this.valueOf();
@@ -810,7 +825,7 @@ function is_gensym(symbol) {
 const gensym = (function() {
     var count = 0;
     function with_props(name, sym) {
-        var symbol = new LSymbol(sym);
+        var symbol = new LSymbol(sym, false);
         hidden_prop(symbol, '__literal__', name);
         return symbol;
     }
@@ -823,7 +838,7 @@ const gensym = (function() {
         }
         if (is_gensym(name)) {
             // don't do double gynsyms in nested syntax-rules
-            return LSymbol(name);
+            return LSymbol(name, false);
         }
         // use ES6 symbol as name for lips symbol (they are unique)
         if (name !== null) {
@@ -1037,6 +1052,7 @@ Object.freeze(builtins);
 
 Object.defineProperty(specials, '__builtins__', {
     writable: false,
+    enumerable: true,
     value: builtins
 });
 defined_specials.forEach(([seq, symbol, type]) => {
@@ -1055,7 +1071,7 @@ defined_specials.forEach(([seq, symbol, type]) => {
 */
 class Lexer {
     constructor(input, { whitespace = false } = {}) {
-        read_only(this, '__input__', input.replace(/\r/g, ''));
+        read_only(this, '__input__', input);
         var internals = {};
         // hide internals from introspection
         [
@@ -1476,6 +1492,9 @@ Object.defineProperty(Lexer, 'rules', {
 });
 // ----------------------------------------------------------------------
 function match_or_null(re, char) {
+    if (is_string(re)) {
+        return re === char;
+    }
     return re === null || char.match(re);
 }
 // ----------------------------------------------------------------------
@@ -1491,8 +1510,20 @@ class Parser {
         read_only(this, '_refs', [], { hidden: true });
         read_only(this, '_state', {
             parentheses: 0,
+            line: 0,
             fold_case: false
         }, { hidden: true });
+    }
+    prepare(arg) {
+        if (arg instanceof LString) {
+            arg = arg.toString();
+        }
+        this._reset_state();
+        if (arg instanceof Lexer) {
+            read_only(this, '__lexer__', arg);
+        } else {
+            read_only(this, '__lexer__', new Lexer(arg));
+        }
     }
     _with_syntax_scope(fn) {
         // expose parser and change stdin so parser extension can use current-input
@@ -1510,23 +1541,23 @@ class Parser {
             return result;
         }, cleanup);
     }
-    parse(arg) {
-        if (arg instanceof LString) {
-            arg = arg.toString();
-        }
-        read_only(this, '__lexer__', new Lexer(arg));
+    _reset_state() {
+        Object.assign(this._state, {
+            parentheses: 0,
+            line: 0
+        });
     }
-    resolve(name) {
+    _resolve(name) {
         return this.__env__ && this.__env__.get(name, { throwError: false });
     }
-    async peek() {
+    async _peek() {
         let token;
         while (true) {
             token = this.__lexer__.peek(true);
             if (token === eof) {
                 return eof;
             }
-            if (this.is_comment(token.token)) {
+            if (this._is_comment(token.token)) {
                 this.skip();
                 continue;
             }
@@ -1553,49 +1584,58 @@ class Parser {
         if (this._state.fold_case) {
             token.token = foldcase_string(token.token);
         }
+        return token;
+    }
+    async peek() {
+        const token = this._peek();
         if (this._meta) {
             return token;
         }
         return token.token;
     }
-    reset() {
+    _reset() {
         this._refs.length = 0;
     }
     skip() {
         this.__lexer__.skip();
+    }
+    async _read() {
+        const token = await this._peek();
+        this.skip();
+        return token;
     }
     async read() {
         const token = await this.peek();
         this.skip();
         return token;
     }
-    match_datum_label(token) {
-        var m = token.match(/^#([0-9]+)=$/);
+    _match_datum_label(token) {
+        var m = token.token.match(/^#([0-9]+)=$/);
         return m && m[1];
     }
-    match_datum_ref(token) {
-        var m = token.match(/^#([0-9]+)#$/);
+    _match_datum_ref(token) {
+        var m = token.token.match(/^#([0-9]+)#$/);
         return m && m[1];
     }
-    is_open(token) {
-        return ['(', '['].includes(token);
+    _is_open(token) {
+        return ['(', '['].includes(token.token);
     }
-    is_close(token) {
-        return [')', ']'].includes(token);
+    _is_close(token) {
+        return [')', ']'].includes(token.token);
     }
-    async read_list() {
+    async _read_list() {
         let head = nil, prev = head, dot;
         while (true) {
-            const token = await this.peek();
+            const token = await this._peek();
             if (token === eof) {
                 break;
             }
-            if (this.is_close(token)) {
+            if (this._is_close(token)) {
                 --this._state.parentheses;
                 this.skip();
                 break;
             }
-            if (token === '.' && !is_nil(head)) {
+            if (token.token === '.' && !is_nil(head)) {
                 this.skip();
                 prev.cdr = await this._read_object();
                 dot = true;
@@ -1614,14 +1654,14 @@ class Parser {
         }
         return head;
     }
-    async read_value() {
-        let token = await this.read();
-        if (token === eof) {
+    async _read_value() {
+        let token = await this._read();
+        if (token === eof || token.token === eof) {
             throw new Error('Parser: Expected token eof found');
         }
-        return parse_argument(token);
+        return parse_argument(token, this._meta);
     }
-    is_comment(token) {
+    _is_comment(token) {
         return token.match(/^;/) || (token.match(/^#\|/) && token.match(/\|#$/));
     }
     evaluate(code) {
@@ -1631,7 +1671,7 @@ class Parser {
     }
     // public API that handle R7RS datum labels
     async read_object() {
-        this.reset();
+        this._reset();
         var object = await this._read_object();
         if (object instanceof DatumReference) {
             object = object.valueOf();
@@ -1650,22 +1690,36 @@ class Parser {
     balanced() {
         return this._state.parentheses === 0;
     }
-    ballancing_error(expr, prev) {
+    _ballancing_error(expr, prev) {
         const count = this._state.parentheses;
         let e;
         if (count < 0) {
             e = new Error('Parser: unexpected parenthesis');
-            e.__code__ = [prev.toString() + ')'];
+            if (prev) {
+                e.__code__ = [prev.toString() + ')'];
+            } else {
+                e.__code__ = [')'];
+            }
         } else {
             e = new Error('Parser: expected parenthesis but eof found');
             const re = new RegExp(`\\){${count}}$`);
             e.__code__ = [expr.toString().replace(re, '')];
         }
+        this._agument_exception(e);
         throw e;
+    }
+    _agument_exception(e) {
+        const token = this.__lexer__.__token__;
+        if ('col' in token) {
+            const { col, offset, line } = token;
+            e.message += ` at line ${line + 1} and column ${col + 1}`;
+            read_only(e, '__col__', col);
+            read_only(e, '__offset__', offset);
+            read_only(e, '__line__', line);
+        }
     }
     // TODO: Cover This function (array and object branch)
     async _resolve_object(object) {
-
         if (Array.isArray(object)) {
             return object.map(item => this._resolve_object(item));
         }
@@ -1696,12 +1750,16 @@ class Parser {
         }
         return pair;
     }
+    get_line() {
+        return this._state.line;
+    }
     async _read_object() {
-        const token = await this.peek();
+        const token = await this._peek();
         if (token === eof) {
             return token;
         }
-        if (is_special(token)) {
+        this._state.line = this.__lexer__.__token__.line;
+        if (is_special(token.token)) {
             // Built-in parser extensions are mapping short symbols to longer symbols
             // that can be function or macro. Parser doesn't care
             // if it's not built-in and the extension can be macro or function.
@@ -1709,12 +1767,12 @@ class Parser {
             // result is returned by parser as is the macro.
             // MACRO: if macro is used, then it is evaluated in place and the
             // result is returned by parser and it is quoted.
-            const special = specials.get(token);
-            const builtin = is_builtin(token);
+            const special = specials.get(token.token);
+            const builtin = is_builtin(token.token);
             this.skip();
             let expr, extension;
-            const is_symbol = is_symbol_extension(token);
-            const was_close_paren = this.is_close(await this.peek());
+            const is_symbol = is_symbol_extension(token.token);
+            const was_close_paren = this._is_close(await this._peek());
             const object = is_symbol ? undefined : await this._read_object();
             if (object === eof) {
                 throw new Unterminated('Expecting expression eof found');
@@ -1723,7 +1781,7 @@ class Parser {
                 extension = this.__env__.get(special.symbol);
                 if (typeof extension === 'function') {
                     let args;
-                    if (is_literal(token)) {
+                    if (is_literal(token.token)) {
                         args = [object];
                     } else if (is_nil(object)) {
                         args = [];
@@ -1739,13 +1797,17 @@ class Parser {
                             });
                         });
                     }
-                    throw new Error('Parse Error: Invalid parser extension ' +
-                                    `invocation ${special.symbol}`);
+                    const e = new Error('Parse Error: Invalid parser extension ' +
+                                        `invocation ${special.symbol}`);
+                    this._agument_exception(e);
+                    throw e;
                 }
             }
-            if (is_literal(token)) {
+            if (is_literal(token.token)) {
                 if (was_close_paren) {
-                    throw new Error('Parse Error: expecting datum');
+                    const e = new Error('Parse Error: expecting datum');
+                    this._agument_exception(e);
+                    throw e
                 }
                 expr = new Pair(
                     special.symbol,
@@ -1777,33 +1839,37 @@ class Parser {
                 }
                 return result;
             } else {
-                throw new Error('Parse Error: invalid parser extension: ' +
-                                special.symbol);
+                const e = new Error('Parse Error: invalid parser extension: ' +
+                                    special.symbol);
+                this._agument_exception(e);
+                throw e;
             }
         }
-        var ref = this.match_datum_ref(token);
+        const ref = this._match_datum_ref(token);
         if (ref !== null) {
             this.skip();
             if (this._refs[ref]) {
                 return new DatumReference(ref, this._refs[ref]);
             }
-            throw new Error(`Parse Error: invalid datum label #${ref}#`);
+            const e = new Error(`Parse Error: invalid datum label #${ref}#`);
+            this._agument_exception(e);
+            throw e;
         }
-        var ref_label = this.match_datum_label(token);
+        const ref_label = this._match_datum_label(token);
         if (ref_label !== null) {
             this.skip();
             this._refs[ref_label] = this._read_object();
             return this._refs[ref_label];
-        } else if (this.is_close(token)) {
+        } else if (this._is_close(token)) {
             --this._state.parentheses;
             this.skip();
             // invalid state, we don't need to return anything
-        } else if (this.is_open(token)) {
+        } else if (this._is_open(token)) {
             ++this._state.parentheses;
             this.skip();
-            return this.read_list();
+            return this._read_list();
         } else {
-            return this.read_value();
+            return this._read_value();
         }
     }
 }
@@ -1844,13 +1910,13 @@ async function* _parse(arg, env) {
         parser = arg;
     } else {
         parser = new Parser({ env });
-        parser.parse(arg);
+        parser.prepare(arg);
     }
     let prev;
     while (true) {
         const expr = await parser.read_object();
         if (!parser.balanced()) {
-            parser.ballancing_error(expr, prev);
+            parser._ballancing_error(expr, prev);
         }
         if (expr === eof) {
             break;
@@ -1921,6 +1987,7 @@ function unpromise_object(object, fn, error) {
 function read_only(object, property, value, { hidden = false } = {}) {
     Object.defineProperty(object, property, {
         value,
+        writable: false,
         configurable: true,
         enumerable: !hidden
     });
@@ -1936,16 +2003,28 @@ async function uniterate_async(object) {
     return result;
 }
 // ----------------------------------------------------------------------
-// :: Function that return matcher function that match string against string
+// :: Function that return matcher function that match any value
+// :: the function is used in find Scheme function to find an item
+// :: in the list
 // ----------------------------------------------------------------------
 function matcher(name, arg) {
     if (arg instanceof RegExp) {
         return x => String(x).match(arg);
     } else if (is_function(arg)) {
-        // it will always be function
         return arg;
+    } else if (arg instanceof LNumber) {
+        return x => LNumber(x).cmp(arg) === 0;
+    } else if (arg instanceof LString) {
+        const string = arg.__string__;
+        return x => LString.is(x, string);
+    } else if (arg instanceof LSymbol) {
+        const name = arg.__name__;
+        return x => LSymbol.is(x, name);
+    } else if (arg instanceof LCharacter) {
+        const char = arg.__char__;
+        return x => LCharacter.is(x, char);
     }
-    throw new Error('Invalid matcher');
+    return x => arg === x;
 }
 // ----------------------------------------------------------------------
 // :: Documentation decorator to LIPS functions if lines starts with :
@@ -2315,7 +2394,7 @@ function Pattern(...args) {
     this.flag = flag;
 }
 Pattern.prototype.toString = function() {
-    var patterns = this.patterns.map(x => toString(x)).join('|');
+    var patterns = this.patterns.map(x => to_string(x)).join('|');
     return `#<pattern(${patterns} ${this.flag})>`;
 };
 // ----------------------------------------------------------------------
@@ -2335,12 +2414,13 @@ const identifiers = [p_o, symbols, p_e];
 const let_value = new Pattern([p_o, Symbol.for('symbol'), glob, p_e], '+');
 const syntax_rules = keywords_re('syntax-rules');
 // rules for breaking S-Expressions into lines
-var def_lambda_re = keywords_re('define', 'lambda', 'define-macro', 'syntax-rules');
+const def_lambda_re = keywords_re('define', 'lambda', 'define-macro', 'syntax-rules');
 /* eslint-disable max-len */
-var non_def = /^(?!.*\b(?:[()[\]]|define(?:-macro)?|let(?:\*|rec|-env|-syntax|)?|lambda|syntax-rules)\b).*$/;
+const non_def = /^(?!.*\b(?:[()[\]]|define(?:-macro)?|let(?:\*|rec|-env|-syntax|)?|lambda|syntax-rules)\b).*$/;
 /* eslint-enable */
-var let_re = /^(?:#:)?(let(?:\*|rec|-env|-syntax)?)$/;
+const let_re = /^(?:#:)?(let(?:\*|rec|-env|-syntax)?)$/;
 // match keyword if it's normal token or gensym (prefixed with #:)
+const comment_re = /^;.*/;
 function keywords_re(...args) {
     return new RegExp(`^(?:#:)?(?:${args.join('|')})$`);
 }
@@ -2355,6 +2435,7 @@ Formatter.rules = [
     [[p_o, syntax_rules, not_p, identifiers], 1],
     [[p_o, syntax_rules, not_p, identifiers, sexp], 1, not_close],
     [[p_o, syntax_rules, identifiers], 1],
+    [comment_re, -1],
     [[p_o, syntax_rules, identifiers, sexp], 1, not_close],
     [[p_o, non_def, new Pattern([/[^()[\]]/], '+'), sexp], 1, not_close],
     [[p_o, sexp], 1, not_close],
@@ -2369,7 +2450,7 @@ Formatter.rules = [
 ];
 // ----------------------------------------------------------------------
 Formatter.prototype.break = function() {
-    var code = this.__code__.replace(/\n[ \t]*/g, '\n ').replace(/^\s+/, '');
+    var code = this.__code__.replace(/\n[ \t]*/g, '\n ').trim();
     // function that work when calling tokenize with meta data or not
     const token = t => {
         if (t.token.match(string_re) || t.token.match(re_re)) {
@@ -2405,13 +2486,24 @@ Formatter.prototype.break = function() {
             }
         });
         for (let [pattern, count, ext] of rules) {
+            const debug = pattern === comment_re;
             count = count.valueOf();
             // 0 count mean ignore the previous S-Expression
-            var test_sexp = count > 0 ? sexp[count] : sub;
-            const input = test_sexp.filter(t => t.trim() && !is_special(t));
+            // -1 count mean check a single token
+            const test_sexp = count > 0 ? sexp[count] : sub;
+            let input = test_sexp.filter(t => t.trim() && !is_special(t));
+            if (!input.length) {
+                continue;
+            }
+            if (count === -1) {
+                // NOTE: match work with arrays but since we check for a single token
+                //       we allow to use a single regex and wrap it with an array here
+                pattern = [pattern];
+                input = input.slice(-1);
+            }
             const inc = first_token_index(test_sexp);
-            var m = match(pattern, input);
-            var next = tokens.slice(i).find(t => t.trim() && !is_special(t));
+            const m = match(pattern, input);
+            const next = tokens.slice(i).find(t => t.trim() && !is_special(t));
             if (m && (ext instanceof Ahead && ext.match(next) || !ext)) {
                 const index = i - inc;
                 if (tokens[index] !== '\n') {
@@ -2440,7 +2532,7 @@ Formatter.prototype._spaces = function(i) {
 Formatter.prototype.format = function format(options) {
     // prepare code with single space after newline
     // so we have space token to align
-    var code = this.__code__.replace(/[ \t]*\n[ \t]*/g, '\n ');
+    var code = this.__code__.trim().replace(/[ \t]*\n[ \t]*/g, '\n ');
     var tokens = tokenize(code, true);
     var settings = this._options(options);
     var indent = 0;
@@ -2987,6 +3079,24 @@ Pair.prototype.length = function() {
     return len;
 };
 // ----------------------------------------------------------------------
+Pair.prototype.freeze = function() {
+    let node = this;
+    while (true) {
+        read_only(node, 'car', node.car);
+        if (is_pair(node.car) && !node.have_cycles('car')) {
+            node.car.freeze();
+        }
+        read_only(node, 'cdr', node.cdr);
+        if (node.have_cycles('cdr')) {
+            break;
+        }
+        node = node.cdr;
+        if (!is_pair(node)) {
+            break;
+        }
+    }
+};
+// ----------------------------------------------------------------------
 Pair.match = function(obj, item) {
     if (obj instanceof LSymbol) {
         return LSymbol.is(obj, item);
@@ -3282,7 +3392,7 @@ function symbolize(obj) {
         symbols.forEach((key) => {
             const name = key.toString()
                 .replace(/Symbol\(([^)]+)\)/, '$1');
-            result[name] = toString(obj[key]);
+            result[name] = to_string(obj[key]);
         });
         const props = Object.getOwnPropertyNames(obj);
         props.forEach(key => {
@@ -3290,7 +3400,7 @@ function symbolize(obj) {
             if (o && typeof o === 'object' && o.constructor === Object) {
                 result[key] = symbolize(o);
             } else {
-                result[key] = toString(o);
+                result[key] = to_string(o);
             }
         });
         return result;
@@ -3376,14 +3486,13 @@ const instances = new Map();
 const native_types = [
     LSymbol,
     Macro,
-    Values,
     InputPort,
     OutputPort,
     Environment,
     QuotedPromise
 ];
 // ----------------------------------------------------------------------
-function toString(obj, quote, skip_cycles, ...pair_args) {
+function to_string(obj, quote, skip_cycles, ...pair_args) {
     if (typeof jQuery !== 'undefined' &&
         obj instanceof jQuery.fn.init) {
         return '#<jQuery(' + obj.length + ')>';
@@ -3610,7 +3719,7 @@ const pair_to_string = (function() {
         if (pair[__cycles__] && pair[__cycles__].car) {
             car = pair[__cycles__].car;
         } else {
-            car = toString(pair.car, quote, true, { result, cont });
+            car = to_string(pair.car, quote, true, { result, cont });
         }
         if (car !== undefined) {
             result.push(car);
@@ -3634,7 +3743,7 @@ const pair_to_string = (function() {
                 }
             } else if (!is_nil(pair.cdr)) {
                 result.push(' . ');
-                result.push(toString(pair.cdr, quote));
+                result.push(to_string(pair.cdr, quote));
             }
         }, cont);
     });
@@ -3652,7 +3761,7 @@ Pair.prototype.toString = function(quote, { nested = false } = {}) {
     if (this[__cycles__] && this[__cycles__].car) {
         value = this[__cycles__].car;
     } else {
-        value = toString(this.car, quote, true);
+        value = to_string(this.car, quote, true);
     }
     if (value !== undefined) {
         arr.push(value);
@@ -3671,7 +3780,7 @@ Pair.prototype.toString = function(quote, { nested = false } = {}) {
             arr.push(cdr);
         }
     } else if (!is_nil(this.cdr)) {
-        arr = arr.concat([' . ', toString(this.cdr, quote, true)]);
+        arr = arr.concat([' . ', to_string(this.cdr, quote, true)]);
     }
     if (!nested || this[__ref__]) {
         arr.push(')');
@@ -3888,17 +3997,96 @@ Macro.prototype.toString = function() {
 // ----------------------------------------------------------------------
 const macro = 'define-macro';
 // ----------------------------------------------------------------------
+// :: define-macro macro
+// ----------------------------------------------------------------------
+function is_lambda_macro(macro) {
+    return macro.car instanceof LSymbol &&
+        is_pair(macro.cdr) &&
+        is_pair(macro.cdr.car) &&
+        LSymbol.is(macro.cdr.car.car, 'lambda');
+}
+// ----------------------------------------------------------------------
+function is_named_macro(macro) {
+    return is_pair(macro.car) && macro.car.car instanceof LSymbol;
+}
+// ----------------------------------------------------------------------
+function define_macro(name, args, body, __doc__, { use_dynamic, error }) {
+    const makro_instance = Macro.defmacro(name, function(code) {
+        const env = macro_args_env(args, code, this);
+        const eval_args = {
+            env,
+            dynamic_env: env,
+            use_dynamic,
+            error
+        };
+        // evaluate macro
+        if (is_pair(body)) {
+            // this eval will return lips code
+            const result = body.reduce(function(result, node) {
+                return evaluate(node, eval_args);
+            });
+            return unpromise(result, function(result) {
+                if (typeof result === 'object') {
+                    delete result[__data__];
+                }
+                return result;
+            });
+        }
+    }, __doc__, true);
+    makro_instance.__code__ = new Pair(new LSymbol('define-macro'), macro);
+    return makro_instance;
+}
+// ----------------------------------------------------------------------
+function macro_args_env(params, code, scope) {
+    const env = new Environment({}, scope, 'defmacro');
+    let arg = code;
+    while (true) {
+        if (is_nil(params)) {
+            break;
+        }
+        if (params instanceof LSymbol) {
+            env.__env__[params.__name__] = arg;
+            break;
+        } else if (!is_nil(params.car)) {
+            if (is_nil(arg)) {
+                env.__env__[params.car.__name__] = nil;
+            } else {
+                if (is_pair(arg.car)) {
+                    arg.car[__data__] = true;
+                }
+                env.__env__[params.car.__name__] = arg.car;
+            }
+        }
+        if (is_nil(params.cdr)) {
+            break;
+        }
+        if (!is_nil(arg)) {
+            arg = arg.cdr;
+        }
+        params = params.cdr;
+    }
+    return env;
+}
+// ----------------------------------------------------------------------
 const recur_guard = -10000;
 function macro_expand(single) {
     return async function(code, args) {
-        var env = args['env'] = this;
-        var bindings = [];
-        var let_macros = ['let', 'let*', 'letrec'];
+        const env = args['env'] = this;
+        let bindings = [];
+        const let_names = ['let', 'let*', 'letrec', 'letrec*'];
+        const let_macros = let_names.map(name => {
+            return global_env.get(name);
+        });
         var lambda = global_env.get('lambda');
         var define = global_env.get('define');
-        function is_let_macro(symbol) {
-            var name = symbol.valueOf();
-            return let_macros.includes(name);
+        function is_let_macro(name) {
+            return let_names.includes(name);
+        }
+        function builtin_let(name) {
+            if (!is_let_macro(name)) {
+                return false;
+            }
+            return let_macros.includes(env.get(name));
         }
         function is_procedure(value, node) {
             return value === define && is_pair(node.cdr.car);
@@ -3957,29 +4145,13 @@ function macro_expand(single) {
                 }
                 var name = node.car.valueOf();
                 var value = env.get(node.car, { throwError: false });
-                var is_let = is_let_macro(node.car);
+                var is_let = is_let_macro(name);
 
                 var is_binding = is_let ||
                     is_procedure(value, node) ||
                     is_lambda(value);
 
-                if (is_binding && is_pair(node.cdr.car)) {
-                    var second;
-                    if (is_let) {
-                        bindings = let_binding(node.cdr.car);
-                        second = await expand_let_binding(node.cdr.car, n);
-                    } else {
-                        bindings = proc_bindings(node.cdr.car);
-                        second = node.cdr.car;
-                    }
-                    return new Pair(
-                        node.car,
-                        new Pair(
-                            second,
-                            await traverse(node.cdr.cdr, n, env)
-                        )
-                    );
-                } else if (is_macro(name, value)) {
+                if (is_macro(name, value) && !builtin_let(name)) {
                     var code = value instanceof Syntax ? node : node.cdr;
                     var result = await value.invoke(code, { ...args, env }, true);
                     if (value instanceof Syntax) {
@@ -4010,6 +4182,22 @@ function macro_expand(single) {
                     if (is_atom(result)) {
                         return result;
                     }
+                } else if (is_binding && is_pair(node.cdr.car)) {
+                    var second;
+                    if (is_let) {
+                        bindings = let_binding(node.cdr.car);
+                        second = await expand_let_binding(node.cdr.car, n);
+                    } else {
+                        bindings = proc_bindings(node.cdr.car);
+                        second = node.cdr.car;
+                    }
+                    return new Pair(
+                        node.car,
+                        new Pair(
+                            second,
+                            await traverse(node.cdr.cdr, n, env)
+                        )
+                    );
                 }
             }
             // TODO: CYCLE DETECT
@@ -4788,7 +4976,7 @@ function transform_syntax(options = {}) {
                                 // there are two cases ((a . b) ...) and (a ...)
                                 new_bind[key] = value;
                             };
-                            const car = transform_ellipsis_expr(
+                            let car = transform_ellipsis_expr(
                                 new_expr,
                                 bind,
                                 { nested: true },
@@ -4845,7 +5033,7 @@ function transform_syntax(options = {}) {
                         return result;
                     } else {
                         log('>> 3');
-                        const car = transform_ellipsis_expr(first, symbols, {
+                        let car = transform_ellipsis_expr(first, symbols, {
                             nested: true
                         });
                         if (car) {
@@ -4960,10 +5148,10 @@ function transform_syntax(options = {}) {
             }
             log({
                 a: true,
-                car: toString(expr.car),
-                cdr: toString(expr.cdr),
-                head: toString(head),
-                rest: toString(rest)
+                car: to_string(expr.car),
+                cdr: to_string(expr.cdr),
+                head: to_string(head),
+                rest: to_string(rest)
             });
             return new Pair(
                 head,
@@ -5014,6 +5202,27 @@ function is_false(o) {
 // ----------------------------------------------------------------------------
 function is_string(o) {
     return typeof o === 'string';
+}
+// ----------------------------------------------------------------------
+function is_lambda(obj) {
+    return obj && obj[__lambda__];
+}
+// ----------------------------------------------------------------------
+function is_method(obj) {
+    return obj && obj[__method__];
+}
+// ----------------------------------------------------------------------
+function is_raw_lambda(fn) {
+    return is_lambda(fn) && !fn[__prototype__] &&
+        !is_method(fn) && !is_port_method(fn);
+}
+// ----------------------------------------------------------------------
+function is_native_function(fn) {
+    var native = Symbol.for('__native__');
+    return is_function(fn) &&
+        fn.toString().match(/\{\s*\[native code\]\s*\}/) &&
+        ((fn.name.match(/^bound /) && fn[native] === true) ||
+         (!fn.name.match(/^bound /) && !fn[native]));
 }
 // ----------------------------------------------------------------------------
 function is_prototype(obj) {
@@ -5104,9 +5313,9 @@ function self_evaluated(obj) {
 }
 // -------------------------------------------------------------------------
 function is_native(obj) {
-    return obj instanceof LNumber ||
-        obj instanceof LString ||
-        obj instanceof LCharacter;
+    return obj && (obj instanceof LNumber ||
+                   obj instanceof LString ||
+                   obj instanceof LCharacter);
 }
 // -------------------------------------------------------------------------
 function has_own_symbol(obj, symbol) {
@@ -5279,6 +5488,13 @@ function filter_fn_names(name) {
     return !exluded_names.includes(name);
 }
 // ----------------------------------------------------------------------
+function enumerable(object, name, value) {
+    Object.defineProperty(object, name, {
+        value,
+        enumerable: true
+    });
+}
+// ----------------------------------------------------------------------
 function hidden_prop(obj, name, value) {
     Object.defineProperty(obj, Symbol.for(name), {
         get: () => value,
@@ -5305,27 +5521,6 @@ function set_fn_length(fn, length) {
             };`);
         return wrapper(fn);
     }
-}
-// ----------------------------------------------------------------------
-function is_lambda(obj) {
-    return obj && obj[__lambda__];
-}
-// ----------------------------------------------------------------------
-function is_method(obj) {
-    return obj && obj[__method__];
-}
-// ----------------------------------------------------------------------
-function is_raw_lambda(fn) {
-    return is_lambda(fn) && !fn[__prototype__] &&
-        !is_method(fn) && !is_port_method(fn);
-}
-// ----------------------------------------------------------------------
-function is_native_function(fn) {
-    var native = Symbol.for('__native__');
-    return is_function(fn) &&
-        fn.toString().match(/\{\s*\[native code\]\s*\}/) &&
-        ((fn.name.match(/^bound /) && fn[native] === true) ||
-         (!fn.name.match(/^bound /) && !fn[native]));
 }
 // ----------------------------------------------------------------------
 // :: function that return macro for let, let* and letrec
@@ -5588,17 +5783,15 @@ function LCharacter(char) {
     } else {
         name = LCharacter.__rev_names__[char];
     }
-    Object.defineProperty(this, '__char__', {
-        value: char,
-        enumerable: true
-    });
+    enumerable(this, '__char__', char);
     if (name) {
-        Object.defineProperty(this, '__name__', {
-            value: name,
-            enumerable: true
-        });
+        enumerable(this, '__name__', name);
     }
 }
+LCharacter.is = function(character, value) {
+    return character instanceof LCharacter &&
+        character.__char__ === value;
+};
 LCharacter.__names__ = characters;
 LCharacter.__rev_names__ = {};
 Object.keys(LCharacter.__names__).forEach(key => {
@@ -5654,6 +5847,10 @@ LString.prototype[Symbol.iterator] = function*() {
 };
 LString.prototype.serialize = function() {
     return this.valueOf();
+};
+LString.is = function(string, value) {
+    return string instanceof LString &&
+        string.__string__ === value;
 };
 LString.isString = function(x) {
     return x instanceof LString || typeof x === 'string';
@@ -5819,16 +6016,11 @@ function LNumber(n, force = false) {
         this.constant(n, 'integer');
     }
 }
+
 // -------------------------------------------------------------------------
 LNumber.prototype.constant = function(value, type) {
-    Object.defineProperty(this, '__value__', {
-        value,
-        enumerable: true
-    });
-    Object.defineProperty(this, '__type__', {
-        value: type,
-        enumerable: true
-    });
+    enumerable(this, '__value__', value);
+    enumerable(this, '__type__', type);
 };
 // -------------------------------------------------------------------------
 LNumber.types = {
@@ -5968,9 +6160,8 @@ LNumber.prototype.isBigNumber = function() {
     LNumber.prototype[fn] = function() {
         if (this.float || LNumber.isFloat(this.__value__)) {
             return LNumber(Math[fn](this.__value__));
-        } else {
-            return LNumber(Math[fn](this.valueOf()));
         }
+        return LNumber(Math[fn](this.valueOf()));
     };
 });
 // -------------------------------------------------------------------------
@@ -6196,8 +6387,8 @@ var pow = function(a, b) {
 // -------------------------------------------------------------------------
 // use native exponential operator if possible (it's way faster)
 // -------------------------------------------------------------------------
-var exp_op = new Function('a,b', 'return a ** b');
 try {
+    var exp_op = new Function('a,b', 'return a ** b');
     if (exp_op(2, 2) === 4) {
         pow = exp_op;
     }
@@ -6299,18 +6490,13 @@ LComplex.prototype = Object.create(LNumber.prototype);
 LComplex.prototype.constructor = LComplex;
 // -------------------------------------------------------------------------
 LComplex.prototype.constant = function(im, re) {
-    Object.defineProperty(this, '__im__', {
-        value: im,
-        enumerable: true
-    });
-    Object.defineProperty(this, '__re__', {
-        value: re,
-        enumerable: true
-    });
-    Object.defineProperty(this, '__type__', {
-        value: 'complex',
-        enumerable: true
-    });
+    enumerable(this, '__im__', im);
+    enumerable(this, '__re__', re);
+    enumerable(this, '__type__', 'complex');
+};
+// -------------------------------------------------------------------------
+LComplex.prototype.abs = function() {
+    return LNumber(this.modulus());
 };
 // -------------------------------------------------------------------------
 LComplex.prototype.serialize = function() {
@@ -6534,14 +6720,14 @@ LComplex.prototype.valueOf = function() {
 LComplex.prototype.toString = function() {
     var result;
     if (this.__re__.cmp(0) !== 0) {
-        result = [toString(this.__re__)];
+        result = [to_string(this.__re__)];
     } else {
         result = [];
     }
     // NaN and inf already have sign
     var im = this.__im__.valueOf();
     var inf = [Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY].includes(im);
-    var im_str = toString(this.__im__);
+    var im_str = to_string(this.__im__);
     if (!inf && !Number.isNaN(im)) {
         var zero_check = this.__im__.cmp(0);
         if (zero_check < 0 || (zero_check === 0 && this.__im__._minus)) {
@@ -6746,18 +6932,9 @@ LRational.prototype = Object.create(LNumber.prototype);
 LRational.prototype.constructor = LRational;
 // -------------------------------------------------------------------------
 LRational.prototype.constant = function(num, denom) {
-    Object.defineProperty(this, '__num__', {
-        value: num,
-        enumerable: true
-    });
-    Object.defineProperty(this, '__denom__', {
-        value: denom,
-        enumerable: true
-    });
-    Object.defineProperty(this, '__type__', {
-        value: 'rational',
-        enumerable: true
-    });
+    enumerable(this, '__num__', num);
+    enumerable(this, '__denom__', denom);
+    enumerable(this, '__type__', 'rational');
 };
 // -------------------------------------------------------------------------
 LRational.prototype.serialize = function() {
@@ -6770,7 +6947,7 @@ LRational.prototype.serialize = function() {
 LRational.prototype.pow = function(n) {
     if (LNumber.isRational(n)) {
         // nth root
-        return pow(this.valueOf(), n.valueOf());
+        return LNumber(pow(this.valueOf(), n.valueOf()));
     }
     var cmp = n.cmp(0);
     if (cmp === 0) {
@@ -6798,6 +6975,26 @@ LRational.prototype.sqrt = function() {
         return num.div(denom);
     }
     return LRational({ num, denom });
+};
+// -------------------------------------------------------------------------
+LRational.prototype.quotient = function() {
+    const num = this.__num__;
+    const denom = this.__denom__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+        if (denom.cmp(0) === 0) {
+            throw new Error("quotient: division by zero");
+        }
+        const div = num / denom;
+        if (LNumber.isBigInteger(div)) {
+            return div;
+        }
+        if (div > 0) {
+            return Math.floor(div);
+        } else {
+            return Math.ceil(div);
+        }
+    }
+    throw new Error('quotient: Invalid argument');
 };
 // -------------------------------------------------------------------------
 LRational.prototype.abs = function() {
@@ -6851,9 +7048,61 @@ LRational.prototype.valueOf = function(exact) {
         return Number.POSITIVE_INFINITY;
     }
     if (exact) {
-        return LNumber._ops['/'](this.__num__.value, this.__denom__.value);
+        const num = this.__num__.__value__;
+        const denom = this.__denom__.__value__;
+        return LNumber(LNumber._ops['/'](num, denom));
     }
     return LFloat(this.__num__.valueOf()).div(this.__denom__.valueOf());
+};
+// -------------------------------------------------------------------------
+LRational.prototype._rem_quot = function() {
+    const num = this.__num__.__value__;
+    const denom = this.__denom__.__value__;
+    const quotient = LNumber._ops['/'](num, denom);
+    const remainder = LNumber._ops['%'](num, denom);
+    return { remainder, quotient };
+};
+// -------------------------------------------------------------------------
+LRational.prototype.floor = function() {
+    const num = this.__num__.__value__;
+    const denom = this.__denom__.__value__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+        const { remainder, quotient } = this._rem_quot();
+        if (quotient < 0 && remainder !== 0) {
+            if (LNumber.isBigInteger(quotient)) {
+                return LNumber(quotient - 1n);
+            }
+            return LNumber(quotient - 1);
+        }
+        return LNumber(quotient);
+    }
+    return LNumber(Math.floor(this.valueOf()));
+};
+// -------------------------------------------------------------------------
+LRational.prototype.round = function() {
+    const num = this.__num__.__value__;
+    const denom = this.__denom__.__value__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+        const { quotient } = this._rem_quot();
+        return LNumber(quotient);
+    }
+    return LNumber(Math.round(this.valueOf()));
+};
+// -------------------------------------------------------------------------
+LRational.prototype.ceil = function() {
+    const num = this.__num__.__value__;
+    const denom = this.__denom__.__value__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+        const { remainder, quotient } = this._rem_quot();
+        if (quotient > 0 && remainder !== 0) {
+            if (LNumber.isBigInteger(quotient)) {
+                return LNumber(quotient + 1n);
+            }
+            return LNumber(quotient + 1);
+        }
+        return LNumber(quotient);
+    }
+    return LNumber(Math.ceil(this.valueOf()));
 };
 // -------------------------------------------------------------------------
 LRational.prototype.mul = function(n) {
@@ -7036,7 +7285,7 @@ function InputPort(read, env = global_env) {
         if (!this.char_ready()) {
             const line = await this._read();
             parser = new Parser({ env });
-            parser.parse(line);
+            parser.prepare(line);
         }
         return this.__parser__;
     });
@@ -7188,7 +7437,7 @@ function OutputFilePort(filename, fd) {
     read_only(this, '__type__', text_port);
     this.write = (x) => {
         if (!LString.isString(x)) {
-            x = toString(x);
+            x = to_string(x);
         } else {
             x = x.valueOf();
         }
@@ -7237,7 +7486,7 @@ function InputStringPort(string, env = global_env) {
     this._with_parser = this._with_init_parser.bind(this, () => {
         if (!this.__parser__) {
             this.__parser__ = new Parser({ env });
-            this.__parser__.parse(string);
+            this.__parser__.prepare(string);
         }
         return this.__parser__;
     });
@@ -7532,8 +7781,16 @@ Interpreter.prototype.exec = async function(arg, options = {}) {
     if (Array.isArray(arg)) {
         return exec(arg, { env, dynamic_env, use_dynamic });
     } else {
-        this.__parser__.parse(arg);
-        return exec(this.__parser__, { env, dynamic_env, use_dynamic });
+        try {
+            this.__parser__.prepare(arg);
+            return await exec(this.__parser__, { env, dynamic_env, use_dynamic });
+        } catch(e) {
+            if (!e.message?.includes('at line')) {
+                const location = ` at line ${this.__parser__.get_line() + 1}`;
+                e.message += location;
+            }
+            throw e;
+        }
     }
 };
 // -------------------------------------------------------------------------
@@ -7734,7 +7991,7 @@ function Values(values) {
     this.__values__ = values;
 }
 Values.prototype.toString = function() {
-    return this.__values__.map(x => toString(x)).join('\n');
+    return this.__values__.map(x => to_string(x)).join('\n');
 };
 Values.prototype.valueOf = function() {
     return this.__values__;
@@ -7826,10 +8083,7 @@ Environment.prototype.constant = function(name, value) {
             this.constant(name, obj[key]);
         });
     } else {
-        Object.defineProperty(this.__env__, name, {
-            value,
-            enumerable: true
-        });
+        enumerable(this.__env__, name, value);
     }
     return this;
 };
@@ -7887,6 +8141,7 @@ Unquote.prototype.toString = function() {
 const native_lambda = _parse(tokenize(`(lambda ()
                                         "[native code]"
                                         (throw "Invalid Invocation"))`))[0];
+
 // -------------------------------------------------------------------------------
 var get = doc('get', function get(object, ...args) {
     var value;
@@ -7972,8 +8227,8 @@ var internal_env = new Environment({
     'space-unicode-regex': /\s/u
 }, undefined, 'internal');
 // ----------------------------------------------------------------------
-var nan = LNumber(NaN);
-var constants = {
+const nan = LNumber(NaN);
+const constants = {
     '#t': true,
     '#f': false,
     '#true': true,
@@ -8200,10 +8455,7 @@ var global_env = new Environment({
         }
     }), `(help object)
 
-         This macro returns documentation for a function or macro.
-         You can save the function or macro in a variable and use it
-         here. But getting help for a variable requires passing the
-         variable in a \`quote\`.`),
+         This macro returns documentation for a function, macro, or a variable.`),
     // ------------------------------------------------------------------
     cons: doc('cons', function cons(car, cdr) {
         return new Pair(car, cdr);
@@ -8503,9 +8755,12 @@ var global_env = new Environment({
             // next value of variables
             while (!is_nil(node)) {
                 const item = node.car;
+                const name = item.car.valueOf();
                 if (!is_nil(item.cdr.cdr)) {
                     const value = await evaluate(item.cdr.cdr.car, eval_args);
-                    next[item.car.valueOf()] = value;
+                    next[name] = value;
+                } else {
+                    next[name] = scope.get(name);
                 }
                 node = node.cdr;
             }
@@ -9042,64 +9297,28 @@ var global_env = new Environment({
          and return single expression as output.`),
     // ------------------------------------------------------------------
     'define-macro': doc(new Macro(macro, function(macro, { use_dynamic, error }) {
-        if (is_pair(macro.car) && macro.car.car instanceof LSymbol) {
-            var name = macro.car.car.__name__;
-            var __doc__;
-            if (LString.isString(macro.cdr.car) && is_pair(macro.cdr.cdr)) {
-                __doc__ = macro.cdr.car.valueOf();
+        let name, __doc__, body, args;
+        if (is_named_macro(macro)) {
+            name = macro.car.car.__name__;
+            body = macro.cdr;
+            args = macro.car.cdr;
+        } if (is_lambda_macro(macro)) {
+            name = macro.car.__name__;
+            const lambda = macro.cdr.car;
+            args = lambda.cdr.car;
+            body = lambda.cdr.cdr;
+        }
+        if (name && body && args) {
+            if (LString.isString(body.car) && is_pair(body.cdr)) {
+                __doc__ = body.car.valueOf();
+                body = body.cdr;
             }
-            var makro_instance = Macro.defmacro(name, function(code) {
-                var env = new Environment({}, this, 'defmacro');
-                var name = macro.car.cdr;
-                var arg = code;
-                while (true) {
-                    if (is_nil(name)) {
-                        break;
-                    }
-                    if (name instanceof LSymbol) {
-                        env.__env__[name.__name__] = arg;
-                        break;
-                    } else if (!is_nil(name.car)) {
-                        if (is_nil(arg)) {
-                            env.__env__[name.car.__name__] = nil;
-                        } else {
-                            if (is_pair(arg.car)) {
-                                arg.car[__data__] = true;
-                            }
-                            env.__env__[name.car.__name__] = arg.car;
-                        }
-                    }
-                    if (is_nil(name.cdr)) {
-                        break;
-                    }
-                    if (!is_nil(arg)) {
-                        arg = arg.cdr;
-                    }
-                    name = name.cdr;
-                }
-                var eval_args = {
-                    env,
-                    dynamic_env: env,
-                    use_dynamic,
-                    error
-                };
-                // evaluate macro
-                if (is_pair(macro.cdr)) {
-                    // this eval will return lips code
-                    var rest = __doc__ ? macro.cdr.cdr : macro.cdr;
-                    var result = rest.reduce(function(result, node) {
-                        return evaluate(node, eval_args);
-                    });
-                    return unpromise(result, function(result) {
-                        if (typeof result === 'object') {
-                            delete result[__data__];
-                        }
-                        return result;
-                    });
-                }
-            }, __doc__, true);
-            makro_instance.__code__ = new Pair(new LSymbol('define-macro'), macro);
-            this.set(name, makro_instance);
+            const macro_instance = define_macro(name, args, body, __doc__, {
+                use_dynamic, error
+            });
+            this.set(name, macro_instance);
+        } else {
+            throw new Error('Syntax Error: Invalid `define-macro` expression');
         }
     }), `(define-macro (name . args) body)
 
@@ -9211,7 +9430,10 @@ var global_env = new Environment({
                     rules = rules.cdr;
                 }
             } catch (e) {
-                e.message += `\nin macro:\n  ${macro.toString(true)}`;
+                const location = `\nin macro:\n  ${macro.toString(true)}`;
+                if (!e.message.includes(location)) {
+                    e.message += location;
+                }
                 throw e;
             }
             throw new Error(`syntax-rules: no matching syntax in macro ${code.toString(true)}`);
@@ -9760,7 +9982,7 @@ var global_env = new Environment({
         Function that returns the first found index of the pattern inside a string.`),
     // ------------------------------------------------------------------
     repr: doc('repr', function repr(obj, quote) {
-        return toString(obj, quote);
+        return to_string(obj, quote);
     }, `(repr obj)
 
         Function that returns a LIPS code representation of the object as a string.`),
@@ -9794,7 +10016,13 @@ var global_env = new Environment({
         that are bound in the current environment or one of its parents.`),
     // ------------------------------------------------------------------
     'new': doc('new', function(obj, ...args) {
-        var instance = new (unbind(obj))(...args.map(x => unbox(x)));
+        const cls = unbind(obj);
+        let instance;
+        if (cls[Symbol.for("__class__")]) {
+            instance = new cls(...args);
+        } else {
+            instance = new cls(...args.map(x => unbox(x)));
+        }
         return instance;
     }, `(new obj . args)
 
@@ -10184,10 +10412,9 @@ var global_env = new Environment({
         Throws a new exception.`),
     // ------------------------------------------------------------------
     find: doc('find', function find(arg, list) {
-        typecheck('find', arg, ['regex', 'function']);
         typecheck('find', list, ['pair', 'nil']);
         if (is_null(list)) {
-            return nil;
+            return false;
         }
         var fn = matcher('find', arg);
         return unpromise(fn(list.car), function(value) {
@@ -10198,9 +10425,10 @@ var global_env = new Environment({
         });
     }, `(find fn list)
         (find regex list)
+        (find atom list)
 
         Higher-order function that finds the first value for which fn return true.
-        If called with a regex it will create a matcher function.`),
+        If called with a regex or any atom it will create a matcher function.`),
     // ------------------------------------------------------------------
     'for-each': doc('for-each', function(fn, ...lists) {
         typecheck('for-each', fn, 'function');
@@ -10509,8 +10737,64 @@ var global_env = new Environment({
     '**': doc('**', binary_math_op(function(a, b) {
         a = LNumber(a);
         b = LNumber(b);
-        if (b.cmp(0) === -1 && LNumber.isInteger(b)) {
-            return LRational({ num: 1, denom: a.pow(b.sub()) });
+        if (LNumber.isInteger(b)) {
+            const neg = b.cmp(0) === -1;
+            if (neg) {
+                b = b.sub();
+            }
+            if (LNumber.isRational(a)) {
+                if (neg) {
+                    const denom = a.__denom__.pow(b);
+                    if (a.__num__.cmp(1) === 0) {
+                        return denom;
+                    }
+                    const num = a.__num__.pow(b);
+                    return LRational({
+                        num: denom,
+                        denom: num
+                    });
+                }
+                return LRational({
+                    num: a.__num__.pow(b),
+                    denom: a.__denom__.pow(b)
+                });
+            }
+            if (neg) {
+                return LRational({ num: 1, denom: a.pow(b) });
+            }
+        }
+        if (LNumber.isRational(b) && a.cmp(0) === -1) {
+            const denom = b.__denom__;
+            const num = b.__num__;
+
+            // square root of negative value can create exact complex without
+            // real value
+            if (denom.cmp(2) === 0) {
+                let base = a.abs().pow(LRational({ num: 1, denom: 2 }));
+                [, base] = a.coerce(base); // get 3.0 when a == -9.0
+                if (b.cmp(0) === 1) {
+                    return LComplex({
+                        re: LNumber(0),
+                        im: base
+                    });
+                }
+                if (num.cmp(0) === -1) {
+                    return LComplex({
+                        re: LNumber(0),
+                        im: LRational({ num: -1, denom: base })
+                    });
+                }
+            }
+
+            // this will create complex float, that can have rounding errors
+            const exponent = b.valueOf();
+            const alpha = exponent * Math.PI;
+            const base = a.abs().pow(exponent);
+
+            const re = base.mul(Math.cos(alpha));
+            const im = base.mul(Math.sin(alpha));
+
+            return LComplex({ re, im });
         }
         [a, b] = a.coerce(b);
         return a.pow(b);
@@ -10541,7 +10825,7 @@ var global_env = new Environment({
     '==': doc('==', function(...args) {
         typecheck_args('==', args, 'number');
         return seq_compare((a, b) => LNumber(a).cmp(b) === 0, args);
-    }, `(== x1 x2 ...)
+    }, `(== x1 x2 ...)}
 
         Function that compares its numerical arguments and checks if they are
         all equal.`),
@@ -11461,7 +11745,7 @@ function exec_collect(collect_callback) {
         const input = Array.isArray(arg) ? arg : _parse(arg);
         for await (let code of input) {
             const value = await exec_with_stacktrace(code, { env, dynamic_env, use_dynamic });
-            results.push(collect_callback(code, await value));
+            results.push(collect_callback(code, value));
         }
         return results;
     };
@@ -12030,6 +12314,9 @@ export {
     serialize,
     unserialize,
 
+    box,
+    unbox,
+
     serialize_bin,
     unserialize_bin,
 
@@ -12100,6 +12387,9 @@ const lips = {
     serialize,
     unserialize,
 
+    box,
+    unbox,
+
     serialize_bin,
     unserialize_bin,
 
@@ -12156,4 +12446,5 @@ const lips = {
     Parameter,
     rationalize
 };
+export default lips;
 global_env.set('lips', lips);

@@ -82,6 +82,12 @@
 
 (unset-special! "#:num")
 
+(set-special! "*|" 'multply-inline)
+
+(define (multply-inline x) `(* ,@x))
+
+(define parser/t11 '*|(1 2 3)) ;; |
+
 (test "parser: #!fold-case"
       (lambda (t)
         (define foo 10)
@@ -223,11 +229,10 @@
 
 (test "parser: should throw an error on extra close paren"
       (lambda (t)
-        (t.is (try
+        (t.snapshot (try
                (lips.exec "(define x 10))")
                (catch (e)
-                      e.message))
-              "Parser: unexpected parenthesis")))
+                      e.message)))))
 
 (test "parser: should process line after comment without text #260"
       (lambda (t)
@@ -313,3 +318,28 @@
       (lambda (t)
         (let ((code "\"foo"))
           (t.is (to.throw (lips.tokenize code)) #t))))
+
+(test "parser: metadata"
+      (lambda (t)
+        (let* ((code "(define foo (lambda (x)
+                                    (let ((y (* x x)))
+                                      (+ x y))))")
+               (env lips.env)
+               (Parser lips.Parser)
+               (parse lips.parse)
+               (parser (new Parser (object :env env :meta true))))
+          (parser.prepare code)
+          (t.snapshot (parse parser)))))
+
+(test "parser: lonely cosing paren"
+      (lambda (t)
+        (t.snapshot (try (let* ((code "    )")
+                                (env lips.env)
+                                (parser (new lips.Parser (object :env env :meta true))))
+                           (parser.prepare code)
+                           (lips.parse parser))
+                         (catch (e) e)))))
+
+(test "parser: regex characters in syntax extension"
+      (lambda (t)
+        (t.is parser/t11 '(* 1 2 3))))

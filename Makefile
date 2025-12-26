@@ -29,7 +29,6 @@ ESLINT=./node_modules/.bin/eslint
 COVERALLS=./node_modules/.bin/coveralls
 JEST=./node_modules/.bin/jest
 MERMAID=./node_modules/.bin/mmdc
-NPM=npm
 UGLIFY=./node_modules/.bin/uglifyjs
 ROLLUP=./node_modules/.bin/rollup
 LIPS=./bin/lips.js
@@ -96,12 +95,12 @@ README.md: templates/README.md dist/lips.js .$(VERSION)
 
 publish-beta:
 	$(GIT) clone $(URL) --depth 1 npm
-	$(CD) npm && $(NPM) publish --tag beta
+	$(CD) npm && $(NPM) publish --access=public --tag beta
 	$(RM) -rf npm
 
 publish:
 	$(GIT) clone $(URL) --depth 1 npm
-	$(CD) npm && $(NPM) publish
+	$(CD) npm && $(NPM) publish --access=public
 	$(RM) -rf npm
 
 jest-test: dist/lips.js

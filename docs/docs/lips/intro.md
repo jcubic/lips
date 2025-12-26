@@ -353,6 +353,28 @@ As you can see the rational number got unboxed and converted into JavaScript flo
 Unboxing always can make you loose some information because LIPS types needs to be converted into native JavaScript
 data types. And JavaScript doesn't have a notion of rationals, there are only floating point numbers, and big ints.
 
+LIPS also unbox arguments when using new operator, but only for classes and functions created in JavaScript.
+It will not unbox the arguments when creating classes in LIPS. If you need unboxed values to use the objects
+with JavaScript you can unbox the arguments manually when creating a class:
+
+```scheme
+(define Person (class Object (constructor (lambda (self name age)
+                                            (set! self.name name)
+                                            (set! self.age age)))))
+
+(define jack (new Person 'Jack 27+i))
+(print jack.age)
+;; ==> 27+1i
+
+(define Person (class Object (constructor (lambda (self name age)
+                                            (set! self.name (lips.unbox name))
+                                            (set! self.age (lips.unbox age))))))
+
+(define jack (new Person 'Jack 27+i))
+(print jack.age)
+;; ==> #(27 1)
+```
+
 ### Procedures
 LIPS Scheme procedures are JavaScript functions, so you can call them from JavaScript.
 
@@ -550,8 +572,8 @@ You can use Scheme functions as callbacks to JavaScript functions:
 ;; ==> #(1 +nan.0 +nan.0)
 ```
 
-This is classic issue with functions that accept more than one argument. You have similar issue
-in JavaScript:
+This is a classic issue with functions that accept more than one argument.
+You have similar issue in JavaScript:
 
 ```javascript
 ["1", "2", "3"].map(parseInt)
@@ -628,8 +650,8 @@ In LIPS Scheme vectors are JavaScript arrays. So you can execute methods on them
 ```
 
 ### Object literals
-In LIPS you can define object literals with `&`
-[syntax extension](/docs/lips/extension#syntax-extensions):
+In LIPS you can define object literals with `&` [syntax
+extension](/docs/lips/extension#syntax-extensions):
 
 ```scheme
 (define obj &(:name "Jack" :age 22))

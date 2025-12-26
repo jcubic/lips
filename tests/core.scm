@@ -211,7 +211,7 @@
 (test "core: scheme signature"
       (lambda (t)
         ;; we should know about changing of signature
-        (load "./examples/scheme-detect.scm")
+        (load "@lips/examples/scheme-detect.scm")
 
         (t.is (detect:name) 'lips)))
 
@@ -755,6 +755,23 @@
       (lambda (t)
         (t.is (try (eval '(+ x x)) (catch (e) e.message))
               "Unbound variable `x'")))
+
+(test "core: quoted list mutation"
+      (lambda (t)
+        (let ((list '(1 2 3 4)))
+          (set-car! list 10)
+          (t.is list '(10 2 3 4)))))
+
+(test "core: freeze list"
+      (lambda (t)
+        (let ((lst '(1 2 3 4)))
+          (lst.freeze)
+          (let loop ((lst lst))
+            (when (not (null? lst))
+              (let ((item (car lst)))
+                (t.is (vector item (to.throw (set-car! lst 10)))
+                      (vector item true)))
+              (loop (cdr lst)))))))
 
 ;; TODO
 ;; begin*

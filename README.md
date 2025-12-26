@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.20-blue.svg)](https://www.npmjs.com/package/lips)
 ![1.0.0 Complete](https://img.shields.io/github/milestones/progress-percent/jcubic/lips/1?label=1.0.0%20Complete)
 [![Build and test](https://github.com/jcubic/lips/actions/workflows/build.yaml/badge.svg?branch=master&event=push)](https://github.com/jcubic/lips/actions/workflows/build.yaml)
-[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=master&dd93e2ed5fe4147ff629f2673e56de90)](https://coveralls.io/github/jcubic/lips?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=master&14b9db363d286307c956d41c19158d03)](https://coveralls.io/github/jcubic/lips?branch=master)
 [![Join Gitter Chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jcubic/lips)
 ![NPM Download Count](https://img.shields.io/npm/dm/lips)
 ![JSDelivr Download count](https://img.shields.io/jsdelivr/npm/hm/lips)
@@ -33,13 +33,13 @@ The name is a recursive acronym which stands for LIPS Is Pretty Simple.
 
 ## Features
 
-* Literal regular expression.
+* Literal regular expressions.
 * Asynchronous execution (auto resolving of promises).
 * Possibility to add new syntax (similar to vectors and object).
-* Numerical tower and Big Integer support.
+* Full numerical tower and Big Integer support.
 * Powerful introspection.
 * Great integration with JavaScript.
-* Auto formatting lisp of code (pretty print)
+* Code formatting (pretty print).
 * Lisp and hygienic Scheme macros and macroexpand.
 * Builtin help system.
 
@@ -47,7 +47,6 @@ The name is a recursive acronym which stands for LIPS Is Pretty Simple.
 
 To install you can use npm (or yarn)<br/>
 **NOTE:** The version that is on NPM is heavily outdated, use beta version:
-
 
 ```
 npm install lips@beta
@@ -287,6 +286,7 @@ They should be loaded as R7RS libraries in final 1.0.0 version
 | Procedures and Syntax for Multiple Values | [SRFI-210](https://srfi.schemers.org/srfi-210/) |
 | Evaluating expressions in an unspecified order | [SRFI-236](https://srfi.schemers.org/srfi-236) |
 | Destructuring Lists | [SRFI 239](https://srfi.schemers.org/srfi-239/) |
+| Uninterned Symbols | [SRFI 258](https://srfi.schemers.org/srfi-258/) |
 
 in Web (e.g. in Web REPL) you can also use full URL:
 
