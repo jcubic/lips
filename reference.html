@@ -9,7 +9,7 @@
 
 
 <script crossorigin="anonymous" src="https://js.sentry-cdn.com/c6868ced9c228b7da5e50196c0ab2f14@o4508899181723648.ingest.de.sentry.io/4508899184607312.min.js"></script><link rel="stylesheet" href="/assets/css/styles.a8feca21.css">
-<script src="/assets/js/runtime~main.eaac1c39.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.6f3aaf82.js" defer="defer"></script>
 <script src="/assets/js/main.fd208b28.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -70,10 +70,10 @@ monotonically increasing, i.e. x1 &lt; x2 and x2 &lt; x3 and so on.</pre></li><l
 Function that left shifts the value a by value b bits.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="&lt;=">&lt;=<a href="#&lt;=" class="hash-link" aria-label="Direct link to &lt;=" title="Direct link to &lt;=">​</a></h2><pre>(&lt;= x1 x2 ...)
 
 Function that compares its numerical arguments and checks if they are
-monotonically nondecreasing, i.e. x1 &lt;= x2 and x2 &lt;= x3 and so on.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="=">=<a href="#=" class="hash-link" aria-label="Direct link to =" title="Direct link to =">​</a></h2><pre>(== x1 x2 ...)
+monotonically nondecreasing, i.e. x1 &lt;= x2 and x2 &lt;= x3 and so on.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="=">=<a href="#=" class="hash-link" aria-label="Direct link to =" title="Direct link to =">​</a></h2><pre>(== x1 x2 ...)}
 
 Function that compares its numerical arguments and checks if they are
-all equal.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="==">==<a href="#==" class="hash-link" aria-label="Direct link to ==" title="Direct link to ==">​</a></h2><pre>(== x1 x2 ...)
+all equal.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="==">==<a href="#==" class="hash-link" aria-label="Direct link to ==" title="Direct link to ==">​</a></h2><pre>(== x1 x2 ...)}
 
 Function that compares its numerical arguments and checks if they are
 all equal.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="&gt;">&gt;<a href="#&gt;" class="hash-link" aria-label="Direct link to &gt;" title="Direct link to &gt;">​</a></h2><pre>(&gt; x1 x2 x3 ...)
@@ -658,9 +658,10 @@ Higher-order function that calls `fn` for each element of the list
 and return a new list for only those elements for which fn returns
 a truthy value. If called with a regex it will create a matcher function.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="find">find<a href="#find" class="hash-link" aria-label="Direct link to find" title="Direct link to find">​</a></h2><pre>(find fn list)
 (find regex list)
+(find atom list)
 
 Higher-order function that finds the first value for which fn return true.
-If called with a regex it will create a matcher function.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="finite?">finite?<a href="#finite?" class="hash-link" aria-label="Direct link to finite?" title="Direct link to finite?">​</a></h2><pre>(finite? x)
+If called with a regex or any atom it will create a matcher function.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="finite?">finite?<a href="#finite?" class="hash-link" aria-label="Direct link to finite?" title="Direct link to finite?">​</a></h2><pre>(finite? x)
 
 Checks if value is finite.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="flatten">flatten<a href="#flatten" class="hash-link" aria-label="Direct link to flatten" title="Direct link to flatten">​</a></h2><pre>(flatten list)
 
@@ -716,14 +717,18 @@ escape sequences in its inputs:
 * ~~ literal tilde &#x27;~&#x27;
 
 If there are missing inputs or other escape characters it
-will error.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="function?">function?<a href="#function?" class="hash-link" aria-label="Direct link to function?" title="Direct link to function?">​</a></h2><pre>(function? expression)
+will error.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="freeze-list!">freeze-list!<a href="#freeze-list!" class="hash-link" aria-label="Direct link to freeze-list!" title="Direct link to freeze-list!">​</a></h2><pre>(freeze-list! list)
+
+Function make the whole list read only. It mutates the list and returns #void.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="freeze-prop!">freeze-prop!<a href="#freeze-prop!" class="hash-link" aria-label="Direct link to freeze-prop!" title="Direct link to freeze-prop!">​</a></h2><pre>(freeze-prop! object property)
+
+Function make an object property read only.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="function?">function?<a href="#function?" class="hash-link" aria-label="Direct link to function?" title="Direct link to function?">​</a></h2><pre>(function? expression)
 
 Predicate that tests if value is a callable function.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="gcd">gcd<a href="#gcd" class="hash-link" aria-label="Direct link to gcd" title="Direct link to gcd">​</a></h2><pre>(gcd n1 n2 ...)
 
 Function that returns the greatest common divisor of the arguments.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="gensym">gensym<a href="#gensym" class="hash-link" aria-label="Direct link to gensym" title="Direct link to gensym">​</a></h2><pre>(gensym)
 
 Generates a unique symbol that is not bound anywhere,
-to use with macros as meta name.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="gensym-interal">gensym-interal<a href="#gensym-interal" class="hash-link" aria-label="Direct link to gensym-interal" title="Direct link to gensym-interal">​</a></h2><pre>(gensym-interal symbol)
+to use with macros as meta name.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="gensym-literal">gensym-literal<a href="#gensym-literal" class="hash-link" aria-label="Direct link to gensym-literal" title="Direct link to gensym-literal">​</a></h2><pre>(gensym-literal symbol)
 
 Parser extension that creates a new quoted named gensym.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="gensym?">gensym?<a href="#gensym?" class="hash-link" aria-label="Direct link to gensym?" title="Direct link to gensym?">​</a></h2><pre>(gensym? value)
 
@@ -758,10 +763,7 @@ JavaScript files only.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LW
  Macro will get the value of the expression and add each method as function
  to global scope.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="help">help<a href="#help" class="hash-link" aria-label="Direct link to help" title="Direct link to help">​</a></h2><pre>(help object)
 
-This macro returns documentation for a function or macro.
-You can save the function or macro in a variable and use it
-here. But getting help for a variable requires passing the
-variable in a `quote`.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="http-get">http-get<a href="#http-get" class="hash-link" aria-label="Direct link to http-get" title="Direct link to http-get">​</a></h2><pre>(http-get url)
+This macro returns documentation for a function, macro, or a variable.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="http-get">http-get<a href="#http-get" class="hash-link" aria-label="Direct link to http-get" title="Direct link to http-get">​</a></h2><pre>(http-get url)
 
 Node.js function that sends a HTTP Request and returns a string or
 binary Buffer object.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="identity">identity<a href="#identity" class="hash-link" aria-label="Direct link to identity" title="Direct link to identity">​</a></h2><pre>(identity n)
@@ -1121,7 +1123,9 @@ Simple function for adding promises to NodeJS two-callback based functions.
 Function tested only with fs module.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="prototype?">prototype?<a href="#prototype?" class="hash-link" aria-label="Direct link to prototype?" title="Direct link to prototype?">​</a></h2><pre>(prototype? obj)
 
 Predicate that tests if value is a valid JavaScript prototype,
-i.e. calling (new) with it will not throw &#x27;&lt;x&gt; is not a constructor&#x27;.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="qsort">qsort<a href="#qsort" class="hash-link" aria-label="Direct link to qsort" title="Direct link to qsort">​</a></h2><pre>(qsort list predicate)
+i.e. calling (new) with it will not throw &#x27;&lt;x&gt; is not a constructor&#x27;.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="pseudo-random-seed">pseudo-random-seed<a href="#pseudo-random-seed" class="hash-link" aria-label="Direct link to pseudo-random-seed" title="Direct link to pseudo-random-seed">​</a></h2><pre>(pseudo-random-seed)
+
+Generate a new pseudo random seed for random.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="qsort">qsort<a href="#qsort" class="hash-link" aria-label="Direct link to qsort" title="Direct link to qsort">​</a></h2><pre>(qsort list predicate)
 
 Sorts the list using the quick sort algorithm according to predicate.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="quasiquote">quasiquote<a href="#quasiquote" class="hash-link" aria-label="Direct link to quasiquote" title="Direct link to quasiquote">​</a></h2><pre>(quasiquote list)
 
@@ -1168,7 +1172,7 @@ the step needs to be negative otherwise it will hang in an infinite loop.</pre><
 Checks if the value is rational.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="rationalize">rationalize<a href="#rationalize" class="hash-link" aria-label="Direct link to rationalize" title="Direct link to rationalize">​</a></h2><pre>(rationalize number tolerance)
 
 Returns simplest rational number approximation differing from number by no more
-than the tolerance.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="read">read<a href="#read" class="hash-link" aria-label="Direct link to read" title="Direct link to read">  ​</a></h2><pre>(read [port])
+than the tolerance.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="read">read<a href="#read" class="hash-link" aria-label="Direct link to read" title="Direct link to read">​</a></h2><pre>(read [port])
 
 This function, if called with a port, it will parse the next
 item from the port. If called without an input, it will read
@@ -1354,7 +1358,7 @@ Function that returns the square root of the number.</pre></li><li><h2 class="an
 Returns the square of z. This is equivalent to (* z z).</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="string">string<a href="#string" class="hash-link" aria-label="Direct link to string" title="Direct link to string">​</a></h2><pre>(string chr1 chr2 ...)
 
 Function that creates a new string from it&#x27;s arguments. Each argument
-needs to be a character object.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="string-&gt;list">string-&gt;list<a href="#string-&gt;list" class="hash-link" aria-label="Direct link to string-&gt;list" title="Direct link to string-&gt;list">  ​</a></h2><pre>(string-&gt;list string)
+needs to be a character object.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="string-&gt;list">string-&gt;list<a href="#string-&gt;list" class="hash-link" aria-label="Direct link to string-&gt;list" title="Direct link to string-&gt;list">​</a></h2><pre>(string-&gt;list string)
 
 Returns a list of characters created from string.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="string-&gt;number">string-&gt;number<a href="#string-&gt;number" class="hash-link" aria-label="Direct link to string-&gt;number" title="Direct link to string-&gt;number">​</a></h2><pre>(string-&gt;number number [radix])
 
@@ -1572,7 +1576,7 @@ Returns n value of values object which is result of value function.</pre></li><l
 
 Macro for defining vectors (Javascript Arrays). Vector literals are
 automatically quoted, so you can&#x27;t use expressions inside them, only other
-literals, like other vectors or objects.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="vector-&gt;list">vector-&gt;list<a href="#vector-&gt;list" class="hash-link" aria-label="Direct link to vector-&gt;list" title="Direct link to vector-&gt;list">​</a></h2><pre>(vector-&gt;list vector)
+literals, like other vectors or objects.</pre></li><li><h2 class="anchor anchorWithStickyNavbar_LWe7" id="vector-&gt;list">vector-&gt;list<a href="#vector-&gt;list" class="hash-link" aria-label="Direct link to vector-&gt;list" title="Direct link to vector-&gt;list"> ​</a></h2><pre>(vector-&gt;list vector)
 (vector-&gt;list vector start)
 (vector-&gt;list vector start end)
 
