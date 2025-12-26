@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Tue, 10 Jun 2025 14:19:23 +0000
+ * build: Fri, 26 Dec 2025 19:01:08 +0000
  */
 
 (function (global, factory) {
@@ -14288,7 +14288,7 @@
                   error: error
                 };
                 _loop3 = /*#__PURE__*/_regeneratorRuntime.mark(function _loop3() {
-                  var node, next, _item, value, symbols;
+                  var node, next, _item, name, value, symbols;
                   return _regeneratorRuntime.wrap(function _loop3$(_context21) {
                     while (1) switch (_context21.prev = _context21.next) {
                       case 0:
@@ -14303,30 +14303,35 @@
                         next = {}; // next value of variables
                       case 5:
                         if (is_nil(node)) {
-                          _context21.next = 15;
+                          _context21.next = 19;
                           break;
                         }
                         _item = node.car;
+                        name = _item.car.valueOf();
                         if (is_nil(_item.cdr.cdr)) {
-                          _context21.next = 12;
+                          _context21.next = 15;
                           break;
                         }
-                        _context21.next = 10;
+                        _context21.next = 11;
                         return _evaluate(_item.cdr.cdr.car, eval_args);
-                      case 10:
+                      case 11:
                         value = _context21.sent;
-                        next[_item.car.valueOf()] = value;
-                      case 12:
+                        next[name] = value;
+                        _context21.next = 16;
+                        break;
+                      case 15:
+                        next[name] = scope.get(name);
+                      case 16:
                         node = node.cdr;
                         _context21.next = 5;
                         break;
-                      case 15:
+                      case 19:
                         symbols = Object.getOwnPropertySymbols(next); // new scope for new iteration
                         eval_args.env = scope = self.inherit('do');
                         Object.keys(next).concat(symbols).forEach(function (key) {
                           scope.set(key, next[key]);
                         });
-                      case 18:
+                      case 22:
                       case "end":
                         return _context21.stop();
                     }
@@ -17753,10 +17758,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Tue, 10 Jun 2025 14:19:23 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Fri, 26 Dec 2025 19:01:08 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Tue, 10 Jun 2025 14:19:23 +0000').valueOf();
+    var date = LString('Fri, 26 Dec 2025 19:01:08 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -17796,7 +17801,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Tue, 10 Jun 2025 14:19:23 +0000';
+  var date = 'Fri, 26 Dec 2025 19:01:08 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

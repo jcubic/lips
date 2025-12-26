@@ -8755,9 +8755,12 @@ var global_env = new Environment({
             // next value of variables
             while (!is_nil(node)) {
                 const item = node.car;
+                const name = item.car.valueOf();
                 if (!is_nil(item.cdr.cdr)) {
                     const value = await evaluate(item.cdr.cdr.car, eval_args);
-                    next[item.car.valueOf()] = value;
+                    next[name] = value;
+                } else {
+                    next[name] = scope.get(name);
                 }
                 node = node.cdr;
             }

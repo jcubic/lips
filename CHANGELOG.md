@@ -33,6 +33,7 @@
 * fix parsing with meta data [#453](https://github.com/jcubic/lips/issues/453)
 * fix formatting of code with single line comments [#458](https://github.com/jcubic/lips/issues/458)
 * fix rounding on big int rationals
+* fix scope variables in `do` macro [#468](https://github.com/jcubic/lips/issues/468)
 
 ## 1.0.0-beta.20
 ### Feature
