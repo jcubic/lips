@@ -70,6 +70,8 @@ function test_brackets() {
 process.on('uncaughtException', function (err) {
     log_error(err.message);
     log_error(err.stack);
+    console.error(err.message);
+    console.error(err.stack);
 });
 
 // -----------------------------------------------------------------------------
@@ -444,10 +446,13 @@ if (options.version || options.V) {
     var continue_prompt = '... ';
     var terminal = !!process.stdin.isTTY && !(process.env.EMACS || process.env.INSIDE_EMACS);
     buffer = make_buffer(process.stdout);
+    const history_size = Number(env.LIPS_REPL_HISTORY_SIZE);
+    const history_size_valid = !Number.isNaN(history_size) && history_size > 0;
     rl = readline.createInterface({
         input: process.stdin,
         output: buffer,
         prompt: prompt,
+        historySize: history_size_valid ? historySize : 1000,
         terminal
     });
     rl.on('close', () => {
@@ -456,12 +461,6 @@ if (options.version || options.V) {
             buffer.flush('\n');
         }, 10);
     });
-    const historySize = Number(env.LIPS_REPL_HISTORY_SIZE);
-    if (!Number.isNaN(historySize) && historySize > 0) {
-        rl.historySize = historySize;
-    } else {
-        rl.historySize = 1000;
-    }
     setupHistory(rl, terminal ? env.LIPS_REPL_HISTORY : '', run_repl);
 }
 
