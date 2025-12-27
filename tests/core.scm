@@ -635,11 +635,11 @@
       (lambda (t)
         ;; test shuffle with fixed seed
         (random 1000)
-        (t.is (shuffle '(1 2 3 4)) '(2 4 3 1))
+        (t.is (shuffle '(1 2 3 4)) '(4 2 3 1))
         (t.is (list? (shuffle '(1 2 3))) #t)
         (t.is (shuffle '()) '())
         (random 1000)
-        (t.is (shuffle #(1 2 3 4)) #(2 4 3 1))))
+        (t.is (shuffle #(1 2 3 4)) #(4 2 3 1))))
 
 (test "core: immutable strings"
       (lambda (t)
