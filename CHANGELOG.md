@@ -1,3 +1,7 @@
+## 1.0.0-beta.22
+### Bugfix
+* fix doc string for `make-rectangular`
+
 ## 1.0.0-beta.21
 ### Breaking
 * `(range n 0 -1)` don't include 0 like in Python [#442](https://github.com/jcubic/lips/issues/442)
