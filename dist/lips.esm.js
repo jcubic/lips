@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 02 Jan 2026 17:55:09 +0000
+ * build: Fri, 02 Jan 2026 18:35:58 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -3873,7 +3873,8 @@ function parse_float(arg) {
     if (is_int(value) && Number.isSafeInteger(value) && parse.number.match(/e\+?[0-9]/i)) {
       return LNumber(value);
     }
-    // calculate big int and big fraction by hand - it don't fit into JS float
+    // calculate big int and big fraction by hand
+    // it doesn't fit into JS float
     var _parse_big_int = parse_big_int(parse.number),
       mantisa = _parse_big_int.mantisa,
       exponent = _parse_big_int.exponent;
@@ -3889,7 +3890,13 @@ function parse_float(arg) {
       }
     }
   }
+  var inf = value == Infinity;
   value = LFloat(value);
+  if (inf) {
+    console.log({
+      value: value
+    });
+  }
   if (parse.exact) {
     return value.toRational();
   }
@@ -8814,7 +8821,8 @@ function seq_compare(fn, args) {
     var _rest = rest,
       _rest2 = _slicedToArray(_rest, 1),
       b = _rest2[0];
-    if (!fn(a, b)) {
+    var result = fn(a, b);
+    if (Number.isNaN(result) || !result) {
       return false;
     }
     var _rest3 = rest;
@@ -11720,6 +11728,9 @@ LNumber.prototype.cmp = function (n) {
     a = _this$coerce6[0],
     b = _this$coerce6[1];
   function cmp(a, b) {
+    if (Number.isNaN(a.__value__) || Number.isNaN(b.__value__)) {
+      return NaN;
+    }
     if (a.__value__ < b.__value__) {
       return -1;
     } else if (a.__value__ === b.__value__) {
@@ -13717,8 +13728,8 @@ var constants = _objectSpread({
   '#f': false,
   '#true': true,
   '#false': false,
-  '+inf.0': Number.POSITIVE_INFINITY,
-  '-inf.0': Number.NEGATIVE_INFINITY,
+  '+inf.0': LNumber(Number.POSITIVE_INFINITY),
+  '-inf.0': LNumber(Number.NEGATIVE_INFINITY),
   '+nan.0': nan,
   '-nan.0': nan
 }, parsable_contants);
@@ -16493,7 +16504,14 @@ function typecheck_number(fn, arg, expected) {
 // -------------------------------------------------------------------------
 function typecheck_numbers(fn, args, expected) {
   args.forEach(function (arg, i) {
-    typecheck_number(fn, arg, expected, i + 1);
+    try {
+      typecheck_number(fn, arg, expected, i + 1);
+    } catch (e) {
+      console.log({
+        arg: arg
+      });
+      throw e;
+    }
   });
 }
 
@@ -17751,10 +17769,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Fri, 02 Jan 2026 17:55:09 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Fri, 02 Jan 2026 18:35:57 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Fri, 02 Jan 2026 17:55:09 +0000').valueOf();
+  var date = LString('Fri, 02 Jan 2026 18:35:57 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17794,7 +17812,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Fri, 02 Jan 2026 17:55:09 +0000';
+var date = 'Fri, 02 Jan 2026 18:35:57 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

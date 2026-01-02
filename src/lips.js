@@ -466,7 +466,8 @@ function parse_float(arg) {
             parse.number.match(/e\+?[0-9]/i)) {
             return LNumber(value);
         }
-        // calculate big int and big fraction by hand - it don't fit into JS float
+        // calculate big int and big fraction by hand
+        // it doesn't fit into JS float
         const { mantisa, exponent } = parse_big_int(parse.number);
         if (mantisa !== undefined && exponent !== undefined) {
             const factor = LNumber(10).pow(LNumber(Math.abs(exponent)));
@@ -3856,7 +3857,8 @@ function seq_compare(fn, args) {
     var [a, ...rest] = args;
     while (rest.length > 0) {
         var [b] = rest;
-        if (!fn(a, b)) {
+        const result = fn(a, b);
+        if (Number.isNaN(result) || !result) {
             return false;
         }
         [a, ...rest] = rest;
@@ -6443,6 +6445,9 @@ LNumber.prototype.isEven = function() {
 LNumber.prototype.cmp = function(n) {
     const [a, b] = this.coerce(n);
     function cmp(a, b) {
+        if (Number.isNaN(a.__value__) || Number.isNaN(b.__value__)) {
+            return NaN;
+        }
         if (a.__value__ < b.__value__) {
             return -1;
         } else if (a.__value__ === b.__value__) {
@@ -8233,8 +8238,8 @@ const constants = {
     '#f': false,
     '#true': true,
     '#false': false,
-    '+inf.0': Number.POSITIVE_INFINITY,
-    '-inf.0': Number.NEGATIVE_INFINITY,
+    '+inf.0': LNumber(Number.POSITIVE_INFINITY),
+    '-inf.0': LNumber(Number.NEGATIVE_INFINITY),
     '+nan.0': nan,
     '-nan.0': nan,
     ...parsable_contants
@@ -11214,7 +11219,12 @@ function typecheck_number(fn, arg, expected, position = null) {
 // -------------------------------------------------------------------------
 function typecheck_numbers(fn, args, expected) {
     args.forEach((arg, i) => {
-        typecheck_number(fn, arg, expected, i + 1);
+        try {
+            typecheck_number(fn, arg, expected, i + 1);
+        } catch(e) {
+            console.log({arg});
+            throw e;
+        }
     });
 }
 

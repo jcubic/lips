@@ -1,6 +1,8 @@
 ## 1.0.0-beta.22
 ### Bugfix
 * fix doc string for `make-rectangular`
+* `-inf.0`/`+inf.0` are now real lips numbers
+* fix boolean operation on `+nan.0` [#472](https://github.com/jcubic/lips/issues/472)
 
 ## 1.0.0-beta.21
 ### Breaking
