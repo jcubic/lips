@@ -44,6 +44,7 @@ export default [
             name: "lips",
             file: "dist/lips.js",
             format: "umd",
+            exports: "named",
             banner,
             manualChunks: () => 'everything.js'
         },
@@ -54,6 +55,7 @@ export default [
             name: "lips",
             file: "dist/lips.cjs",
             format: "cjs",
+            exports: "named",
             banner,
             manualChunks: () => 'everything.js'
         },

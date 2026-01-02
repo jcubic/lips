@@ -2188,7 +2188,7 @@
 
 ;; -----------------------------------------------------------------------------
 (define (make-rectangular re im)
-  "(make-rectangular im re)
+  "(make-rectangular re im)
 
    Creates a complex number from imaginary and real part (a+bi form)."
   (let ((value `((re . ,re) (im . ,im))))

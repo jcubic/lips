@@ -173,7 +173,7 @@
 (define numbers? (curry typecheck-args "number"))
 (define (max . args) "(max n1 n2 ...)\u000A\u000AReturns the maximum of its arguments." (numbers? "max" args) (apply Math.max args))
 (define (min . args) "(min n1 n2 ...)\u000A\u000AReturns the minimum of its arguments." (numbers? "min" args) (apply Math.min args))
-(define (make-rectangular re im) "(make-rectangular im re)\u000A\u000ACreates a complex number from imaginary and real part (a+bi form)." (let ((value (quasiquote ((re unquote re) (im unquote im))))) (lips.LComplex (--> value (to_object true)))))
+(define (make-rectangular re im) "(make-rectangular re im)\u000A\u000ACreates a complex number from imaginary and real part (a+bi form)." (let ((value (quasiquote ((re unquote re) (im unquote im))))) (lips.LComplex (--> value (to_object true)))))
 (define (exact? n) "(exact? n)" (typecheck "exact?" n "number") (let ((type n.__type__)) (or (string=? type "bigint") (string=? type "rational") (and (string=? type "complex") (exact? n.__im__) (exact? n.__re__)))))
 (define (inexact? n) "(inexact? n)" (typecheck "inexact?" n "number") (not (exact? n)))
 (define (exact->inexact n) "(exact->inexact n)\u000A\u000AConvert exact number to inexact." (typecheck "exact->inexact" n "number") (if (%number-type "complex" n) (lips.LComplex (object :im (exact->inexact (. n (quote __im__))) :re (exact->inexact (. n (quote __re__))))) (if (or (rational? n) (integer? n)) (lips.LFloat (--> n (valueOf)) true) n)))
