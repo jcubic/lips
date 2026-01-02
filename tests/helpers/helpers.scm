@@ -23,22 +23,22 @@
 (define (round-number x . rest)
   "(round-number x)
 
-  Rounds float numbers to a given numbers of digits after decimal point.
-  This fixes an aissue with V8 in Node 24 which increased presition."
-  (let ((presition (if (null? rest) 10 (car rest))))
+  Rounds float numbers to a 10 numbers after decimal point.
+  This fixes the aissue with V8 in Node 24."
+  (let ((precision (if (null? rest) 10 (car rest))))
     (if (number? x)
         (cond ((string=? x.__type__ "float")
-               (round-fixed x presition))
+               (round-fixed x precision))
               ((and (string=? x.__type__ "complex")
                     (string=? x.__im__.__type__ "float")
                     (string=? x.__re__.__type__ "float"))
-               (make-rectangular (round-fixed x.__re__ presition)
-                                 (round-fixed x.__im__ presition)))
+               (make-rectangular (round-fixed x.__re__ precision)
+                                 (round-fixed x.__im__ precision)))
               ((and (string=? x.__type__ "complex")
                     (= x.__re__ 0)
                     (string=? x.__im__.__type__ "float"))
                (make-rectangular 0
-                                 (round-fixed x.__im__ presition)))
+                                 (round-fixed x.__im__ precision)))
               (else x))
         x)))
 
@@ -46,10 +46,28 @@
   "(round-fixed x)
 
    Rounds a number to a given presition"
-  (let* ((presition (if (null? rest) 14 (car rest)))
-         (factor (** 10 presition)))
-    (/ (Math.round (* x factor))
-       (exact->inexact factor))))
+  (let* ((precision (if (null? rest) 14 (car rest)))
+         (factor (** 10 precision)))
+    (if (big-float? x)
+        (let-values (((int float) (split-number x)))
+          (+ int (round-fixed float 4))) ;; arbitrary precision
+        (/ (Math.round (* x factor))
+           (exact->inexact factor)))))
+
+(define (big-float? x)
+  (and (number? x)
+       (string=? x.__type__ "float")
+       (not (infinite? x))
+       (not (nan? x))
+       (> (abs x) 1000))) ;; arbitrary big number
+
+(define (split-number x)
+  "(split-number x)
+
+   Split float number into integer and fraction value."
+  (let* ((a (Math.round x))
+         (b (- x a)))
+    (values a b)))
 
 (define-macro (to.throw . body)
   "(to.throw code)
