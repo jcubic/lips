@@ -1533,9 +1533,13 @@ class Parser {
         const stdin = internal.get('stdin');
         global_env.set('lips',  { ...lips, __parser__: this });
         internal.set('stdin', new ParserInputPort(this, this.__env__));
-        const cleanup = () => {
+        const cleanup = (error) => {
             global_env.set('lips', lips);
             internal.set('stdin', stdin);
+            if (error) {
+                // don't swallow errors from async syntax extensions #470
+                throw error;
+            }
         }
         return unpromise(fn(), (result) => {
             cleanup();
@@ -1790,6 +1794,7 @@ class Parser {
                         args = object.to_array(false);
                     }
                     if (args || is_symbol) {
+                        
                         return this._with_syntax_scope(() => {
                             return call_function(extension, is_symbol ? [] : args, {
                                 env: this.__env__,

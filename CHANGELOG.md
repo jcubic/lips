@@ -3,6 +3,7 @@
 * fix doc string for `make-rectangular`
 * `-inf.0`/`+inf.0` are now real lips numbers
 * fix boolean operation on `+nan.0` [#472](https://github.com/jcubic/lips/issues/472)
+* fix swallowed errors in async syntax extensions [#470](https://github.com/jcubic/lips/issues/470)
 
 ## 1.0.0-beta.21
 ### Breaking
