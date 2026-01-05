@@ -242,7 +242,7 @@ You can also define your own hash syntax:
 
 :::warning
 
-If you try to use '(#zero) without defining the constant, you will get an error, because hash is the syntax for [vector](/scheme-intro/data-types/#vectors) literals.
+If you try to use '(#zero) without defining the constant, you will get an error, because hash is the syntax for [vector](/docs/scheme-intro/data-types#vectors) literals.
 
 :::
 
