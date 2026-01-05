@@ -202,12 +202,49 @@ This will define constant `#nil`. It's different from `nil` variable:
 (eq? (car '(nil)) (car '(#nil)))
 ;; ==> #f
 (symbol? (car '(nil)))
-;; ==> #f
+;; ==> #t
 (symbol? (car '(#nil)))
 ;; ==> #f
 (eq? (car '(#nil)) '())
 ;; ==> #t
 ```
+
+You can define a [macro](#macro) that will define a constant:
+
+```scheme
+(define-macro (define-constant name value)
+  (let ((function-name (gensym "syntax")))
+    `(begin
+       (define (,function-name) ,value)
+       (set-special! ,name ',function-name lips.specials.SYMBOL))))
+```
+
+And you can use it as:
+
+```scheme
+(print '(zero))
+;; ==> (zero)
+
+(define-constant "zero" 0)
+
+(print '(zero))
+;; ==> '(0)
+```
+
+You can also define your own hash syntax:
+
+```scheme
+(define-constant "#zero" 0)
+
+(print '(#zero))
+;; ==> '(0)
+```
+
+:::warning
+
+If you try to use '(#zero) without defining the constant, you will get an error, because hash is the syntax for [vector](/scheme-intro/data-types/#vectors) literals.
+
+:::
 
 ### Autogensyms
 
@@ -231,8 +268,13 @@ This allow to create named [gensyms](/docs/lips/intro#gensyms) that are unique:
 ;; ==> #f
 ```
 
-You can use them with lisp macros instead of `gensym` expressions. The autogensyms are actually part
-of the standard library.
+You can use them with lisp macros instead of `gensym` expressions.
+
+:::tip
+
+The autogensyms are actually part of the standard library.
+
+:::
 
 ### String interpolation
 
