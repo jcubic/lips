@@ -188,7 +188,7 @@ The last type of syntax extensions are symbols they don't accept any arguments a
 define parser constants.
 
 ```scheme
-(set-special! "nil" 'nil-fn lips.specials.SYMBOL)
+(set-special! "#nil" 'nil-fn lips.specials.SYMBOL)
 (define (nil-fn) '())
 ```
 
