@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.21-blue.svg)](https://www.npmjs.com/package/lips)
 ![1.0.0 Complete](https://img.shields.io/github/milestones/progress-percent/jcubic/lips/1?label=1.0.0%20Complete)
 [![Build and test](https://github.com/jcubic/lips/actions/workflows/build.yaml/badge.svg?branch=master&event=push)](https://github.com/jcubic/lips/actions/workflows/build.yaml)
-[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=master&14b9db363d286307c956d41c19158d03)](https://coveralls.io/github/jcubic/lips?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=master&0496d868b30892b4af288606c85ba936)](https://coveralls.io/github/jcubic/lips?branch=master)
 [![Join Gitter Chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jcubic/lips)
 ![NPM Download Count](https://img.shields.io/npm/dm/lips)
 ![JSDelivr Download count](https://img.shields.io/jsdelivr/npm/hm/lips)
@@ -357,7 +357,7 @@ I would also love to see if you use the library, I may even share the links of p
 * The rationalize algorithm is based on [Kawa Scheme](https://www.gnu.org/software/kawa/index.html) by Per M.A. Bothner, Alan Bawden and Marc Feeley.
 * `ucs2decode` function taken from [punycode.js](https://github.com/bestiejs/punycode.js) by [Mathias Bynens](https://mathiasbynens.be/).
 * [Rosetta Code](https://rosettacode.org/) was used for:
-  * [gdc](https://rosettacode.org/wiki/Greatest_common_divisor#JavaScript),
+  * [gcd](https://rosettacode.org/wiki/Greatest_common_divisor#JavaScript),
   * [lcm](https://rosettacode.org/wiki/Least_common_multiple#JavaScript),
   * [LFloat::toRational](https://rosettacode.org/wiki/Convert_decimal_number_to_rational).
 * [StackOverlow](https://stackoverflow.com) code was used for functions:

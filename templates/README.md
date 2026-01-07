@@ -357,7 +357,7 @@ I would also love to see if you use the library, I may even share the links of p
 * The rationalize algorithm is based on [Kawa Scheme](https://www.gnu.org/software/kawa/index.html) by Per M.A. Bothner, Alan Bawden and Marc Feeley.
 * `ucs2decode` function taken from [punycode.js](https://github.com/bestiejs/punycode.js) by [Mathias Bynens](https://mathiasbynens.be/).
 * [Rosetta Code](https://rosettacode.org/) was used for:
-  * [gdc](https://rosettacode.org/wiki/Greatest_common_divisor#JavaScript),
+  * [gcd](https://rosettacode.org/wiki/Greatest_common_divisor#JavaScript),
   * [lcm](https://rosettacode.org/wiki/Least_common_multiple#JavaScript),
   * [LFloat::toRational](https://rosettacode.org/wiki/Convert_decimal_number_to_rational).
 * [StackOverlow](https://stackoverflow.com) code was used for functions:
