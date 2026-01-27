@@ -15,7 +15,7 @@ export default function Acknowledgment(): JSX.Element {
           <li><code>ucs2decode</code> function taken from <a href="https://github.com/bestiejs/punycode.js">punycode.js</a> by <a href="https://mathiasbynens.be/">Mathias Bynens</a>.</li>
           <li><a href="https://rosettacode.org/">Rosetta Code</a> was used for:
             <ul dir="auto">
-              <li><a href="https://rosettacode.org/wiki/Greatest_common_divisor#JavaScript">gdc</a>,</li>
+              <li><a href="https://rosettacode.org/wiki/Greatest_common_divisor#JavaScript">gcd</a>,</li>
               <li><a href="https://rosettacode.org/wiki/Least_common_multiple#JavaScript">lcm</a>,</li>
               <li><a href="https://rosettacode.org/wiki/Convert_decimal_number_to_rational">LFloat::toRational</a>.</li>
             </ul>
