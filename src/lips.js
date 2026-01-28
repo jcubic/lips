@@ -1794,7 +1794,6 @@ class Parser {
                         args = object.to_array(false);
                     }
                     if (args || is_symbol) {
-                        
                         return this._with_syntax_scope(() => {
                             return call_function(extension, is_symbol ? [] : args, {
                                 env: this.__env__,
