@@ -81,7 +81,6 @@ let fs, path, nodeRequire;
 
 const BN = root.BN;
 
-/* eslint-disable */
 /* c8 ignore next 32 */
 function contentLoaded(win, fn) {
     var done = false, top = true,
@@ -129,7 +128,7 @@ function log(x, ...args) {
         }));
     }
 }
-/* eslint-enable */
+
 // ----------------------------------------------------------------------
 /* c8 ignore next */
 function is_debug(n = null) {
@@ -139,8 +138,7 @@ function is_debug(n = null) {
     }
     return debug?.valueOf() === n.valueOf();
 }
-/* eslint-enable */
-/* eslint-disable max-len */
+
 // functions generate regexes to match number rational, integer, complex, complex+rational
 function num_mnemicic_re(mnemonic) {
     return mnemonic ? `(?:#${mnemonic}(?:#[ie])?|#[ie]#${mnemonic})` : '(?:#[ie])?';
@@ -287,7 +285,7 @@ const complex_bare_re = new RegExp('^(?:' + gen_complex_re('', '[0-9a-f]') + ')$
 const complex_bare_match_re = make_complex_match_re('', '[0-9a-fA-F]');
 
 const pre_num_parse_re = /((?:#[xodbie]){0,2})(.*)/i;
-/* eslint-enable */
+
 function num_pre_parse(arg) {
     var parts = arg.match(pre_num_parse_re);
     var options = {};
@@ -2250,9 +2248,7 @@ Formatter.defaults = {
     indent: 2,
     exceptions: {
         specials: [
-            /* eslint-disable max-len */
             /^(?:#:)?(?:define(?:-values|-syntax|-macro|-class|-record-type)?|(?:call-with-(?:input-file|output-file|port))|lambda|let-env|try|catch|when|unless|while|syntax-rules|(let|letrec)(-syntax|\*?-values|\*)?)$/
-            /* eslint-enable */
         ],
         shift: {
             1: ['&', '#']
@@ -2420,9 +2416,7 @@ const let_value = new Pattern([p_o, Symbol.for('symbol'), glob, p_e], '+');
 const syntax_rules = keywords_re('syntax-rules');
 // rules for breaking S-Expressions into lines
 const def_lambda_re = keywords_re('define', 'lambda', 'define-macro', 'syntax-rules');
-/* eslint-disable max-len */
 const non_def = /^(?!.*\b(?:[()[\]]|define(?:-macro)?|let(?:\*|rec|-env|-syntax|)?|lambda|syntax-rules)\b).*$/;
-/* eslint-enable */
 const let_re = /^(?:#:)?(let(?:\*|rec|-env|-syntax)?)$/;
 // match keyword if it's normal token or gensym (prefixed with #:)
 const comment_re = /^;.*/;
@@ -3693,7 +3687,6 @@ function mark_cycles(pair) {
 // ----------------------------------------------------------------------
 // Trampoline based recursive pair to string that don't overflow the stack
 // ----------------------------------------------------------------------
-/* eslint-disable no-unused-vars */
 /* c8 ignore next */
 const pair_to_string = (function() {
     const prefix = (pair, nested) => {
@@ -4286,7 +4279,7 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
     // in loop we add x to the list so we know that this is not
     // duplicated ellipsis symbol
     log(symbols);
-    /* eslint-disable complexity */
+
     function traverse(pattern, code, state = {}) {
         const { ellipsis = false, trailing = false, pattern_names = [] } = state;
         log({
@@ -4642,7 +4635,7 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
             return false;
         }
     }
-    /* eslint-enable complexity */
+
     if (traverse(pattern, code)) {
         return bindings;
     }
@@ -4896,7 +4889,7 @@ function transform_syntax(options = {}) {
     function get_names(object) {
         return Object.keys(object).concat(Object.getOwnPropertySymbols(object));
     }
-    /* eslint-disable complexity */
+
     function traverse(expr, { disabled } = {}) {
         log('traverse>> ', expr);
         const is_array = Array.isArray(expr);
@@ -10092,9 +10085,7 @@ var global_env = new Environment({
          Function that returns the type of an object as string.`),
     // ------------------------------------------------------------------
     'debugger': doc('debugger', function() {
-        /* eslint-disable */
         debugger;
-        /* eslint-enable */
     }, `(debugger)
 
         Function that triggers the JavaScript debugger (e.g. the browser devtools)
@@ -11291,9 +11282,7 @@ function memoize(fn) {
     };
 }
 // -------------------------------------------------------------------------
-/* eslint-disable no-func-assign */
 type = memoize(type);
-/* eslint-enable no-func-assign */
 // -------------------------------------------------------------------------
 function type(obj) {
     let t = type_constants.get(obj);
