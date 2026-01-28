@@ -1017,7 +1017,7 @@ var specials = {
     append: function(name, value, type) {
         this.__list__[name] = {
             seq: name,
-            symbol: value,
+            value,
             type
         };
         this.trigger('append');
@@ -1667,10 +1667,69 @@ class Parser {
     _is_comment(token) {
         return token.match(/^;/) || (token.match(/^#\|/) && token.match(/\|#$/));
     }
-    evaluate(code) {
-        return evaluate(code, { env: this.__env__, error: (e) => {
+    async invoke_special(special, object, is_symbol) {
+        if (typeof special.value === 'function') {
+            let args;
+            if (is_literal(special.seq)) {
+                args = [object];
+            } else if (is_nil(object)) {
+                args = [];
+            } else if (is_pair(object)) {
+                args = object.to_array(false);
+            }
+            if (args || is_symbol) {
+                return this._with_syntax_scope(() => {
+                    return call_function(special.value, is_symbol ? [] : args, {
+                        env: this.__env__,
+                        dynamic_env: this.__env__,
+                        use_dynamic: false
+                    });
+                });
+            }
+            const msg = `Parse Error: Invalid parser extension ${special.seq}`;
+            const e = new Error(msg);
+            this._agument_exception(e);
             throw e;
-        } });
+        } else if (special.value instanceof Macro) {
+            let code = object;
+            if (is_literal(special.seq)) {
+                code = Pair(code, nil);
+            }
+            if (special.value instanceof Syntax) {
+                code = Pair(
+                    LSymbol('Extension'),
+                    Pair(
+                        code,
+                        nil
+                    )
+                );
+            }
+            const eval_args = {
+                env: this.__env__,
+                error: (e) => {
+                    throw e;
+                }
+            };
+            const result = await this._with_syntax_scope(() => {
+                if (special.value instanceof Syntax) {
+                    return evaluate_syntax(special.value, code, eval_args);
+                } else if (special.value  instanceof Macro) {
+                    return evaluate_macro(special.value, code, eval_args);
+                }
+            });
+            // We need literal quotes to make that macro's return pairs works
+            // because after the parser returns the value it will be evaluated
+            // again by the interpreter, so we create quoted expressions.
+            if (is_pair(result) || result instanceof LSymbol) {
+                return Pair.fromArray([LSymbol('quote'), result]);
+            }
+            return result;
+        } else {
+            const e = new Error('Parse Error: invalid parser extension: ' +
+                                type(special.value));
+            this._agument_exception(e);
+            throw e;
+        }
     }
     // public API that handle R7RS datum labels
     async read_object() {
@@ -1773,79 +1832,36 @@ class Parser {
             const special = specials.get(token.token);
             const builtin = is_builtin(token.token);
             this.skip();
-            let expr, extension;
+            let expr;
             const is_symbol = is_symbol_extension(token.token);
             const was_close_paren = this._is_close(await this._peek());
+            // expression passed to syntax extension
             const object = is_symbol ? undefined : await this._read_object();
             if (object === eof) {
                 throw new Unterminated('Expecting expression eof found');
             }
             if (!builtin) {
-                extension = this.__env__.get(special.symbol);
-                if (typeof extension === 'function') {
-                    let args;
-                    if (is_literal(token.token)) {
-                        args = [object];
-                    } else if (is_nil(object)) {
-                        args = [];
-                    } else if (is_pair(object)) {
-                        args = object.to_array(false);
-                    }
-                    if (args || is_symbol) {
-                        return this._with_syntax_scope(() => {
-                            return call_function(extension, is_symbol ? [] : args, {
-                                env: this.__env__,
-                                dynamic_env: this.__env__,
-                                use_dynamic: false
-                            });
-                        });
-                    }
-                    const e = new Error('Parse Error: Invalid parser extension ' +
-                                        `invocation ${special.symbol}`);
-                    this._agument_exception(e);
-                    throw e;
-                }
+                return this.invoke_special(special, object, is_symbol);
             }
+            // Built-in parser extensions just expand into lists like 'x ==> (quote x)
             if (is_literal(token.token)) {
                 if (was_close_paren) {
                     const e = new Error('Parse Error: expecting datum');
                     this._agument_exception(e);
                     throw e
                 }
-                expr = new Pair(
-                    special.symbol,
+                return new Pair(
+                    special.value,
                     new Pair(
                         object,
                         nil
                     )
                 );
             } else {
-                expr = new Pair(
-                    special.symbol,
+                return new Pair(
+                    special.value,
                     object
                 );
-            }
-            // Built-in parser extensions just expand into lists like 'x ==> (quote x)
-            if (builtin) {
-                return expr;
-            }
-            // Evaluate parser extension at parse time
-            if (extension instanceof Macro) {
-                var result = await this._with_syntax_scope(() => {
-                    return this.evaluate(expr);
-                });
-                // We need literal quotes to make that macro's return pairs works
-                // because after the parser returns the value it will be evaluated again
-                // by the interpreter, so we create quoted expressions.
-                if (is_pair(result) || result instanceof LSymbol) {
-                    return Pair.fromArray([LSymbol('quote'), result]);
-                }
-                return result;
-            } else {
-                const e = new Error('Parse Error: invalid parser extension: ' +
-                                    special.symbol);
-                this._agument_exception(e);
-                throw e;
             }
         }
         const ref = this._match_datum_ref(token);
@@ -10053,20 +10069,24 @@ var global_env = new Environment({
         Function that removes a special symbol from parser added by \`set-special!\`,
         name must be a string.`),
     // ------------------------------------------------------------------
-    'set-special!': doc('set-special!', function(seq, name, type = specials.LITERAL) {
+    'set-special!': doc('set-special!', function(seq, value, type = specials.LITERAL) {
         typecheck('set-special!', seq, 'string', 1);
-        typecheck('set-special!', name, 'symbol', 2);
-        specials.append(seq.valueOf(), name, type);
-    }, `(set-special! symbol name [type])
+        typecheck('set-special!', value, ['function', 'macro'], 2);
+        specials.append(seq.valueOf(), value, type);
+    }, `(set-special! seq value [type])
 
-        Add a special symbol to the list of transforming operators by the parser.
-        e.g.: \`(add-special! "#" 'x)\` will allow to use \`#(1 2 3)\` and it will be
-        transformed into (x (1 2 3)) so you can write x macro that will process
-        the list. 3rd argument is optional, and it can be one of two values:
-        lips.specials.LITERAL, which is the default behavior, or
-        lips.specials.SPLICE which causes the value to be unpacked into the expression.
-        This can be used for e.g. to make \`#(1 2 3)\` into (x 1 2 3) that is needed
-        by # that defines vectors.`),
+        Add a new syntax extension to the parser. When parser found the new seq string
+        in the input stream it will:
+        * when value is a symbol it will resolve the value from environment and invoke
+          the extension (which can be a function or macro)
+        * when the value is a function reference it will invoke the function
+
+        The arguments to the function depends on the type of extension:
+
+        * lips.specials.SYMBOL will not process the next tokens only call the extension
+        * lips.specials.LITERAL will read next expression and pass it as first argument
+        * lips.specials.SPLICE will read next expression which needs to be a list and
+          spread the list into the function arguments.`),
     // ------------------------------------------------------------------
     'get': get,
     '.': get,

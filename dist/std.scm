@@ -190,14 +190,14 @@
             `(. ,(string->symbol (car parts)) ,@(cdr parts))))))
 
 ;; -----------------------------------------------------------------------------
-(set-special! "#:" 'gensym-literal)
-
-;; -----------------------------------------------------------------------------
 (define (gensym-literal symbol)
   "(gensym-literal symbol)
 
    Parser extension that creates a new quoted named gensym."
   `(quote ,(gensym symbol)))
+
+;; -----------------------------------------------------------------------------
+(set-special! "#:" gensym-literal)
 
 ;; -----------------------------------------------------------------------------
 (define (plain-object? x)
@@ -356,8 +356,8 @@
          (console.error e.message))))))
 
 ;; -----------------------------------------------------------------------------
-(define-macro (object-literal . expr)
-  "(object-literal :name value)
+(define-macro (%object-literal . expr)
+  "(%object-literal list)
 
    Creates a JavaScript object using key like syntax. This is similar,
    to object but all values are quoted. This macro is used by the & object literal."
@@ -726,7 +726,7 @@
 ;; -----------------------------------------------------------------------------
 ;; add syntax &(:foo 10) that evaluates (object :foo 10)
 ;; -----------------------------------------------------------------------------
-(set-special! "&" 'object-literal lips.specials.SPLICE)
+(set-special! "&" %object-literal lips.specials.SPLICE)
 ;; -----------------------------------------------------------------------------
 (set-repr! Object
            (lambda (x q)
@@ -740,8 +740,6 @@
                      ")")))
 
 ;; -----------------------------------------------------------------------------
-(set-special! "#\"" '%string-interpolation lips.specials.SYMBOL)
-
 (define (%read-interpolated . rest)
   "(%read-interpolated [port])
 
@@ -790,6 +788,8 @@
                                  `(repr ,expr)))
                            (%read-interpolated)))))
 
+;; -----------------------------------------------------------------------------
+(set-special! "#\"" %string-interpolation lips.specials.SYMBOL)
 ;; -----------------------------------------------------------------------------
 (define (bound? x . rest)
   "(bound? x [env])
@@ -1144,11 +1144,11 @@
 ;; -----------------------------------------------------------------------------
 ;; mapping ~ and into longer form (the same as built-in , and ,@)
 ;; -----------------------------------------------------------------------------
-(set-special! "~" 'sxml-unquote-mapper)
-
-;; -----------------------------------------------------------------------------
 (define (sxml-unquote-mapper expression)
   `(sxml-unquote ,expression))
+
+;; -----------------------------------------------------------------------------
+(set-special! "~" sxml-unquote-mapper)
 
 ;; -----------------------------------------------------------------------------
 (define (sxml-unquote)
@@ -1414,16 +1414,16 @@
   (and (string=? (type x) "symbol") (not (symbol? x))))
 
 ;; -----------------------------------------------------------------------------
-(set-special! "’" 'warn-quote)
-
-;; -----------------------------------------------------------------------------
-(define-macro (warn-quote)
+(define (%warn-quote)
   "(warn-quote)
 
    Simple macro that throws an error, when you try to use ’ symbol as quote in code."
   (throw (new Error (string-append "You're using an invalid Unicode quote character. Run: "
-                                   "(set-special! \"’\" 'quote)"
+                                   "(set-special! \"’\" quote)"
                                    " to allow the use of this type of quote"))))
+
+;; -----------------------------------------------------------------------------
+(set-special! "’" %warn-quote)
 
 ;; -----------------------------------------------------------------------------
 (define-macro (let-env-values env spec . body)
@@ -1842,10 +1842,10 @@
          (symbol (cadr spec))
          (args (cddr spec)))
      `(begin
-        (set-special! ,symbol ',name ,(string->symbol
-                                       (concat "lips.specials."
-                                               (symbol->string type))))
-        (define-macro (,name ,@args) ,@rest))))
+        (define (,name ,@args) ,@rest)
+        (set-special! ,symbol ,name ,(string->symbol
+                                      (concat "lips.specials."
+                                              (symbol->string type)))))))
 
 ;; -----------------------------------------------------------------------------
 ;; Vector literals syntax using parser syntax extensions
@@ -3499,7 +3499,7 @@
          (typecheck ,(symbol->string vector->tvector) vector "array")
          (,TypedArray.from vector))
        ;; -----------------------------------------------------------------------------
-       (set-special! ,repr-str ',type-vector lips.specials.SPLICE)
+       (set-special! ,repr-str ,type-vector lips.specials.SPLICE)
        ;; -----------------------------------------------------------------------------
        (set-repr! ,type
                   (lambda (x _quote)
