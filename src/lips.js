@@ -12702,4 +12702,5 @@ const lips = {
     Parameter,
     rationalize
 };
+export default lips;
 global_env.set('lips', lips);
