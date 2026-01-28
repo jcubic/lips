@@ -20,7 +20,7 @@
 ;;
 ;; source: https://srfi.schemers.org/srfi-10/srfi-10.html
 
-(set-special! "#," 'sharp-comma)
+(set-special! "#," sharp-comma)
 
 (define **reader-ctor-list** '())
 

@@ -123,7 +123,7 @@
          (typecheck ,(symbol->string vector->tvector) vector "array")
          (,TypedArray.from vector))
        ;; -----------------------------------------------------------------------------
-       (set-special! ,repr-str ',type-vector lips.specials.SPLICE)
+       (set-special! ,repr-str ,type-vector lips.specials.SPLICE)
        ;; -----------------------------------------------------------------------------
        (set-repr! ,type
                   (lambda (x _quote)

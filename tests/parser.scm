@@ -1,17 +1,17 @@
-(set-special! "<>" 'html lips.specials.SPLICE)
-
-(define-macro (html . args)
+(define (html . args)
   (let ((str (--> (list->array (map symbol->string args)) (join "+"))))
-    `(string-append "<" ,str "/>")))
+    (string-append "<" str "/>")))
+
+(set-special! "<>" html lips.specials.SPLICE)
 
 (define parser/t1 <>(foo bar))
 
 (unset-special! "<>")
 
-(set-special! "--" 'dash lips.specials.LITERAL)
-
-(define-macro (dash x)
+(define (dash x)
   `'(,(car x) . ,(cadr x)))
+
+(set-special! "--" dash lips.specials.LITERAL)
 
 (define parser/t2 --(foo bar baz))
 
@@ -19,23 +19,23 @@
 
 (define parser/t3 (. (lips.parse "(--)" (current-environment)) 0))
 
-(set-special! ":" 'keyword lips.specials.LITERAL)
+(define (keyword n)
+   (string->symbol (string-append ":" (symbol->string n))))
 
-(define-macro (keyword n)
-   `(string->symbol (string-append ":" (symbol->string ',n))))
+(set-special! ":" keyword lips.specials.LITERAL)
 
 (define parser/t4 :foo)
 
-(set-special! ":" 'keyword lips.specials.SPLICE)
+(define (keyword . n)
+   (string->symbol (string-append ":" (symbol->string n))))
 
-(define-macro (keyword . n)
-   `(string->symbol (string-append ":" (symbol->string ',n))))
+(set-special! ":" keyword lips.specials.SPLICE)
 
 (define parser/t5 :foo)
 
 (unset-special! ":")
 
-(set-special! "::" 'cube)
+(set-special! "::" cube)
 
 (define (cube x)
   (if (number? x)
@@ -48,14 +48,14 @@
 
 (unset-special! "::")
 
-(set-special! "#nil" 'nil-fn lips.specials.SYMBOL)
 (define (nil-fn) '())
+
+(set-special! "#nil" nil-fn lips.specials.SYMBOL)
 
 (define parser/t8 (list #nil #nil '#nil '#nil #nil))
 
 (unset-special! "#nil")
 
-(set-special! "$" 'raw-string lips.specials.SYMBOL)
 
 (define (raw-string)
   (if (char=? (peek-char) #\")
@@ -67,24 +67,27 @@
               (apply string (vector->list result))
               (loop (vector-append result (vector char)) (peek-char)))))))
 
+(set-special! "$" raw-string lips.specials.SYMBOL)
+
 (define parser/t9 $"foo \ bar")
 
 (unset-special! "$")
 
-(set-special! "#:num" 'line-num lips.specials.SYMBOL)
 
 (define (line-num)
   (let* ((lexer lips.__parser__.__lexer__)
          (token lexer.__token__))
     (+ token.col)))
 
+(set-special! "#:num" line-num lips.specials.SYMBOL)
+
 (define parser/t10 (list #:num #:num #:num #:num))
 
 (unset-special! "#:num")
 
-(set-special! "*|" 'multply-inline)
+(define (multply-inline x) (apply * x))
 
-(define (multply-inline x) `(* ,@x))
+(set-special! "*|" multply-inline)
 
 (define parser/t11 '*|(1 2 3)) ;; |
 
