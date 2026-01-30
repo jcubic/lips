@@ -1672,9 +1672,7 @@ class Parser {
             let args;
             if (is_literal(special.seq)) {
                 args = [object];
-            } else if (is_nil(object)) {
-                args = [];
-            } else if (is_pair(object)) {
+            } else if (is_pair(object) || is_nil(object)) {
                 args = object.to_array(false);
             }
             if (args || is_symbol) {
@@ -1686,12 +1684,13 @@ class Parser {
                     });
                 });
             }
-            const msg = `Parse Error: Invalid parser extension ${special.seq}`;
+            const msg = `Invalid syntax extension ${special.seq} expecting ` +
+                  `list got ${type(object)}`;
             const e = new Error(msg);
             this._augment_exception(e);
             throw e;
         } else if (special.value instanceof Macro) {
-            let code = object ?? nil;;
+            let code = object ?? nil;
             if (is_literal(special.seq)) {
                 code = Pair(code, nil);
             }
@@ -1704,7 +1703,8 @@ class Parser {
             const eval_args = {
                 env: this.__env__,
                 error: (e) => {
-                    throw e;
+                    const msg = `Error while executing syntax extension ${special.seq} `;
+                    throw new Error(msg + e.message);
                 }
             };
             const result = await this._with_syntax_scope(() => {
@@ -1722,7 +1722,7 @@ class Parser {
             }
             return result;
         } else {
-            const e = new Error('Parse Error: invalid parser extension: ' +
+            const e = new Error('Parse Error: invalid syntax extension: ' +
                                 type(special.value));
             this._augment_exception(e);
             throw e;

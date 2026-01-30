@@ -56,7 +56,6 @@
 
 (unset-special! "#nil")
 
-
 (define (raw-string)
   (if (char=? (peek-char) #\")
       (begin
@@ -116,6 +115,17 @@
 
 (unset-special! "#:num")
 
+(set-special! "$$" (lambda () 10) lips.specials.SPLICE)
+
+(define parser/t14 $$())
+
+(define-macro (macro)
+  `(begin
+     (Promise.resolve)
+     (+ "x" "y")))
+
+(set-special! "&&" macro)
+
 (test "parser: #!fold-case"
       (lambda (t)
         (define foo 10)
@@ -138,6 +148,7 @@
         (t.is parser/t7 '(let ((x 3)) (let ((.x x)) (* .x .x .x))))
         (t.is parser/t8 '(() () () () ()))
         (t.is parser/t9 "foo \\ bar")
+        (t.is parser/t14 10)
         (t.snapshot parser/t10)))
 
 (test "parser: escape hex literals"
@@ -376,3 +387,22 @@
       (lambda (t)
         (t.is (gensym? parser/t12) #t)
         (t.is parser/t13 19)))
+
+(test "parser: should throw in invalid splice syntax extension"
+      (lambda (t)
+        ;; exception from (lips.parse ...) was affecting other tests #483
+        (let ((throws (lambda (code)
+                        ((self.eval "(async (lips, code) => {
+                                       try {
+                                         await lips.parse('$$10');
+                                         return false;
+                                        } catch(e) {
+                                          return true;
+                                        }
+                                     })") lips code))))
+          (t.is (throws "$$10") #t)
+          (t.is (throws "&&10") #t))))
+
+(test "parser: xxx"
+      (lambda (t)
+        (t.is (to.throw (Promise.reject "xxx")) #t)))
