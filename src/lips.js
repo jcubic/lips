@@ -1718,7 +1718,7 @@ class Parser {
             // because after the parser returns the value it will be evaluated
             // again by the interpreter, so we create quoted expressions.
             if (is_pair(result) || result instanceof LSymbol) {
-                return Pair.fromArray([LSymbol('quote'), result]);
+                return Pair.from_array([LSymbol('quote'), result]);
             }
             return result;
         } else {
@@ -3074,7 +3074,7 @@ function to_array(name, deep) {
 }
 // ----------------------------------------------------------------------
 Pair.prototype.flatten = function() {
-    return Pair.fromArray(flatten(this.to_array()));
+    return Pair.from_array(flatten(this.to_array()));
 };
 // ----------------------------------------------------------------------
 Pair.prototype.length = function() {
@@ -3189,7 +3189,7 @@ Pair.prototype.to_array = function(deep = true) {
 // ----------------------------------------------------------------------
 // :: TODO: change to Pair.from_array
 // ----------------------------------------------------------------------
-Pair.fromArray = function(array, deep = true, quote = false) {
+Pair.from_array = function(array, deep = true, quote = false) {
     if (is_pair(array) || quote && array instanceof Array && array[__data__]) {
         return array;
     }
@@ -3208,7 +3208,7 @@ Pair.fromArray = function(array, deep = true, quote = false) {
     while (i--) {
         let car = array[i];
         if (car instanceof Array) {
-            car = Pair.fromArray(car, deep, quote);
+            car = Pair.from_array(car, deep, quote);
         } else if (typeof car === 'string') {
             car = LString(car);
         } else if (typeof car === 'number' && !Number.isNaN(car)) {
@@ -3810,7 +3810,7 @@ Pair.prototype.set = function(prop, value) {
 // ----------------------------------------------------------------------
 Pair.prototype.append = function(arg) {
     if (arg instanceof Array) {
-        return this.append(Pair.fromArray(arg));
+        return this.append(Pair.from_array(arg));
     }
     var p = this;
     if (p.car === undefined) {
@@ -4324,14 +4324,14 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
                     if (ellipsis) {
                         const count = code.length - 2;
                         const array_head = count > 0 ? code.slice(0, count) : code;
-                        const as_list = Pair.fromArray(array_head, false);
+                        const as_list = Pair.from_array(array_head, false);
                         if (!bindings['...'].symbols[name]) {
                             bindings['...'].symbols[name] = new Pair(as_list, nil);
                         } else {
                             bindings['...'].symbols[name].append(new Pair(as_list, nil));
                         }
                     } else {
-                        bindings['...'].symbols[name] = Pair.fromArray(code, false);
+                        bindings['...'].symbols[name] = Pair.from_array(code, false);
                     }
                 } else if (Array.isArray(pattern[0])) {
                     log('<<< a 3');
@@ -4718,7 +4718,7 @@ function transform_syntax(options = {}) {
                 const parts = name.split('.');
                 const first = parts[0];
                 if (first in bindings.symbols) {
-                    return Pair.fromArray([
+                    return Pair.from_array([
                         LSymbol('.'),
                         bindings.symbols[first]
                     ].concat(parts.slice(1).map(x => LString(x))));
@@ -4858,7 +4858,7 @@ function transform_syntax(options = {}) {
                         log('[t 2 Array ' + nested);
                         if (nested) {
                             next(name, item.slice(1));
-                            return Pair.fromArray(item);
+                            return Pair.from_array(item);
                         } else {
                             const rest = item.slice(1);
                             if (rest.length) {
@@ -5571,7 +5571,7 @@ function let_macro(symbol) {
                 args = code.cdr.car.map(pair => pair.cdr.car);
             }
             return new Pair(
-                Pair.fromArray([
+                Pair.from_array([
                     LSymbol('letrec'),
                     [[code.car, Pair(
                         LSymbol('lambda'),
@@ -8559,7 +8559,7 @@ var global_env = new Environment({
         const symbol = code.car;
         var ref = this.ref(symbol);
         if (ref) {
-            delete ref.__env__[symbol.__name__];
+            ref.unset(symbol);
         }
     }), `(unset! name)
 
@@ -9257,7 +9257,7 @@ var global_env = new Environment({
                     if (!is_nil(name.car)) {
                         if (name instanceof LSymbol) {
                             // rest argument,  can also be first argument
-                            const value = quote(Pair.fromArray(args.slice(i), false));
+                            const value = quote(Pair.from_array(args.slice(i), false));
                             set(name, value);
                             break;
                         } else if (is_pair(name)) {
@@ -9702,7 +9702,7 @@ var global_env = new Environment({
                                 const result = [];
                                 return (function recur(node) {
                                     if (is_nil(node)) {
-                                        return Pair.fromArray(result);
+                                        return Pair.from_array(result);
                                     }
                                     return unpromise(evaluate(node.car, {
                                         env: self,
@@ -9756,7 +9756,7 @@ var global_env = new Environment({
                                 // evaluate all values in unquote
                                 return (function recur(node) {
                                     if (is_nil(node)) {
-                                        return Pair.fromArray(result);
+                                        return Pair.from_array(result);
                                     }
                                     return unpromise(evaluate(node.car, {
                                         env: self,
@@ -10016,7 +10016,7 @@ var global_env = new Environment({
         const names = Object.keys(env.__env__).map(LSymbol);
         let result;
         if (names.length) {
-            result = Pair.fromArray(names);
+            result = Pair.from_array(names);
         } else {
             result = nil;
         }
@@ -10254,7 +10254,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'array->list': doc('array->list', function(array) {
         typecheck('array->list', array, 'array');
-        return Pair.fromArray(array);
+        return Pair.from_array(array);
     }, `(array->list array)
 
         Function that converts a JavaScript array to a LIPS cons list.`),
@@ -10591,7 +10591,7 @@ var global_env = new Environment({
                 return loop(++i);
             }
             if (i === array.length) {
-                return Pair.fromArray(result);
+                return Pair.from_array(result);
             }
             var item = array[i];
             return unpromise(fn(item), next);
