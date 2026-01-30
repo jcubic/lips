@@ -31,6 +31,8 @@ async function get_files() {
     });
 }
 
+let code;
+
 get_files().then(filenames => {
     return Promise.all(filenames.map(function(file) {
         return readFile(`tests/${file}`, 'utf8');
@@ -42,10 +44,17 @@ get_files().then(filenames => {
             (load "@lips/tests/helpers/helpers.scm"))
           (define test (require "ava"))
         `);
-        return exec(files.join('\n\n'));
+        code = files.join('\n\n');
+        return exec(code);
     });
 }).catch(e => {
     console.error(e.message);
     console.error(e.stack);
+    if (code && e.__line__) {
+        consoe.log(code.split('\n')[e.__line__]);
+    }
+    if (e.__code__) {
+        console.log(e.__code__.join('\n'));
+    }
 });
 

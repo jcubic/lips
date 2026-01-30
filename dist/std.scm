@@ -1842,7 +1842,7 @@
          (symbol (cadr spec))
          (args (cddr spec)))
      `(begin
-        (define (,name ,@args) ,@rest)
+        (define-macro (,name ,@args) ,@rest)
         (set-special! ,symbol ,name ,(string->symbol
                                       (concat "lips.specials."
                                               (symbol->string type)))))))

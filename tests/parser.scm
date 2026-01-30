@@ -1,6 +1,6 @@
-(define (html . args)
+(define-macro (html . args)
   (let ((str (--> (list->array (map symbol->string args)) (join "+"))))
-    (string-append "<" str "/>")))
+     `(string-append "<" ,str "/>")))
 
 (set-special! "<>" html lips.specials.SPLICE)
 
@@ -8,7 +8,7 @@
 
 (unset-special! "<>")
 
-(define (dash x)
+(define-macro (dash x)
   `'(,(car x) . ,(cadr x)))
 
 (set-special! "--" dash lips.specials.LITERAL)
@@ -19,15 +19,15 @@
 
 (define parser/t3 (. (lips.parse "(--)" (current-environment)) 0))
 
-(define (keyword n)
-   (string->symbol (string-append ":" (symbol->string n))))
+(define-macro (keyword n)
+   `(string->symbol (string-append ":" (symbol->string ',n))))
 
 (set-special! ":" keyword lips.specials.LITERAL)
 
 (define parser/t4 :foo)
 
-(define (keyword . n)
-   (string->symbol (string-append ":" (symbol->string n))))
+(define-macro (keyword . n)
+   `(string->symbol (string-append ":" (symbol->string ',n))))
 
 (set-special! ":" keyword lips.specials.SPLICE)
 
@@ -35,13 +35,13 @@
 
 (unset-special! ":")
 
-(set-special! "::" cube)
-
 (define (cube x)
   (if (number? x)
       (* x x x)
       `(let ((.x ,x))
          (* .x .x .x))))
+
+(set-special! "::" cube)
 
 (define parser/t6 (let ((x 3)) ::x))
 (define parser/t7 (. (lips.parse "(let ((x 3)) ::x)" (current-environment)) 0))
@@ -73,7 +73,6 @@
 
 (unset-special! "$")
 
-
 (define (line-num)
   (let* ((lexer lips.__parser__.__lexer__)
          (token lexer.__token__))
@@ -85,7 +84,7 @@
 
 (unset-special! "#:num")
 
-(define (multply-inline x) (apply * x))
+(define (multply-inline x) `(* ,@x))
 
 (set-special! "*|" multply-inline)
 
