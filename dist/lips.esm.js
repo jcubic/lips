@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Thu, 29 Jan 2026 21:43:34 +0000
+ * build: Fri, 30 Jan 2026 00:34:30 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -5389,19 +5389,19 @@ var Parser = /*#__PURE__*/function () {
             case 1:
               msg = "Parse Error: Invalid parser extension ".concat(special.seq);
               e = new Error(msg);
-              this._agument_exception(e);
+              this._augment_exception(e);
               throw e;
             case 2:
               if (!(special.value instanceof Macro)) {
                 _context7.next = 5;
                 break;
               }
-              code = object;
+              code = object !== null && object !== void 0 ? object : _nil;
               if (is_literal(special.seq)) {
                 code = Pair(code, _nil);
               }
               if (special.value instanceof Syntax) {
-                code = Pair(LSymbol('Extension'), Pair(code, _nil));
+                code = Pair(LSymbol('Extension'), code);
               }
               eval_args = {
                 env: this.__env__,
@@ -5428,7 +5428,7 @@ var Parser = /*#__PURE__*/function () {
               return _context7.abrupt("return", result);
             case 5:
               _e = new Error('Parse Error: invalid parser extension: ' + type(special.value));
-              this._agument_exception(_e);
+              this._augment_exception(_e);
               throw _e;
             case 6:
             case "end":
@@ -5503,12 +5503,12 @@ var Parser = /*#__PURE__*/function () {
         var re = new RegExp("\\){".concat(count, "}$"));
         e.__code__ = [expr.toString().replace(re, '')];
       }
-      this._agument_exception(e);
+      this._augment_exception(e);
       throw e;
     }
   }, {
-    key: "_agument_exception",
-    value: function _agument_exception(e) {
+    key: "_augment_exception",
+    value: function _augment_exception(e) {
       var token = this.__lexer__.__token__;
       if ('col' in token) {
         var col = token.col,
@@ -5694,7 +5694,7 @@ var Parser = /*#__PURE__*/function () {
                 break;
               }
               e = new Error('Parse Error: expecting datum');
-              this._agument_exception(e);
+              this._augment_exception(e);
               throw e;
             case 9:
               return _context1.abrupt("return", new Pair(special.value, new Pair(object, _nil)));
@@ -5714,7 +5714,7 @@ var Parser = /*#__PURE__*/function () {
               return _context1.abrupt("return", new DatumReference(ref, this._refs[ref]));
             case 12:
               _e2 = new Error("Parse Error: invalid datum label #".concat(ref, "#"));
-              this._agument_exception(_e2);
+              this._augment_exception(_e2);
               throw _e2;
             case 13:
               ref_label = this._match_datum_label(token);
@@ -15540,9 +15540,9 @@ var global_env = new Environment({
   'set-special!': doc('set-special!', function (seq, value) {
     var type = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : specials.LITERAL;
     typecheck('set-special!', seq, 'string', 1);
-    typecheck('set-special!', value, ['function', 'macro'], 2);
+    typecheck('set-special!', value, ['function', 'macro', 'syntax'], 2);
     specials.append(seq.valueOf(), value, type);
-  }, "(set-special! seq value [type])\n\n        Add a new syntax extension to the parser. When parser found the new seq string\n        in the input stream it will:\n        * when value is a symbol it will resolve the value from environment and invoke\n          the extension (which can be a function or macro)\n        * when the value is a function reference it will invoke the function\n\n        The arguments to the function depends on the type of extension:\n\n        * lips.specials.SYMBOL will not process the next tokens only call the extension\n        * lips.specials.LITERAL will read next expression and pass it as first argument\n        * lips.specials.SPLICE will read next expression which needs to be a list and\n          spread the list into the function arguments."),
+  }, "(set-special! seq value [type])\n\n        Add a new syntax extension to the parser. When parser found the new seq string\n        in the input stream it will invoke the function or a macro and return the output\n        at parse time.\n\n        The arguments to the function or macro depends on the type of extension:\n\n        * lips.specials.SYMBOL will not process the next tokens only call the extension\n        * lips.specials.LITERAL will read next expression and pass it as first argument\n        * lips.specials.SPLICE will read next expression which needs to be a list and\n          spread the list into the function arguments."),
   // ------------------------------------------------------------------
   'get': get,
   '.': get,
@@ -17826,10 +17826,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Thu, 29 Jan 2026 21:43:34 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Fri, 30 Jan 2026 00:34:30 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Thu, 29 Jan 2026 21:43:34 +0000').valueOf();
+  var date = LString('Fri, 30 Jan 2026 00:34:30 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17869,7 +17869,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Thu, 29 Jan 2026 21:43:34 +0000';
+var date = 'Fri, 30 Jan 2026 00:34:30 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
