@@ -50,9 +50,6 @@ get_files().then(filenames => {
 }).catch(e => {
     console.error(e.message);
     console.error(e.stack);
-    if (code && e.__line__) {
-        consoe.log(code.split('\n')[e.__line__]);
-    }
     if (e.__code__) {
         console.log(e.__code__.join('\n'));
     }

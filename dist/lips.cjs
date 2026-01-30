@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 30 Jan 2026 01:44:05 +0000
+ * build: Fri, 30 Jan 2026 15:23:08 +0000
  */
 
 'use strict';
@@ -5375,9 +5375,7 @@ var Parser = /*#__PURE__*/function () {
               }
               if (is_literal(special.seq)) {
                 args = [object];
-              } else if (is_nil(object)) {
-                args = [];
-              } else if (is_pair(object)) {
+              } else if (is_pair(object) || is_nil(object)) {
                 args = object.to_array(false);
               }
               if (!(args || is_symbol)) {
@@ -5392,7 +5390,7 @@ var Parser = /*#__PURE__*/function () {
                 });
               }));
             case 1:
-              msg = "Parse Error: Invalid parser extension ".concat(special.seq);
+              msg = "Invalid syntax extension ".concat(special.seq, " expecting ") + "list got ".concat(type(object));
               e = new Error(msg);
               this._augment_exception(e);
               throw e;
@@ -5411,7 +5409,8 @@ var Parser = /*#__PURE__*/function () {
               eval_args = {
                 env: this.__env__,
                 error: function error(e) {
-                  throw e;
+                  var msg = "Error while executing syntax extension ".concat(special.seq, " ");
+                  throw new Error(msg + e.message);
                 }
               };
               _context7.next = 3;
@@ -5432,7 +5431,7 @@ var Parser = /*#__PURE__*/function () {
             case 4:
               return _context7.abrupt("return", result);
             case 5:
-              _e = new Error('Parse Error: invalid parser extension: ' + type(special.value));
+              _e = new Error('Parse Error: invalid syntax extension: ' + type(special.value));
               this._augment_exception(_e);
               throw _e;
             case 6:
@@ -17831,10 +17830,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Fri, 30 Jan 2026 01:44:05 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Fri, 30 Jan 2026 15:23:08 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Fri, 30 Jan 2026 01:44:05 +0000').valueOf();
+  var date = LString('Fri, 30 Jan 2026 15:23:08 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17874,7 +17873,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Fri, 30 Jan 2026 01:44:05 +0000';
+var date = 'Fri, 30 Jan 2026 15:23:08 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

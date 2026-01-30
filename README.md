@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.21-blue.svg)](https://www.npmjs.com/package/lips)
 ![1.0.0 Complete](https://img.shields.io/github/milestones/progress-percent/jcubic/lips/1?label=1.0.0%20Complete)
 [![Build and test](https://github.com/jcubic/lips/actions/workflows/build.yaml/badge.svg?branch=feat/syntax-extensions-ref&event=push)](https://github.com/jcubic/lips/actions/workflows/build.yaml)
-[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=feat/syntax-extensions-ref&4421d9934aa551c19c17a05cb2b69885)](https://coveralls.io/github/jcubic/lips?branch=feat/syntax-extensions-ref)
+[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=feat/syntax-extensions-ref&38b8f6b6f1d3f9bdac54069fc91d6f95)](https://coveralls.io/github/jcubic/lips?branch=feat/syntax-extensions-ref)
 [![Join Gitter Chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jcubic/lips)
 ![NPM Download Count](https://img.shields.io/npm/dm/lips)
 ![JSDelivr Download count](https://img.shields.io/jsdelivr/npm/hm/lips)
