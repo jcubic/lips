@@ -10076,12 +10076,10 @@ var global_env = new Environment({
     }, `(set-special! seq value [type])
 
         Add a new syntax extension to the parser. When parser found the new seq string
-        in the input stream it will:
-        * when value is a symbol it will resolve the value from environment and invoke
-          the extension (which can be a function or macro)
-        * when the value is a function reference it will invoke the function
+        in the input stream it will invoke the function or a macro and return the output
+        at parse time.
 
-        The arguments to the function depends on the type of extension:
+        The arguments to the function or macro depends on the type of extension:
 
         * lips.specials.SYMBOL will not process the next tokens only call the extension
         * lips.specials.LITERAL will read next expression and pass it as first argument
