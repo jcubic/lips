@@ -1,6 +1,6 @@
 ## 1.0.0-beta.22
 ### Breaking
-* syntax extensions now expect a refence to a function or a macro
+* syntax extensions now expect a reference to a function or a macro
 ### Bugfix
 * fix doc string for `make-rectangular`
 * `-inf.0`/`+inf.0` are now real lips numbers
