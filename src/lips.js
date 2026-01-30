@@ -10060,7 +10060,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'unset-special!': doc('unset-special!', function(symbol) {
         typecheck('remove-special!', symbol, 'string');
-        delete specials.remove(symbol.valueOf());
+        specials.remove(symbol.valueOf());
     }, `(unset-special! name)
 
         Function that removes a special symbol from parser added by \`set-special!\`,

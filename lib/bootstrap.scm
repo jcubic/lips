@@ -1415,9 +1415,9 @@
 
 ;; -----------------------------------------------------------------------------
 (define (%warn-quote)
-  "(warn-quote)
+  "(%warn-quote)
 
-   Simple macro that throws an error, when you try to use ’ symbol as quote in code."
+   Simple function that throws an error, when you try to use ’ symbol as quote in code."
   (throw (new Error (string-append "You're using an invalid Unicode quote character. Run: "
                                    "(set-special! \"’\" quote)"
                                    " to allow the use of this type of quote"))))

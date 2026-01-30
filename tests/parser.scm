@@ -90,6 +90,32 @@
 
 (define parser/t11 '*|(1 2 3)) ;; |
 
+(unset-special! "*|")
+
+(define-syntax gensym-macro
+  (syntax-rules ()
+    ((_ name)
+     (gensym 'name))))
+
+(set-special! "#::" gensym-macro)
+
+(define parser/t12 #::hello)
+
+(unset-special! "#::")
+
+(define-syntax line-num
+  (syntax-rules ()
+    ((_)
+     (let* ((lexer lips.__parser__.__lexer__)
+            (token lexer.__token__))
+       (+ token.col)))))
+
+(set-special! "#:num" line-num lips.specials.SYMBOL)
+
+(define parser/t13 #:num)
+
+(unset-special! "#:num")
+
 (test "parser: #!fold-case"
       (lambda (t)
         (define foo 10)
@@ -345,3 +371,8 @@
 (test "parser: regex characters in syntax extension"
       (lambda (t)
         (t.is parser/t11 '(* 1 2 3))))
+
+(test "parer: syntax-rule macro as syntax extension"
+      (lambda (t)
+        (t.is (gensym? parser/t12) #t)
+        (t.is parser/t13 19)))

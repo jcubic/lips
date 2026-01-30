@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 30 Jan 2026 00:34:30 +0000
+ * build: Fri, 30 Jan 2026 01:44:05 +0000
  */
 
 'use strict';
@@ -15539,7 +15539,7 @@ var global_env = new Environment({
   // ------------------------------------------------------------------
   'unset-special!': doc('unset-special!', function (symbol) {
     typecheck('remove-special!', symbol, 'string');
-    delete specials.remove(symbol.valueOf());
+    specials.remove(symbol.valueOf());
   }, "(unset-special! name)\n\n        Function that removes a special symbol from parser added by `set-special!`,\n        name must be a string."),
   // ------------------------------------------------------------------
   'set-special!': doc('set-special!', function (seq, value) {
@@ -17831,10 +17831,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Fri, 30 Jan 2026 00:34:30 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Fri, 30 Jan 2026 01:44:05 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Fri, 30 Jan 2026 00:34:30 +0000').valueOf();
+  var date = LString('Fri, 30 Jan 2026 01:44:05 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17874,7 +17874,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Fri, 30 Jan 2026 00:34:30 +0000';
+var date = 'Fri, 30 Jan 2026 01:44:05 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

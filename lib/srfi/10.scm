@@ -20,8 +20,6 @@
 ;;
 ;; source: https://srfi.schemers.org/srfi-10/srfi-10.html
 
-(set-special! "#," sharp-comma)
-
 (define **reader-ctor-list** '())
 
 ;; -----------------------------------------------------------------------------
@@ -53,3 +51,6 @@
    This is syntax extension for SRFI-10. To define the function to be used with
    this syntax you need to call `define-reader-ctor` to and define a
    symbol-to-function mapping.")
+
+;; -----------------------------------------------------------------------------
+(set-special! "#," sharp-comma)
