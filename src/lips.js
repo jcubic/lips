@@ -1691,17 +1691,14 @@ class Parser {
             this._augment_exception(e);
             throw e;
         } else if (special.value instanceof Macro) {
-            let code = object;
+            let code = object ?? nil;;
             if (is_literal(special.seq)) {
                 code = Pair(code, nil);
             }
             if (special.value instanceof Syntax) {
                 code = Pair(
                     LSymbol('Extension'),
-                    Pair(
-                        code,
-                        nil
-                    )
+                    code
                 );
             }
             const eval_args = {
@@ -10071,7 +10068,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'set-special!': doc('set-special!', function(seq, value, type = specials.LITERAL) {
         typecheck('set-special!', seq, 'string', 1);
-        typecheck('set-special!', value, ['function', 'macro'], 2);
+        typecheck('set-special!', value, ['function', 'macro', 'syntax'], 2);
         specials.append(seq.valueOf(), value, type);
     }, `(set-special! seq value [type])
 
