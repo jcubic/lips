@@ -1688,7 +1688,7 @@ class Parser {
             }
             const msg = `Parse Error: Invalid parser extension ${special.seq}`;
             const e = new Error(msg);
-            this._agument_exception(e);
+            this._augment_exception(e);
             throw e;
         } else if (special.value instanceof Macro) {
             let code = object;
@@ -1727,7 +1727,7 @@ class Parser {
         } else {
             const e = new Error('Parse Error: invalid parser extension: ' +
                                 type(special.value));
-            this._agument_exception(e);
+            this._augment_exception(e);
             throw e;
         }
     }
@@ -1767,10 +1767,10 @@ class Parser {
             const re = new RegExp(`\\){${count}}$`);
             e.__code__ = [expr.toString().replace(re, '')];
         }
-        this._agument_exception(e);
+        this._augment_exception(e);
         throw e;
     }
-    _agument_exception(e) {
+    _augment_exception(e) {
         const token = this.__lexer__.__token__;
         if ('col' in token) {
             const { col, offset, line } = token;
@@ -1847,7 +1847,7 @@ class Parser {
             if (is_literal(token.token)) {
                 if (was_close_paren) {
                     const e = new Error('Parse Error: expecting datum');
-                    this._agument_exception(e);
+                    this._augment_exception(e);
                     throw e
                 }
                 return new Pair(
@@ -1871,7 +1871,7 @@ class Parser {
                 return new DatumReference(ref, this._refs[ref]);
             }
             const e = new Error(`Parse Error: invalid datum label #${ref}#`);
-            this._agument_exception(e);
+            this._augment_exception(e);
             throw e;
         }
         const ref_label = this._match_datum_label(token);
