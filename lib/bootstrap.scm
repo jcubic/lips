@@ -931,7 +931,7 @@
 (define-macro (quote-promise expr)
   "(quote-promise expr) or '>expr
 
-  Macro used to escape automati awaiting of the expression. It will be wrapped
+  Macro used to escape automatic awaiting of the expression. It will be wrapped
   with a JavaScript class that behaves like Promise but will not be automatically
   resolved by LIPS like normal promises are."
   `(let ((env))

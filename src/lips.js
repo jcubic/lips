@@ -944,7 +944,7 @@ function escape_quoted_promises(array) {
     while (i--) {
         const value = array[i];
         if (value instanceof QuotedPromise) {
-            escaped[i] = new Value(value);
+            escaped[i] = new Value(value, 'promise');
         } else {
             escaped[i] = value;
         }
@@ -956,7 +956,7 @@ function unescape_quoted_promises(array) {
     var unescaped = new Array(array.length), i = array.length;
     while (i--) {
         var value = array[i];
-        if (value instanceof Value) {
+        if (Value.of('promise', value)) {
             unescaped[i] = value.valueOf();
         } else {
             unescaped[i] = value;
@@ -1947,9 +1947,10 @@ function unpromise(value, fn = x => x, error = null) {
         var ret = value.then(fn);
         if (error === null) {
             return ret;
-        } else {
+        } else if (ret && is_function(ret.catch)) {
             return ret.catch(error);
         }
+        return ret;
     }
     if (value instanceof Array) {
         return unpromise_array(value, fn, error);
@@ -4843,7 +4844,7 @@ function transform_syntax(options = {}) {
                                 next(name, new Pair(car.cdr, cdr));
                             }
                             // wrap with Value to handle undefined
-                            return new Value(car.car);
+                            return new Value(car.car, 'syntax');
                         } else if (is_nil(cdr)) {
                             return car;
                         } else {
@@ -4997,7 +4998,7 @@ function transform_syntax(options = {}) {
                             // undefined can be null caused by null binding
                             // on empty ellipsis
                             if (car !== undefined) {
-                                if (car instanceof Value) {
+                                if (Value.of('syntax', car)) {
                                     car = car.valueOf();
                                 }
                                 if (is_spread) {
@@ -5049,7 +5050,7 @@ function transform_syntax(options = {}) {
                             nested: true
                         });
                         if (car) {
-                            if (car instanceof Value) {
+                            if (Value.of('syntax', car)) {
                                 car = car.valueOf();
                             }
                             return new Pair(
@@ -5090,7 +5091,7 @@ function transform_syntax(options = {}) {
                         );
                         log({ value });
                         if (typeof value !== 'undefined') {
-                            if (value instanceof Value) {
+                            if (Value.of('syntax', value)) {
                                 value = value.valueOf();
                             }
                             if (is_array) {
@@ -5204,6 +5205,10 @@ function is_function(o) {
     return typeof o === 'function' && typeof o.bind === 'function';
 }
 // ----------------------------------------------------------------------------
+function is_value(obj) {
+    return obj instanceof Value;
+}
+// ----------------------------------------------------------------------------
 function is_directive(token) {
     return directives.includes(token);
 }
@@ -5275,13 +5280,16 @@ function is_macro(o) {
 }
 // ----------------------------------------------------------------------
 function is_promise(o) {
+    if (o === null || typeof o !== 'object') {
+        return false;
+    }
     if (o instanceof QuotedPromise) {
         return false;
     }
     if (o instanceof Promise) {
         return true;
     }
-    return !!o && is_function(o.then);
+    return is_function(o.then);
 }
 // ----------------------------------------------------------------------
 function is_undef(value) {
@@ -7946,7 +7954,7 @@ Environment.prototype._lookup = function(symbol) {
         symbol = symbol.valueOf();
     }
     if (this.__env__.hasOwnProperty(symbol)) {
-        return Value(this.__env__[symbol]);
+        return Value(this.__env__[symbol], 'get');
     }
     if (this.__parent__) {
         return this.__parent__._lookup(symbol);
@@ -7974,20 +7982,25 @@ Environment.prototype.merge = function(env, name = 'merge') {
 // -------------------------------------------------------------------------
 // Value returned in lookup if found value in env and in promise_all
 // -------------------------------------------------------------------------
-function Value(value) {
+function Value(value, source) {
     if (typeof this !== 'undefined' && !(this instanceof Value) ||
         typeof this === 'undefined') {
-        return new Value(value);
+        return new Value(value, source);
     }
-    this.value = value;
+    this._value = value;
+    this._source = source;
 }
 // -------------------------------------------------------------------------
-Value.isUndefined = function(x) {
-    return x instanceof Value && typeof x.value === 'undefined';
+Value.of = function(type, obj) {
+    return is_value(obj) && obj._source === type;
+}
+// -------------------------------------------------------------------------
+Value.is_undefined = function(x) {
+    return is_value(x) && typeof x._value === 'undefined';
 };
 // -------------------------------------------------------------------------
 Value.prototype.valueOf = function() {
-    return this.value;
+    return this._value;
 };
 // -------------------------------------------------------------------------
 // :: Different object than value used as object for (values)
@@ -8022,8 +8035,8 @@ Environment.prototype.get = function(symbol, options = {}) {
         name = name.valueOf();
     }
     var value = this._lookup(name);
-    if (value instanceof Value) {
-        if (Value.isUndefined(value)) {
+    if (Value.of('get', value)) {
+        if (Value.is_undefined(value)) {
             return undefined;
         }
         return patch_value(value.valueOf());
@@ -8040,7 +8053,7 @@ Environment.prototype.get = function(symbol, options = {}) {
         value = this._lookup(first);
         if (rest.length) {
             try {
-                if (value instanceof Value) {
+                if (Value.of('get', value)) {
                     value = value.valueOf();
                 } else {
                     value = get(root, first);
@@ -8055,7 +8068,7 @@ Environment.prototype.get = function(symbol, options = {}) {
             } catch (e) {
                 throw e;
             }
-        } else if (value instanceof Value) {
+        } else if (Value.of('get', value)) {
             return patch_value(value.valueOf());
         }
         value = get(root, name);

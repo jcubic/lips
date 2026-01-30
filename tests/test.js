@@ -31,8 +31,6 @@ async function get_files() {
     });
 }
 
-let code;
-
 get_files().then(filenames => {
     return Promise.all(filenames.map(function(file) {
         return readFile(`tests/${file}`, 'utf8');
@@ -44,8 +42,7 @@ get_files().then(filenames => {
             (load "@lips/tests/helpers/helpers.scm"))
           (define test (require "ava"))
         `);
-        code = files.join('\n\n');
-        return exec(code);
+        return exec(files.join('\n\n'));
     });
 }).catch(e => {
     console.error(e.message);
@@ -54,4 +51,3 @@ get_files().then(filenames => {
         console.log(e.__code__.join('\n'));
     }
 });
-

@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 30 Jan 2026 15:23:08 +0000
+ * build: Fri, 30 Jan 2026 23:39:20 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -4423,7 +4423,7 @@ function escape_quoted_promises(array) {
   while (i--) {
     var value = array[i];
     if (value instanceof QuotedPromise) {
-      escaped[i] = new Value(value);
+      escaped[i] = new Value(value, 'promise');
     } else {
       escaped[i] = value;
     }
@@ -4436,7 +4436,7 @@ function unescape_quoted_promises(array) {
     i = array.length;
   while (i--) {
     var value = array[i];
-    if (value instanceof Value) {
+    if (Value.of('promise', value)) {
       unescaped[i] = value.valueOf();
     } else {
       unescaped[i] = value;
@@ -5422,7 +5422,7 @@ var Parser = /*#__PURE__*/function () {
                 _context7.next = 4;
                 break;
               }
-              return _context7.abrupt("return", Pair.fromArray([LSymbol('quote'), result]));
+              return _context7.abrupt("return", Pair.from_array([LSymbol('quote'), result]));
             case 4:
               return _context7.abrupt("return", result);
             case 5:
@@ -5852,9 +5852,10 @@ function unpromise(value) {
     var ret = value.then(fn);
     if (error === null) {
       return ret;
-    } else {
+    } else if (ret && is_function(ret["catch"])) {
       return ret["catch"](error);
     }
+    return ret;
   }
   if (value instanceof Array) {
     return unpromise_array(value, fn, error);
@@ -8141,7 +8142,7 @@ function to_array(name, deep) {
 }
 // ----------------------------------------------------------------------
 Pair.prototype.flatten = function () {
-  return Pair.fromArray(flatten(this.to_array()));
+  return Pair.from_array(flatten(this.to_array()));
 };
 // ----------------------------------------------------------------------
 Pair.prototype.length = function () {
@@ -8257,7 +8258,7 @@ Pair.prototype.to_array = function () {
 // ----------------------------------------------------------------------
 // :: TODO: change to Pair.from_array
 // ----------------------------------------------------------------------
-Pair.fromArray = function (array) {
+Pair.from_array = function (array) {
   var deep = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : true;
   var quote = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
   if (is_pair(array) || quote && array instanceof Array && array[__data__]) {
@@ -8278,7 +8279,7 @@ Pair.fromArray = function (array) {
   while (i--) {
     var car = array[i];
     if (car instanceof Array) {
-      car = Pair.fromArray(car, deep, quote);
+      car = Pair.from_array(car, deep, quote);
     } else if (typeof car === 'string') {
       car = LString(car);
     } else if (typeof car === 'number' && !Number.isNaN(car)) {
@@ -8824,7 +8825,7 @@ Pair.prototype.set = function (prop, value) {
 // ----------------------------------------------------------------------
 Pair.prototype.append = function (arg) {
   if (arg instanceof Array) {
-    return this.append(Pair.fromArray(arg));
+    return this.append(Pair.from_array(arg));
   }
   var p = this;
   if (p.car === undefined) {
@@ -9481,14 +9482,14 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
           if (ellipsis) {
             var count = code.length - 2;
             var array_head = count > 0 ? code.slice(0, count) : code;
-            var as_list = Pair.fromArray(array_head, false);
+            var as_list = Pair.from_array(array_head, false);
             if (!bindings['...'].symbols[name]) {
               bindings['...'].symbols[name] = new Pair(as_list, _nil);
             } else {
               bindings['...'].symbols[name].append(new Pair(as_list, _nil));
             }
           } else {
-            bindings['...'].symbols[name] = Pair.fromArray(code, false);
+            bindings['...'].symbols[name] = Pair.from_array(code, false);
           }
         } else if (Array.isArray(pattern[0])) {
           log('<<< a 3');
@@ -9877,7 +9878,7 @@ function transform_syntax() {
         var parts = name.split('.');
         var first = parts[0];
         if (first in bindings.symbols) {
-          return Pair.fromArray([LSymbol('.'), bindings.symbols[first]].concat(parts.slice(1).map(function (x) {
+          return Pair.from_array([LSymbol('.'), bindings.symbols[first]].concat(parts.slice(1).map(function (x) {
             return LString(x);
           })));
         }
@@ -10015,7 +10016,7 @@ function transform_syntax() {
                 next(_name8, new Pair(_car2.cdr, _cdr2));
               }
               // wrap with Value to handle undefined
-              return new Value(_car2.car);
+              return new Value(_car2.car, 'syntax');
             } else if (is_nil(_cdr2)) {
               return _car2;
             } else {
@@ -10030,7 +10031,7 @@ function transform_syntax() {
             log('[t 2 Array ' + nested);
             if (nested) {
               next(_name8, item.slice(1));
-              return Pair.fromArray(item);
+              return Pair.from_array(item);
             } else {
               var _rest8 = item.slice(1);
               if (_rest8.length) {
@@ -10170,7 +10171,7 @@ function transform_syntax() {
               // undefined can be null caused by null binding
               // on empty ellipsis
               if (car !== undefined) {
-                if (car instanceof Value) {
+                if (Value.of('syntax', car)) {
                   car = car.valueOf();
                 }
                 if (is_spread) {
@@ -10229,7 +10230,7 @@ function transform_syntax() {
               nested: true
             });
             if (car) {
-              if (car instanceof Value) {
+              if (Value.of('syntax', car)) {
                 car = car.valueOf();
               }
               return new Pair(car, _nil);
@@ -10270,7 +10271,7 @@ function transform_syntax() {
               value: value
             });
             if (typeof value !== 'undefined') {
-              if (value instanceof Value) {
+              if (Value.of('syntax', value)) {
                 value = value.valueOf();
               }
               if (is_array) {
@@ -10391,6 +10392,10 @@ function is_function(o) {
   return typeof o === 'function' && typeof o.bind === 'function';
 }
 // ----------------------------------------------------------------------------
+function is_value(obj) {
+  return obj instanceof Value;
+}
+// ----------------------------------------------------------------------------
 function is_directive(token) {
   return directives.includes(token);
 }
@@ -10453,13 +10458,16 @@ function is_macro(o) {
 }
 // ----------------------------------------------------------------------
 function is_promise(o) {
+  if (o === null || _typeof$1(o) !== 'object') {
+    return false;
+  }
   if (o instanceof QuotedPromise) {
     return false;
   }
   if (o instanceof Promise) {
     return true;
   }
-  return !!o && is_function(o.then);
+  return is_function(o.then);
 }
 // ----------------------------------------------------------------------
 function is_undef(value) {
@@ -10756,7 +10764,7 @@ function let_macro(symbol) {
           return pair.cdr.car;
         });
       }
-      return new Pair(Pair.fromArray([LSymbol('letrec'), [[code.car, Pair(LSymbol('lambda'), Pair(params, code.cdr.cdr))]], code.car]), args);
+      return new Pair(Pair.from_array([LSymbol('letrec'), [[code.car, Pair(LSymbol('lambda'), Pair(params, code.cdr.cdr))]], code.car]), args);
     } else if (macro_expand) {
       // Macro.defmacro are special macros that should return lips code
       // here we use evaluate, so we need to check special flag set by
@@ -13497,7 +13505,7 @@ Environment.prototype._lookup = function (symbol) {
     symbol = symbol.valueOf();
   }
   if (this.__env__.hasOwnProperty(symbol)) {
-    return Value(this.__env__[symbol]);
+    return Value(this.__env__[symbol], 'get');
   }
   if (this.__parent__) {
     return this.__parent__._lookup(symbol);
@@ -13527,19 +13535,24 @@ Environment.prototype.merge = function (env) {
 // -------------------------------------------------------------------------
 // Value returned in lookup if found value in env and in promise_all
 // -------------------------------------------------------------------------
-function Value(value) {
+function Value(value, source) {
   if (typeof this !== 'undefined' && !(this instanceof Value) || typeof this === 'undefined') {
-    return new Value(value);
+    return new Value(value, source);
   }
-  this.value = value;
+  this._value = value;
+  this._source = source;
 }
 // -------------------------------------------------------------------------
-Value.isUndefined = function (x) {
-  return x instanceof Value && typeof x.value === 'undefined';
+Value.of = function (type, obj) {
+  return is_value(obj) && obj._source === type;
+};
+// -------------------------------------------------------------------------
+Value.is_undefined = function (x) {
+  return is_value(x) && typeof x._value === 'undefined';
 };
 // -------------------------------------------------------------------------
 Value.prototype.valueOf = function () {
-  return this.value;
+  return this._value;
 };
 // -------------------------------------------------------------------------
 // :: Different object than value used as object for (values)
@@ -13577,8 +13590,8 @@ Environment.prototype.get = function (symbol) {
     name = name.valueOf();
   }
   var value = this._lookup(name);
-  if (value instanceof Value) {
-    if (Value.isUndefined(value)) {
+  if (Value.of('get', value)) {
+    if (Value.is_undefined(value)) {
       return undefined;
     }
     return patch_value(value.valueOf());
@@ -13598,7 +13611,7 @@ Environment.prototype.get = function (symbol) {
     value = this._lookup(first);
     if (rest.length) {
       try {
-        if (value instanceof Value) {
+        if (Value.of('get', value)) {
           value = value.valueOf();
         } else {
           value = get(root, first);
@@ -13613,7 +13626,7 @@ Environment.prototype.get = function (symbol) {
       } catch (e) {
         throw e;
       }
-    } else if (value instanceof Value) {
+    } else if (Value.of('get', value)) {
       return patch_value(value.valueOf());
     }
     value = get(root, name);
@@ -14102,7 +14115,7 @@ var global_env = new Environment({
     var symbol = code.car;
     var ref = this.ref(symbol);
     if (ref) {
-      delete ref.__env__[symbol.__name__];
+      ref.unset(symbol);
     }
   }), "(unset! name)\n\n         Function to delete the specified name from environment.\n         Trying to access the name afterwards will error."),
   // ------------------------------------------------------------------
@@ -14824,7 +14837,7 @@ var global_env = new Environment({
           if (!is_nil(name.car)) {
             if (name instanceof LSymbol) {
               // rest argument,  can also be first argument
-              var value = quote(Pair.fromArray(args.slice(i), false));
+              var value = quote(Pair.from_array(args.slice(i), false));
               set(name, value);
               break;
             } else if (is_pair(name)) {
@@ -15226,7 +15239,7 @@ var global_env = new Environment({
                 var result = [];
                 return function recur(node) {
                   if (is_nil(node)) {
-                    return Pair.fromArray(result);
+                    return Pair.from_array(result);
                   }
                   return unpromise(evaluate(node.car, {
                     env: self,
@@ -15273,7 +15286,7 @@ var global_env = new Environment({
                 // evaluate all values in unquote
                 return function recur(node) {
                   if (is_nil(node)) {
-                    return Pair.fromArray(_result4);
+                    return Pair.from_array(_result4);
                   }
                   return unpromise(evaluate(node.car, {
                     env: self,
@@ -15501,7 +15514,7 @@ var global_env = new Environment({
     var names = Object.keys(env.__env__).map(LSymbol);
     var result;
     if (names.length) {
-      result = Pair.fromArray(names);
+      result = Pair.from_array(names);
     } else {
       result = _nil;
     }
@@ -15643,7 +15656,7 @@ var global_env = new Environment({
   // ------------------------------------------------------------------
   'array->list': doc('array->list', function (array) {
     typecheck('array->list', array, 'array');
-    return Pair.fromArray(array);
+    return Pair.from_array(array);
   }, "(array->list array)\n\n        Function that converts a JavaScript array to a LIPS cons list."),
   // ------------------------------------------------------------------
   'tree->array': doc('tree->array', to_array('tree->array', true), "(tree->array list)\n\n         Function that converts a LIPS cons tree structure into a JavaScript array."),
@@ -15952,7 +15965,7 @@ var global_env = new Environment({
         return loop(++i);
       }
       if (i === array.length) {
-        return Pair.fromArray(result);
+        return Pair.from_array(result);
       }
       var item = array[i];
       return unpromise(fn(item), next);
@@ -17143,6 +17156,13 @@ function evaluate(code) {
         });
         return new QuotedPromise(result);
       }
+      if (is_promise(result)) {
+        return result["catch"](function (e) {
+          if (!(e instanceof IgnoreException)) {
+            throw e;
+          }
+        });
+      }
       return result;
     } catch (e) {
       error && error.call(env, e, code);
@@ -17825,10 +17845,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Fri, 30 Jan 2026 15:23:08 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Fri, 30 Jan 2026 23:39:20 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Fri, 30 Jan 2026 15:23:08 +0000').valueOf();
+  var date = LString('Fri, 30 Jan 2026 23:39:20 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17868,7 +17888,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Fri, 30 Jan 2026 15:23:08 +0000';
+var date = 'Fri, 30 Jan 2026 23:39:20 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
