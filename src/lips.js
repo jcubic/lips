@@ -11705,6 +11705,13 @@ function evaluate(code, { env, dynamic_env, use_dynamic, error = noop, ...rest }
             });
             return new QuotedPromise(result);
         }
+        if (is_promise(result)) {
+            return result.catch(e => {
+                if (!(e instanceof IgnoreException)) {
+                    throw e;
+                }
+            });
+        }
         return result;
     } catch (e) {
         error && error.call(env, e, code);
