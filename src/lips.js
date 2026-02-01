@@ -11289,12 +11289,7 @@ function typecheck_number(fn, arg, expected, position = null) {
 // -------------------------------------------------------------------------
 function typecheck_numbers(fn, args, expected) {
     args.forEach((arg, i) => {
-        try {
-            typecheck_number(fn, arg, expected, i + 1);
-        } catch(e) {
-            console.log({arg});
-            throw e;
-        }
+        typecheck_number(fn, arg, expected, i + 1);
     });
 }
 
