@@ -119,6 +119,21 @@
 
 (define parser/t14 $$())
 
+(set-hash-syntax! #\+ (lambda (port)
+                        `(quote ,(apply + (read port)))))
+
+(define parser/t15 #+(1 2 3))
+(define parser/t16 '#+(1 2 3))
+
+(set-hash-syntax! 'sum (lambda (port)
+                         `(quote ,(apply + (read port)))))
+
+(define parser/t17 #sum(1 2 3))
+(define parser/t18 '#sum(1 2 3))
+
+(set-hash-syntax! 'sum #f)
+(set-hash-syntax! #\+ #f)
+
 (define-macro (macro)
   `(begin
      (Promise.resolve)
@@ -392,3 +407,13 @@
       (lambda (t)
         (t.is (to.throw (lips.parse "$$10")) #t)
         (t.is (to.throw (lips.parse "&&10")) #t)))
+
+(test "parser: set-hash-syntax!"
+      (lambda (t)
+        (t.is parser/t15 6)
+        (t.is parser/t16 '(quote 6))
+        (t.is parser/t17 6)
+        (t.is parser/t18 '(quote 6))
+        (t.is (to.throw (lips.parse "#+(1 2 3)")) #t)
+        (t.is (to.throw (lips.parse "#sum(1 2 3)")) #t)))
+

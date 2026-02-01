@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 01 Feb 2026 16:41:04 +0000
+ * build: Sun, 01 Feb 2026 18:54:27 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -3530,7 +3530,7 @@ var type_mapping = {
 var type_constants = new Map([[NaN, 'NaN'], [null, 'null']]);
 // -------------------------------------------------------------------------
 
-var fs, path, nodeRequire;
+var fs, path, node_require;
 var BN = root.BN;
 
 /* c8 ignore next 32 */
@@ -4458,10 +4458,6 @@ var specials = {
     try {
       return this.get(name).type;
     } catch (e) {
-      console.log({
-        name: name
-      });
-      console.log(e);
       return null;
     }
   },
@@ -5049,10 +5045,14 @@ var Parser = /*#__PURE__*/function () {
           throw error;
         }
       };
-      return unpromise(fn(), function (result) {
-        cleanup();
-        return result;
-      }, cleanup);
+      try {
+        return unpromise(fn(), function (result) {
+          cleanup();
+          return result;
+        }, cleanup);
+      } catch (e) {
+        cleanup(e);
+      }
     }
   }, {
     key: "_reset_state",
@@ -14215,8 +14215,8 @@ var global_env = new Environment({
                 _context19.next = 1;
                 return node_ready;
               case 1:
-                _path = nodeRequire('path');
-                _fs = nodeRequire('fs');
+                _path = node_require('path');
+                _fs = node_require('fs');
                 root_dir = get_root_dir();
                 if (has_package) {
                   file = file.replace(package_name, root_dir);
@@ -14795,10 +14795,16 @@ var global_env = new Environment({
     }
   }, "(set-debug!)\n            (set-debug! value)\n\n            Set debug internal value, used internaly for debugging. You can use it\n            in LIPS with is-debug function."),
   // ------------------------------------------------------------------
-  'inspect': doc(function () {
-    var _console4;
-    (_console4 = console).log.apply(_console4, arguments);
-  }, "(inspect ...)\n\n            logs the arguments without unboxing."),
+  'inspect': doc(function (object) {
+    var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
+      showHidden: true,
+      depth: null
+    };
+    if (inspect) {
+      object = inspect(object, options);
+    }
+    console.log(object);
+  }, "(inspect object)\n\n            logs the arguments without unboxing."),
   // ------------------------------------------------------------------
   'is-debug': doc(is_debug, "(is-debug)\n         (is-debug value)\n\n         Debug function, which checkes if internal debug state is set to\n         a given value or true."),
   // ------------------------------------------------------------------
@@ -16450,13 +16456,14 @@ function is_node() {
 // -------------------------------------------------------------------------
 var noop = function noop() {};
 // -------------------------------------------------------------------------
+var inspect;
 function node_specific() {
   return _node_specific.apply(this, arguments);
 } // -------------------------------------------------------------------------
 /* c8 ignore next 15 */
 function _node_specific() {
   _node_specific = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee24() {
-    var _yield$import, createRequire, moduleURL, __dirname__, __filename__;
+    var _yield$import, createRequire, moduleURL, __dirname__, __filename__, originalLog;
     return _regeneratorRuntime.wrap(function (_context25) {
       while (1) switch (_context25.prev = _context25.next) {
         case 0:
@@ -16465,7 +16472,7 @@ function _node_specific() {
         case 1:
           _yield$import = _context25.sent;
           createRequire = _yield$import.createRequire;
-          nodeRequire = createRequire(import.meta.url);
+          node_require = createRequire(import.meta.url);
           _context25.next = 2;
           return import('fs');
         case 2:
@@ -16482,11 +16489,12 @@ function _node_specific() {
           __filename__ = path.basename(moduleURL.pathname);
           global_env.set('__dirname', __dirname__);
           global_env.set('__filename', __filename__);
+          inspect = node_require('util').inspect;
           // ---------------------------------------------------------------------
           global_env.set('require.resolve', doc('require.resolve', function (path) {
             typecheck('require.resolve', path, 'string');
             var name = path.valueOf();
-            return nodeRequire.resolve(name);
+            return node_require.resolve(name);
           }, "(require.resolve path)\n\n        Returns the path relative to the current module.\n\n        Only available when LIPS is running under Node.js."));
           // ---------------------------------------------------------------------
           global_env.set('require', doc('require', function (module) {
@@ -16496,17 +16504,17 @@ function _node_specific() {
             var value;
             try {
               if (module.match(/^\s*\./)) {
-                value = nodeRequire(path.join(root, module));
+                value = node_require(path.join(root, module));
               } else {
                 var dir = nodeModuleFind(root);
                 if (dir) {
-                  value = nodeRequire(path.join(dir, 'node_modules', module));
+                  value = node_require(path.join(dir, 'node_modules', module));
                 } else {
-                  value = nodeRequire(module);
+                  value = node_require(module);
                 }
               }
             } catch (e) {
-              value = nodeRequire(module);
+              value = node_require(module);
             }
             return patch_value(value, global);
           }, "(require module)\n\n        Function used inside Node.js to import a module."));
@@ -16519,6 +16527,14 @@ function _node_specific() {
               promise["catch"](noop);
             }
           });
+          originalLog = console.log;
+          console.log = function () {
+            for (var _len46 = arguments.length, args = new Array(_len46), _key48 = 0; _key48 < _len46; _key48++) {
+              args[_key48] = arguments[_key48];
+            }
+            originalLog.apply(console, args);
+            process.stdout.write('');
+          };
         case 4:
         case "end":
           return _context25.stop();
@@ -16598,14 +16614,7 @@ function typecheck_number(fn, arg, expected) {
 // -------------------------------------------------------------------------
 function typecheck_numbers(fn, args, expected) {
   args.forEach(function (arg, i) {
-    try {
-      typecheck_number(fn, arg, expected, i + 1);
-    } catch (e) {
-      console.log({
-        arg: arg
-      });
-      throw e;
-    }
+    typecheck_number(fn, arg, expected, i + 1);
   });
 }
 
@@ -17869,10 +17878,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 01 Feb 2026 16:41:04 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 01 Feb 2026 18:54:27 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 01 Feb 2026 16:41:04 +0000').valueOf();
+  var date = LString('Sun, 01 Feb 2026 18:54:27 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17912,7 +17921,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 01 Feb 2026 16:41:04 +0000';
+var date = 'Sun, 01 Feb 2026 18:54:27 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

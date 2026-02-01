@@ -3,6 +3,7 @@
 * syntax extensions now expect a reference to a function or a macro
 ### Features
 * add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
+* add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
 ### Bugfix
 * fix doc string for `make-rectangular`
 * `-inf.0`/`+inf.0` are now real lips numbers

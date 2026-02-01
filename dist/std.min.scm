@@ -137,6 +137,7 @@
 (define (symbol-append . rest) "(symbol-append s1 s2 ...)\u000A\u000AFunction that creates a new symbol from symbols passed as arguments." (string->symbol (apply string-append (map symbol->string rest))))
 (define-macro (set-global! name) "(set-global! name)\u000A\u000AMacro to make the name a Javascript global variable (i.e. accessible on globalThis)." (let ((var (symbol-append (quote self.) name))) (quasiquote (set! (unquote var) (unquote name)))))
 (define performance (if (and (eq? self global) (not (bound? (quote performance)))) (. (require "perf_hooks") (quote performance)) performance))
+(define (set-hash-syntax! seq value) "(set-hash-syntax! seq value)\u000A(set-hash-syntax! seq #f)\u000A\u000ACreates or removes hash syntax. The value can be a macro or a function.\u000AThe functions needs to return data that will be returned by the parser\u000Awhen it finds the # + char or # + symbol in the input stream.\u000AWhen the value equal to #f the syntax is removed.\u000A\u000Ae.g.:\u000A\u000A(set-hash-syntax! #\\+ (lambda (port)\u000A                        `(quote ,(apply + (read port)))))\u000A\u000A(print #+(1 2 3))\u000A;; ==> 6\u000A(print '#+(1 2 3))\u000A;; ==> (quote 6)" (typecheck "set-hash-syntax!" seq (quote ("symbol" "character"))) (let ((string (string-append "#" (if (symbol? seq) (symbol->string seq) (string seq))))) (if value (set-special! string (lambda () (let ((port (current-input-port))) (value port))) lips.specials.SYMBOL) (unset-special! string))))
 (define string-append concat)
 (define = ==)
 (define remainder %)

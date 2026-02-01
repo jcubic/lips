@@ -1791,3 +1791,34 @@
 (define performance (if (and (eq? self global) (not (bound? 'performance)))
                         (. (require "perf_hooks") 'performance)
                         performance))
+
+;; -----------------------------------------------------------------------------
+(define (set-hash-syntax! seq value)
+  "(set-hash-syntax! seq value)
+   (set-hash-syntax! seq #f)
+
+   Creates or removes hash syntax. The value can be a macro or a function.
+   The functions needs to return data that will be returned by the parser
+   when it finds the # + char or # + symbol in the input stream.
+   When the value equal to #f the syntax is removed.
+
+   e.g.:
+
+   (set-hash-syntax! #\\+ (lambda (port)
+                           `(quote ,(apply + (read port)))))
+
+   (print #+(1 2 3))
+   ;; ==> 6
+   (print '#+(1 2 3))
+   ;; ==> (quote 6)"
+  (typecheck "set-hash-syntax!" seq '("symbol" "character"))
+  (let ((string (string-append "#" (if (symbol? seq)
+                                       (symbol->string seq)
+                                       (string seq)))))
+    (if value
+        (set-special! string (lambda ()
+                               (let ((port (current-input-port)))
+                                 (value port)))
+                      lips.specials.SYMBOL)
+        (unset-special! string))))
+
