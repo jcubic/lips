@@ -9,6 +9,30 @@ Subtracts n2 and subsequent numbers from n1. If only one argument is passed
 it will negate the value.
 ```
 
+## -->
+```
+Helper macro that simplifies calling methods on objects. It works with chaining
+usage: (--> ($ "body")
+            (css "color" "red")
+            (on "click" (lambda () (display "click"))))
+
+       (--> document (querySelectorAll "div"))
+
+       (--> (fetch "https://jcubic.pl")
+            (text)
+            (match #/<title>([^<]+)<\/title>/)
+            1)
+
+       (--> document
+            (querySelectorAll ".cmd-prompt")
+            0
+            'innerHTML
+            (replace #/<("[^"]+"|[^>])+>/g ""))
+
+       (--> document.body
+            (style.setProperty "--color" "red"))
+```
+
 ## .
 ```
 (. obj . args)
@@ -22,6 +46,13 @@ without problem unlike in JavaScript when you use
 `var log = console.log`.
 `get` is an alias because . doesn't work everywhere, e.g. you can't
 pass it as an argument.
+```
+
+## ..
+```
+(.. foo.bar.baz)
+
+Gets the value from a nested object where the argument is a period separated symbol.
 ```
 
 ## *
@@ -53,13 +84,6 @@ is passed it will calculate (/ 1 n).
 (& a b)
 
 Function that calculates the bitwise and operation.
-```
-
-## %
-```
-(% n1 n2)
-
-Function returns the remainder of n1/n2 (modulo).
 ```
 
 ## +
@@ -95,7 +119,7 @@ monotonically nondecreasing, i.e. x1 <= x2 and x2 <= x3 and so on.
 
 ## =
 ```
-(== x1 x2 ...)
+(== x1 x2 ...)}
 
 Function that compares its numerical arguments and checks if they are
 all equal.
@@ -103,7 +127,7 @@ all equal.
 
 ## ==
 ```
-(== x1 x2 ...)
+(== x1 x2 ...)}
 
 Function that compares its numerical arguments and checks if they are
 all equal.
@@ -167,11 +191,6 @@ Function that adds 1 to the number and return result.
 Function that returns the absolute value (magnitude) of number.
 ```
 
-## acos
-```
-#<undefined>
-```
-
 ## alist->assign
 ```
 (alist->assign alist . list-of-alists)
@@ -190,7 +209,17 @@ Function that converts alist pairs to a JavaScript object.
 ```
 (always constant)
 
-Higher-order function that returns a new thunk that always returns the given constant when called.
+Higher-order function that returns a new thunk that always returns
+the given constant when called.
+```
+
+## and
+```
+(and . expressions)
+
+Macro that evaluates each expression in sequence and if any value returns false
+it will stop and return false. If each value returns true it will return the
+last value. If it's called without arguments it will return true.
 ```
 
 ## angle
@@ -246,11 +275,6 @@ Function that converts a JavaScript array to a LIPS cons list.
 Predicate that tests if value is an array.
 ```
 
-## asin
-```
-#<undefined>
-```
-
 ## assoc
 ```
 (assoc obj alist)
@@ -274,7 +298,12 @@ Returns pair from alist that match given key using eqv? check.
 
 ## atan
 ```
-#<undefined>
+(atan z)
+(atan x y)
+
+Function calculates arcus tangent of a complex number.
+If two arguments are passed and they are not complex numbers
+it calculate Math.atan2 on those arguments.
 ```
 
 ## await
@@ -283,6 +312,24 @@ Returns pair from alist that match given key using eqv? check.
 
 Unquotes a quoted promise so it can be automagically evaluated (resolved
 to its value).
+```
+
+## begin
+```
+(begin . args)
+
+Macro that runs a list of expressions in order and returns the value
+of the last one. It can be used in places where you can only have a
+single expression, like (if).
+```
+
+## begin*
+```
+(begin* . body)
+
+This macro is a parallel version of begin. It evaluates each expression
+in the body and if it's a promise it will await it in parallel and return
+the value of the last expression (i.e. it uses Promise.all()).
 ```
 
 ## binary
@@ -317,8 +364,8 @@ Checks if all arguments are boolean and if they are the same.
 ```
 (bound? x [env])
 
-Function that check if the variable is defined in the given environment, or interaction-environment
-if not specified.
+Function that check if the variable is defined in the given environment,
+or interaction-environment if not specified.
 ```
 
 ## buffer->u8vector
@@ -375,21 +422,24 @@ return length of unsigned 8-bit integer vector (C unsigned char).
 ```
 (u8vector-ref vector k)
 
-Returns value from vector at index k. If index is out of range it throw exception.
+Returns value from vector at index k.
+If index is out of range it throw exception.
 ```
 
 ## bytevector-u8-set!
 ```
 (u8vector-set! vector k)
 
-Function set value of unsigned 8-bit integer vector (C unsigned char) at index k. If index is out of range it throw exception.
+Function set value of unsigned 8-bit integer vector (C unsigned char) at index k.
+If index is out of range it throw exception.
 ```
 
 ## bytevector?
 ```
 (u8vector? x)
 
-Returns #t of argument is unsigned 8-bit integer vector (C unsigned char) otherwise it return #f.
+Returns #t of argument is unsigned 8-bit integer vector (C unsigned char),
+otherwise it return #f.
 ```
 
 ## caaaaar
@@ -602,6 +652,15 @@ Function that calculates (car (cdr (cdr arg)))
 Function that calculates (car (cdr arg))
 ```
 
+## call-with-current-continuation
+```
+(call/cc proc)
+
+Call-with-current-continuation.
+
+NOT SUPPORTED BY LIPS RIGHT NOW
+```
+
 ## call-with-input-file
 ```
 (call-with-input-file filename proc)
@@ -616,8 +675,8 @@ and it close the port even if user proc throw exception.
 (call-with-output-file filename proc)
 
 Procedure open file for writing, call user defined procedure with port
-and then close the port. It return value that was returned by user proc and it close the port
-even if user proc throw exception.
+and then close the port. It return value that was returned by user proc
+and it close the port even if user proc throw exception.
 ```
 
 ## call-with-port
@@ -635,6 +694,15 @@ Calls the producer procedure with no arguments, then calls the
 consumer procedure with the returned value as an argument -- unless
 the returned value is a special Values object created by (values), if it is
 the values are unpacked and the consumer is called with multiple arguments.
+```
+
+## call/cc
+```
+(call/cc proc)
+
+Call-with-current-continuation.
+
+NOT SUPPORTED BY LIPS RIGHT NOW
 ```
 
 ## car
@@ -886,35 +954,35 @@ Returns true if character is leter of the ASCII alphabet.
 ```
 (char-ci<? chr1 chr2)
 
-Returns true if second character is smaller then the first one.
+Returns true if characters are monotonically increasing case insensitive.
 ```
 
 ## char-ci<=?
 ```
-(char-ci<? chr1 chr2)
+(char-ci<? chr1 chr2 ...)
 
-Returns true if second character is not larger then the first one.
+Returns true if characters are monotonically non-decreasing, case insensitive.
 ```
 
 ## char-ci=?
 ```
-(char-ci=? chr1 chr2)
+(char-ci=? chr1 chr2 ...)
 
-Checks if two characters are equal.
+Checks if all characters are equal, case insensitive.
 ```
 
 ## char-ci>?
 ```
-(char-ci<? chr1 chr2)
+(char-ci<? chr1 chr2 ...)
 
-Returns true if second character is larger then the first one.
+Returns true if characters are monotonically decreasing case insensitive.
 ```
 
 ## char-ci>=?
 ```
-(char-ci<? chr1 chr2)
+(char-ci<? chr1 chr2 ...)
 
-Returns true if second character is not smaller then the first one.
+Returns true if characters are monotonically non-increasing, case insensitive.
 ```
 
 ## char-downcase
@@ -922,6 +990,13 @@ Returns true if second character is not smaller then the first one.
 (char-downcase chr)
 
 Create lowercase version of the character.
+```
+
+## char-foldcase
+```
+(char-foldcase char)
+
+Returns lowercase character using the Unicode simple case-folding algorithm.
 ```
 
 ## char-lower-case?
@@ -978,37 +1053,37 @@ Checks if the object is a character.
 
 ## char<?
 ```
-(char<? chr1 chr2)
+(char<? chr1 chr2 ...)
 
-Returns true if second character is smaller then the first one.
+Returns true if characters are monotonically increasing.
 ```
 
 ## char<=?
 ```
-(char<? chr1 chr2)
+(char<? chr1 chr2 ...)
 
-Returns true if second character is not larger then the first one.
+Returns true if characters are monotonically non-decreasing.
 ```
 
 ## char=?
 ```
-(char=? chr1 chr2)
+(char=? chr1 chr2 ...)
 
-Checks if two characters are equal.
+Checks if all characters are equal.
 ```
 
 ## char>?
 ```
-(char<? chr1 chr2)
+(char<? chr1 chr2 ...)
 
-Returns true if second character is larger then the first one.
+Returns true if characters are monotonically decreasing.
 ```
 
 ## char>=?
 ```
-(char<? chr1 chr2)
+(char<? chr1 chr2 ...)
 
-Returns true if second character is not smaller then the first one.
+Returns true if characters are monotonically non-increasing.
 ```
 
 ## clone
@@ -1053,9 +1128,9 @@ Returns the command line arguments, or an empty list if not running under Node.j
 ```
 (complement fn)
 
-Higher order function that returns the Boolean complement of the given function. If the function fn
-for a given arguments return true the result function will return false, if it would
-return false, the result function will return true.
+Higher order function that returns the Boolean complement of the given function.
+If the function fn for a given arguments return true the result function
+will return false, if it would return false, the result function will return true.
 ```
 
 ## complex?
@@ -1072,7 +1147,7 @@ Checks if argument x is complex.
 Higher-order function that creates a new function that applies all functions
 from right to left and returns the last value. Reverse of pipe.
 e.g.:
-((compose (curry + 2) (curry * 3)) 10) --> (+ 2 (* 3 10)) --> 32
+((compose (curry + 2) (curry * 3)) 10) ==> (+ 2 (* 3 10)) ==> 32
 ```
 
 ## concat
@@ -1082,6 +1157,22 @@ e.g.:
 Function that creates a new string by joining its arguments.
 ```
 
+## cond
+```
+(cond (predicate? . body)
+      (predicate? . body)
+      (else . body))
+
+(cond (predicate? => procedure)
+      (predicate? => procedure)
+      (else . body))
+
+Macro for condition checks. For usage instead of nested ifs.
+You can use predicate and any number of expressions. Or symbol =>
+Followed by procedure that will be invoked with result
+of the predicate.
+```
+
 ## cons
 ```
 (cons left right)
@@ -1089,6 +1180,21 @@ Function that creates a new string by joining its arguments.
 This function returns a new list with the first appended
 before the second. If the second is not a list cons will
 return a dotted pair.
+```
+
+## constructor
+```
+(constructor)
+
+Function that is present in JavaScript environment. We define it in Scheme
+to fix an issue with define-class. This function throw an error.
+```
+
+## continuation?
+```
+(continuation? expression)
+
+Predicate that tests if value is a callable continuation.
 ```
 
 ## cos
@@ -1176,6 +1282,122 @@ using the "debugger;" statement. If a debugger is not running this
 function does nothing.
 ```
 
+## define
+```
+(define name expression)
+(define name expression "doc string")
+(define (function-name . args) . body)
+
+Macro for defining values. It can be used to define variables,
+or functions. If the first argument is list it will create a function
+with name being first element of the list. This form expands to
+`(define function-name (lambda args body))`
+```
+
+## define-class
+```
+(define-class name parent . body)
+
+Defines a class - JavaScript function constructor with prototype.
+parent needs to be class, constructor function, or #null
+
+usage:
+
+  (define-class Person Object
+      (constructor (lambda (self name)
+                     (set-object! self '_name name)))
+      (hi (lambda (self)
+            (display (string-append self._name " says hi"))
+            (newline))))
+  (define jack (new Person "Jack"))
+  (jack.hi) ; prints "Jack says hi"
+```
+
+## define-formatter-rule
+```
+(rule-pattern pattern)
+
+Anaphoric macro for defining patterns for the formatter.
+With Ahead, Pattern and * defined values.
+```
+
+## define-global
+```
+(define-global var value)
+(define-global (name . args) body)
+
+Defines functions or variables in the global context, so they can be used
+inside let and get let variables in a closure. Useful for universal macros.
+```
+
+## define-library
+```
+(define-library (library (name namespace) . body)
+
+Macro for defining modules inside you can use define to create functions.
+And use export name to add that name to defined environment.
+```
+
+## define-macro
+```
+(define-macro (name . args) body)
+
+The meta-macro, that creates new macros. If the return value is a list structure
+it will be evaluated where the macro is invoked from. You can use quasiquote `
+and unquote , and unquote-splicing ,@ inside to create an expression that will be
+evaluated at runtime. Macros works like this: if you pass any expression to a
+macro the arguments will not be evaluated unless the macro's body explicitly
+calls (eval) on it. Because of this a macro can manipulate the expression
+(arguments) as lists.
+```
+
+## define-record-type
+```
+(define-record-type name constructor pred . fields)
+
+Macro for defining records. Example of usage:
+
+(define-record-type <pare>
+  (kons x y)
+  pare?
+  (x kar set-kar!)
+  (y kdr set-kdr!))
+
+(define p (kons 1 2))
+(print (kar p))
+;; ==> 1
+(set-kdr! p 3)
+(print (kdr p))
+;; ==> 3
+```
+
+## define-symbol-macro
+```
+(define-symbol-macro type (name . args) . body)
+
+Creates syntax extensions for evaluator similar to built-in , or `.
+It's like an alias for a real macro. Similar to CL reader macros
+but it receives already parsed code like normal macros. Type can be SPLICE
+or LITERAL symbols (see set-special!). ALL default symbol macros are literal.
+```
+
+## define-syntax
+```
+(define-syntax name expression [__doc__])
+
+Defines a new hygienic macro using syntax-rules with optional documentation.
+```
+
+## define-syntax-parameter
+```
+(define-syntax-parameter name syntax [__doc__])
+
+Binds <keyword> to the transformer obtained by evaluating <transformer spec>.
+The transformer provides the default expansion for the syntax parameter,
+and in the absence of syntax-parameterize, is functionally equivalent to
+define-syntax.
+```
+
 ## defmacro?
 ```
 (defmacro? expression)
@@ -1188,6 +1410,13 @@ Checks if object is a macro and it's expandable.
 (degree->radians x)
 
 Convert degrees to radians.
+```
+
+## delay
+```
+(delay expression)
+
+Will create a promise from expression that can be forced with (force).
 ```
 
 ## delete-file
@@ -1234,11 +1463,42 @@ the port if given. No newline.
 Display an error message on stderr.
 ```
 
+## do
+```
+(do ((<var> <init> <next>)) (test return) . body)
+
+Iteration macro that evaluates the expression body in scope of the variables.
+On each loop it changes the variables according to the <next> expression and runs
+test to check if the loop should continue. If test is a single value, the macro
+will return undefined. If the test is a pair of expressions the macro will
+evaluate and return the second expression after the loop exits.
+```
+
+## do-iterator
+```
+(do-iterator (var expr) (test result) body ...)
+
+Iterates over iterators (e.g. created with JavaScript generator function)
+that works with normal and async iterators. You can loop over an infinite
+iterators and break the loop if you want, using expression like in do macro.
+Long synchronous iterators will block the main thread (you can't print
+1000 numbers from infinite iterators, because it will freeze the browser),
+but if you use async iterators you can process the values as they are
+generated.
+```
+
+## drop
+```
+(take list n)
+
+Returns a list where first n elements are removed.
+```
+
 ## dynamic-wind
 ```
 (dynamic-wind before thunk after)
 
-Accepts 3 procedures/lambdas and executes before, then thunk, and 
+Accepts 3 procedures/lambdas and executes before, then thunk, and
 always after even if an error occurs in thunk.
 ```
 
@@ -1299,7 +1559,8 @@ Function that compares two values if they are identical.
 (equal? a b)
 
 The function checks if values are equal. If both are a pair or an array
-it compares their elements recursively.
+it compares their elements recursively. If pairs have cycles it compares
+them with eq?
 ```
 
 ## eqv?
@@ -1366,10 +1627,10 @@ Checks if number is even.
 
 ## every
 ```
-(every fn list)
+(every fn . lists)
 
-Function that calls fn on each item of the list, if every value returns true
-it will return true otherwise it return false.
+Higher-order function that calls fn on consecutive item of the list of lists,
+if every call returns true it will return true otherwise it return false.
 Analogous to Python all(map(fn, list)).
 ```
 
@@ -1421,11 +1682,6 @@ Function that calculates number a to to the power of b.
 Create 32-bit IEEE-754 floating point number vector (C float) from give arguments.
 ```
 
-## f32vector->list
-```
-#<undefined>
-```
-
 ## f32vector-length
 ```
 (f32vector-length v)
@@ -1437,21 +1693,24 @@ return length of 32-bit IEEE-754 floating point number vector (C float).
 ```
 (f32vector-ref vector k)
 
-Returns value from vector at index k. If index is out of range it throw exception.
+Returns value from vector at index k.
+If index is out of range it throw exception.
 ```
 
 ## f32vector-set!
 ```
 (f32vector-set! vector k)
 
-Function set value of 32-bit IEEE-754 floating point number vector (C float) at index k. If index is out of range it throw exception.
+Function set value of 32-bit IEEE-754 floating point number vector (C float) at index k.
+If index is out of range it throw exception.
 ```
 
 ## f32vector?
 ```
 (f32vector? x)
 
-Returns #t of argument is 32-bit IEEE-754 floating point number vector (C float) otherwise it return #f.
+Returns #t of argument is 32-bit IEEE-754 floating point number vector (C float),
+otherwise it return #f.
 ```
 
 ## f64vector
@@ -1459,11 +1718,6 @@ Returns #t of argument is 32-bit IEEE-754 floating point number vector (C float)
 (f64vector v1 v2 ...)
 
 Create 64-bit IEEE-754 floating point number vector (C double) from give arguments.
-```
-
-## f64vector->list
-```
-#<undefined>
 ```
 
 ## f64vector-length
@@ -1477,31 +1731,31 @@ return length of 64-bit IEEE-754 floating point number vector (C double).
 ```
 (f64vector-ref vector k)
 
-Returns value from vector at index k. If index is out of range it throw exception.
+Returns value from vector at index k.
+If index is out of range it throw exception.
 ```
 
 ## f64vector-set!
 ```
 (f64vector-set! vector k)
 
-Function set value of 64-bit IEEE-754 floating point number vector (C double) at index k. If index is out of range it throw exception.
+Function set value of 64-bit IEEE-754 floating point number vector (C double) at index k.
+If index is out of range it throw exception.
 ```
 
 ## f64vector?
 ```
 (f64vector? x)
 
-Returns #t of argument is 64-bit IEEE-754 floating point number vector (C double) otherwise it return #f.
+Returns #t of argument is 64-bit IEEE-754 floating point number vector (C double),
+otherwise it return #f.
 ```
 
 ## features
 ```
-#<undefined>
-```
+(features)
 
-## file-exists?
-```
-#<undefined>
+Function returns implemented features as a list.
 ```
 
 ## filter
@@ -1518,9 +1772,10 @@ a truthy value. If called with a regex it will create a matcher function.
 ```
 (find fn list)
 (find regex list)
+(find atom list)
 
 Higher-order function that finds the first value for which fn return true.
-If called with a regex it will create a matcher function.
+If called with a regex or any atom it will create a matcher function.
 ```
 
 ## finite?
@@ -1541,7 +1796,8 @@ Returns a shallow list from tree structure (pairs).
 ```
 (flip fn)
 
-Higher-order function that returns a new function where the first two arguments are swapped.
+Higher-order function that returns a new function where the first two arguments
+are swapped.
 
 Example:
 
@@ -1555,21 +1811,6 @@ Example:
 (floor number)
 
 Function that calculates the floor of a number.
-```
-
-## floor-quotient
-```
-#<undefined>
-```
-
-## floor-remainder
-```
-#<undefined>
-```
-
-## floor/
-```
-#<undefined>
 ```
 
 ## flush-output
@@ -1653,6 +1894,20 @@ If there are missing inputs or other escape characters it
 will error.
 ```
 
+## freeze-list!
+```
+(freeze-list! list)
+
+Function make the whole list read only. It mutates the list and returns #void.
+```
+
+## freeze-prop!
+```
+(freeze-prop! object property)
+
+Function make an object property read only.
+```
+
 ## function?
 ```
 (function? expression)
@@ -1675,9 +1930,9 @@ Generates a unique symbol that is not bound anywhere,
 to use with macros as meta name.
 ```
 
-## gensym-interal
+## gensym-literal
 ```
-(gensym-interal symbol)
+(gensym-literal symbol)
 
 Parser extension that creates a new quoted named gensym.
 ```
@@ -1708,16 +1963,16 @@ pass it as an argument.
 ```
 (get-environment-variable name)
 
-Returns given environment variable. This function throws exception
-when called in browser.
+Returns given environment variable. This function returns #void
+when called in the browser.
 ```
 
 ## get-environment-variables
 ```
 (get-environment-variables)
 
-Returns all process environment variables as an alist. This function throws exception
-when called in browser.
+Returns all process environment variables as an alist. This function returns
+an empty list when called in the browser.
 ```
 
 ## get-output-bytevector
@@ -1740,8 +1995,24 @@ to given port it will return empty string.
 ```
 (get-resource url)
 
-Load JavaScript or CSS file in browser by adding script/link tag to head of the current document.
-When called from Node it allow it allows to load JavaScript files only.
+Load JavaScript or CSS file in browser by adding script/link tag to head
+of the current document. When called from Node it allow it allows to load
+JavaScript files only.
+```
+
+## globalize
+```
+(globalize expr)
+
+ Macro will get the value of the expression and add each method as function
+ to global scope.
+```
+
+## help
+```
+(help object)
+
+This macro returns documentation for a function, macro, or a variable.
 ```
 
 ## http-get
@@ -1759,11 +2030,38 @@ binary Buffer object.
 No-op function. It just returns its argument.
 ```
 
+## if
+```
+(if cond true-expr false-expr)
+
+Macro that evaluates cond expression and if the value is true, it
+evaluates and returns true-expression, if not it evaluates and returns
+false-expression.
+```
+
+## ignore
+```
+(ignore . body)
+
+Macro that will evaluate the expression and swallow any promises that may
+be created. It will discard any value that may be returned by the last body
+expression. The code should have side effects and/or when it's promise
+it should resolve to undefined.
+```
+
 ## imag-part
 ```
 (imag-part n)
 
 Return imaginary part of the complex number n.
+```
+
+## import
+```
+(import (library namespace))
+(import (only (library namespace) name1 name2))
+
+Macro for importing names from library.
 ```
 
 ## in
@@ -1772,6 +2070,14 @@ Return imaginary part of the complex number n.
 
 Function that uses the Javascript "in" operator to check if key is
 a valid property in the value.
+```
+
+## include
+```
+(include file ...)
+
+Load at least one file content and insert them into one,
+body expression.
 ```
 
 ## indexed-db?
@@ -1821,6 +2127,20 @@ Checks if argument is input-port and if you can read from it.
 Returns true if argument is input port.
 ```
 
+## inspect
+```
+(inspect object)
+
+logs the arguments without unboxing.
+```
+
+## instance?
+```
+(instance? obj)
+
+Checks if object is an instance, created with a new operator
+```
+
 ## instanceof
 ```
 (instanceof type obj)
@@ -1850,16 +2170,27 @@ Returns the interaction environment equal to lips.env. This can be overwritten
 when creating new interpreter with lips.Interpreter.
 ```
 
+## is-debug
+```
+(is-debug)
+(is-debug value)
+
+Debug function, which checks if internal debug state is set to
+a given value or true.
+```
+
+## iterator->array
+```
+(iterator->array object)
+
+Return array from JavaScript iterator object.
+```
+
 ## iterator?
 ```
 (iterator? x)
 
  Checks if value is JavaScript iterator object.
-```
-
-## jiffies-per-second
-```
-#<undefined>
 ```
 
 ## join
@@ -1883,6 +2214,17 @@ If symbol is a keyword it converts that to string and removes the colon.
 Checks if symbol is a keyword (has a colon as first character).
 ```
 
+## lambda
+```
+(lambda (a b) body)
+(lambda args body)
+(lambda (a b . rest) body)
+
+The lambda macro creates a new anonymous function. If the first element of
+the body is a string and there is more elements the string is used as the
+documentation string, that can be read using (help fn).
+```
+
 ## lcm
 ```
 (lcm n1 n2 ...)
@@ -1899,6 +2241,80 @@ list or any object that has a "length" property. Returns undefined if the
 length could not be found.
 ```
 
+## let
+```
+(let ((a value-a) (b value-b) ...) . body)
+
+Macro that creates a new environment, then evaluates and assigns values to names,
+and then evaluates the body in context of that environment.  Values are evaluated
+sequentially but you can't access previous values/names when the next are
+evaluated. You can only get them in the body of the let expression.  (If you want
+to define multiple variables and use them in each other's definitions, use
+`let*`.)
+```
+
+## let-env
+```
+(let-env env . body)
+
+Special macro that evaluates body in context of given environment
+object.
+```
+
+## let-env-values
+```
+(let-env-values env ((name var)) . body)
+
+Adds mappings for variables var from specified env.
+it is similar to let-env but lexical scope is working with it.
+```
+
+## let-syntax
+```
+(let-syntax ((name fn) ...) . body)
+
+ Works like a combination of let and define-syntax. It creates
+ local macros and evaluates body in context of those macros.
+ The macro to letrec-syntax is like letrec is to let.
+```
+
+## let*
+```
+(let* ((a value-a) (b value-b) ...) . body)
+
+Macro similar to `let`, but the subsequent bindings after the first
+are evaluated in the environment including the previous let variables,
+so you can define one variable, and use it in the next's definition.
+```
+
+## letrec
+```
+(letrec ((a value-a) (b value-b) ...) . body)
+
+Macro that creates a new environment, then evaluates and assigns values to
+names and then evaluates the body in context of that environment.
+Values are evaluated sequentially and the next value can access the
+previous values/names.
+```
+
+## letrec-syntax
+```
+(letrec-syntax ((name fn) ...) . body)
+
+ Works like a combination of letrec and define-syntax. It creates
+ local macros and evaluates the body in context of those macros.
+```
+
+## letrec*
+```
+(letrec* ((a value-a) (b value-b) ...) . body)
+
+Same as letrec but the order of execution of the binding is guaranteed,
+so you can use recursive code as well as referencing the previous binding.
+
+In LIPS both letrec and letrec* behave the same.
+```
+
 ## list
 ```
 (list . args)
@@ -1913,51 +2329,11 @@ Function that creates a new list out of its arguments.
 Function that converts a LIPS list into a JavaScript array.
 ```
 
-## list->f32vector
-```
-#<undefined>
-```
-
-## list->f64vector
-```
-#<undefined>
-```
-
-## list->s16vector
-```
-#<undefined>
-```
-
-## list->s32vector
-```
-#<undefined>
-```
-
-## list->s8vector
-```
-#<undefined>
-```
-
 ## list->string
 ```
 (list->string _list)
 
 Returns a string from a list of characters.
-```
-
-## list->u16vector
-```
-#<undefined>
-```
-
-## list->u32vector
-```
-#<undefined>
-```
-
-## list->u8vector
-```
-#<undefined>
 ```
 
 ## list->vector
@@ -1989,6 +2365,13 @@ Checks if consecutive elements of the list match the predicate function.
 Returns n-th element of a list.
 ```
 
+## list-set!
+```
+(list-set! list n)
+
+Returns n-th element of a list.
+```
+
 ## list-tail
 ```
 (list-tail list k)
@@ -2004,6 +2387,14 @@ Predicate that tests if value is a proper linked list structure.
 The car of each pair can be any value. It returns false on cyclic lists."
 ```
 
+## list*
+```
+(list* arg1 ...)
+
+Parallel asynchronous version of list. Like begin* except all values
+are returned in a list.
+```
+
 ## load
 ```
 (load filename)
@@ -2017,10 +2408,12 @@ will happen in that environment.
 ## log
 ```
 (log z)
+(log z1 z2)
 
-Function that calculates natural logarithm of z where the argument can be
-any number (including complex negative and rational).
-If the value is 0 it return NaN.
+Function that calculates natural logarithm (base e) of z. Where the argument
+can be any number (including complex negative and rational). If the value is 0
+it returns NaN. It two arguments are provided it will calculate logarithm
+of z1 with given base z2.
 ```
 
 ## macro?
@@ -2028,6 +2421,21 @@ If the value is 0 it return NaN.
 (macro? expression)
 
 Predicate that tests if value is a macro.
+```
+
+## macroexpand
+```
+(macroexpand expr)
+
+Macro that expand all macros inside and return single expression as output.
+```
+
+## macroexpand-1
+```
+(macroexpand-1 expr)
+
+Macro similar to macroexpand but it expand macros only one level
+and return single expression as output.
 ```
 
 ## magnitude
@@ -2041,26 +2449,36 @@ Returns magnitude of the complex number in polar coordinate system.
 ```
 (make-u8vector k fill)
 
-Allocate new unsigned 8-bit integer vector (C unsigned char) of length k, with optional initial values.
+Allocate new unsigned 8-bit integer vector (C unsigned char) of length k,
+with optional initial values.
 ```
 
 ## make-f32vector
 ```
 (make-f32vector k fill)
 
-Allocate new 32-bit IEEE-754 floating point number vector (C float) of length k, with optional initial values.
+Allocate new 32-bit IEEE-754 floating point number vector (C float) of length k,
+with optional initial values.
 ```
 
 ## make-f64vector
 ```
 (make-f64vector k fill)
 
-Allocate new 64-bit IEEE-754 floating point number vector (C double) of length k, with optional initial values.
+Allocate new 64-bit IEEE-754 floating point number vector (C double) of length k,
+with optional initial values.
 ```
 
-## make-list
+## make-parameter
 ```
-#<undefined>
+(make-parameter init converter)
+
+Function creates new dynamic variable that can be custimized with parameterize
+macro. The value should be assigned to a variable e.g.:
+
+(define radix (make-parameter 10))
+
+The result value is a procedure that return the value of dynamic variable.
 ```
 
 ## make-polar
@@ -2079,7 +2497,7 @@ Function that creates a promise from a function.
 
 ## make-rectangular
 ```
-(make-rectangular im re)
+(make-rectangular re im)
 
 Creates a complex number from imaginary and real part (a+bi form).
 ```
@@ -2088,21 +2506,24 @@ Creates a complex number from imaginary and real part (a+bi form).
 ```
 (make-s16vector k fill)
 
-Allocate new signed 16-bit integer vector (C short) of length k, with optional initial values.
+Allocate new signed 16-bit integer vector (C short) of length k,
+with optional initial values.
 ```
 
 ## make-s32vector
 ```
 (make-s32vector k fill)
 
-Allocate new signed 32-bit integer vector (C unsigned int) of length k, with optional initial values.
+Allocate new signed 32-bit integer vector (C unsigned int) of length k,
+with optional initial values.
 ```
 
 ## make-s8vector
 ```
 (make-s8vector k fill)
 
-Allocate new signed 8-bit integer vector (C signed char) of length k, with optional initial values.
+Allocate new signed 8-bit integer vector (C signed char) of length k,
+with optional initial values.
 ```
 
 ## make-string
@@ -2124,21 +2545,24 @@ Returns a list structure of code with better syntax then raw LIPS
 ```
 (make-u16vector k fill)
 
-Allocate new unsigned 16-bit integer vector (C unsigned short) of length k, with optional initial values.
+Allocate new unsigned 16-bit integer vector (C unsigned short) of length k,
+with optional initial values.
 ```
 
 ## make-u32vector
 ```
 (make-u32vector k fill)
 
-Allocate new unsigned 32-bit integer vector (C int) of length k, with optional initial values.
+Allocate new unsigned 32-bit integer vector (C int) of length k,
+with optional initial values.
 ```
 
 ## make-u8vector
 ```
 (make-u8vector k fill)
 
-Allocate new unsigned 8-bit integer vector (C unsigned char) of length k, with optional initial values.
+Allocate new unsigned 8-bit integer vector (C unsigned char) of length k,
+with optional initial values.
 ```
 
 ## make-vector
@@ -2282,6 +2706,13 @@ Function that returns the nth element of the list or array.
 If used with a non-indexable value it will error.
 ```
 
+## nth-pair
+```
+(nth-pair list n)
+
+Returns nth pair of a list.
+```
+
 ## null-environment
 ```
 (null-environment)
@@ -2311,11 +2742,6 @@ Function that converts number to string with optional radix (number base).
 Predicate that tests if value is a number or NaN value.
 ```
 
-## numbers?
-```
-#<undefined>
-```
-
 ## numerator
 ```
 (numerator n)
@@ -2323,21 +2749,18 @@ Predicate that tests if value is a number or NaN value.
 Return numerator of rational or same number if n is not rational.
 ```
 
+## object
+```
+(object :name value)
+
+Creates a JavaScript object using key like syntax.
+```
+
 ## object->alist
 ```
 (object->alist object)
 
 Function that converts a JavaScript object to Alist
-```
-
-## object-expander
-```
-(object-expander readonly '(:foo (:bar 10) (:baz (1 2 3))))
-(object-expander readonly '(:foo :bar))
-
-Recursive function helper for defining LIPS code to create objects
-using key like syntax. If no values are used it will create a JavaScript
-shorthand objects where keys are used for keys and the values.
 ```
 
 ## object?
@@ -2427,6 +2850,15 @@ Creates new output port that can used to write string into
 and after finish get the whole string using `get-output-string`.
 ```
 
+## or
+```
+(or . expressions)
+
+Macro that executes the values one by one and returns the first that is
+a truthy value. If there are no expressions that evaluate to true it
+returns false.
+```
+
 ## output-port-open?
 ```
 (output-port-open? port)
@@ -2445,8 +2877,9 @@ Returns true if argument is output port.
 ```
 (pair-map fn list)
 
-Function that calls fn argument for pairs in a list and returns a combined list with
-values returned from function fn. It works likes map but take two items from the list each time.
+Function that calls fn argument for pairs in a list and returns a combined list
+with values returned from function fn. It works likes map but take two items
+from the list each time.
 ```
 
 ## pair?
@@ -2454,6 +2887,13 @@ values returned from function fn. It works likes map but take two items from the
 (pair? expression)
 
 Predicate that tests if value is a pair or list structure.
+```
+
+## parameterize
+```
+(parameterize ((name value) ...)
+
+Macro that change the dynamic variable created by make-parameter.
 ```
 
 ## parent.frame
@@ -2496,7 +2936,7 @@ it return eof object.
 Higher-order function that creates a new function that applies all functions
 from left to right and returns the last value. Reverse of compose.
 e.g.:
-((pipe (curry + 2) (curry * 3)) 10) --> (* 3 (+ 2 10)) --> 36
+((pipe (curry + 2) (curry * 3)) 10) ==> (* 3 (+ 2 10)) ==> 36
 ```
 
 ## plain-object?
@@ -2558,9 +2998,16 @@ calls `(newline)` after printing each input.
 
 ## procedure?
 ```
-(function? expression)
+(procedure? expression)
 
-Predicate that tests if value is a callable function.
+Predicate that tests if value is a callable function or continuation.
+```
+
+## promise
+```
+(promise . body)
+
+Anaphoric macro that exposes resolve and reject functions from JS promise.
 ```
 
 ## promise?
@@ -2586,11 +3033,47 @@ Predicate that tests if value is a valid JavaScript prototype,
 i.e. calling (new) with it will not throw '<x> is not a constructor'.
 ```
 
+## pseudo-random-seed
+```
+(pseudo-random-seed)
+
+Generate a new pseudo random seed for random.
+```
+
 ## qsort
 ```
 (qsort list predicate)
 
 Sorts the list using the quick sort algorithm according to predicate.
+```
+
+## quasiquote
+```
+(quasiquote list)
+
+Similar macro to `quote` but inside it you can use special expressions (unquote
+x) abbreviated to ,x that will evaluate x and insert its value verbatim or
+(unquote-splicing x) abbreviated to ,@x that will evaluate x and splice the value
+into the result. Best used with macros but it can be used outside.
+```
+
+## quote
+```
+(quote expression) or 'expression
+
+Macro that returns a single LIPS expression as data (it won't evaluate the
+argument). It will return a list if put in front of LIPS code.
+And if put in front of a symbol it will return the symbol itself, not the value
+bound to that name.
+```
+
+## quote-promise
+```
+(quote-promise expr) or '>expr
+
+Macro used to escape automatic awaiting of the expression. It will be wrapped
+with a JavaScript class that behaves like Promise but will not be automatically
+resolved by LIPS like normal promises are.
 ```
 
 ## quoted-symbol?
@@ -2614,11 +3097,6 @@ usage:
 (quotient a b)
 
 Return quotient from division as integer.
-```
-
-## quotient&remainder
-```
-#<undefined>
 ```
 
 ## radians->degree
@@ -2671,15 +3149,21 @@ than the tolerance.
 
 ## read
 ```
-(read [string])
+(read [port])
 
-This function, if used with a string, will parse it and
-return the LIPS code, if there is any. If called with a
-port, it will parse the next item from the port. If called
-without an input, it will read a string from standard input
-(using the browser's prompt or a user defined input method)
-and calls itself with that string. This function can be used
-together with `eval` to evaluate code from a string.
+This function, if called with a port, it will parse the next
+item from the port. If called without an input, it will read
+a string from standard input (using the browser's prompt or
+a user defined input method) and parse it. This function can be
+used together with `eval` to evaluate code from port.
+```
+
+## read-all
+```
+(read-all)
+(read-all port)
+
+Read all S-Expressions from port and return them as a list
 ```
 
 ## read-bytevector
@@ -2714,7 +3198,7 @@ input port.
 
 ## read-line
 ```
-(read-char port)
+(read-line port)
 
 This function reads and returns the next line from the input
 port.
@@ -2765,6 +3249,14 @@ of the list until each element is processed, and returns a single value
 as result of last call to `fn` function.
 e.g. it computes (fn 'c 'z (fn 'b 'y (fn 'a 'x 'foo)))
 for: (reduce fn 'foo '(a b c) '(x y z))
+```
+
+## regex
+```
+(regex re)
+(regex re flags)
+
+Creates a new regular expression from string, to not break Emacs formatting.
 ```
 
 ## regex?
@@ -2827,11 +3319,6 @@ Only available when LIPS is running under Node.js.
 Function resets the environment and removes all user defined variables.
 ```
 
-## response->buffer
-```
-#<undefined>
-```
-
 ## response->content
 ```
 (response->text binary res)
@@ -2841,11 +3328,6 @@ is true it will return Buffer object that can be converted to u8vector.
 
 ***Warning:*** it may overflow the Javascript call stack when converting the
 whole buffer to u8vector, because LIPS doesn't have TCO.
-```
-
-## response->text
-```
-#<undefined>
 ```
 
 ## reverse
@@ -2870,11 +3352,6 @@ Function that calculates the round of a number.
 Create signed 16-bit integer vector (C short) from give arguments.
 ```
 
-## s16vector->list
-```
-#<undefined>
-```
-
 ## s16vector-length
 ```
 (s16vector-length v)
@@ -2886,21 +3363,24 @@ return length of signed 16-bit integer vector (C short).
 ```
 (s16vector-ref vector k)
 
-Returns value from vector at index k. If index is out of range it throw exception.
+Returns value from vector at index k.
+If index is out of range it throw exception.
 ```
 
 ## s16vector-set!
 ```
 (s16vector-set! vector k)
 
-Function set value of signed 16-bit integer vector (C short) at index k. If index is out of range it throw exception.
+Function set value of signed 16-bit integer vector (C short) at index k.
+If index is out of range it throw exception.
 ```
 
 ## s16vector?
 ```
 (s16vector? x)
 
-Returns #t of argument is signed 16-bit integer vector (C short) otherwise it return #f.
+Returns #t of argument is signed 16-bit integer vector (C short),
+otherwise it return #f.
 ```
 
 ## s32vector
@@ -2908,11 +3388,6 @@ Returns #t of argument is signed 16-bit integer vector (C short) otherwise it re
 (s32vector v1 v2 ...)
 
 Create signed 32-bit integer vector (C unsigned int) from give arguments.
-```
-
-## s32vector->list
-```
-#<undefined>
 ```
 
 ## s32vector-length
@@ -2926,21 +3401,24 @@ return length of signed 32-bit integer vector (C unsigned int).
 ```
 (s32vector-ref vector k)
 
-Returns value from vector at index k. If index is out of range it throw exception.
+Returns value from vector at index k.
+If index is out of range it throw exception.
 ```
 
 ## s32vector-set!
 ```
 (s32vector-set! vector k)
 
-Function set value of signed 32-bit integer vector (C unsigned int) at index k. If index is out of range it throw exception.
+Function set value of signed 32-bit integer vector (C unsigned int) at index k.
+If index is out of range it throw exception.
 ```
 
 ## s32vector?
 ```
 (s32vector? x)
 
-Returns #t of argument is signed 32-bit integer vector (C unsigned int) otherwise it return #f.
+Returns #t of argument is signed 32-bit integer vector (C unsigned int),
+otherwise it return #f.
 ```
 
 ## s8vector
@@ -2948,11 +3426,6 @@ Returns #t of argument is signed 32-bit integer vector (C unsigned int) otherwis
 (s8vector v1 v2 ...)
 
 Create signed 8-bit integer vector (C signed char) from give arguments.
-```
-
-## s8vector->list
-```
-#<undefined>
 ```
 
 ## s8vector-length
@@ -2966,21 +3439,24 @@ return length of signed 8-bit integer vector (C signed char).
 ```
 (s8vector-ref vector k)
 
-Returns value from vector at index k. If index is out of range it throw exception.
+Returns value from vector at index k.
+If index is out of range it throw exception.
 ```
 
 ## s8vector-set!
 ```
 (s8vector-set! vector k)
 
-Function set value of signed 8-bit integer vector (C signed char) at index k. If index is out of range it throw exception.
+Function set value of signed 8-bit integer vector (C signed char) at index k.
+If index is out of range it throw exception.
 ```
 
 ## s8vector?
 ```
 (s8vector? x)
 
-Returns #t of argument is signed 8-bit integer vector (C signed char) otherwise it return #f.
+Returns #t of argument is signed 8-bit integer vector (C signed char),
+otherwise it return #f.
 ```
 
 ## scheme-report-environment
@@ -3021,10 +3497,47 @@ It will destroy the list. The old tail is lost.
 Changes the current working directory to provided string.
 ```
 
-## set-obj!
+## set-debug!
 ```
-(set-obj! obj key value)
-(set-obj! obj key value props)
+(set-debug!)
+(set-debug! value)
+
+Set debug internal value, used internally for debugging. You can use it
+in LIPS with is-debug function.
+```
+
+## set-global!
+```
+(set-global! name)
+
+Macro to make the name a Javascript global variable (i.e. accessible on globalThis).
+```
+
+## set-hash-syntax!
+```
+(set-hash-syntax! seq value)
+(set-hash-syntax! seq #f)
+
+Creates or removes hash syntax. The value can be a macro or a function.
+The functions needs to return data that will be returned by the parser
+when it finds the # + char or # + symbol in the input stream.
+When the value equal to #f the syntax is removed.
+
+e.g.:
+
+(set-hash-syntax! #\+ (lambda (port)
+                        `(quote ,(apply + (read port)))))
+
+(print #+(1 2 3))
+;; ==> 6
+(print '#+(1 2 3))
+;; ==> (quote 6)
+```
+
+## set-object!
+```
+(set-object! obj key value)
+(set-object! obj key value props)
 
 Function set a property of a JavaScript object. props should be a vector of pairs,
 passed to Object.defineProperty.
@@ -3034,27 +3547,46 @@ passed to Object.defineProperty.
 ```
 (add-repr! type fn)
 
-Function that adds the string representation to the type, which should be a constructor function.
+Function that adds the string representation to the type, which should be
+a constructor function.
 
-Function fn should have args (obj q) and it should return a string. obj is the value that
-need to be converted to a string. If the object is nested and you need to use `repr` recursively,
-it should pass the second parameter q to repr, so string will be quoted when it's true.
+Function fn should have args (obj q) and it should return a string. obj
+is the value that need to be converted to a string. If the object is nested
+and you need to use `repr` recursively, it should pass the second parameter q
+to repr, so string will be quoted when it's true.
 
 e.g.: (lambda (obj q) (string-append "<" (repr obj q) ">"))
 ```
 
 ## set-special!
 ```
-(set-special! symbol name [type])
+(set-special! seq value [type])
 
-Add a special symbol to the list of transforming operators by the parser.
-e.g.: `(add-special! "#" 'x)` will allow to use `#(1 2 3)` and it will be
-transformed into (x (1 2 3)) so you can write x macro that will process
-the list. 3rd argument is optional, and it can be one of two values:
-lips.specials.LITERAL, which is the default behavior, or
-lips.specials.SPLICE which causes the value to be unpacked into the expression.
-This can be used for e.g. to make `#(1 2 3)` into (x 1 2 3) that is needed
-by # that defines vectors.
+Add a new syntax extension to the parser. When parser found the new seq string
+in the input stream it will invoke the function or a macro and return the output
+at parse time.
+
+The arguments to the function or macro depends on the type of extension:
+
+* lips.specials.SYMBOL will not process the next tokens only call the extension
+* lips.specials.LITERAL will read next expression and pass it as first argument
+* lips.specials.SPLICE will read next expression which needs to be a list and
+spread the list into the function arguments.
+```
+
+## set!
+```
+(set! name value)
+
+Macro that can be used to set the value of the variable or slot (mutate it).
+set! searches the scope chain until it finds first non empty slot and sets it.
+```
+
+## shuffle
+```
+(shuffle obj)
+
+Order items in vector or list in random order.
 ```
 
 ## sin
@@ -3073,20 +3605,19 @@ Checks if argument is list with one element.
 
 ## some
 ```
-(some fn list)
+(some fn . lists)
 
-Higher-order function that calls fn on each element of the list.
-It stops and returns true when fn returns true for a value.
-If none of the values give true, some will return false.
-Analogous to Python any(map(fn, list)).
+Higher-order function that calls fn on consecutive elements of the list of lists.
+It stops and returns true when fn returns true. If none of the values give true,
+some will return false. Analogous to Python any(map(fn, list)).
 ```
 
 ## sort
 ```
 (sort list [predicate])
 
-Sorts the list using optional predicate function. If no comparison function is given
-it will use <= and sort in increasing order.
+Sorts the list using optional predicate function. If no comparison function
+is given it will use <= and sort in increasing order.
 ```
 
 ## split
@@ -3169,37 +3700,37 @@ Function that creates a new string by joining its arguments.
 
 ## string-ci<?
 ```
-(string-ci<? string1 string2)
+(string-ci<? string1 string2 ...)
 
-Returns true if the second string is smaller than the first one, ignoring case.
+Returns true if strings are monotonically increasing, ignoring the case.
 ```
 
 ## string-ci<=?
 ```
-(string-ci<? string1 string2)
+(string-ci<=? string1 string2 ...)
 
-Returns true if the second string is not larger than the first one, ignoring case.
+Returns true if strings are monotonically non-decreasing, ignoring the case.
 ```
 
 ## string-ci=?
 ```
-(string-ci=? string1 string2)
+(string-ci=? string1 string2 ...)
 
-Checks if two strings are equal, ignoring case.
+Checks if all strings are equal, ignoring the case.
 ```
 
 ## string-ci>?
 ```
-(string-ci<? string1 string2)
+(string-ci>? string1 string2 ...)
 
-Returns true if the second string is larger than the first one, ignoring case.
+Returns true if strings are monotonically decreasing, ignoring the case
 ```
 
 ## string-ci>=?
 ```
-(string-ci>=? string1 string2)
+(string-ci>=? string1 string2 ...)
 
-Returns true if second character is not smaller than the first one, ignoring case.
+Returns true if strings are monotonically non-increasing, ignoring the case.
 ```
 
 ## string-copy
@@ -3209,11 +3740,33 @@ Returns true if second character is not smaller than the first one, ignoring cas
 Creates a new string based on given argument.
 ```
 
+## string-downcase
+```
+(string-downcase string)
+
+Function convert a string passed as argument to lower case.
+```
+
 ## string-fill!
 ```
 (string-fill! symbol char)
 
 Function that destructively fills the string with given character.
+```
+
+## string-foldcase
+```
+(string-foldcase string)
+
+Returns lowercase string using the Unicode simple case-folding algorithm.
+```
+
+## string-for-each
+```
+(string-for-each fn string1 stringr2 ...)
+
+Applies a function fn to each element of the strings, similar string-map.
+But the return value is #void.
 ```
 
 ## string-join
@@ -3245,12 +3798,26 @@ of the strings, similar to map for lists.
 Returns character inside string at given zero-based index.
 ```
 
+## string-set!
+```
+(string-set! string index char)
+
+Replaces character in string at a given index.
+```
+
 ## string-split
 ```
 (split separator string)
 
 Function that creates a list by splitting string by separator which can
 be a string or regular expression.
+```
+
+## string-upcase
+```
+(string-downcase string)
+
+Function convert a string passed as argument to upper case.
 ```
 
 ## string?
@@ -3262,37 +3829,37 @@ Predicate that tests if value is a string.
 
 ## string<?
 ```
-(string<? string1 string2)
+(string<? string1 string2 ...)
 
-Returns true if the second string is smaller than the first one.
+Returns true if strings are monotonically increasing.
 ```
 
 ## string<=?
 ```
-(string<? string1 string2)
+(string<? string1 string2 ...)
 
-Returns true if the second string is not larger than the first one.
+Returns true if strings are monotonically non-decreasing.
 ```
 
 ## string=?
 ```
-(string=? string1 string2)
+(string=? string1 string2 ...)
 
-Checks if two strings are equal.
+Checks if all strings are equal.
 ```
 
 ## string>?
 ```
-(string<? string1 string2)
+(string<? string1 string2 ...)
 
-Returns true if the second string is larger than the first one.
+Returns true if strings are monotonically decreasing.
 ```
 
 ## string>=?
 ```
-(string<? string1 string2)
+(string<? string1 string2 ...)
 
-Returns true if second character is not smaller then the first one.
+Returns true if strings are monotonically non-increasing.
 ```
 
 ## substring
@@ -3303,17 +3870,27 @@ Function that returns the slice of the string starting at start and ending
 with end.
 ```
 
+## sxml
+```
+(sxml expr)
+
+Macro for JSX like syntax but with SXML.
+e.g. usage:
+
+(sxml (div (@ (data-foo "hello")
+             (id "foo"))
+          (span "hello")
+          (span "world")))
+;; ==> <div data-foo="hello" id="foo"><span>hello</span>
+;; ==> <span>world</span></div>
+```
+
 ## sxml-unquote
 ```
 (sxml-unquote expression) or ~expression
 
 Treat expression as code and evaluate it inside sxml, similar to unquote
 with quasiquote.
-```
-
-## sxml-unquote-mapper
-```
-#<undefined>
 ```
 
 ## symbol->string
@@ -3344,9 +3921,25 @@ Predicate that tests if value is a LIPS symbol.
 Checks if each value is symbol and it's the same according to string=? predicate.
 ```
 
+## syntax-parameterize
+```
+(syntax-parameterize (bindings) body)
+
+Macro work similar to let-syntax but the the bindnds will be exposed to the user.
+With syntax-parameterize you can define anaphoric macros.
+```
+
+## syntax-rules
+```
+(syntax-rules () (pattern expression) ...)
+
+Base of hygienic macros, it will return a new syntax expander
+that works like Lisp macros.
+```
+
 ## take
 ```
-(take n list)
+(take list n)
 
 Returns n first values of the list.
 ```
@@ -3372,6 +3965,14 @@ Function that tests if argument is string port.
 Throws a new exception.
 ```
 
+## timer
+```
+(timer time . body)
+
+Evaluates body after delay, it returns the timer ID from setTimeout.
+To clear the timer you can use native JS clearTimeout function.
+```
+
 ## tree->array
 ```
 (tree->array list)
@@ -3393,19 +3994,15 @@ Tree version of map. fn is invoked on every leaf.
 Function that returns the integer part (floor) of a real number.
 ```
 
-## truncate-quotient
+## try
 ```
-#<undefined>
-```
+(try expr (catch (e) code))
+(try expr (catch (e) code) (finally code))
+(try expr (finally code))
 
-## truncate-remainder
-```
-#<undefined>
-```
-
-## truncate/
-```
-#<undefined>
+Macro that executes expr and catches any exceptions thrown. If catch is provided
+it's executed when an error is thrown. If finally is provided it's always
+executed at the end.
 ```
 
 ## type
@@ -3426,9 +4023,17 @@ proper error message for the nth argument of function calls.
 
 ## typecheck-args
 ```
-(typecheck-args args type)
+(typecheck-args type label lst)
 
-Function that makes sure that all items in the array are of same type.
+Function that makes sure that all items in list are of same type.
+```
+
+## typecheck-number
+```
+(typecheck-number label value type [position])
+
+Function similar to typecheck but checks if the argument is a number
+and specific type of number e.g. complex.
 ```
 
 ## typed-array?
@@ -3445,11 +4050,6 @@ Function that tests if the arguments is a JavaScript typed array (Scheme byte ve
 Create unsigned 16-bit integer vector (C unsigned short) from give arguments.
 ```
 
-## u16vector->list
-```
-#<undefined>
-```
-
 ## u16vector-length
 ```
 (u16vector-length v)
@@ -3461,21 +4061,24 @@ return length of unsigned 16-bit integer vector (C unsigned short).
 ```
 (u16vector-ref vector k)
 
-Returns value from vector at index k. If index is out of range it throw exception.
+Returns value from vector at index k.
+If index is out of range it throw exception.
 ```
 
 ## u16vector-set!
 ```
 (u16vector-set! vector k)
 
-Function set value of unsigned 16-bit integer vector (C unsigned short) at index k. If index is out of range it throw exception.
+Function set value of unsigned 16-bit integer vector (C unsigned short) at index k.
+If index is out of range it throw exception.
 ```
 
 ## u16vector?
 ```
 (u16vector? x)
 
-Returns #t of argument is unsigned 16-bit integer vector (C unsigned short) otherwise it return #f.
+Returns #t of argument is unsigned 16-bit integer vector (C unsigned short),
+otherwise it return #f.
 ```
 
 ## u32vector
@@ -3483,11 +4086,6 @@ Returns #t of argument is unsigned 16-bit integer vector (C unsigned short) othe
 (u32vector v1 v2 ...)
 
 Create unsigned 32-bit integer vector (C int) from give arguments.
-```
-
-## u32vector->list
-```
-#<undefined>
 ```
 
 ## u32vector-length
@@ -3501,21 +4099,24 @@ return length of unsigned 32-bit integer vector (C int).
 ```
 (u32vector-ref vector k)
 
-Returns value from vector at index k. If index is out of range it throw exception.
+Returns value from vector at index k.
+If index is out of range it throw exception.
 ```
 
 ## u32vector-set!
 ```
 (u32vector-set! vector k)
 
-Function set value of unsigned 32-bit integer vector (C int) at index k. If index is out of range it throw exception.
+Function set value of unsigned 32-bit integer vector (C int) at index k.
+If index is out of range it throw exception.
 ```
 
 ## u32vector?
 ```
 (u32vector? x)
 
-Returns #t of argument is unsigned 32-bit integer vector (C int) otherwise it return #f.
+Returns #t of argument is unsigned 32-bit integer vector (C int),
+otherwise it return #f.
 ```
 
 ## u8-ready?
@@ -3535,11 +4136,6 @@ guaranteed not to hang. If the port is at end of file then u8-ready? returns #t.
 Create unsigned 8-bit integer vector (C unsigned char) from give arguments.
 ```
 
-## u8vector->list
-```
-#<undefined>
-```
-
 ## u8vector-length
 ```
 (u8vector-length v)
@@ -3551,21 +4147,24 @@ return length of unsigned 8-bit integer vector (C unsigned char).
 ```
 (u8vector-ref vector k)
 
-Returns value from vector at index k. If index is out of range it throw exception.
+Returns value from vector at index k.
+If index is out of range it throw exception.
 ```
 
 ## u8vector-set!
 ```
 (u8vector-set! vector k)
 
-Function set value of unsigned 8-bit integer vector (C unsigned char) at index k. If index is out of range it throw exception.
+Function set value of unsigned 8-bit integer vector (C unsigned char) at index k.
+If index is out of range it throw exception.
 ```
 
 ## u8vector?
 ```
 (u8vector? x)
 
-Returns #t of argument is unsigned 8-bit integer vector (C unsigned char) otherwise it return #f.
+Returns #t of argument is unsigned 8-bit integer vector (C unsigned char),
+otherwise it return #f.
 ```
 
 ## unary
@@ -3625,6 +4224,14 @@ Function that removes a special symbol from parser added by `set-special!`,
 name must be a string.
 ```
 
+## unset!
+```
+(unset! name)
+
+Function to delete the specified name from environment.
+Trying to access the name afterwards will error.
+```
+
 ## utf8->string
 ```
 (utf8->string u8vector)
@@ -3639,7 +4246,7 @@ The start and end is the range of the input byte vector for the conversion.
 ```
 (value obj)
 
-Function that unwraps LNumbers and converts nil to undefined.
+Function that unwraps LNumbers and converts '() to #void.
 ```
 
 ## values
@@ -3657,14 +4264,13 @@ Values object that can be used in the call-with-values function.
 Returns n value of values object which is result of value function.
 ```
 
-## vector->f32vector
+## vector
 ```
-#<undefined>
-```
+(vector 1 2 3 (+ 3 1)) or #(1 2 3 4)
 
-## vector->f64vector
-```
-#<undefined>
+Macro for defining vectors (Javascript Arrays). Vector literals are
+automatically quoted, so you can't use expressions inside them, only other
+literals, like other vectors or objects.
 ```
 
 ## vector->list
@@ -3675,21 +4281,6 @@ Returns n value of values object which is result of value function.
 
 Function that copies given range of vector to list. If no start is specified it use
 start of the vector, if no end is specified it convert to the end of the vector.
-```
-
-## vector->s16vector
-```
-#<undefined>
-```
-
-## vector->s32vector
-```
-#<undefined>
-```
-
-## vector->s8vector
-```
-#<undefined>
 ```
 
 ## vector->string
@@ -3703,26 +4294,34 @@ If no start is given it create string from 0, if no end is given it return
 string to the end.
 ```
 
-## vector->u16vector
-```
-#<undefined>
-```
-
-## vector->u32vector
-```
-#<undefined>
-```
-
-## vector->u8vector
-```
-#<undefined>
-```
-
 ## vector-append
 ```
 (vector-append v1 v2 ...)
 
 Returns new vector by combining it's arguments that should be vectors.
+```
+
+## vector-copy
+```
+(vector-copy vector)
+(vector-copy vector start)
+(vector-copy vector start end)
+
+Returns a new vecotor that is a copy of given vector. If start
+is not provided it starts at 0, if end it's not provided it copy
+til the end of the given vector.
+```
+
+## vector-copy!
+```
+(vector-copy to at from)
+(vector-copy to at from start)
+(vector-copy to at from start end)
+
+Copies the elements of vector from between start and end into
+vector to starting at `at`. If start is missing it start at 0 and if end
+is missing it copy til the end of the vector from. It throws an error
+if vector from don't fit into the destination `to`.
 ```
 
 ## vector-fill!
@@ -3733,6 +4332,14 @@ Returns new vector by combining it's arguments that should be vectors.
 
 Fill vector with a given value in given range. If start is not given is start
 at 0. If end is not given it fill till the end if the vector.
+```
+
+## vector-for-each
+```
+(vector-for-each fn vector1 vector2 ...)
+
+Invokes every Returns new vector from applying function fn to each element
+of the vectors, similar to map for lists.
 ```
 
 ## vector-length
@@ -3771,6 +4378,20 @@ Function that sets nth item of the vector to value.
 Returns true if value is vector and false if not.
 ```
 
+## wait
+```
+(wait time . expr)
+
+Returns a promise that will resolve with the expression after delay.
+```
+
+## while
+```
+(while cond body)
+
+Creates a loop, it executes cond and body until cond expression is false.
+```
+
 ## with-exception-handler
 ```
 (with-exception-handler handler thunk)
@@ -3806,9 +4427,21 @@ After thunk is executed current-input-port is restored and string port
 is closed.
 ```
 
-## with-output-to-file
+## with-tags
 ```
-#<undefined>
+(with-tags expression)
+
+valutes LIPS shorter code for S-Expression equivalent of JSX.
+e.g.:
+
+(with-tags (:div (:class "item" :id "item-1")
+                 (list (:span () "Random Item")
+                       (:a (:onclick (lambda (e) (alert "close")))
+                           "close"))))
+
+Above expression can be passed to function that renders JSX (like render
+in React, Preact) To get the string from the macro you can use vhtml
+library from npm.
 ```
 
 ## write
@@ -3874,5 +4507,15 @@ Write byte into binary output port.
 (zero? x)
 
 Checks if the number is equal to 0
+```
+
+## zip
+```
+(zip list1 list2 ...)
+
+Return list where elements are taken from each list.
+e.g.:
+(zip '(1 2 3) '(2 3 4))
+;; ==> '((1 2) (2 3) (3 4))
 ```
 
