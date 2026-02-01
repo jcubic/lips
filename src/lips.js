@@ -1537,10 +1537,14 @@ class Parser {
                 throw error;
             }
         }
-        return unpromise(fn(), (result) => {
-            cleanup();
-            return result;
-        }, cleanup);
+        try {
+            return unpromise(fn(), (result) => {
+                cleanup();
+                return result;
+            }, cleanup);
+        } catch (e) {
+            cleanup(e);
+        }
     }
     _reset_state() {
         Object.assign(this._state, {
