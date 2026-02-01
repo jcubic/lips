@@ -77,7 +77,7 @@ const type_constants = new Map([
 ]);
 // -------------------------------------------------------------------------
 
-let fs, path, nodeRequire;
+let fs, path, node_require;
 
 const BN = root.BN;
 
@@ -978,8 +978,6 @@ var specials = {
         try {
             return this.get(name).type;
         } catch(e) {
-            console.log({name});
-            console.log(e);
             return null;
         }
     },
@@ -8678,8 +8676,8 @@ var global_env = new Environment({
             return new Promise(async (resolve, reject) => {
                 try {
                     await node_ready;
-                    const path = nodeRequire('path');
-                    const fs = nodeRequire('fs');
+                    const path = node_require('path');
+                    const fs = node_require('fs');
                     let cwd;
                     const root_dir = get_root_dir();
                     if (has_package) {
@@ -9244,9 +9242,12 @@ var global_env = new Environment({
             in LIPS with is-debug function.`),
     // ------------------------------------------------------------------
     'inspect': doc(
-        function(...args) {
-            console.log(...args);
-        }, `(inspect ...)
+        function(object, options = { showHidden: true, depth: null }) {
+            if (inspect) {
+                object = inspect(object, options);
+            }
+            console.log(object);
+        }, `(inspect object)
 
             logs the arguments without unboxing.`),
     // ------------------------------------------------------------------
@@ -11153,9 +11154,10 @@ function is_node() {
 // -------------------------------------------------------------------------
 const noop = () => {};
 // -------------------------------------------------------------------------
+let inspect;
 async function node_specific() {
     const { createRequire } = await import('mod' + 'ule');
-    nodeRequire = createRequire(import.meta.url);
+    node_require = createRequire(import.meta.url);
     fs = await import('fs');
     path = await import('path');
     global_env.set('global', global);
@@ -11167,11 +11169,12 @@ async function node_specific() {
     const __filename__ = path.basename(moduleURL.pathname);
     global_env.set('__dirname', __dirname__);
     global_env.set('__filename', __filename__);
+    inspect = node_require('util').inspect;
     // ---------------------------------------------------------------------
     global_env.set('require.resolve', doc('require.resolve', function(path) {
         typecheck('require.resolve', path, 'string');
         var name = path.valueOf();
-        return nodeRequire.resolve(name);
+        return node_require.resolve(name);
     }, `(require.resolve path)
 
         Returns the path relative to the current module.
@@ -11185,17 +11188,17 @@ async function node_specific() {
         var value;
         try {
             if (module.match(/^\s*\./)) {
-                value = nodeRequire(path.join(root, module));
+                value = node_require(path.join(root, module));
             } else {
                 var dir = nodeModuleFind(root);
                 if (dir) {
-                    value = nodeRequire(path.join(dir, 'node_modules', module));
+                    value = node_require(path.join(dir, 'node_modules', module));
                 } else {
-                    value = nodeRequire(module);
+                    value = node_require(module);
                 }
             }
         } catch (e) {
-            value = nodeRequire(module);
+            value = node_require(module);
         }
         return patch_value(value, global);
     }, `(require module)
@@ -11210,6 +11213,11 @@ async function node_specific() {
             promise.catch(noop);
         }
     });
+    const originalLog = console.log;
+    console.log = function(...args) {
+        originalLog.apply(console, args);
+        process.stdout.write('');
+    };
 }
 // -------------------------------------------------------------------------
 /* c8 ignore next 15 */
