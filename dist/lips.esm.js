@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 30 Jan 2026 23:39:20 +0000
+ * build: Sun, 01 Feb 2026 16:28:14 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -8422,7 +8422,14 @@ function is_array_method(x) {
 }
 // ----------------------------------------------------------------------
 function is_lips_function(x) {
-  return is_function(x) && (is_lambda(x) || x.__doc__);
+  if (!is_function(x)) {
+    return false;
+  }
+  if (is_lambda(x) || x.__doc__) {
+    return true;
+  }
+  x = unbind(x);
+  return lips_functions.includes(x);
 }
 // ----------------------------------------------------------------------
 function user_repr(obj) {
@@ -16848,7 +16855,8 @@ function evaluate_macro(macro, code, eval_args) {
 
 // -------------------------------------------------------------------------
 function prepare_fn_args(fn, args) {
-  if (is_bound(fn) && !is_object_bound(fn) && (!lips_context(fn) || is_port_method(fn))) {
+  var js_function = is_bound(fn) && !is_lips_function(fn);
+  if (js_function && !is_object_bound(fn) && (!lips_context(fn) || is_port_method(fn))) {
     args = args.map(unbox);
   }
   if (!is_raw_lambda(fn) && args.some(is_lips_function) && !is_lips_function(fn) && !is_array_method(fn)) {
@@ -17845,10 +17853,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Fri, 30 Jan 2026 23:39:20 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 01 Feb 2026 16:28:14 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Fri, 30 Jan 2026 23:39:20 +0000').valueOf();
+  var date = LString('Sun, 01 Feb 2026 16:28:14 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17888,7 +17896,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Fri, 30 Jan 2026 23:39:20 +0000';
+var date = 'Sun, 01 Feb 2026 16:28:14 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
@@ -17952,6 +17960,7 @@ var lips = {
   Parameter: Parameter,
   rationalize: rationalize
 };
+var lips_functions = Object.values(lips);
 global_env.set('lips', lips);
 
 export { BufferedOutputPort, Environment, LipsError as Error, Formatter, InputBinaryFilePort, InputByteVectorPort, InputFilePort, InputPort, InputStringPort, Interpreter, LBigInteger, LCharacter, LComplex, LFloat, LNumber, LRational, LString, LSymbol, Lexer, Macro, OutputBinaryFilePort, OutputByteVectorPort, OutputFilePort, OutputPort, OutputStringPort, Pair, Parameter, Parser, QuotedPromise, Syntax, Values, Worker, is_directive as _is_directive, balanced, balanced as balancedParenthesis, balanced as balanced_parenthesis, banner, bootstrap, box, compile, date, lips as default, user_env as env, eof, evaluate, exec, _nil as nil, parse, quote, rationalize, repr, serialize, serialize_bin, set_fs, specials, tokenize, unbox, unserialize, unserialize_bin, version };

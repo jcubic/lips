@@ -390,19 +390,5 @@
 
 (test "parser: should throw in invalid splice syntax extension"
       (lambda (t)
-        ;; exception from (lips.parse ...) was affecting other tests #483
-        (let ((throws (lambda (code)
-                        ((self.eval "(async (lips, code) => {
-                                       try {
-                                         await lips.parse('$$10');
-                                         return false;
-                                        } catch(e) {
-                                          return true;
-                                        }
-                                     })") lips code))))
-          (t.is (throws "$$10") #t)
-          (t.is (throws "&&10") #t))))
-
-(test "parser: xxx"
-      (lambda (t)
-        (t.is (to.throw (Promise.reject "xxx")) #t)))
+        (t.is (to.throw (lips.parse "$$10")) #t)
+        (t.is (to.throw (lips.parse "&&10")) #t)))

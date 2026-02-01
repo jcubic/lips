@@ -3358,7 +3358,14 @@ function is_array_method(x) {
 }
 // ----------------------------------------------------------------------
 function is_lips_function(x) {
-    return is_function(x) && (is_lambda(x) || x.__doc__);
+    if (!is_function(x)) {
+        return false;
+    }
+    if (is_lambda(x) || x.__doc__) {
+        return true;
+    }
+    x = unbind(x);
+    return lips_functions.includes(x);
 }
 // ----------------------------------------------------------------------
 function user_repr(obj) {
@@ -11464,7 +11471,8 @@ function evaluate_macro(macro, code, eval_args) {
 
 // -------------------------------------------------------------------------
 function prepare_fn_args(fn, args) {
-    if (is_bound(fn) && !is_object_bound(fn) &&
+    const js_function = is_bound(fn) && !is_lips_function(fn);
+    if (js_function && !is_object_bound(fn) &&
         (!lips_context(fn) || is_port_method(fn))) {
         args = args.map(unbox);
     }
@@ -12412,6 +12420,7 @@ export {
     Parameter,
     rationalize
 };
+
 const lips = {
     version,
     banner,
@@ -12484,5 +12493,6 @@ const lips = {
     Parameter,
     rationalize
 };
+var lips_functions = Object.values(lips);
 export default lips;
 global_env.set('lips', lips);
