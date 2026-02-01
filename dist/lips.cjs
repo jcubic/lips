@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 01 Feb 2026 18:54:27 +0000
+ * build: Sun, 01 Feb 2026 19:13:52 +0000
  */
 
 'use strict';
@@ -14798,7 +14798,7 @@ var global_env = new Environment({
     } else {
       user_env.set('DEBUG', x);
     }
-  }, "(set-debug!)\n            (set-debug! value)\n\n            Set debug internal value, used internaly for debugging. You can use it\n            in LIPS with is-debug function."),
+  }, "(set-debug!)\n            (set-debug! value)\n\n            Set debug internal value, used internally for debugging. You can use it\n            in LIPS with is-debug function."),
   // ------------------------------------------------------------------
   'inspect': doc(function (object) {
     var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {
@@ -14811,7 +14811,7 @@ var global_env = new Environment({
     console.log(object);
   }, "(inspect object)\n\n            logs the arguments without unboxing."),
   // ------------------------------------------------------------------
-  'is-debug': doc(is_debug, "(is-debug)\n         (is-debug value)\n\n         Debug function, which checkes if internal debug state is set to\n         a given value or true."),
+  'is-debug': doc(is_debug, "(is-debug)\n         (is-debug value)\n\n         Debug function, which checks if internal debug state is set to\n         a given value or true."),
   // ------------------------------------------------------------------
   lambda: new Macro('lambda', function (code) {
     var _ref34 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
@@ -17883,10 +17883,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 01 Feb 2026 18:54:27 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 01 Feb 2026 19:13:52 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 01 Feb 2026 18:54:27 +0000').valueOf();
+  var date = LString('Sun, 01 Feb 2026 19:13:52 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17926,7 +17926,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 01 Feb 2026 18:54:27 +0000';
+var date = 'Sun, 01 Feb 2026 19:13:52 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

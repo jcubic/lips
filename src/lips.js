@@ -9242,7 +9242,7 @@ var global_env = new Environment({
         }, `(set-debug!)
             (set-debug! value)
 
-            Set debug internal value, used internaly for debugging. You can use it
+            Set debug internal value, used internally for debugging. You can use it
             in LIPS with is-debug function.`),
     // ------------------------------------------------------------------
     'inspect': doc(
@@ -9260,7 +9260,7 @@ var global_env = new Environment({
         `(is-debug)
          (is-debug value)
 
-         Debug function, which checkes if internal debug state is set to
+         Debug function, which checks if internal debug state is set to
          a given value or true.`),
     // ------------------------------------------------------------------
     lambda: new Macro('lambda', function(code, { use_dynamic, error } = {}) {
