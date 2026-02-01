@@ -9230,6 +9230,34 @@ var global_env = new Environment({
         Function that evaluates LIPS Scheme code. If the second argument is provided
         it will be the environment that the code is evaluated in.`),
     // ------------------------------------------------------------------
+    'set-debug!': doc(
+        function set_debug(x = null) {
+            if (x === null) {
+                user_env.set('DEBUG', true);
+            } else {
+                user_env.set('DEBUG', x);
+            }
+        }, `(set-debug!)
+            (set-debug! value)
+
+            Set debug internal value, used internaly for debugging. You can use it
+            in LIPS with is-debug function.`),
+    // ------------------------------------------------------------------
+    'inspect': doc(
+        function(...args) {
+            console.log(...args);
+        }, `(inspect ...)
+
+            logs the arguments without unboxing.`),
+    // ------------------------------------------------------------------
+    'is-debug': doc(
+        is_debug,
+        `(is-debug)
+         (is-debug value)
+
+         Debug function, which checkes if internal debug state is set to
+         a given value or true.`),
+    // ------------------------------------------------------------------
     lambda: new Macro('lambda', function(code, { use_dynamic, error } = {}) {
         var self = this;
         var __doc__;

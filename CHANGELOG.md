@@ -1,6 +1,8 @@
 ## 1.0.0-beta.22
 ### Breaking
 * syntax extensions now expect a reference to a function or a macro
+### Features
+* add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
 ### Bugfix
 * fix doc string for `make-rectangular`
 * `-inf.0`/`+inf.0` are now real lips numbers
