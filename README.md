@@ -323,7 +323,7 @@ in Web (e.g. in Web REPL) you can also use full URL:
 ### Future Plans
 - [ ] Picture language (possibly inspired by P5.js, see [SRFI-203](https://srfi.schemers.org/srfi-203/srfi-203.html)).
 - [ ] Stepper/Debugger.
-- [ ] Allow to use read/port in syntax extensions (similar to CL reader macros).
+- [x] Allow to use read/port in syntax extensions (similar to CL reader macros).
 - [ ] Proper expansion time for both macro systems.
 - [ ] Fully working and tested R7RS hygienic Macros (`syntax-rules`).
 - [ ] All recursive function in JS don't consume stack.
