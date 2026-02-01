@@ -17,7 +17,7 @@
        (if (not (. ,attempt 'passed))
            (--> (. ,attempt 'errors)
                 (forEach (lambda (e)
-                           (set-obj! e 'savedError #void)))))
+                           (set-object! e 'savedError #void)))))
        (--> ,attempt (commit)))))
 
 (define (round-number x . rest)

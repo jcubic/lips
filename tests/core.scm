@@ -1,4 +1,4 @@
-(test "core: it should set!/set-obj! with this and prototype"
+(test "core: it should set!/set-object! with this and prototype"
       (lambda (t)
         (let ()
           (define foo (lambda (x) (set! this.x x)))
@@ -8,10 +8,10 @@
           (t.is (bar.square 10) 100)
           (t.is (bar.sum 5) 15))
         (let ()
-          (define foo (lambda (x) (set-obj! this "x" x)))
+          (define foo (lambda (x) (set-object! this "x" x)))
           (define bar (new foo 10))
-          (set-obj! foo.prototype 'square (lambda (x) (* x x)))
-          (set-obj! foo.prototype 'sum (lambda (x) (+ this.x x)))
+          (set-object! foo.prototype 'square (lambda (x) (* x x)))
+          (set-object! foo.prototype 'sum (lambda (x) (+ this.x x)))
           (t.is (bar.square 10) 100)
           (t.is (bar.sum 5) 15))))
 
@@ -775,8 +775,8 @@
 
 ;; TODO
 ;; begin*
-;; set-obj! throws with null or boolean
-;; set-obj! to delete the value (2 arguments)
+;; set-object! throws with null or boolean
+;; set-object! to delete the value (2 arguments)
 ;; null-environment
 ;; current-environment inside let
 ;; eval that throw error

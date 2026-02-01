@@ -36,20 +36,20 @@
 
 ;;(define-class App Component
 ;;  (constructor (lambda (self)
-;;                 (set-obj! self 'state '((items . '())))))
+;;                 (set-object! self 'state '((items . '())))))
 ;;  (add-item (lambda (self)
 ;;              (let* ((state (.. self.state))
 ;;                     (items (cdr (assoc state 'items)))
-;;                     (new-items (append 
-;;                
-;;                    
-;;                (--> self (setState ((append state 
-;;              
-;;  (render (lambda 
+;;                     (new-items (append
+;;
+;;
+;;                (--> self (setState ((append state
+;;
+;;  (render (lambda
 ;;
 ;;(render (with-tags (:div () (list (:ul ()
-;;                                       
-;;                             
+;;
+;;
 ;;        (. document 'body))
 
 (render (with-tags (:div (:id "foo")

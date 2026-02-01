@@ -196,7 +196,7 @@
                                  (begin (set! result-ready? #t)
                                         (set! result x)
                                         result)))))))
-        (set-obj! promise (Symbol.for "promise") true)
+        (set-object! promise (Symbol.for "promise") true)
         (set! promise.toString (lambda ()
                                  (string-append "#<promise - "
                                                 (if result-ready?
@@ -301,7 +301,7 @@
    Set obj as value in vector at position i."
   (typecheck "vector-set!" vector "array" 1)
   (typecheck "vector-set!" i "number" 2)
-  (set-obj! vector i obj))
+  (set-object! vector i obj))
 
 ;; -----------------------------------------------------------------------------
 (define (%number-type type x)
@@ -476,7 +476,7 @@
              (op (. Math name))
              (fn (lambda (n) (lips.LNumber (op n)))))
         (--> _this_env (set name fn))
-        (set-obj! fn '__doc__ (concat "(" name " n)\n\nFunction that calculates " name
+        (set-object! fn '__doc__ (concat "(" name " n)\n\nFunction that calculates " name
                                   " math operation (it call JavaScript Math." name
                                   " function)"))
         (iter (cdr fns)))))
@@ -1175,7 +1175,7 @@
    Function that sets nth item of the vector to value."
   (typecheck "vector-ref" vec "array" 1)
   (typecheck "vector-ref" n "number" 2)
-  (set-obj! vec n value))
+  (set-object! vec n value))
 
 ;; -----------------------------------------------------------------------------
 (define (vector-fill! vec value)
@@ -1186,7 +1186,7 @@
   (let recur ((n (- (length vec) 1)))
     (if (>= n 0)
         (begin
-          (set-obj! vec n value)
+          (set-object! vec n value)
           (recur (- n 1))))))
 
 ;; -----------------------------------------------------------------------------

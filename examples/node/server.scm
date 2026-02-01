@@ -14,7 +14,7 @@
               (req.on "data" (lambda (chunk)
                                 (set! data (string-append data chunk))))
               (req.on "end" (lambda ()
-                               (set-obj! req 'body data)
+                               (set-object! req 'body data)
                                (next))))))
 
 (define **methods** '())

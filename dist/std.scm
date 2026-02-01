@@ -21,7 +21,7 @@
 (define (%doc string fn)
   (typecheck "%doc" fn "function")
   (typecheck "%doc" string "string")
-  (set-obj! fn '__doc__ (--> string (replace #/^ +/mg "")))
+  (set-object! fn '__doc__ (--> string (replace #/^ +/mg "")))
   fn)
 
 ;; -----------------------------------------------------------------------------
@@ -319,27 +319,27 @@
                            (throw msg))
                          (let ((prop (key->string first)))
                            (if (or (key? second) no-second)
-                               (let ((code `(set-obj! ,name ,prop #void)))
+                               (let ((code `(set-object! ,name ,prop #void)))
                                  (loop (cdr lst) (cons code result)))
                                (let ((code (if readonly
                                                (if (and (pair? second) (key? (car second)))
-                                                   `(set-obj! ,name
-                                                              ,prop
-                                                              ,(%object-expander readonly second quot)
-                                                              ,r-only)
+                                                   `(set-object! ,name
+                                                                 ,prop
+                                                                 ,(%object-expander readonly second quot)
+                                                                 ,r-only)
                                                    (if quot
-                                                       `(set-obj! ,name ,prop ',second ,r-only)
-                                                       `(set-obj! ,name ,prop ,second ,r-only)))
+                                                       `(set-object! ,name ,prop ',second ,r-only)
+                                                       `(set-object! ,name ,prop ,second ,r-only)))
                                                (if (and (pair? second) (key? (car second)))
-                                                   `(set-obj! ,name
-                                                              ,prop
-                                                              ,(%object-expander readonly second))
+                                                   `(set-object! ,name
+                                                                 ,prop
+                                                                 ,(%object-expander readonly second))
                                                    (if quot
-                                                       `(set-obj! ,name ,prop ',second)
-                                                       `(set-obj! ,name ,prop ,second))))))
+                                                       `(set-object! ,name ,prop ',second)
+                                                       `(set-object! ,name ,prop ,second))))))
                                  (loop (cddr lst) (cons code result)))))))))
            ,(if readonly
-               `(Object.preventExtensions ,name))
+                `(Object.preventExtensions ,name))
            ,name))))
 
 ;; -----------------------------------------------------------------------------
@@ -409,7 +409,7 @@
    Marks the object as data to stop evaluation."
   (if (object? obj)
       (begin
-        (set-obj! obj 'data true)
+        (set-object! obj 'data true)
         obj)))
 
 ;; -----------------------------------------------------------------------------
@@ -1041,7 +1041,7 @@
 
      (define-class Person Object
          (constructor (lambda (self name)
-                        (set-obj! self '_name name)))
+                        (set-object! self '_name name)))
          (hi (lambda (self)
                (display (string-append self._name \" says hi\"))
                (newline))))
@@ -1058,17 +1058,17 @@
                                 ;; ref: https://stackoverflow.com/a/50885340/387194
                                 (append (%class-lambda constructor)
                                         (list 'this))))
-             (set-obj! ,name (Symbol.for "__class__") true)
+             (set-object! ,name (Symbol.for "__class__") true)
              (let ((,g:parent ,parent ))
                (if (not (null? ,g:parent))
                    (begin
-                     (set-obj! ,name 'prototype (Object.create (. ,g:parent 'prototype)))
-                     (set-obj! (. ,name 'prototype) 'constructor ,name))))
-             (set-obj! ,name '__name__ ',name)
+                     (set-object! ,name 'prototype (Object.create (. ,g:parent 'prototype)))
+                     (set-object! (. ,name 'prototype) 'constructor ,name))))
+             (set-object! ,name '__name__ ',name)
              ,@(map (lambda (fn)
-                      `(set-obj! (. ,name 'prototype)
-                                 ,(%class-method-name (car fn))
-                                 ,(%class-lambda fn)))
+                      `(set-object! (. ,name 'prototype)
+                                    ,(%class-method-name (car fn))
+                                    ,(%class-lambda fn)))
                     functions))
           (let ((item (car lst)))
             (if (eq? (car item) 'constructor)
@@ -1085,7 +1085,7 @@
        (if (not (or (procedure? parent) (eq? parent #null)))
            (error "parent class need to be a function or #null"))
        (define-class temp parent body ...)
-       (set-obj! temp "__name__" "anonymous")
+       (set-object! temp "__name__" "anonymous")
        temp)))
   "(class <parent> body ...)
 
@@ -1399,7 +1399,7 @@
     (do-iterator
      (item object)
      (#f result)
-     (set-obj! result i item)
+     (set-object! result i item)
      (set! i (+ i 1)))))
 
 ;; -----------------------------------------------------------------------------
@@ -2020,7 +2020,7 @@
                                  (begin (set! result-ready? #t)
                                         (set! result x)
                                         result)))))))
-        (set-obj! promise (Symbol.for "promise") true)
+        (set-object! promise (Symbol.for "promise") true)
         (set! promise.toString (lambda ()
                                  (string-append "#<promise - "
                                                 (if result-ready?
@@ -2125,7 +2125,7 @@
    Set obj as value in vector at position i."
   (typecheck "vector-set!" vector "array" 1)
   (typecheck "vector-set!" i "number" 2)
-  (set-obj! vector i obj))
+  (set-object! vector i obj))
 
 ;; -----------------------------------------------------------------------------
 (define (%number-type type x)
@@ -2300,7 +2300,7 @@
              (op (. Math name))
              (fn (lambda (n) (lips.LNumber (op n)))))
         (--> _this_env (set name fn))
-        (set-obj! fn '__doc__ (concat "(" name " n)\n\nFunction that calculates " name
+        (set-object! fn '__doc__ (concat "(" name " n)\n\nFunction that calculates " name
                                   " math operation (it call JavaScript Math." name
                                   " function)"))
         (iter (cdr fns)))))
@@ -2999,7 +2999,7 @@
    Function that sets nth item of the vector to value."
   (typecheck "vector-ref" vec "array" 1)
   (typecheck "vector-ref" n "number" 2)
-  (set-obj! vec n value))
+  (set-object! vec n value))
 
 ;; -----------------------------------------------------------------------------
 (define (vector-fill! vec value)
@@ -3010,7 +3010,7 @@
   (let recur ((n (- (length vec) 1)))
     (if (>= n 0)
         (begin
-          (set-obj! vec n value)
+          (set-object! vec n value)
           (recur (- n 1))))))
 
 ;; -----------------------------------------------------------------------------
@@ -3520,7 +3520,7 @@
          (typecheck ,(symbol->string vector-set!) k "number")
          (if (not (,vector-in-range? vector k))
              (throw (new Error ,(format "~a index out of range" vector-set!)))
-             (set-obj! vector k v)))
+             (set-object! vector k v)))
        ;; -----------------------------------------------------------------------------
        (define (,list->tvector lst)
          (typecheck ,(symbol->string list->tvector) lst "pair")
@@ -3744,7 +3744,7 @@
  (let recur ((n (- end start)))
     (if (>= n start)
         (begin
-          (set-obj! vector n fill)
+          (set-object! vector n fill)
           (recur (- n 1))))))
 
 ;; -----------------------------------------------------------------------------
@@ -5021,7 +5021,7 @@
                              (if (not (,pred ,obj-name))
                                  (throw (new Error ,(string-append "object is not record of type "
                                                                    (symbol->string name))))
-                                 (set-obj! ,obj-name ',prop-name ,value-name)))))))
+                                 (set-object! ,obj-name ',prop-name ,value-name)))))))
               fields))))
 
 ;; -----------------------------------------------------------------------------
@@ -5067,7 +5067,7 @@
          (throw (new Error (string-append "namespace " namespace
                                           " already exists in library "
                                           self.__name__)))
-         (set-obj! self.__namespace__ namespace env))))
+         (set-object! self.__namespace__ namespace env))))
   (env
    (lambda (self namespace)
      (let ((env (. self.__namespace__ namespace)))

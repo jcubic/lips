@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 01 Feb 2026 19:13:52 +0000
+ * build: Sun, 01 Feb 2026 22:50:00 +0000
  */
 
 'use strict';
@@ -14082,7 +14082,7 @@ var global_env = new Environment({
           return set(object, key, value);
         });
       }
-      env.get('set-obj!').call(env, object, key, value);
+      env.get('set-object!').call(env, object, key, value);
       return value;
     }
     if (is_pair(code.car) && LSymbol.is(code.car.car, '.')) {
@@ -14719,14 +14719,14 @@ var global_env = new Environment({
     });
   }), "(define name expression)\n         (define name expression \"doc string\")\n         (define (function-name . args) . body)\n\n         Macro for defining values. It can be used to define variables,\n         or functions. If the first argument is list it will create a function\n         with name being first element of the list. This form expands to\n         `(define function-name (lambda args body))`"),
   // ------------------------------------------------------------------
-  'set-obj!': doc('set-obj!', function (obj, key, value) {
+  'set-object!': doc('set-object!', function (obj, key, value) {
     var options = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
     var obj_type = _typeof$1(obj);
     if (is_null(obj) || obj_type !== 'object' && obj_type !== 'function') {
-      var msg = typeErrorMessage('set-obj!', type(obj), ['object', 'function']);
+      var msg = typeErrorMessage('set-object!', type(obj), ['object', 'function']);
       throw new Error(msg);
     }
-    typecheck('set-obj!', key, ['string', 'symbol', 'number']);
+    typecheck('set-object!', key, ['string', 'symbol', 'number']);
     obj = unbind(obj);
     key = key.valueOf();
     if (arguments.length === 2) {
@@ -14745,7 +14745,7 @@ var global_env = new Environment({
         value: _value5
       }));
     }
-  }, "(set-obj! obj key value)\n        (set-obj! obj key value props)\n\n        Function set a property of a JavaScript object. props should be a vector of pairs,\n        passed to Object.defineProperty."),
+  }, "(set-object! obj key value)\n        (set-object! obj key value props)\n\n        Function set a property of a JavaScript object. props should be a vector of pairs,\n        passed to Object.defineProperty."),
   // ------------------------------------------------------------------
   'null-environment': doc('null-environment', function () {
     return global_env.inherit('null');
@@ -17883,10 +17883,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 01 Feb 2026 19:13:52 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 01 Feb 2026 22:50:00 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 01 Feb 2026 19:13:52 +0000').valueOf();
+  var date = LString('Sun, 01 Feb 2026 22:50:00 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17926,7 +17926,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 01 Feb 2026 19:13:52 +0000';
+var date = 'Sun, 01 Feb 2026 22:50:00 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

@@ -337,7 +337,7 @@
       (lambda (t)
         (let ((obj (object))
               (max 5))
-          (set-obj! obj Symbol.iterator
+          (set-object! obj Symbol.iterator
                     (lambda ()
                       (let ((i 0))
                         (object :next (lambda ()

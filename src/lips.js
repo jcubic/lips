@@ -8533,7 +8533,7 @@ var global_env = new Environment({
             if (is_promise(value)) {
                 return value.then(value => set(object, key, value));
             }
-            env.get('set-obj!').call(env, object, key, value);
+            env.get('set-object!').call(env, object, key, value);
             return value;
         }
         if (is_pair(code.car) && LSymbol.is(code.car.car, '.')) {
@@ -9143,13 +9143,13 @@ var global_env = new Environment({
          with name being first element of the list. This form expands to
          \`(define function-name (lambda args body))\``),
     // ------------------------------------------------------------------
-    'set-obj!': doc('set-obj!', function(obj, key, value, options = null) {
+    'set-object!': doc('set-object!', function(obj, key, value, options = null) {
         var obj_type = typeof obj;
         if (is_null(obj) || (obj_type !== 'object' && obj_type !== 'function')) {
-            var msg = typeErrorMessage('set-obj!', type(obj), ['object', 'function']);
+            var msg = typeErrorMessage('set-object!', type(obj), ['object', 'function']);
             throw new Error(msg);
         }
-        typecheck('set-obj!', key, ['string', 'symbol', 'number']);
+        typecheck('set-object!', key, ['string', 'symbol', 'number']);
         obj = unbind(obj);
         key = key.valueOf();
         if (arguments.length === 2) {
@@ -9166,8 +9166,8 @@ var global_env = new Environment({
             const value = obj[key];
             Object.defineProperty(obj, key, { ...options, value });
         }
-    }, `(set-obj! obj key value)
-        (set-obj! obj key value props)
+    }, `(set-object! obj key value)
+        (set-object! obj key value props)
 
         Function set a property of a JavaScript object. props should be a vector of pairs,
         passed to Object.defineProperty.`),

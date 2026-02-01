@@ -194,7 +194,7 @@
  (let recur ((n (- end start)))
     (if (>= n start)
         (begin
-          (set-obj! vector n fill)
+          (set-object! vector n fill)
           (recur (- n 1))))))
 
 ;; -----------------------------------------------------------------------------
@@ -1471,7 +1471,7 @@
                              (if (not (,pred ,obj-name))
                                  (throw (new Error ,(string-append "object is not record of type "
                                                                    (symbol->string name))))
-                                 (set-obj! ,obj-name ',prop-name ,value-name)))))))
+                                 (set-object! ,obj-name ',prop-name ,value-name)))))))
               fields))))
 
 ;; -----------------------------------------------------------------------------
@@ -1517,7 +1517,7 @@
          (throw (new Error (string-append "namespace " namespace
                                           " already exists in library "
                                           self.__name__)))
-         (set-obj! self.__namespace__ namespace env))))
+         (set-object! self.__namespace__ namespace env))))
   (env
    (lambda (self namespace)
      (let ((env (. self.__namespace__ namespace)))
