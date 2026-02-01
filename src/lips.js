@@ -132,7 +132,7 @@ function log(x, ...args) {
 // ----------------------------------------------------------------------
 /* c8 ignore next */
 function is_debug(n = null) {
-    const debug = user_env && user_env.get('DEBUG', { throwError: false });
+    const debug = user_env?.get('DEBUG', { throwError: false });
     if (n === null) {
         return debug === true;
     }
@@ -11742,19 +11742,19 @@ function evaluate(code, { env, dynamic_env, use_dynamic, error = noop, ...rest }
         }
         // escape promise feature #54
         var __promise__ = env.get(Symbol.for('__promise__'), { throwError: false });
-        if (__promise__ === true && is_promise(result)) {
-            // fix #139 evaluate the code inside the promise that is not data.
-            // When promise is not quoted it happen automatically, when returning
-            // promise from evaluate.
-            result = result.then(result => {
-                if (is_pair(result) && !value[__data__]) {
-                    return evaluate(result, eval_args);
-                }
-                return result;
-            });
-            return new QuotedPromise(result);
-        }
         if (is_promise(result)) {
+            if (__promise__ === true) {
+                // fix #139 evaluate the code inside the promise that is not data.
+                // When promise is not quoted it happen automatically, when returning
+                // promise from evaluate.
+                result = result.then(result => {
+                    if (is_pair(result) && !value[__data__]) {
+                        return evaluate(result, eval_args);
+                    }
+                    return result;
+                });
+                return new QuotedPromise(result);
+            }
             return result.catch(e => {
                 if (!(e instanceof IgnoreException)) {
                     throw e;

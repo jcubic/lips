@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 01 Feb 2026 16:40:27 +0000
+ * build: Sun, 01 Feb 2026 16:41:04 +0000
  */
 
 'use strict';
@@ -3596,7 +3596,7 @@ function log(x) {
 /* c8 ignore next */
 function is_debug() {
   var n = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
-  var debug = user_env && user_env.get('DEBUG', {
+  var debug = user_env === null || user_env === void 0 ? void 0 : user_env.get('DEBUG', {
     throwError: false
   });
   if (n === null) {
@@ -17173,19 +17173,19 @@ function evaluate(code) {
       var __promise__ = env.get(Symbol["for"]('__promise__'), {
         throwError: false
       });
-      if (__promise__ === true && is_promise(result)) {
-        // fix #139 evaluate the code inside the promise that is not data.
-        // When promise is not quoted it happen automatically, when returning
-        // promise from evaluate.
-        result = result.then(function (result) {
-          if (is_pair(result) && !value[__data__]) {
-            return evaluate(result, eval_args);
-          }
-          return result;
-        });
-        return new QuotedPromise(result);
-      }
       if (is_promise(result)) {
+        if (__promise__ === true) {
+          // fix #139 evaluate the code inside the promise that is not data.
+          // When promise is not quoted it happen automatically, when returning
+          // promise from evaluate.
+          result = result.then(function (result) {
+            if (is_pair(result) && !value[__data__]) {
+              return evaluate(result, eval_args);
+            }
+            return result;
+          });
+          return new QuotedPromise(result);
+        }
         return result["catch"](function (e) {
           if (!(e instanceof IgnoreException)) {
             throw e;
@@ -17874,10 +17874,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 01 Feb 2026 16:40:27 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 01 Feb 2026 16:41:04 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 01 Feb 2026 16:40:27 +0000').valueOf();
+  var date = LString('Sun, 01 Feb 2026 16:41:04 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17917,7 +17917,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 01 Feb 2026 16:40:27 +0000';
+var date = 'Sun, 01 Feb 2026 16:41:04 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
