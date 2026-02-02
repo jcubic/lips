@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Mon, 02 Feb 2026 18:11:28 +0000
+ * build: Mon, 02 Feb 2026 20:10:15 +0000
  */
 
 'use strict';
@@ -4291,6 +4291,18 @@ LSymbol.prototype.is_gensym = function () {
 function symbol_to_string(obj) {
   return obj.toString().replace(/^Symbol\(([^)]+)\)/, '$1');
 }
+
+// -------------------------------------------------------------------------
+function normalize_name(name) {
+  if (name instanceof LSymbol) {
+    return name.valueOf();
+  }
+  if (name instanceof LString) {
+    return name.valueOf();
+  }
+  return name;
+}
+
 // -------------------------------------------------------------------------
 function is_gensym(symbol) {
   if (_typeof$1(symbol) === 'symbol') {
@@ -8433,10 +8445,7 @@ Pair.prototype.map = function (fn) {
   }
 };
 var repr = new Map();
-// ----------------------------------------------------------------------
-function is_plain_object(object) {
-  return object && _typeof$1(object) === 'object' && object.constructor === Object;
-}
+
 // ----------------------------------------------------------------------
 var props = Object.getOwnPropertyNames(Array.prototype);
 var array_methods = [];
@@ -9964,7 +9973,8 @@ function transform_syntax() {
           rest = _arrayLikeToArray(_name$split$filter2).slice(1);
         // save JavaScript dot notation for Env::get
         if (gensyms[first]) {
-          hidden_prop(gensym_name, '__object__', [gensyms[first]].concat(_toConsumableArray(rest)));
+          var variable = gensyms[first].__name__;
+          hidden_prop(gensym_name, '__object__', [variable].concat(_toConsumableArray(rest)));
         }
       }
     }
@@ -10496,13 +10506,49 @@ function is_promise(o) {
   if (o === null || _typeof$1(o) !== 'object') {
     return false;
   }
-  if (o instanceof QuotedPromise) {
-    return false;
-  }
   if (o instanceof Promise) {
     return true;
   }
+  if (o instanceof QuotedPromise) {
+    return false;
+  }
   return is_function(o.then);
+}
+// ----------------------------------------------------------------------
+function is_object(object) {
+  if (!object) {
+    return false;
+  }
+  return _typeof$1(object) === 'object';
+}
+// ----------------------------------------------------------------------
+function is_plain_object(object) {
+  return is_object(object) && object.constructor === Object;
+}
+// ----------------------------------------------------------------------
+// Function used to check if function should not get unboxed arguments,
+// so you can call Object.getPrototypeOf for lips data types
+// this is case, see dir function and #73
+// ----------------------------------------------------------------------
+function is_object_bound(obj) {
+  return is_bound(obj) && obj[Symbol["for"]('__context__')] === Object;
+}
+// ----------------------------------------------------------------------
+function is_bound(obj) {
+  return !!(is_function(obj) && obj[__fn__]);
+}
+// ----------------------------------------------------------------------
+function is_port(obj) {
+  return obj instanceof InputPort || obj instanceof OutputPort;
+}
+// ----------------------------------------------------------------------
+function is_port_method(obj) {
+  if (is_function(obj)) {
+    if (is_port(obj[__context__])) {
+      return true;
+    }
+  }
+  return false;
 }
 // ----------------------------------------------------------------------
 function is_undef(value) {
@@ -10520,10 +10566,7 @@ function is_iterator(obj, symbol) {
 }
 // -------------------------------------------------------------------------
 function is_instance(obj) {
-  if (!obj) {
-    return false;
-  }
-  if (_typeof$1(obj) !== 'object') {
+  if (!is_object(obj)) {
     return false;
   }
   // __instance__ is read only for instances
@@ -10536,7 +10579,7 @@ function is_instance(obj) {
 // -------------------------------------------------------------------------
 function self_evaluated(obj) {
   var type = _typeof$1(obj);
-  return ['string', 'function'].includes(type) || _typeof$1(obj) === 'symbol' || obj instanceof QuotedPromise || obj instanceof LSymbol || obj instanceof LNumber || obj instanceof LCharacter || obj instanceof LString || obj instanceof RegExp;
+  return ['string', 'function'].includes(type) || is_plain_object(obj) || _typeof$1(obj) === 'symbol' || obj instanceof QuotedPromise || obj instanceof LSymbol || obj instanceof LNumber || obj instanceof LCharacter || obj instanceof LString || obj instanceof RegExp;
 }
 // -------------------------------------------------------------------------
 function is_native(obj) {
@@ -10544,10 +10587,7 @@ function is_native(obj) {
 }
 // -------------------------------------------------------------------------
 function has_own_symbol(obj, symbol) {
-  if (obj === null) {
-    return false;
-  }
-  return _typeof$1(obj) === 'object' && symbol in Object.getOwnPropertySymbols(obj);
+  return is_object(obj) && symbol in Object.getOwnPropertySymbols(obj);
 }
 // ----------------------------------------------------------------------
 // :: Function utilities
@@ -10582,10 +10622,7 @@ function map_object(object, fn) {
 }
 // ----------------------------------------------------------------------
 function unbox(object) {
-  var lips_type = [LString, LNumber, LCharacter].some(function (x) {
-    return object instanceof x;
-  });
-  if (lips_type) {
+  if (is_native(object)) {
     return object.valueOf();
   }
   if (object instanceof Array) {
@@ -10666,35 +10703,10 @@ function bind(fn, context) {
   return bound;
 }
 // ----------------------------------------------------------------------
-// Function used to check if function should not get unboxed arguments,
-// so you can call Object.getPrototypeOf for lips data types
-// this is case, see dir function and #73
-// ----------------------------------------------------------------------
-function is_object_bound(obj) {
-  return is_bound(obj) && obj[Symbol["for"]('__context__')] === Object;
-}
-// ----------------------------------------------------------------------
-function is_bound(obj) {
-  return !!(is_function(obj) && obj[__fn__]);
-}
-// ----------------------------------------------------------------------
 function lips_context(obj) {
   if (is_function(obj)) {
     var context = obj[__context__];
     if (context && (context === lips || context.constructor && context.constructor.__class__)) {
-      return true;
-    }
-  }
-  return false;
-}
-// ----------------------------------------------------------------------
-function is_port(obj) {
-  return obj instanceof InputPort || obj instanceof OutputPort;
-}
-// ----------------------------------------------------------------------
-function is_port_method(obj) {
-  if (is_function(obj)) {
-    if (is_port(obj[__context__])) {
       return true;
     }
   }
@@ -10830,43 +10842,37 @@ function let_macro(symbol) {
         throw new Error("Duplicated let variable ".concat(name));
       }
     }
+    function set_variables(arr) {
+      for (var i = 0, len = arr.length; i < len; ++i) {
+        var _name0 = values[i].name;
+        check_duplicates(_name0);
+        env.set(_name0, arr[i]);
+      }
+    }
+    function done() {
+      if (values && values.length) {
+        var v = values.map(function (x) {
+          return x.value;
+        });
+        if (v.find(is_promise)) {
+          // resolve all promises
+          return promise_all(v).then(function (arr) {
+            set_variables(arr);
+          }).then(exec);
+        } else {
+          set_variables(v);
+        }
+      }
+      return exec();
+    }
+    dynamic_env = self;
     return function loop() {
       var pair = args[i++];
-      dynamic_env = name === 'let*' ? env : self;
+      if (name === 'let*') {
+        dynamic_env = env;
+      }
       if (!pair) {
-        if (values && values.length) {
-          var v = values.map(function (x) {
-            return x.value;
-          });
-          // resolve all promises
-          var promises = v.filter(is_promise);
-          if (promises.length) {
-            return promise_all(v).then(function (arr) {
-              for (var i = 0, len = arr.length; i < len; ++i) {
-                var _name0 = values[i].name;
-                check_duplicates(_name0);
-                env.set(_name0, arr[i]);
-              }
-            }).then(exec);
-          } else {
-            var _iterator9 = _createForOfIteratorHelper(values),
-              _step9;
-            try {
-              for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
-                var _step9$value = _step9.value,
-                  _name1 = _step9$value.name,
-                  _value3 = _step9$value.value;
-                check_duplicates(_name1);
-                env.set(_name1, _value3);
-              }
-            } catch (err) {
-              _iterator9.e(err);
-            } finally {
-              _iterator9.f();
-            }
-          }
-        }
-        return exec();
+        return done();
       } else {
         if (name === 'let') {
           var_body_env = self;
@@ -11127,17 +11133,17 @@ function LString(string) {
       return fn.apply(this.__string__, args);
     };
   };
-  var _iterator0 = _createForOfIteratorHelper(_keys),
-    _step0;
+  var _iterator9 = _createForOfIteratorHelper(_keys),
+    _step9;
   try {
-    for (_iterator0.s(); !(_step0 = _iterator0.n()).done;) {
-      var key = _step0.value;
+    for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
+      var key = _step9.value;
       LString.prototype[key] = wrap(String.prototype[key]);
     }
   } catch (err) {
-    _iterator0.e(err);
+    _iterator9.e(err);
   } finally {
-    _iterator0.f();
+    _iterator9.f();
   }
 }
 LString.prototype[Symbol.iterator] = /*#__PURE__*/_regeneratorRuntime.mark(function _callee14() {
@@ -12229,8 +12235,8 @@ LFloat.prototype.toString = function (radix) {
     // before the decimal point
     if (str.match(/^-?[0-9a-f]{7,}\.?/i)) {
       var _exponent = number.match(/^[0-9a-f]+/ig)[0].length - 1;
-      var _value4 = number.replace(/\./, '').replace(/^([0-9a-f])/i, '$1.').replace(/0+$/, '').replace(/\.$/, '.0');
-      return "".concat(sign).concat(_value4, "e+").concat(_exponent.toString(radix));
+      var _value3 = number.replace(/\./, '').replace(/^([0-9a-f])/i, '$1.').replace(/0+$/, '').replace(/\.$/, '.0');
+      return "".concat(sign).concat(_value3, "e+").concat(_exponent.toString(radix));
     }
     if (!LNumber.isFloat(this.__value__)) {
       var result = str + '.0';
@@ -13438,7 +13444,7 @@ var IgnoreException = /*#__PURE__*/function (_Error2) {
 // -------------------------------------------------------------------------
 function Environment(obj, parent, name) {
   if (arguments.length === 1) {
-    if (_typeof$1(arguments[0]) === 'object') {
+    if (is_object(arguments[0])) {
       obj = arguments[0];
       parent = null;
     } else if (typeof arguments[0] === 'string') {
@@ -13462,13 +13468,7 @@ Environment.prototype.fs = function () {
 };
 // -------------------------------------------------------------------------
 Environment.prototype.unset = function (name) {
-  if (name instanceof LSymbol) {
-    name = name.valueOf();
-  }
-  if (name instanceof LString) {
-    name = name.valueOf();
-  }
-  delete this.__env__[name];
+  delete this.__env__[normalize_name(name)];
 };
 // -------------------------------------------------------------------------
 Environment.prototype.inherit = function (name) {
@@ -13487,12 +13487,7 @@ Environment.prototype.inherit = function (name) {
 Environment.prototype.doc = function (name) {
   var value = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
   var dump = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
-  if (name instanceof LSymbol) {
-    name = name.__name__;
-  }
-  if (name instanceof LString) {
-    name = name.valueOf();
-  }
+  name = normalize_name(name);
   if (value) {
     if (!dump) {
       value = trim_lines(value);
@@ -13505,9 +13500,9 @@ Environment.prototype.doc = function (name) {
     if (ref.__docs__.has(name)) {
       return ref.__docs__.get(name);
     }
-    var _value5 = ref.get(name);
-    if (_value5 !== null && _value5 !== void 0 && _value5.__doc__) {
-      return _value5 === null || _value5 === void 0 ? void 0 : _value5.__doc__;
+    var _value4 = ref.get(name);
+    if (_value4 !== null && _value4 !== void 0 && _value4.__doc__) {
+      return _value4 === null || _value4 === void 0 ? void 0 : _value4.__doc__;
     }
   }
 };
@@ -13536,18 +13531,12 @@ Environment.prototype.new_frame = function (fn, args) {
   return frame;
 };
 // -------------------------------------------------------------------------
-Environment.prototype._lookup = function (symbol) {
-  if (symbol instanceof LSymbol) {
-    symbol = symbol.__name__;
-  }
-  if (symbol instanceof LString) {
-    symbol = symbol.valueOf();
-  }
-  if (this.__env__.hasOwnProperty(symbol)) {
-    return Value(this.__env__[symbol], 'get');
+Environment.prototype._lookup = function (name) {
+  if (this.__env__.hasOwnProperty(name)) {
+    return Value(this.__env__[name], 'get');
   }
   if (this.__parent__) {
-    return this.__parent__._lookup(symbol);
+    return this.__parent__._lookup(name);
   }
 };
 // -------------------------------------------------------------------------
@@ -13685,7 +13674,7 @@ Environment.prototype.set = function (name, value) {
     value = LNumber(value);
   }
   if (name instanceof LSymbol) {
-    name = name.__name__;
+    name = name.valueOf();
   }
   if (name instanceof LString) {
     name = name.valueOf();
@@ -14756,9 +14745,9 @@ var global_env = new Environment({
       obj[key] = value && !is_prototype(value) ? value.valueOf() : value;
     }
     if (props) {
-      var _value6 = obj[key];
+      var _value5 = obj[key];
       Object.defineProperty(obj, key, _objectSpread(_objectSpread({}, options), {}, {
-        value: _value6
+        value: _value5
       }));
     }
   }, "(set-object! obj key value)\n        (set-object! obj key value props)\n\n        Function set a property of a JavaScript object. props should be a vector of pairs,\n        passed to Object.defineProperty."),
@@ -14891,8 +14880,8 @@ var global_env = new Environment({
               set(name, value);
               break;
             } else if (is_pair(name)) {
-              var _value7 = args[i];
-              set(name.car, _value7);
+              var _value6 = args[i];
+              set(name.car, _value6);
             }
           }
           if (is_nil(name.cdr)) {
@@ -15820,8 +15809,8 @@ var global_env = new Environment({
                 throw new IgnoreException('[CATCH]');
               }
             };
-            var _value8 = evaluate(new Pair(new LSymbol('begin'), catch_clause.cdr.cdr), catch_args);
-            unpromise(_value8, function handler(result) {
+            var _value7 = evaluate(new Pair(new LSymbol('begin'), catch_clause.cdr.cdr), catch_args);
+            unpromise(_value7, function handler(result) {
               if (!catch_error) {
                 _next2(result, finalize);
               }
@@ -17400,11 +17389,11 @@ function balanced(code) {
     return brackets.includes(token);
   });
   var stack = new Stack();
-  var _iterator1 = _createForOfIteratorHelper(tokens),
-    _step1;
+  var _iterator0 = _createForOfIteratorHelper(tokens),
+    _step0;
   try {
-    for (_iterator1.s(); !(_step1 = _iterator1.n()).done;) {
-      var token = _step1.value;
+    for (_iterator0.s(); !(_step0 = _iterator0.n()).done;) {
+      var token = _step0.value;
       if (open_tokens.includes(token)) {
         stack.push(token);
       } else if (!stack.is_empty()) {
@@ -17423,9 +17412,9 @@ function balanced(code) {
       }
     }
   } catch (err) {
-    _iterator1.e(err);
+    _iterator0.e(err);
   } finally {
-    _iterator1.f();
+    _iterator0.f();
   }
   return stack.is_empty();
 }
@@ -17904,10 +17893,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Mon, 02 Feb 2026 18:11:28 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Mon, 02 Feb 2026 20:10:15 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Mon, 02 Feb 2026 18:11:28 +0000').valueOf();
+  var date = LString('Mon, 02 Feb 2026 20:10:15 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17947,7 +17936,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Mon, 02 Feb 2026 18:11:28 +0000';
+var date = 'Mon, 02 Feb 2026 20:10:15 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

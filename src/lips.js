@@ -813,6 +813,18 @@ LSymbol.prototype.is_gensym = function() {
 function symbol_to_string(obj) {
     return obj.toString().replace(/^Symbol\(([^)]+)\)/, '$1');
 }
+
+// -------------------------------------------------------------------------
+function normalize_name(name) {
+    if (name instanceof LSymbol) {
+        return name.valueOf();
+    }
+    if (name instanceof LString) {
+        return name.valueOf();
+    }
+    return name;
+}
+
 // -------------------------------------------------------------------------
 function is_gensym(symbol) {
     if (typeof symbol === 'symbol') {
@@ -3367,10 +3379,7 @@ Pair.prototype.map = function(fn) {
     }
 };
 const repr = new Map();
-// ----------------------------------------------------------------------
-function is_plain_object(object) {
-    return object && typeof object === 'object' && object.constructor === Object;
-}
+
 // ----------------------------------------------------------------------
 var props = Object.getOwnPropertyNames(Array.prototype);
 var array_methods = [];
@@ -4798,7 +4807,8 @@ function transform_syntax(options = {}) {
                 const [first, ...rest] = name.split('.').filter(Boolean);
                 // save JavaScript dot notation for Env::get
                 if (gensyms[first]) {
-                    hidden_prop(gensym_name, '__object__', [gensyms[first], ...rest]);
+                    const variable = gensyms[first].__name__;
+                    hidden_prop(gensym_name, '__object__', [variable, ...rest]);
                 }
             }
         }
@@ -5316,13 +5326,49 @@ function is_promise(o) {
     if (o === null || typeof o !== 'object') {
         return false;
     }
-    if (o instanceof QuotedPromise) {
-        return false;
-    }
     if (o instanceof Promise) {
         return true;
     }
+    if (o instanceof QuotedPromise) {
+        return false;
+    }
     return is_function(o.then);
+}
+// ----------------------------------------------------------------------
+function is_object(object) {
+    if (!object) {
+        return false;
+    }
+    return typeof object === 'object';
+}
+// ----------------------------------------------------------------------
+function is_plain_object(object) {
+    return is_object(object) && object.constructor === Object;
+}
+// ----------------------------------------------------------------------
+// Function used to check if function should not get unboxed arguments,
+// so you can call Object.getPrototypeOf for lips data types
+// this is case, see dir function and #73
+// ----------------------------------------------------------------------
+function is_object_bound(obj) {
+    return is_bound(obj) && obj[Symbol.for('__context__')] === Object;
+}
+// ----------------------------------------------------------------------
+function is_bound(obj) {
+    return !!(is_function(obj) && obj[__fn__]);
+}
+// ----------------------------------------------------------------------
+function is_port(obj) {
+    return obj instanceof InputPort || obj instanceof OutputPort;
+}
+// ----------------------------------------------------------------------
+function is_port_method(obj) {
+    if (is_function(obj)) {
+        if (is_port(obj[__context__])) {
+            return true;
+        }
+    }
+    return false;
 }
 // ----------------------------------------------------------------------
 function is_undef(value) {
@@ -5340,10 +5386,7 @@ function is_iterator(obj, symbol) {
 }
 // -------------------------------------------------------------------------
 function is_instance(obj) {
-    if (!obj) {
-        return false;
-    }
-    if (typeof obj !== 'object') {
+    if (!is_object(obj)) {
         return false;
     }
     // __instance__ is read only for instances
@@ -5357,6 +5400,7 @@ function is_instance(obj) {
 function self_evaluated(obj) {
     var type = typeof obj;
     return ['string', 'function'].includes(type) ||
+        is_plain_object(obj) ||
         typeof obj === 'symbol' ||
         obj instanceof QuotedPromise ||
         obj instanceof LSymbol ||
@@ -5373,11 +5417,7 @@ function is_native(obj) {
 }
 // -------------------------------------------------------------------------
 function has_own_symbol(obj, symbol) {
-    if (obj === null) {
-        return false;
-    }
-    return typeof obj === 'object' &&
-        symbol in Object.getOwnPropertySymbols(obj);
+    return is_object(obj) && symbol in Object.getOwnPropertySymbols(obj);
 }
 // ----------------------------------------------------------------------
 // :: Function utilities
@@ -5412,8 +5452,7 @@ function map_object(object, fn) {
 }
 // ----------------------------------------------------------------------
 function unbox(object) {
-    var lips_type = [LString, LNumber, LCharacter].some(x => object instanceof x);
-    if (lips_type) {
+    if (is_native(object)) {
         return object.valueOf();
     }
     if (object instanceof Array) {
@@ -5485,37 +5524,12 @@ function bind(fn, context) {
     return bound;
 }
 // ----------------------------------------------------------------------
-// Function used to check if function should not get unboxed arguments,
-// so you can call Object.getPrototypeOf for lips data types
-// this is case, see dir function and #73
-// ----------------------------------------------------------------------
-function is_object_bound(obj) {
-    return is_bound(obj) && obj[Symbol.for('__context__')] === Object;
-}
-// ----------------------------------------------------------------------
-function is_bound(obj) {
-    return !!(is_function(obj) && obj[__fn__]);
-}
-// ----------------------------------------------------------------------
 function lips_context(obj) {
     if (is_function(obj)) {
         var context = obj[__context__];
         if (context && (context === lips ||
                         (context.constructor &&
                          context.constructor.__class__))) {
-            return true;
-        }
-    }
-    return false;
-}
-// ----------------------------------------------------------------------
-function is_port(obj) {
-    return obj instanceof InputPort || obj instanceof OutputPort;
-}
-// ----------------------------------------------------------------------
-function is_port_method(obj) {
-    if (is_function(obj)) {
-        if (is_port(obj[__context__])) {
             return true;
         }
     }
@@ -5650,30 +5664,35 @@ function let_macro(symbol) {
                 throw new Error(`Duplicated let variable ${name}`);
             }
         }
+        function set_variables(arr) {
+            for (var i = 0, len = arr.length; i < len; ++i) {
+                const name = values[i].name;
+                check_duplicates(name);
+                env.set(name, arr[i]);
+            }
+        }
+        function done() {
+            if (values && values.length) {
+                var v = values.map(x => x.value);
+                if (v.find(is_promise)) {
+                    // resolve all promises
+                    return promise_all(v).then((arr) => {
+                        set_variables(arr);
+                    }).then(exec);
+                } else {
+                    set_variables(v);
+                }
+            }
+            return exec();
+        }
+        dynamic_env = self;
         return (function loop() {
             var pair = args[i++];
-            dynamic_env = name === 'let*' ? env : self;
+            if (name === 'let*') {
+                dynamic_env = env;
+            }
             if (!pair) {
-                if (values && values.length) {
-                    var v = values.map(x => x.value);
-                    // resolve all promises
-                    var promises = v.filter(is_promise);
-                    if (promises.length) {
-                        return promise_all(v).then((arr) => {
-                            for (var i = 0, len = arr.length; i < len; ++i) {
-                                const name = values[i].name;
-                                check_duplicates(name);
-                                env.set(name, arr[i]);
-                            }
-                        }).then(exec);
-                    } else {
-                        for (let { name, value } of values) {
-                            check_duplicates(name);
-                            env.set(name, value);
-                        }
-                    }
-                }
-                return exec();
+                return done();
             } else {
                 if (name === 'let') {
                     var_body_env = self;
@@ -7890,7 +7909,7 @@ class IgnoreException extends Error { }
 // -------------------------------------------------------------------------
 function Environment(obj, parent, name) {
     if (arguments.length === 1) {
-        if (typeof arguments[0] === 'object') {
+        if (is_object(arguments[0])) {
             obj = arguments[0];
             parent = null;
         } else if (typeof arguments[0] === 'string') {
@@ -7914,13 +7933,7 @@ Environment.prototype.fs = function() {
 };
 // -------------------------------------------------------------------------
 Environment.prototype.unset = function(name) {
-    if (name instanceof LSymbol) {
-        name = name.valueOf();
-    }
-    if (name instanceof LString) {
-        name = name.valueOf();
-    }
-    delete this.__env__[name];
+    delete this.__env__[normalize_name(name)];
 };
 // -------------------------------------------------------------------------
 Environment.prototype.inherit = function(name, obj = {}) {
@@ -7936,12 +7949,7 @@ Environment.prototype.inherit = function(name, obj = {}) {
 // :: Lookup function for variable doc strings
 // -------------------------------------------------------------------------
 Environment.prototype.doc = function(name, value = null, dump = false) {
-    if (name instanceof LSymbol) {
-        name = name.__name__;
-    }
-    if (name instanceof LString) {
-        name = name.valueOf();
-    }
+    name = normalize_name(name);
     if (value) {
         if (!dump) {
             value = trim_lines(value);
@@ -7984,18 +7992,12 @@ Environment.prototype.new_frame = function(fn, args) {
     return frame;
 };
 // -------------------------------------------------------------------------
-Environment.prototype._lookup = function(symbol) {
-    if (symbol instanceof LSymbol) {
-        symbol = symbol.__name__;
-    }
-    if (symbol instanceof LString) {
-        symbol = symbol.valueOf();
-    }
-    if (this.__env__.hasOwnProperty(symbol)) {
-        return Value(this.__env__[symbol], 'get');
+Environment.prototype._lookup = function(name) {
+    if (this.__env__.hasOwnProperty(name)) {
+        return Value(this.__env__[name], 'get');
     }
     if (this.__parent__) {
-        return this.__parent__._lookup(symbol);
+        return this.__parent__._lookup(name);
     }
 };
 // -------------------------------------------------------------------------
@@ -8068,18 +8070,18 @@ Environment.prototype.get = function(symbol, options = {}) {
     // so print will get user stdout
     typecheck('Environment::get', symbol, ['symbol', 'string']);
     const { throwError = true } = options;
-    var name = symbol;
+    let name = symbol;
     if (name instanceof LSymbol || name instanceof LString) {
         name = name.valueOf();
     }
-    var value = this._lookup(name);
+    let value = this._lookup(name);
     if (Value.of('get', value)) {
         if (Value.is_undefined(value)) {
             return undefined;
         }
         return patch_value(value.valueOf());
     }
-    var parts;
+    let parts;
     if (symbol instanceof LSymbol && symbol[LSymbol.object]) {
         // dot notation symbols from syntax-rules that are gensyms
         parts = symbol[LSymbol.object];
@@ -8087,7 +8089,7 @@ Environment.prototype.get = function(symbol, options = {}) {
         parts = name.split('.').filter(Boolean);
     }
     if (parts && parts.length > 0) {
-        var [first, ...rest] = parts;
+        const [first, ...rest] = parts;
         value = this._lookup(first);
         if (rest.length) {
             try {
@@ -8125,7 +8127,7 @@ Environment.prototype.set = function(name, value, doc = null) {
         value = LNumber(value);
     }
     if (name instanceof LSymbol) {
-        name = name.__name__;
+        name = name.valueOf();
     }
     if (name instanceof LString) {
         name = name.valueOf();
