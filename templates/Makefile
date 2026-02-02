@@ -38,7 +38,7 @@ define ver_date
 	-e "s/{{YEAR}}/${YEAR}/" $(1) || $(SED) -i -e "s/{{VER}}/DEV/g" -e "s/{{DATE}}/$(DATE)/g" $(1)
 endef
 
-ALL: Makefile package.json .$(VERSION) assets/classDiagram.svg dist/base.js dist/lips.js dist/lips.esm.js dist/lips.min.js dist/lips.esm.min.js README.md dist/std.min.scm dist/std.xcb docs/reference.json docs/version.json
+ALL: Makefile package.json .$(VERSION) assets/classDiagram.svg dist/base.js dist/lips.js dist/lips.esm.js dist/lips.min.js dist/lips.esm.min.js README.md REFERENCE.md dist/std.min.scm dist/std.xcb docs/reference.json docs/version.json
 
 dist/banner.js: src/banner.js src/lips.js .$(VERSION)
 	$(CP) src/banner.js dist/banner.js
@@ -66,7 +66,7 @@ dist/std.scm: lib/bootstrap.scm lib/R5RS.scm lib/byte-vectors.scm lib/R7RS.scm l
 dist/std.xcb: dist/std.scm
 	$(LIPS) -t --bootstrap dist/std.scm -c -q dist/std.scm
 
-docs/reference.json: dist/std.xcb src/lips.js
+docs/reference.json: dist/std.xcb src/lips.js scripts/reference.js
 	$(NODE) ./scripts/reference.js > docs/reference.json
 
 dist/std.min.scm: dist/std.scm
@@ -89,6 +89,9 @@ README.md: templates/README.md dist/lips.js .$(VERSION)
 	$(SED) -e "s/{{VER}}/$(VERSION)/g" -e "s#{{BRANCH}}#$(BRANCH)#g" -e "s/{{YEAR}}/${YEAR}/g" \
 	-e "s/{{CHECKSUM}}/$(TESTS_CHECKSUM)/g" -e "s/{{COMMIT}}/$(COMMIT)/g" -e "s/{{DATE}}/${DATE_SHORT}/" \
 	-e "s/{{VER_DASH}}/$(VERSION_DASH)/g" < templates/README.md > README.md
+
+REFERENCE.md: docs/reference.json scripts/reference.scm
+	$(LIPS) scripts/reference.scm > REFERENCE.md
 
 .$(VERSION): Makefile
 	touch .$(VERSION)
