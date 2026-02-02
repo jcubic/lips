@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 01 Feb 2026 22:50:00 +0000
+ * build: Mon, 02 Feb 2026 00:02:08 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -13472,11 +13472,15 @@ Environment.prototype.doc = function (name) {
     this.__docs__.set(name, value);
     return this;
   }
-  if (this.__docs__.has(name)) {
-    return this.__docs__.get(name);
-  }
-  if (this.__parent__) {
-    return this.__parent__.doc(name);
+  var ref = this.ref(name);
+  if (ref) {
+    if (ref.__docs__.has(name)) {
+      return ref.__docs__.get(name);
+    }
+    var _value5 = ref.get(name);
+    if (_value5 !== null && _value5 !== void 0 && _value5.__doc__) {
+      return _value5 === null || _value5 === void 0 ? void 0 : _value5.__doc__;
+    }
   }
 };
 // -------------------------------------------------------------------------
@@ -14002,6 +14006,7 @@ var global_env = new Environment({
     if (code.car instanceof LSymbol) {
       symbol = code.car;
     } else if (is_pair(code.car) && code.car.car instanceof LSymbol) {
+      // 'name same as (quote name) according to macro
       symbol = code.car.car;
     } else {
       var env = this;
@@ -14017,19 +14022,7 @@ var global_env = new Environment({
       }
       return;
     }
-    var __doc__;
-    var value = this.get(symbol);
-    __doc__ = value && value.__doc__;
-    if (__doc__) {
-      return __doc__;
-    }
-    var ref = this.ref(symbol);
-    if (ref) {
-      __doc__ = ref.doc(symbol);
-      if (__doc__) {
-        return __doc__;
-      }
-    }
+    return this.doc(symbol);
   }), "(help object)\n\n         This macro returns documentation for a function, macro, or a variable."),
   // ------------------------------------------------------------------
   cons: doc('cons', function cons(car, cdr) {
@@ -14735,9 +14728,9 @@ var global_env = new Environment({
       obj[key] = value && !is_prototype(value) ? value.valueOf() : value;
     }
     if (props) {
-      var _value5 = obj[key];
+      var _value6 = obj[key];
       Object.defineProperty(obj, key, _objectSpread(_objectSpread({}, options), {}, {
-        value: _value5
+        value: _value6
       }));
     }
   }, "(set-object! obj key value)\n        (set-object! obj key value props)\n\n        Function set a property of a JavaScript object. props should be a vector of pairs,\n        passed to Object.defineProperty."),
@@ -14870,8 +14863,8 @@ var global_env = new Environment({
               set(name, value);
               break;
             } else if (is_pair(name)) {
-              var _value6 = args[i];
-              set(name.car, _value6);
+              var _value7 = args[i];
+              set(name.car, _value7);
             }
           }
           if (is_nil(name.cdr)) {
@@ -15799,8 +15792,8 @@ var global_env = new Environment({
                 throw new IgnoreException('[CATCH]');
               }
             };
-            var _value7 = evaluate(new Pair(new LSymbol('begin'), catch_clause.cdr.cdr), catch_args);
-            unpromise(_value7, function handler(result) {
+            var _value8 = evaluate(new Pair(new LSymbol('begin'), catch_clause.cdr.cdr), catch_args);
+            unpromise(_value8, function handler(result) {
               if (!catch_error) {
                 _next2(result, finalize);
               }
@@ -17878,10 +17871,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 01 Feb 2026 22:50:00 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Mon, 02 Feb 2026 00:02:08 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 01 Feb 2026 22:50:00 +0000').valueOf();
+  var date = LString('Mon, 02 Feb 2026 00:02:08 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17921,7 +17914,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 01 Feb 2026 22:50:00 +0000';
+var date = 'Mon, 02 Feb 2026 00:02:08 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

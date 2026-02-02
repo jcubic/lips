@@ -7924,11 +7924,15 @@ Environment.prototype.doc = function(name, value = null, dump = false) {
         this.__docs__.set(name, value);
         return this;
     }
-    if (this.__docs__.has(name)) {
-        return this.__docs__.get(name);
-    }
-    if (this.__parent__) {
-        return this.__parent__.doc(name);
+    const ref = this.ref(name);
+    if (ref) {
+        if (ref.__docs__.has(name)) {
+            return ref.__docs__.get(name);
+        }
+        const value = ref.get(name);
+        if (value?.__doc__) {
+            return value?.__doc__;
+        }
     }
 };
 // -------------------------------------------------------------------------
@@ -8467,6 +8471,7 @@ var global_env = new Environment({
         if (code.car instanceof LSymbol) {
             symbol = code.car;
         } else if (is_pair(code.car) && code.car.car instanceof LSymbol) {
+            // 'name same as (quote name) according to macro
             symbol = code.car.car;
         } else {
             var env = this;
@@ -8477,19 +8482,7 @@ var global_env = new Environment({
             }
             return;
         }
-        var __doc__;
-        var value = this.get(symbol);
-        __doc__ = value && value.__doc__;
-        if (__doc__) {
-            return __doc__;
-        }
-        var ref = this.ref(symbol);
-        if (ref) {
-            __doc__ = ref.doc(symbol);
-            if (__doc__) {
-                return __doc__;
-            }
-        }
+        return this.doc(symbol);
     }), `(help object)
 
          This macro returns documentation for a function, macro, or a variable.`),
