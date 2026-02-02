@@ -78,9 +78,7 @@ The most important is testing the build when making changes to the REPL.
 Unit Tests are written in
 [AVA JavaScript framework](https://github.com/avajs/ava), but whole code is in
 Scheme (`./tests/*.scm` files), except small bootstrap script in tests/test.js
-file. Ava support async tests that's why it was chosen. Old
-[Jest](https://jestjs.io/) tests (in `./spec/lips.spec.js`) are obsolete and are
-only left as reference for creating same tests in Scheme.
+file. Ava support async tests that's why it was chosen.
 
 To run tests execute:
 
