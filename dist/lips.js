@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Mon, 02 Feb 2026 00:02:08 +0000
+ * build: Mon, 02 Feb 2026 18:11:28 +0000
  */
 
 (function (global, factory) {
@@ -5873,10 +5873,31 @@
     return fn(value);
   }
   // ----------------------------------------------------------------------
+  var action_cache = new WeakMap();
+  function cache_action(object, use_cache, fn) {
+    if (use_cache && action_cache.has(object)) {
+      return action_cache.get(object);
+    }
+    var flag = fn(object);
+    if (use_cache) {
+      action_cache.set(object, flag);
+    }
+    return flag;
+  }
+
+  // ----------------------------------------------------------------------
+  function array_has_promise(array, use_cache) {
+    return cache_action(array, use_cache, function (array) {
+      return !!array.find(is_promise);
+    });
+  }
+
+  // ----------------------------------------------------------------------
   function unpromise_array(array, fn, error) {
-    if (array.find(is_promise)) {
+    var frozen = Object.isFrozen(array);
+    if (array_has_promise(array, frozen)) {
       return unpromise(promise_all(array), function (arr) {
-        if (Object.isFrozen(array)) {
+        if (frozen) {
           Object.freeze(arr);
         }
         return fn(arr);
@@ -5884,31 +5905,33 @@
     }
     return fn(array);
   }
+
   // ----------------------------------------------------------------------
   function unpromise_object(object, fn, error) {
+    var frozen = Object.isFrozen(object);
     var keys = Object.keys(object);
-    var values = [],
-      anyPromise = [];
-    var i = keys.length;
+    var values = [];
+    var i = keys.length,
+      has_promise;
     while (i--) {
       var key = keys[i];
       var value = object[key];
       values[i] = value;
-      if (is_promise(value)) {
-        anyPromise.push(value);
+      if (!has_promise && is_promise(value)) {
+        has_promise = true;
       }
     }
-    if (anyPromise.length) {
+    if (has_promise) {
       return unpromise(promise_all(values), function (values) {
         var result = {};
         values.forEach(function (value, i) {
           var key = keys[i];
           result[key] = value;
         });
-        if (Object.isFrozen(object)) {
+        if (frozen) {
           Object.freeze(result);
         }
-        return result;
+        return fn(result);
       }, error);
     }
     return fn(object);
@@ -10515,7 +10538,7 @@
   // -------------------------------------------------------------------------
   function self_evaluated(obj) {
     var type = _typeof$1(obj);
-    return ['string', 'function'].includes(type) || _typeof$1(obj) === 'symbol' || obj instanceof QuotedPromise || obj instanceof LSymbol || obj instanceof LNumber || obj instanceof LString || obj instanceof RegExp;
+    return ['string', 'function'].includes(type) || _typeof$1(obj) === 'symbol' || obj instanceof QuotedPromise || obj instanceof LSymbol || obj instanceof LNumber || obj instanceof LCharacter || obj instanceof LString || obj instanceof RegExp;
   }
   // -------------------------------------------------------------------------
   function is_native(obj) {
@@ -16809,6 +16832,7 @@
       return node;
     }
   }
+
   // -------------------------------------------------------------------------
   function evaluate_args(rest, _ref43) {
     var use_dynamic = _ref43.use_dynamic,
@@ -16847,10 +16871,15 @@
       }
     }();
   }
+
+  // -------------------------------------------------------------------------
+  function invoke_macro(macro, code, eval_args) {
+    return resolve_promises(macro.invoke(code, eval_args));
+  }
+
   // -------------------------------------------------------------------------
   function evaluate_syntax(macro, code, eval_args) {
-    var value = macro.invoke(code, eval_args);
-    return unpromise(resolve_promises(value), function (value) {
+    return unpromise(invoke_macro(macro, code, eval_args), function (value) {
       if (is_pair(value)) {
         value.mark_cycles();
       }
@@ -16866,8 +16895,7 @@
       }
       return quote(result);
     }
-    var value = macro.invoke(code, eval_args);
-    return unpromise(resolve_promises(value), function ret(value) {
+    return unpromise(invoke_macro(macro, code, eval_args), function ret(value) {
       if (!value || value && value[__data__] || self_evaluated(value)) {
         return value;
       } else {
@@ -17878,10 +17906,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Mon, 02 Feb 2026 00:02:08 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Mon, 02 Feb 2026 18:11:28 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Mon, 02 Feb 2026 00:02:08 +0000').valueOf();
+    var date = LString('Mon, 02 Feb 2026 18:11:28 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -17921,7 +17949,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Mon, 02 Feb 2026 00:02:08 +0000';
+  var date = 'Mon, 02 Feb 2026 18:11:28 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

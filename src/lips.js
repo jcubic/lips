@@ -1963,10 +1963,32 @@ function unpromise(value, fn = x => x, error = null) {
     return fn(value);
 }
 // ----------------------------------------------------------------------
+const action_cache = new WeakMap();
+
+function cache_action(object, use_cache, fn) {
+    if (use_cache && action_cache.has(object)) {
+        return action_cache.get(object);
+    }
+    const flag = fn(object);
+    if (use_cache) {
+        action_cache.set(object, flag);
+    }
+    return flag;
+}
+
+// ----------------------------------------------------------------------
+function array_has_promise(array, use_cache) {
+    return cache_action(array, use_cache, function(array) {
+        return !!array.find(is_promise);
+    });
+}
+
+// ----------------------------------------------------------------------
 function unpromise_array(array, fn, error) {
-    if (array.find(is_promise)) {
+    const frozen = Object.isFrozen(array);
+    if (array_has_promise(array, frozen)) {
         return unpromise(promise_all(array), (arr) => {
-            if (Object.isFrozen(array)) {
+            if (frozen) {
                 Object.freeze(arr);
             }
             return fn(arr);
@@ -1974,30 +1996,32 @@ function unpromise_array(array, fn, error) {
     }
     return fn(array);
 }
+
 // ----------------------------------------------------------------------
 function unpromise_object(object, fn, error) {
+    const frozen = Object.isFrozen(object);
     const keys = Object.keys(object);
-    const values = [], anyPromise = [];
-    let i = keys.length;
+    const values = [];
+    let i = keys.length, has_promise;
     while (i--) {
         const key = keys[i];
         const value = object[key];
         values[i] = value;
-        if (is_promise(value)) {
-            anyPromise.push(value);
+        if (!has_promise && is_promise(value)) {
+            has_promise = true;
         }
     }
-    if (anyPromise.length) {
+    if (has_promise) {
         return unpromise(promise_all(values), (values) => {
             const result = {};
             values.forEach((value, i) => {
                 const key = keys[i];
                 result[key] = value;
             });
-            if (Object.isFrozen(object)) {
+            if (frozen) {
                 Object.freeze(result);
             }
-            return result;
+            return fn(result);
         }, error);
     }
     return fn(object);
@@ -5337,6 +5361,7 @@ function self_evaluated(obj) {
         obj instanceof QuotedPromise ||
         obj instanceof LSymbol ||
         obj instanceof LNumber ||
+        obj instanceof LCharacter ||
         obj instanceof LString ||
         obj instanceof RegExp;
 }
@@ -11432,6 +11457,7 @@ function resolve_promises(arg) {
         return node;
     }
 }
+
 // -------------------------------------------------------------------------
 function evaluate_args(rest, { use_dynamic, ...options }) {
     var args = [];
@@ -11466,10 +11492,15 @@ function evaluate_args(rest, { use_dynamic, ...options }) {
         }
     })();
 }
+
+// -------------------------------------------------------------------------
+function invoke_macro(macro, code, eval_args) {
+    return resolve_promises(macro.invoke(code, eval_args));
+}
+
 // -------------------------------------------------------------------------
 function evaluate_syntax(macro, code, eval_args) {
-    var value = macro.invoke(code, eval_args);
-    return unpromise(resolve_promises(value), function(value) {
+    return unpromise(invoke_macro(macro, code, eval_args), function(value) {
         if (is_pair(value)) {
             value.mark_cycles();
         }
@@ -11485,8 +11516,7 @@ function evaluate_macro(macro, code, eval_args) {
         }
         return quote(result);
     }
-    const value = macro.invoke(code, eval_args);
-    return unpromise(resolve_promises(value), function ret(value) {
+    return unpromise(invoke_macro(macro, code, eval_args), function ret(value) {
         if (!value || value && value[__data__] || self_evaluated(value)) {
             return value;
         } else {

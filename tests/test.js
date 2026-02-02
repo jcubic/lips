@@ -8,7 +8,7 @@
  */
 
 // without this tests stop before running LIPS files
-import ava  from 'ava';
+import ava from 'ava';
 import lily from '@jcubic/lily';
 import { promisify } from 'util';
 import fs from 'fs';
