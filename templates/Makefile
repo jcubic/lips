@@ -27,7 +27,6 @@ WGET=wget
 CODESPELL=codespell
 ESLINT=./node_modules/.bin/eslint
 COVERALLS=./node_modules/.bin/coveralls
-JEST=./node_modules/.bin/jest
 MERMAID=./node_modules/.bin/mmdc
 UGLIFY=./node_modules/.bin/uglifyjs
 ROLLUP=./node_modules/.bin/rollup
@@ -102,9 +101,6 @@ publish:
 	$(GIT) clone $(URL) --depth 1 npm
 	$(CD) npm && $(NPM) publish --access=public
 	$(RM) -rf npm
-
-jest-test: dist/lips.js
-	@$(JEST) --coverage spec/*.spec.js
 
 test: dist/lips.js dist/std.xcb
 	@$(NPM) run test
