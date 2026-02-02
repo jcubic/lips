@@ -44,29 +44,33 @@ The name is a recursive acronym which stands for LIPS Is Pretty Simple.
 
 ## Installation
 
-To install you can use npm (or yarn)<br/>
-**NOTE:** The version that is on NPM is heavily outdated, use beta version:
+### Node.js
 
-```
-npm install lips@beta
-```
+To install you can use npm, which comes with [Node.js](https://nodejs.org/) or any other package
+manager (e.g.: yarn, bun, or pnpm)<br/>
 
-or yarn:
+The easiet way to install and use LIPS is via npx command (part of NPM):
 
-```
-yarn add lips@beta
+```bash
+npx lips@beta
 ```
 
-then include the file in the script tag. You can grab the version from unpkg.com
+Or you can install it:
 
-```
-https://unpkg.com/lips@beta
+```bash
+npm install -g lips@beta
 ```
 
-or from jsDelivr (that's seems a bit faster)
+You can also install it as part of your Node project.
 
-```
-https://cdn.jsdelivr.net/npm/lips@beta/dist/lips.min.js
+### Browser
+
+You need to include the javascript file in script tag inside your HTML.
+
+You an grag the main file from jsDelivr:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/lips@beta/dist/lips.min.js"></script>
 ```
 
 ## Bookmarklet REPL
@@ -89,6 +93,8 @@ find a link that you can drag to your bookmarks.
 
 ## Usage
 
+### Browser
+
 The simplest way is to include the lips code in the script tag:
 
 ```html
@@ -104,6 +110,36 @@ or use the `src` attribute:
 ```html
 <script type="text/x-scheme" bootstrap src="example.scm"></script>
 ```
+
+### Node.js
+
+You can use the REPL by typing:
+
+```bash
+lips
+```
+
+Or create a script using shebang:
+
+```scheme
+#!/usr/bin/env -S lips
+
+(print "Hello, world!")
+```
+
+If you save this into `hello.scm` and make it executable:
+
+```bash
+chmod a+x hello.scm
+```
+
+You can execute the script:
+
+```bash
+./hello.scm
+```
+
+it should print `Hello, world!`.
 
 ## Bootstrapping Scheme system
 
