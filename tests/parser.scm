@@ -385,7 +385,7 @@
           (parser.prepare code)
           (t.snapshot (parse parser)))))
 
-(test "parser: lonely cosing paren"
+(test "parser: lonely closing paren"
       (lambda (t)
         (t.snapshot (try (let* ((code "    )")
                                 (env lips.env)

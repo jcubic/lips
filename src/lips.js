@@ -1079,8 +1079,9 @@ defined_specials.forEach(([seq, symbol, type]) => {
    }
 */
 class Lexer {
-    constructor(input, { whitespace = false } = {}) {
+    constructor(input, { whitespace = false, filename = null } = {}) {
         read_only(this, '__input__', input);
+        read_only(this, '__file__', filename);
         var internals = {};
         // hide internals from introspection
         [
@@ -1129,8 +1130,12 @@ class Lexer {
             return eof;
         }
         if (this._token) {
-            read_only(this, '__token__', this.token(true));
-            return this.token(meta);
+            const token = this.token(true);
+            read_only(this, '__token__', token);
+            if (meta) {
+                return token;
+            }
+            return token.token;
         }
         var found = this.next_token();
         if (found) {
@@ -1511,8 +1516,11 @@ function match_or_null(re, char) {
 // :: ref: https://github.com/biwascheme/biwascheme/blob/master/src/system/parser.js
 // ----------------------------------------------------------------------
 class Parser {
-    constructor({ env, meta = false, formatter = multiline_formatter } = {}) {
-        read_only(this, '_formatter', formatter, { hidden: true });
+    constructor({ env, meta = false, filename = null, formatter = null } = {}) {
+        read_only(this, '_formatter', formatter ?? multiline_formatter, {
+            hidden: true
+        });
+        read_only(this, '__file__', filename?.valueOf());
         read_only(this, '__env__', env);
         read_only(this, '_meta', meta, { hidden: true });
         // datum labels
@@ -1523,7 +1531,7 @@ class Parser {
             fold_case: false
         }, { hidden: true });
     }
-    prepare(arg) {
+    prepare(arg, { filename = null } = {}) {
         if (arg instanceof LString) {
             arg = arg.toString();
         }
@@ -1531,7 +1539,13 @@ class Parser {
         if (arg instanceof Lexer) {
             read_only(this, '__lexer__', arg);
         } else {
-            read_only(this, '__lexer__', new Lexer(arg));
+            if (filename) {
+                filename = filename?.valueOf();
+                read_only(this, '__file__', filename);
+            }
+            read_only(this, '__lexer__', new Lexer(arg, {
+                filename: this.__file__
+            }));
         }
     }
     _with_syntax_scope(fn) {
@@ -1546,7 +1560,7 @@ class Parser {
             internal.set('stdin', stdin);
             if (error) {
                 // don't swallow errors from async syntax extensions #470
-                throw error;
+                throw this._augment_exception(error);
             }
         }
         try {
@@ -1590,7 +1604,8 @@ class Parser {
             if (token.token === '#;') {
                 this.skip();
                 if (this.__lexer__.peek() === eof) {
-                    throw new Error('Lexer: syntax error eof found after comment');
+                    const e = new Error('Lexer: syntax error eof found after comment');
+                    throw this._augment_exception(e);
                 }
                 await this._read_object();
                 continue;
@@ -1657,7 +1672,8 @@ class Parser {
                 prev.cdr = await this._read_object();
                 dot = true;
             } else if (dot) {
-                throw new Error('Parser: syntax error more than one element after dot');
+                const e = new Error('Parser: syntax error more than one element after dot');
+                throw this._augment_exception(e);
             } else {
                 const node = await this._read_object();
                 const cur = new Pair(node, nil);
@@ -1674,7 +1690,8 @@ class Parser {
     async _read_value() {
         let token = await this._read();
         if (token === eof || token.token === eof) {
-            throw new Error('Parser: Expected token eof found');
+            const e = new Error('Parser: Expected token eof found');
+            throw this._augment_exception(e);
         }
         return parse_argument(token, this._meta);
     }
@@ -1701,8 +1718,7 @@ class Parser {
             const msg = `Invalid syntax extension ${special.seq} expecting ` +
                   `list got ${type(object)}`;
             const e = new Error(msg);
-            this._augment_exception(e);
-            throw e;
+            throw this._augment_exception(e);
         } else if (special.value instanceof Macro) {
             let code = object ?? nil;
             if (is_literal(special.seq)) {
@@ -1718,7 +1734,7 @@ class Parser {
                 env: this.__env__,
                 error: (e) => {
                     const msg = `Error while executing syntax extension ${special.seq} `;
-                    throw new Error(msg + e.message);
+                    throw this._augment_exception(new Error(msg + e.message));
                 }
             };
             const result = await this._with_syntax_scope(() => {
@@ -1738,8 +1754,7 @@ class Parser {
         } else {
             const e = new Error('Parse Error: invalid syntax extension: ' +
                                 type(special.value));
-            this._augment_exception(e);
-            throw e;
+            throw this._augment_exception(e);
         }
     }
     // public API that handle R7RS datum labels
@@ -1778,18 +1793,22 @@ class Parser {
             const re = new RegExp(`\\){${count}}$`);
             e.__code__ = [expr.toString().replace(re, '')];
         }
-        this._augment_exception(e);
-        throw e;
+        throw this._augment_exception(e);
     }
     _augment_exception(e) {
         const token = this.__lexer__.__token__;
         if ('col' in token) {
             const { col, offset, line } = token;
             e.message += ` at line ${line + 1} and column ${col + 1}`;
+            if (this.__lexer__.__file__) {
+                e.message += ` in ${this.__lexer__.__file__}`;
+            }
             read_only(e, '__col__', col);
             read_only(e, '__offset__', offset);
             read_only(e, '__line__', line);
+            read_only(e, '__file__' , this.__lexer__.__file__);
         }
+        return e;
     }
     // TODO: Cover This function (array and object branch)
     async _resolve_object(object) {
@@ -1849,7 +1868,8 @@ class Parser {
             // expression passed to syntax extension
             const object = is_symbol ? undefined : await this._read_object();
             if (object === eof) {
-                throw new Unterminated('Expecting expression eof found');
+                const e = new Unterminated('Expecting expression eof found');
+                throw this._augment_exception(e);
             }
             if (!builtin) {
                 return this.invoke_special(special, object, is_symbol);
@@ -1858,8 +1878,7 @@ class Parser {
             if (is_literal(token.token)) {
                 if (was_close_paren) {
                     const e = new Error('Parse Error: expecting datum');
-                    this._augment_exception(e);
-                    throw e
+                    throw this._augment_exception(e);
                 }
                 return new Pair(
                     special.value,
@@ -1882,8 +1901,7 @@ class Parser {
                 return new DatumReference(ref, this._refs[ref]);
             }
             const e = new Error(`Parse Error: invalid datum label #${ref}#`);
-            this._augment_exception(e);
-            throw e;
+            throw this._augment_exception(e);
         }
         const ref_label = this._match_datum_label(token);
         if (ref_label !== null) {
@@ -1925,7 +1943,7 @@ class DatumReference {
 // :: or macro assigned to symbol, this function is async because
 // :: it evaluates the code, from parser extensions, that may return a promise.
 // ----------------------------------------------------------------------
-async function* _parse(arg, env) {
+async function* _parse(arg, { env, filename = null } = {}) {
     if (!env) {
         if (global_env) {
             env = global_env.get('**interaction-environment**', {
@@ -1939,7 +1957,7 @@ async function* _parse(arg, env) {
     if (arg instanceof Parser) {
         parser = arg;
     } else {
-        parser = new Parser({ env });
+        parser = new Parser({ env, filename });
         parser.prepare(arg);
     }
     let prev;
@@ -3461,6 +3479,10 @@ function symbolize(obj) {
         return result;
     }
     return obj;
+}
+// ----------------------------------------------------------------------
+function basename(path) {
+    return path.split(/[\\/]/).pop();
 }
 // ----------------------------------------------------------------------
 function get_props(obj) {
@@ -7808,16 +7830,30 @@ EOF.prototype.toString = function() {
 // -------------------------------------------------------------------------
 // Simpler way to create interpreter with interaction-environment
 // -------------------------------------------------------------------------
-function Interpreter(name, { stderr, stdin, stdout, command_line = null, ...obj } = {}) {
+function Interpreter(name, {
+    stderr,
+    stdin,
+    stdout,
+    command_line = null,
+    filename = null,
+    ...obj
+} = {}) {
     if (typeof this !== 'undefined' && !(this instanceof Interpreter) ||
         typeof this === 'undefined') {
-        return new Interpreter(name, { stdin, stdout, stderr, command_line, ...obj });
+        return new Interpreter(name, {
+            stdin,
+            stdout,
+            stderr,
+            command_line,
+            filename,
+            ...obj
+        });
     }
     if (typeof name === 'undefined') {
         name = 'anonymous';
     }
-    this.__env__ = user_env.inherit(name, obj);
-    this.__parser__ = new Parser({  env: this.__env__ });
+    read_only(this, '__env__', user_env.inherit(name, obj));
+    read_only(this, '__parser__', new Parser({ env: this.__env__, filename }));
     this.__env__.set('parent.frame', doc('parent.frame', () => {
         return this.__env__;
     }, global_env.__env__['parent.frame'].__doc__));
@@ -7841,6 +7877,7 @@ Interpreter.prototype.exec = async function(arg, options = {}) {
     let {
         use_dynamic = false,
         dynamic_env,
+        filename = null,
         env
     } = options;
     typecheck('Interpreter::exec', arg, ['string', 'array'], 1);
@@ -7855,11 +7892,16 @@ Interpreter.prototype.exec = async function(arg, options = {}) {
     }
     global_env.set('**interaction-environment**', this.__env__);
     if (Array.isArray(arg)) {
-        return exec(arg, { env, dynamic_env, use_dynamic });
+        return exec(arg, { env, dynamic_env, use_dynamic, filename });
     } else {
         try {
-            this.__parser__.prepare(arg);
-            return await exec(this.__parser__, { env, dynamic_env, use_dynamic });
+            this.__parser__.prepare(arg, { filename });
+            return await exec(this.__parser__, {
+                env,
+                dynamic_env,
+                filename,
+                use_dynamic
+            });
         } catch(e) {
             if (!e.message?.includes('at line')) {
                 const location = ` at line ${this.__parser__.get_line() + 1}`;
@@ -8662,6 +8704,7 @@ var global_env = new Environment({
         if (!file.match(/.[^.]+$/)) {
             file += '.scm';
         }
+        const filename = basename(file);
         const IS_BIN = file.match(/\.xcb$/);
         function run(code) {
             if (IS_BIN) {
@@ -8680,7 +8723,7 @@ var global_env = new Environment({
                     code = unserialize(code);
                 }
             }
-            return exec(code, { env });
+            return exec(code, { env, filename });
         }
         function fetch(file) {
             return root.fetch(file)
@@ -11835,7 +11878,8 @@ function exec_with_stacktrace(code, { env, dynamic_env, use_dynamic } = {}) {
 }
 // -------------------------------------------------------------------------
 function exec_collect(collect_callback) {
-    return async function exec_lambda(arg, { env, dynamic_env, use_dynamic } = {}) {
+    return async function exec_lambda(arg, options = {}) {
+        let { env, dynamic_env, use_dynamic, filename } = options;
         if (!is_env(dynamic_env)) {
             dynamic_env = env === true ? user_env : env || user_env;
         }
@@ -11848,7 +11892,7 @@ function exec_collect(collect_callback) {
         if (is_pair(arg)) {
             return [await exec_with_stacktrace(arg, { env, dynamic_env, use_dynamic })];
         }
-        const input = Array.isArray(arg) ? arg : _parse(arg);
+        const input = Array.isArray(arg) ? arg : _parse(arg, { filename });
         for await (let code of input) {
             const value = await exec_with_stacktrace(code, { env, dynamic_env, use_dynamic });
             results.push(collect_callback(code, value));
