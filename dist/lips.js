@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Wed, 04 Feb 2026 20:52:35 +0000
+ * build: Wed, 04 Feb 2026 21:13:37 +0000
  */
 
 (function (global, factory) {
@@ -5035,6 +5035,7 @@
         hidden: true
       });
       read_only(this, '_state', {
+        last_token: null,
         parentheses: 0,
         line: 0,
         fold_case: false
@@ -5099,6 +5100,7 @@
       value: function _reset_state() {
         Object.assign(this._state, {
           parentheses: 0,
+          last_token: null,
           line: 0
         });
       }
@@ -5212,7 +5214,8 @@
       }
     }, {
       key: "skip",
-      value: function skip() {
+      value: function skip(token) {
+        this._state.last_token = token;
         this.__lexer__.skip();
       }
     }, {
@@ -5227,7 +5230,7 @@
                 return this._peek();
               case 1:
                 token = _context3.sent;
-                this.skip();
+                this.skip(token);
                 return _context3.abrupt("return", token);
               case 2:
               case "end":
@@ -5252,7 +5255,7 @@
                 return this.peek();
               case 1:
                 token = _context4.sent;
-                this.skip();
+                this.skip(token);
                 return _context4.abrupt("return", token);
               case 2:
               case "end":
@@ -5319,7 +5322,7 @@
                   _context5.next = 6;
                   break;
                 }
-                this.skip();
+                this.skip(token);
                 _context5.next = 5;
                 return this._read_object();
               case 5:
@@ -5548,7 +5551,7 @@
     }, {
       key: "_augment_exception",
       value: function _augment_exception(e) {
-        var token = this.__lexer__.__token__;
+        var token = this._state.last_token;
         if ('col' in token) {
           var col = token.col,
             offset = token.offset,
@@ -5696,7 +5699,7 @@
                 // result is returned by parser and it is quoted.
                 special = specials.get(token.token);
                 builtin = is_builtin(token.token);
-                this.skip();
+                this.skip(token);
                 _is_symbol = is_symbol_extension(token.token);
                 _t = this;
                 _context1.next = 3;
@@ -5750,7 +5753,7 @@
                   _context1.next = 13;
                   break;
                 }
-                this.skip();
+                this.skip(token);
                 if (!this._refs[ref]) {
                   _context1.next = 12;
                   break;
@@ -5765,7 +5768,7 @@
                   _context1.next = 14;
                   break;
                 }
-                this.skip();
+                this.skip(token);
                 this._refs[ref_label] = this._read_object();
                 return _context1.abrupt("return", this._refs[ref_label]);
               case 14:
@@ -5774,7 +5777,7 @@
                   break;
                 }
                 --this._state.parentheses;
-                this.skip();
+                this.skip(token);
                 // invalid state, we don't need to return anything
                 _context1.next = 17;
                 break;
@@ -5784,7 +5787,7 @@
                   break;
                 }
                 ++this._state.parentheses;
-                this.skip();
+                this.skip(token);
                 return _context1.abrupt("return", this._read_list());
               case 16:
                 return _context1.abrupt("return", this._read_value());
@@ -17941,10 +17944,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Wed, 04 Feb 2026 20:52:35 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Wed, 04 Feb 2026 21:13:37 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Wed, 04 Feb 2026 20:52:35 +0000').valueOf();
+    var date = LString('Wed, 04 Feb 2026 21:13:37 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -17984,7 +17987,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Wed, 04 Feb 2026 20:52:35 +0000';
+  var date = 'Wed, 04 Feb 2026 21:13:37 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);
