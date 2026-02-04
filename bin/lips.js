@@ -7,6 +7,9 @@ const boolean = [
 ];
 const options = lily(process.argv.slice(2), { boolean });
 
+const use_dynamic = options.d || options.dynamic;
+const use_stack = options.t || options.trace;
+
 const quiet = options.q || options.quiet;
 
 import {
@@ -92,14 +95,19 @@ function debug(message) {
     console.log(message);
 }
 // -----------------------------------------------------------------------------
-async function run(code, interpreter, use_dynamic = false, env = null, stack = false, log_unterminated = true) {
+async function run(code, {
+    interpreter,
+    env = null,
+    filename = null,
+    log_unterminated = true
+}) {
     try {
-        return await interpreter.exec(code, { use_dynamic, env });
+        return await interpreter.exec(code, { use_dynamic, env, filename });
     } catch(e) {
         if (e instanceof Parser.Unterminated && !log_unterminated) {
             return;
         }
-        print_error(e, stack);
+        print_error(e, use_stack);
     }
 }
 
@@ -161,7 +169,7 @@ function bootstrap(interpreter) {
     if (bootstrap === 'none') {
         return Promise.resolve();
     }
-    const file = bootstrap ? bootstrap : './dist/std.xcb';
+    const filename = bootstrap ? bootstrap : './dist/std.xcb';
     function read(name) {
         var path;
         try {
@@ -175,8 +183,8 @@ function bootstrap(interpreter) {
         }
         return readCode(path);
     }
-    const code = read(file);
-    return run(code, interpreter, false, env.__parent__, true);
+    const code = read(filename);
+    return run(code, { interpreter, filename, env: env.__parent__, stack: true });
 }
 
 // -----------------------------------------------------------------------------
@@ -245,7 +253,7 @@ const __dirname = path.dirname(moduleURL.pathname);
 const __filename = path.basename(moduleURL.pathname);
 const command_line = [];
 let last_line = '';
-const interp = Interpreter('repl', {
+const interpreter = Interpreter('repl', {
     stdin: InputPort(function() {
         return new Promise(function(resolve) {
             rl = readline.createInterface({
@@ -347,16 +355,18 @@ if (options.version || options.V) {
     ].map(([key, ...values]) => {
         return [LSymbol(key), ...values];
     }));
-    bootstrap(interp).then(function() {
+    bootstrap(interpreter).then(function() {
         // Scheme can access JS global.output
-        return run('(for-each (lambda (x) (write x) (newline)) output)', interp, options.d || options.dynamic);
+        return run('(for-each (lambda (x) (write x) (newline)) output)', {
+            interpreter,
+            use_dynamic
+        });
     });
 } else if (options.e || options.eval) {
     // from 1.0 documentation should use -e but it's not a breaking change
-    bootstrap(interp).then(function() {
+    bootstrap(interpreter).then(function() {
         const code = options.e || options.eval;
-        const dynamic = options.d || options.dynamic;
-        return run(code, interp, dynamic, null, true).then(print);
+        return run(code, { interpreter }).then(print);
     });
 } else if ((options.c || options.compile) && options._.length === 1) {
     try {
@@ -369,8 +379,8 @@ if (options.version || options.V) {
         const compiled_name = filename.replace(/\.[^.]+$/, '') + ext;
         var code = readFile(filename);
         const cwd = process.cwd();
-        bootstrap(interp).then(function() {
-            return compile(code, interp.__env__).then(code => {
+        bootstrap(interpreter).then(function() {
+            return compile(code, interpreter.__env__).then(code => {
                 if (!quiet) {
                     console.log(`Writing ${compiled_name} ...`);
                 }
@@ -412,9 +422,8 @@ if (options.version || options.V) {
     command_line.push(...get_command_line_args());
     try {
         const code = readCode(filename);
-        bootstrap(interp).then(() => {
-            const dynamic = options.d || options.dynamic;
-            return run(code, interp, dynamic, null, options.t || options.trace);
+        bootstrap(interpreter).then(() => {
+            return run(code, { interpreter, filename });
         });
     } catch (err) {
         log_error(err.message || err);
@@ -431,14 +440,13 @@ if (options.version || options.V) {
                        'parse and compile the file into binary file format\n  [-b --boostrap]\tpoint t' +
                        'o a file that should be used for boostraping standard library,\n\t\t\tdefault ' +
                        'is ./dist/std.xcb. use none to disable boostraping\n  [-q --quiet]\t\tdon\'t d' +
-                       'isplay banner in REPL\n  [-d --dynamic]\trun interpreter with dynamic scope\n ' +
+                       'isplay banner in REPL\n  [-d --dynamic]\trun interpreterreter with dynamic scope\n ' +
                        ' [-t --trace]\t\tprint JavaScript and scheme stack traces when extensions is th' +
                        'rown\n\nif called without arguments it will run the REPL and if called with on' +
                        'e argument\nit will treat it as filename and execute it.',
                        intro, path.basename(name)));
 } else {
-    const dynamic = options.d || options.dynamic;
-    const entry = '   ' + (dynamic ? 'dynamic' : 'lexical') + ' scope $1';
+    const entry = '   ' + (use_dynamic ? 'dynamic' : 'lexical') + ' scope $1';
     if (process.stdin.isTTY && !quiet) {
         console.log(banner.replace(/(\n\nLIPS.+)/m, entry));
     }
@@ -695,7 +703,7 @@ function run_repl(err, rl) {
             }
         }, 0);
     });
-    bootstrap(interp).then(function() {
+    bootstrap(interpreter).then(function() {
         if (SUPPORTS_PASTE_BRACKETS) {
             // this make sure that the paste brackets ANSI escape
             // is added to cmd so they can be processed in 'line' event
@@ -732,7 +740,9 @@ function run_repl(err, rl) {
                     rl.pause();
                     cmd = '';
                     prev_eval = prev_eval.then(function() {
-                        const result = run(code, interp, dynamic, null, options.t || options.trace, false);
+                        const result = run(code, {
+                            interpreter
+                        });
                         return result;
                     }).then(function(result) {
                         if (process.stdin.isTTY) {
