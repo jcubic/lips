@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Wed, 04 Feb 2026 21:13:37 +0000
+ * build: Thu, 05 Feb 2026 01:08:18 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -3482,10 +3482,12 @@ function e(e,n){return n=n||{},new Promise(function(t,r){var s=new XMLHttpReques
 /* global jQuery, BigInt, Map, WeakMap, Set, Symbol, importScripts, Uint8Array */
 var _excluded = ["token"],
   _excluded2 = ["env"],
-  _excluded3 = ["stderr", "stdin", "stdout", "command_line", "filename"],
-  _excluded4 = ["use_dynamic"],
+  _excluded3 = ["env"],
+  _excluded4 = ["stderr", "stdin", "stdout", "meta", "command_line", "filename"],
   _excluded5 = ["use_dynamic"],
-  _excluded6 = ["env", "dynamic_env", "use_dynamic", "error"];
+  _excluded6 = ["use_dynamic"],
+  _excluded7 = ["env", "dynamic_env", "use_dynamic", "error"],
+  _excluded8 = ["env", "dynamic_env", "use_dynamic"];
 function _classPrivateFieldInitSpec(e, t, a) { _checkPrivateRedeclaration(e, t), t.set(e, a); }
 function _checkPrivateRedeclaration(e, t) { if (t.has(e)) throw new TypeError("Cannot initialize the same private elements twice on an object"); }
 function _classPrivateFieldGet(s, a) { return s.get(_assertClassBrand(s, a)); }
@@ -4007,9 +4009,7 @@ function parse_symbol(arg) {
   return new LSymbol(arg);
 }
 // ----------------------------------------------------------------------
-function parse_argument(arg) {
-  var meta = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : false;
-  var token = arg.token;
+function parse_argument(token, filename) {
   if (constants.hasOwnProperty(token)) {
     return constants[token];
   }
@@ -4041,20 +4041,25 @@ function parse_argument(arg) {
     }
   }
   if (!result && token.match(/^#[iexobd]/)) {
-    throw new Error('Invalid numeric constant: ' + arg);
+    throw new Error('Invalid numeric constant: ' + token);
   }
   if (!result) {
     result = parse_symbol(token);
   }
-  if (meta) {
-    var col = arg.col,
-      offset = arg.offset,
-      line = arg.line;
-    read_only(result, '__col__', col);
-    read_only(result, '__offset__', offset);
-    read_only(result, '__line__', line);
-  }
   return result;
+}
+// ----------------------------------------------------------------------
+function augment_object(object, meta, filename) {
+  var col = meta.col,
+    offset = meta.offset,
+    line = meta.line;
+  read_only(object, '__col__', col);
+  read_only(object, '__offset__', offset);
+  read_only(object, '__line__', line);
+  if (filename) {
+    read_only(object, '__file__', filename);
+  }
+  return object;
 }
 // ----------------------------------------------------------------------
 function is_atom_string(str) {
@@ -5035,6 +5040,12 @@ var Parser = /*#__PURE__*/function () {
     }, {
       hidden: true
     });
+    // keep the arguments of the parser for (load ...)
+    internal_env.set('__parser_args__', {
+      meta: meta,
+      filename: filename,
+      formatter: formatter
+    });
   }
   return _createClass(Parser, [{
     key: "prepare",
@@ -5053,6 +5064,7 @@ var Parser = /*#__PURE__*/function () {
           var _filename;
           filename = (_filename = filename) === null || _filename === void 0 ? void 0 : _filename.valueOf();
           read_only(this, '__file__', filename);
+          internal_env.get('__parser_args__').filename = filename;
         }
         read_only(this, '__lexer__', new Lexer(arg, {
           filename: this.__file__
@@ -5287,11 +5299,12 @@ var Parser = /*#__PURE__*/function () {
     key: "_read_list",
     value: function () {
       var _read_list2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee5() {
-        var head, prev, dot, token, e, node, cur;
+        var head, prev, dot, first_token, token, e, node, cur;
         return _regeneratorRuntime.wrap(function (_context5) {
           while (1) switch (_context5.prev = _context5.next) {
             case 0:
               head = _nil, prev = head;
+              first_token = this._state.last_token;
             case 1:
               _context5.next = 2;
               return this._peek();
@@ -5338,6 +5351,9 @@ var Parser = /*#__PURE__*/function () {
               cur = new Pair(node, _nil);
               if (is_nil(head)) {
                 head = cur;
+                if (this._meta) {
+                  head = augment_object(head, first_token, this.__file__);
+                }
               } else {
                 prev.cdr = cur;
               }
@@ -5362,7 +5378,7 @@ var Parser = /*#__PURE__*/function () {
     key: "_read_value",
     value: function () {
       var _read_value2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee6() {
-        var token, e;
+        var token, e, result;
         return _regeneratorRuntime.wrap(function (_context6) {
           while (1) switch (_context6.prev = _context6.next) {
             case 0:
@@ -5370,14 +5386,18 @@ var Parser = /*#__PURE__*/function () {
               return this._read();
             case 1:
               token = _context6.sent;
-              if (!(token === eof || token.token === eof)) {
+              if (!(token.token === eof)) {
                 _context6.next = 2;
                 break;
               }
               e = new Error('Parser: Expected token eof found');
               throw this._augment_exception(e);
             case 2:
-              return _context6.abrupt("return", parse_argument(token, this._meta));
+              result = parse_argument(token.token);
+              if (this._meta) {
+                result = augment_object(result, token, this.__file__);
+              }
+              return _context6.abrupt("return", result);
             case 3:
             case "end":
               return _context6.stop();
@@ -5836,8 +5856,7 @@ function _parse2() {
   _parse2 = _wrapAsyncGenerator(function (arg) {
     var _ref1 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
       env = _ref1.env,
-      _ref1$filename = _ref1.filename,
-      filename = _ref1$filename === void 0 ? null : _ref1$filename;
+      parser_args = _objectWithoutProperties(_ref1, _excluded2);
     return /*#__PURE__*/_regeneratorRuntime.mark(function _callee10() {
       var parser, prev, expr;
       return _regeneratorRuntime.wrap(function (_context10) {
@@ -5855,10 +5874,9 @@ function _parse2() {
             if (arg instanceof Parser) {
               parser = arg;
             } else {
-              parser = new Parser({
-                env: env,
-                filename: filename
-              });
+              parser = new Parser(_objectSpread({
+                env: env
+              }, parser_args));
               parser.prepare(arg);
             }
           case 1:
@@ -9089,7 +9107,7 @@ Macro.defmacro = function (name, fn, doc, dump) {
 // ----------------------------------------------------------------------
 Macro.prototype.invoke = function (code, _ref20, macro_expand) {
   var env = _ref20.env,
-    rest = _objectWithoutProperties(_ref20, _excluded2);
+    rest = _objectWithoutProperties(_ref20, _excluded3);
   var args = _objectSpread(_objectSpread({}, rest), {}, {
     macro_expand: macro_expand
   });
@@ -13335,16 +13353,19 @@ function Interpreter(name) {
     stderr = _ref28.stderr,
     stdin = _ref28.stdin,
     stdout = _ref28.stdout,
+    _ref28$meta = _ref28.meta,
+    meta = _ref28$meta === void 0 ? false : _ref28$meta,
     _ref28$command_line = _ref28.command_line,
     command_line = _ref28$command_line === void 0 ? null : _ref28$command_line,
     _ref28$filename = _ref28.filename,
     filename = _ref28$filename === void 0 ? null : _ref28$filename,
-    obj = _objectWithoutProperties(_ref28, _excluded3);
+    obj = _objectWithoutProperties(_ref28, _excluded4);
   if (typeof this !== 'undefined' && !(this instanceof Interpreter) || typeof this === 'undefined') {
     return new Interpreter(name, _objectSpread({
       stdin: stdin,
       stdout: stdout,
       stderr: stderr,
+      meta: meta,
       command_line: command_line,
       filename: filename
     }, obj));
@@ -13355,7 +13376,8 @@ function Interpreter(name) {
   read_only(this, '__env__', user_env.inherit(name, obj));
   read_only(this, '__parser__', new Parser({
     env: this.__env__,
-    filename: filename
+    filename: filename,
+    meta: meta
   }));
   this.__env__.set('parent.frame', doc('parent.frame', function () {
     return _this20.__env__;
@@ -13381,7 +13403,7 @@ Interpreter.prototype.exec = /*#__PURE__*/function () {
     var _this21 = this;
     var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
     return /*#__PURE__*/_regeneratorRuntime.mark(function _callee17() {
-      var _options$use_dynamic, use_dynamic, dynamic_env, _options$filename, filename, env, _e$message, location, _t16;
+      var _options$use_dynamic, use_dynamic, dynamic_env, _options$filename, filename, env, _e$message, _e$__source__, _e$__source__2, _e$__source__3, location, _t16;
       return _regeneratorRuntime.wrap(function (_context17) {
         while (1) switch (_context17.prev = _context17.next) {
           case 0:
@@ -13425,7 +13447,18 @@ Interpreter.prototype.exec = /*#__PURE__*/function () {
             _context17.prev = 3;
             _t16 = _context17["catch"](1);
             if (!((_e$message = _t16.message) !== null && _e$message !== void 0 && _e$message.includes('at line'))) {
-              location = " at line ".concat(_this21.__parser__.get_line() + 1);
+              location = '';
+              if (_t16 !== null && _t16 !== void 0 && (_e$__source__ = _t16.__source__) !== null && _e$__source__ !== void 0 && _e$__source__.__line__) {
+                location = " at line ".concat(_t16.__source__.__line__ + 1);
+              } else {
+                location = " at line ".concat(_this21.__parser__.get_line() + 1);
+              }
+              if (_t16 !== null && _t16 !== void 0 && (_e$__source__2 = _t16.__source__) !== null && _e$__source__2 !== void 0 && _e$__source__2.__col__) {
+                location += " column ".concat(_t16.__source__.__col__);
+              }
+              if (_t16 !== null && _t16 !== void 0 && (_e$__source__3 = _t16.__source__) !== null && _e$__source__3 !== void 0 && _e$__source__3.__file__) {
+                location += " in ".concat(_t16.__source__.__file__);
+              }
               _t16.message += location;
             }
             throw _t16;
@@ -14102,7 +14135,7 @@ var global_env = new Environment({
     var _this25 = this;
     var _ref31 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
       use_dynamic = _ref31.use_dynamic,
-      rest = _objectWithoutProperties(_ref31, _excluded4);
+      rest = _objectWithoutProperties(_ref31, _excluded5);
     var dynamic_env = this;
     var env = this;
     var ref;
@@ -14239,10 +14272,12 @@ var global_env = new Environment({
           code = unserialize(code);
         }
       }
-      return exec(code, {
-        env: env,
+      var eval_args = internal_env.get('__parser_args__');
+      return exec(code, _objectSpread(_objectSpread({
+        env: env
+      }, eval_args), {}, {
         filename: filename
-      });
+      }));
     }
     function fetch(file) {
       return root.fetch(file).then(function (res) {
@@ -16867,7 +16902,7 @@ function resolve_promises(arg) {
 // -------------------------------------------------------------------------
 function evaluate_args(rest, _ref45) {
   var use_dynamic = _ref45.use_dynamic,
-    options = _objectWithoutProperties(_ref45, _excluded5);
+    options = _objectWithoutProperties(_ref45, _excluded6);
   var args = [];
   var node = rest;
   function next() {
@@ -17156,7 +17191,7 @@ function evaluate(code) {
     use_dynamic = _ref48.use_dynamic,
     _ref48$error = _ref48.error,
     error = _ref48$error === void 0 ? noop : _ref48$error,
-    rest = _objectWithoutProperties(_ref48, _excluded6);
+    rest = _objectWithoutProperties(_ref48, _excluded7);
   return function (rest) {
     try {
       if (!is_env(dynamic_env)) {
@@ -17280,13 +17315,16 @@ function exec_with_stacktrace(code) {
     dynamic_env: dynamic_env,
     use_dynamic: use_dynamic,
     error: function error(e, code) {
-      if (e && e.message) {
+      if (e !== null && e !== void 0 && e.message) {
         if (e.message.match(/^Error:/)) {
           var re = /^(Error:)\s*([^:]+:\s*)/;
           // clean duplicated Error: added by JS
           e.message = e.message.replace(re, '$1 $2');
         }
         if (code) {
+          if (!e.__source__) {
+            e.__source__ = code;
+          }
           // LIPS stack trace
           if (!(e.__code__ instanceof Array)) {
             e.__code__ = [];
@@ -17306,11 +17344,11 @@ function exec_collect(collect_callback) {
     var _exec_lambda = _asyncToGenerator(function (arg) {
       var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
       return /*#__PURE__*/_regeneratorRuntime.mark(function _callee22() {
-        var env, dynamic_env, use_dynamic, filename, results, input, _iteratorAbruptCompletion2, _didIteratorError2, _iteratorError2, _iterator2, _step2, code, value, _t26, _t27;
+        var env, dynamic_env, use_dynamic, parser_args, results, input, _iteratorAbruptCompletion2, _didIteratorError2, _iteratorError2, _iterator2, _step2, code, value, _t26, _t27;
         return _regeneratorRuntime.wrap(function (_context23) {
           while (1) switch (_context23.prev = _context23.next) {
             case 0:
-              env = options.env, dynamic_env = options.dynamic_env, use_dynamic = options.use_dynamic, filename = options.filename;
+              env = options.env, dynamic_env = options.dynamic_env, use_dynamic = options.use_dynamic, parser_args = _objectWithoutProperties(options, _excluded8);
               if (!is_env(dynamic_env)) {
                 dynamic_env = env === true ? user_env : env || user_env;
               }
@@ -17334,9 +17372,7 @@ function exec_collect(collect_callback) {
               _t26 = _context23.sent;
               return _context23.abrupt("return", [_t26]);
             case 2:
-              input = Array.isArray(arg) ? arg : _parse(arg, {
-                filename: filename
-              });
+              input = Array.isArray(arg) ? arg : _parse(arg, parser_args);
               _iteratorAbruptCompletion2 = false;
               _didIteratorError2 = false;
               _context23.prev = 3;
@@ -17937,10 +17973,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Wed, 04 Feb 2026 21:13:37 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Thu, 05 Feb 2026 01:08:18 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Wed, 04 Feb 2026 21:13:37 +0000').valueOf();
+  var date = LString('Thu, 05 Feb 2026 01:08:18 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -17980,7 +18016,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Wed, 04 Feb 2026 21:13:37 +0000';
+var date = 'Thu, 05 Feb 2026 01:08:18 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

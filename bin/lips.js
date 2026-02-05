@@ -3,12 +3,14 @@
 import lily from '@jcubic/lily';
 
 const boolean = [
-    'd', 'dynamic', 'q', 'quiet', 'V', 'version', 'trace', 't', 'c', 'compile'
+    'd', 'dynamic', 'q', 'quiet', 'V', 'version', 'trace', 't', 'c', 'compile',
+    'm', 'meta'
 ];
 const options = lily(process.argv.slice(2), { boolean });
 
 const use_dynamic = options.d || options.dynamic;
 const use_stack = options.t || options.trace;
+const meta = options.m || options.meta;
 
 const quiet = options.q || options.quiet;
 
@@ -130,13 +132,14 @@ function print_error(e, stack) {
     }
     if (stack) {
         console.error(e.stack);
-        console.error(strace);
-        process.exit(1);
     } else {
         console.error(e.message);
-        console.error('Call (stack-trace) to see the stack');
-        console.error('Thrown exception is in global exception variable, use ' +
-                      '(display exception.stack) to display JS stack trace');
+    }
+    console.error(strace);
+    if (stack) {
+        process.exit(1);
+    } else {
+        console.error('Use (display exception.stack) to display JS stack trace.');
     }
     global.exception = e;
 }
@@ -157,7 +160,7 @@ function print(result) {
                 process.stdout.write('\x1b[K' + value);
                 return true;
             } catch(e) {
-                print_error(e, options.t || options.trace);
+                print_error(e, use_stack);
             }
         }
     }
@@ -279,6 +282,7 @@ const interpreter = Interpreter('repl', {
     __dirname: __dirname,
     __filename: __filename,
     command_line,
+    meta,
     // -------------------------------------------------------------------------
     'stack-trace': doc(function() {
         if (strace) {
@@ -434,16 +438,17 @@ if (options.version || options.V) {
 } else if (options.h || options.help) {
     var name = process.argv[1];
     var intro = banner.replace(/(Jankiewicz\n)[\s\S]+$/, '$1');
-    console.log(format('%s\nusage:\n  %s -q | -c | -h | -t | -b <file> | -d | -e <code> | <filename>\n' +
-                       '\n  [-h --help]\t\tthis help message\n  [-e --eval]\t\texecute code\n  [-V --v' +
-                       'ersion]\tdisplay version information according to srfi-176\n  [-c --compile]\t' +
-                       'parse and compile the file into binary file format\n  [-b --boostrap]\tpoint t' +
-                       'o a file that should be used for boostraping standard library,\n\t\t\tdefault ' +
-                       'is ./dist/std.xcb. use none to disable boostraping\n  [-q --quiet]\t\tdon\'t d' +
-                       'isplay banner in REPL\n  [-d --dynamic]\trun interpreterreter with dynamic scope\n ' +
-                       ' [-t --trace]\t\tprint JavaScript and scheme stack traces when extensions is th' +
-                       'rown\n\nif called without arguments it will run the REPL and if called with on' +
-                       'e argument\nit will treat it as filename and execute it.',
+    console.log(format('%s\nusage:\n  %s -q | -c | -h | -m | -t | -b <file> | -d | -e <code> | <filena' +
+                       'me>\n\n  [-h --help]\t\tthis help message\n  [-e --eval]\t\texecute code\n  [-' +
+                       'V --version]\tdisplay version information according to srfi-176\n  [-c --compi' +
+                       'le]\tparse and compile the file into binary file format\n  [-b --boostrap]\tpo' +
+                       'int to a file that should be used for boostraping standard library,\n\t\t\tdef' +
+                       'ault is ./dist/std.xcb. use none to disable boostraping\n  [-q --quiet]\t\tdon' +
+                       '\'t display banner in REPL\n  [-d --dynamic]\trun interpreterreter with dynami' +
+                       'c scope\n  [-t --trace]\t\tprint JavaScript and scheme stack traces when exten' +
+                       'sions is thrown\n  [-m --meta]\t\tadd meta information to the parsed code that' +
+                       ' enhance exceptions message\n\nif called without arguments it will run the REP' +
+                       'L and if called with one argument\nit will treat it as filename and execute it.',
                        intro, path.basename(name)));
 } else {
     const entry = '   ' + (use_dynamic ? 'dynamic' : 'lexical') + ' scope $1';

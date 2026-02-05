@@ -536,8 +536,7 @@ function parse_symbol(arg) {
     return new LSymbol(arg);
 }
 // ----------------------------------------------------------------------
-function parse_argument(arg, meta = false) {
-    const token = arg.token;
+function parse_argument(token, filename) {
     if (constants.hasOwnProperty(token)) {
         return constants[token];
     }
@@ -569,18 +568,23 @@ function parse_argument(arg, meta = false) {
         }
     }
     if (!result && token.match(/^#[iexobd]/)) {
-        throw new Error('Invalid numeric constant: ' + arg);
+        throw new Error('Invalid numeric constant: ' + token);
     }
     if (!result) {
         result = parse_symbol(token);
     }
-    if (meta) {
-        const { col, offset, line } = arg;
-        read_only(result, '__col__', col);
-        read_only(result, '__offset__', offset);
-        read_only(result, '__line__', line);
-    }
     return result;
+}
+// ----------------------------------------------------------------------
+function augment_object(object, meta, filename) {
+    const { col, offset, line } = meta;
+    read_only(object, '__col__', col);
+    read_only(object, '__offset__', offset);
+    read_only(object, '__line__', line);
+    if (filename) {
+        read_only(object, '__file__', filename);
+    }
+    return object;
 }
 // ----------------------------------------------------------------------
 function is_atom_string(str) {
@@ -1531,6 +1535,8 @@ class Parser {
             line: 0,
             fold_case: false
         }, { hidden: true });
+        // keep the arguments of the parser for (load ...)
+        internal_env.set('__parser_args__', { meta, filename, formatter });
     }
     prepare(arg, { filename = null } = {}) {
         if (arg instanceof LString) {
@@ -1543,6 +1549,7 @@ class Parser {
             if (filename) {
                 filename = filename?.valueOf();
                 read_only(this, '__file__', filename);
+                internal_env.get('__parser_args__').filename = filename;
             }
             read_only(this, '__lexer__', new Lexer(arg, {
                 filename: this.__file__
@@ -1660,6 +1667,7 @@ class Parser {
     }
     async _read_list() {
         let head = nil, prev = head, dot;
+        let first_token = this._state.last_token;
         while (true) {
             const token = await this._peek();
             if (token === eof) {
@@ -1682,6 +1690,9 @@ class Parser {
                 const cur = new Pair(node, nil);
                 if (is_nil(head)) {
                     head = cur;
+                    if (this._meta) {
+                        head = augment_object(head, first_token, this.__file__);
+                    }
                 } else {
                     prev.cdr = cur;
                 }
@@ -1692,11 +1703,15 @@ class Parser {
     }
     async _read_value() {
         let token = await this._read();
-        if (token === eof || token.token === eof) {
+        if (token.token === eof) {
             const e = new Error('Parser: Expected token eof found');
             throw this._augment_exception(e);
         }
-        return parse_argument(token, this._meta);
+        let result = parse_argument(token.token);
+        if (this._meta) {
+            result = augment_object(result, token, this.__file__);
+        }
+        return result;
     }
     _is_comment(token) {
         return token.match(/^;/) || (token.match(/^#\|/) && token.match(/\|#$/));
@@ -1946,7 +1961,7 @@ class DatumReference {
 // :: or macro assigned to symbol, this function is async because
 // :: it evaluates the code, from parser extensions, that may return a promise.
 // ----------------------------------------------------------------------
-async function* _parse(arg, { env, filename = null } = {}) {
+async function* _parse(arg, { env, ...parser_args } = {}) {
     if (!env) {
         if (global_env) {
             env = global_env.get('**interaction-environment**', {
@@ -1960,7 +1975,7 @@ async function* _parse(arg, { env, filename = null } = {}) {
     if (arg instanceof Parser) {
         parser = arg;
     } else {
-        parser = new Parser({ env, filename });
+        parser = new Parser({ env, ...parser_args });
         parser.prepare(arg);
     }
     let prev;
@@ -7837,6 +7852,7 @@ function Interpreter(name, {
     stderr,
     stdin,
     stdout,
+    meta = false,
     command_line = null,
     filename = null,
     ...obj
@@ -7847,6 +7863,7 @@ function Interpreter(name, {
             stdin,
             stdout,
             stderr,
+            meta,
             command_line,
             filename,
             ...obj
@@ -7856,7 +7873,7 @@ function Interpreter(name, {
         name = 'anonymous';
     }
     read_only(this, '__env__', user_env.inherit(name, obj));
-    read_only(this, '__parser__', new Parser({ env: this.__env__, filename }));
+    read_only(this, '__parser__', new Parser({ env: this.__env__, filename, meta }));
     this.__env__.set('parent.frame', doc('parent.frame', () => {
         return this.__env__;
     }, global_env.__env__['parent.frame'].__doc__));
@@ -7907,7 +7924,18 @@ Interpreter.prototype.exec = async function(arg, options = {}) {
             });
         } catch(e) {
             if (!e.message?.includes('at line')) {
-                const location = ` at line ${this.__parser__.get_line() + 1}`;
+                let location = '';
+                if (e?.__source__?.__line__) {
+                    location = ` at line ${e.__source__.__line__ + 1}`;
+                } else {
+                    location = ` at line ${this.__parser__.get_line() + 1}`;
+                }
+                if (e?.__source__?.__col__) {
+                    location += ` column ${e.__source__.__col__}`;
+                }
+                if (e?.__source__?.__file__) {
+                    location += ` in ${e.__source__.__file__}`;
+                }
                 e.message += location;
             }
             throw e;
@@ -8726,7 +8754,8 @@ var global_env = new Environment({
                     code = unserialize(code);
                 }
             }
-            return exec(code, { env, filename });
+            const eval_args = internal_env.get('__parser_args__');
+            return exec(code, { env, ...eval_args, filename });
         }
         function fetch(file) {
             return root.fetch(file)
@@ -11859,13 +11888,16 @@ function exec_with_stacktrace(code, { env, dynamic_env, use_dynamic } = {}) {
         dynamic_env,
         use_dynamic,
         error: (e, code) => {
-            if (e && e.message) {
+            if (e?.message) {
                 if (e.message.match(/^Error:/)) {
                     var re = /^(Error:)\s*([^:]+:\s*)/;
                     // clean duplicated Error: added by JS
                     e.message = e.message.replace(re, '$1 $2');
                 }
                 if (code) {
+                    if (!e.__source__) {
+                        e.__source__ = code;
+                    }
                     // LIPS stack trace
                     if (!(e.__code__ instanceof Array)) {
                         e.__code__ = [];
@@ -11882,7 +11914,7 @@ function exec_with_stacktrace(code, { env, dynamic_env, use_dynamic } = {}) {
 // -------------------------------------------------------------------------
 function exec_collect(collect_callback) {
     return async function exec_lambda(arg, options = {}) {
-        let { env, dynamic_env, use_dynamic, filename } = options;
+        let { env, dynamic_env, use_dynamic, ...parser_args } = options;
         if (!is_env(dynamic_env)) {
             dynamic_env = env === true ? user_env : env || user_env;
         }
@@ -11895,7 +11927,7 @@ function exec_collect(collect_callback) {
         if (is_pair(arg)) {
             return [await exec_with_stacktrace(arg, { env, dynamic_env, use_dynamic })];
         }
-        const input = Array.isArray(arg) ? arg : _parse(arg, { filename });
+        const input = Array.isArray(arg) ? arg : _parse(arg, parser_args);
         for await (let code of input) {
             const value = await exec_with_stacktrace(code, { env, dynamic_env, use_dynamic });
             results.push(collect_callback(code, value));

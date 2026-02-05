@@ -2,11 +2,12 @@
 ### Breaking
 * syntax extensions now expect a reference to a function or a macro
 * replace `set-obj!` with `set-object!` [#439](https://github.com/jcubic/lips/issues/439)
+* REPL -t/-trace will toggle only JavaScript stack, Scheme stack traces are now always on
 ### Features
 * add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
 * `Environment:doc` now returns doc string for functions and macros additional to variables
-* add file info to parser exceptions and meta data
+* Parser errors always get meta info, runtime errors in REPL can be enabled with `-m`/`-meta`
 ### Bugfix
 * fix doc string for `make-rectangular`
 * `-inf.0`/`+inf.0` are now real lips numbers
