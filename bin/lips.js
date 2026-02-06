@@ -130,12 +130,14 @@ function print_error(e, stack) {
             return prefix + output;
         }).join('\n');
     }
-    if (stack) {
-        console.error(e.stack);
+    if (use_stack) {
+        console.error(e.stack.replace(/^Error: (Syntax Error)/, '$1'));
     } else {
         console.error(e.message);
     }
-    console.error(strace);
+    if (strace) {
+        console.error(strace);
+    }
     if (stack) {
         process.exit(1);
     } else {
@@ -776,8 +778,7 @@ function run_repl(err, rl) {
                     continue_multiline(code);
                 }
             } catch (e) {
-                console.error(e.message);
-                console.error(e.stack);
+                print_error(e, use_stack);
                 cmd = '';
                 rl.setPrompt(prompt);
                 rl.prompt();

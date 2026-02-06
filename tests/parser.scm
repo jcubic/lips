@@ -417,3 +417,16 @@
         (t.is (to.throw (lips.parse "#+(1 2 3)")) #t)
         (t.is (to.throw (lips.parse "#sum(1 2 3)")) #t)))
 
+(test "parser: syntax errors"
+      (lambda (t)
+        (let ((code (list "(let ((x #4))"
+                          "(let ((x #e))"
+                          "(let ((x 10))"
+                          "(let ((x 10))
+                                #4)")))
+          (for-each (lambda (code)
+                      (let ((result (try (lips.parse code)
+                                         (catch (e) e))))
+                        (t.is (instanceof Error result) #t)
+                        (t.snapshot result)))
+                    code))))

@@ -7,7 +7,8 @@
 * add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
 * `Environment:doc` now returns doc string for functions and macros additional to variables
-* Parser errors always get meta info, runtime errors in REPL can be enabled with `-m`/`-meta`
+* Improve and unify Syntax Errors
+* Meta info from Runtime errors in REPL can be enabled with `-m`/`-meta`
 ### Bugfix
 * fix doc string for `make-rectangular`
 * `-inf.0`/`+inf.0` are now real lips numbers
