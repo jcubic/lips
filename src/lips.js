@@ -498,7 +498,7 @@ function parse_string(string) {
         return str;
     } catch (e) {
         const msg = e.message.replace(/in JSON /, '').replace(/.*Error: /, '');
-        throw new Error(`Invalid string literal: ${msg}`);
+        throw new Error(`Parse Error: Invalid string literal: ${msg}`);
     }
 }
 // ----------------------------------------------------------------------
@@ -1138,7 +1138,8 @@ class Lexer {
         read_only(e, '__col__', this._start.col);
         read_only(e, '__offset__', this._start.offset);
         read_only(e, '__line__', this._start.line);
-        return e;
+        read_only(e, '__file__', this.__file__);
+        return unify_error_message(e);
     }
     peek(meta = false) {
         if (this._i >= this.__input__.length) {
@@ -1801,7 +1802,7 @@ class Parser {
             }
             return result;
         } else {
-            const e = new Error('Parse Error: invalid syntax extension: ' +
+            const e = new Error('Syntax Error: invalid syntax extension: ' +
                                 type(special.value));
             throw this._augment_exception(e);
         }
@@ -1844,16 +1845,7 @@ class Parser {
         }
         throw this._augment_exception(e);
     }
-    _update_message(e) {
-        let message = e.message;
-        message += ` at line ${e.__line__ + 1} and column ${e.__col__}`;
-        if (e.__file__) {
-            message += ` in ${e.__file__}`;
-        }
-        return message;
-    }
     _augment_exception(e) {
-        read_only(e, '__file__' , this.__lexer__.__file__);
         if (!Object.hasOwn(e, '__col__')) {
             const token = this._state.last_token;
             if ('col' in token) {
@@ -1861,10 +1853,10 @@ class Parser {
                 read_only(e, '__col__', col);
                 read_only(e, '__offset__', offset);
                 read_only(e, '__line__', line);
+                read_only(e, '__file__' , this.__lexer__.__file__);
             }
         }
-        e.message = this._update_message(e);
-        return e;
+        return unify_error_message(e);
     }
     // TODO: Cover This function (array and object branch)
     async _resolve_object(object) {
@@ -1933,7 +1925,7 @@ class Parser {
             // Built-in parser extensions just expand into lists like 'x ==> (quote x)
             if (is_literal(token.token)) {
                 if (was_close_paren) {
-                    const e = new Error('Parse Error: expecting datum');
+                    const e = new Error('Syntax Error: expecting datum');
                     throw this._augment_exception(e);
                 }
                 return new Pair(
@@ -1956,7 +1948,7 @@ class Parser {
             if (this._refs[ref]) {
                 return new DatumReference(ref, this._refs[ref]);
             }
-            const e = new Error(`Parse Error: invalid datum label #${ref}#`);
+            const e = new Error(`Syntax Error: invalid datum label #${ref}#`);
             throw this._augment_exception(e);
         }
         const ref_label = this._match_datum_label(token);
@@ -8016,6 +8008,18 @@ LipsError.prototype.constructor = LipsError;
 // -------------------------------------------------------------------------
 class IgnoreException extends Error { }
 // -------------------------------------------------------------------------
+// :: Error is adding class of the error before the message in stack trace
+// -------------------------------------------------------------------------
+function unify_error_message(e) {
+    if (!e.message.match(/at line/)) {
+        e.message += ` at line ${e.__line__ + 1} and column ${e.__col__}`;
+    }
+    if (e.__file__) {
+        e.message += ` in ${e.__file__}`;
+    }
+    return e;
+}
+// -------------------------------------------------------------------------
 // :: Environment constructor (parent and name arguments are optional)
 // -------------------------------------------------------------------------
 function Environment(obj, parent, name) {
@@ -11927,11 +11931,8 @@ function exec_with_stacktrace(code, { env, dynamic_env, use_dynamic } = {}) {
         use_dynamic,
         error: (e, code) => {
             if (e?.message) {
-                if (e.message.match(/^Error:/)) {
-                    var re = /^(Error:)\s*([^:]+:\s*)/;
-                    // clean duplicated Error: added by JS
-                    e.message = e.message.replace(re, '$1 $2');
-                }
+                // TODO: remove when #480 is implemented
+                e.stack = e.stack.replace(/^Error: ([^\s]+ Error:)/, '$1');
                 if (code) {
                     if (!e.__source__) {
                         e.__source__ = code;
