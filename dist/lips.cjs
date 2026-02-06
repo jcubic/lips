@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Thu, 05 Feb 2026 01:08:18 +0000
+ * build: Fri, 06 Feb 2026 16:53:18 +0000
  */
 
 'use strict';
@@ -4046,7 +4046,7 @@ function parse_argument(token, filename) {
     }
   }
   if (!result && token.match(/^#[iexobd]/)) {
-    throw new Error('Invalid numeric constant: ' + token);
+    throw new Error('Syntax Error: Invalid numeric constant: ' + token);
   }
   if (!result) {
     result = parse_symbol(token);
@@ -4593,7 +4593,7 @@ var Lexer = /*#__PURE__*/function () {
     read_only(this, '__file__', filename);
     var internals = {};
     // hide internals from introspection
-    ['_i', '_whitespace', '_col', '_newline', '_line', '_state', '_next', '_token', '_prev_char'].forEach(function (name) {
+    ['_i', '_whitespace', '_col', '_newline', '_line', '_state', '_next', '_token', '_prev_char', '_start'].forEach(function (name) {
       Object.defineProperty(_this4, name, {
         configurable: false,
         enumerable: false,
@@ -4609,6 +4609,11 @@ var Lexer = /*#__PURE__*/function () {
     this._i = this._line = this._col = this._newline = 0;
     this._state = this._next = this._token = null;
     this._prev_char = '';
+    this._start = {
+      col: 0,
+      line: 0,
+      offset: 0
+    };
   }
   return _createClass(Lexer, [{
     key: "get",
@@ -4637,6 +4642,14 @@ var Lexer = /*#__PURE__*/function () {
         };
       }
       return this._token;
+    }
+  }, {
+    key: "_augment_exception",
+    value: function _augment_exception(e) {
+      read_only(e, '__col__', this._start.col);
+      read_only(e, '__offset__', this._start.offset);
+      read_only(e, '__line__', this._start.line);
+      return e;
     }
   }, {
     key: "peek",
@@ -4753,7 +4766,8 @@ var Lexer = /*#__PURE__*/function () {
         next_re = _rule[2],
         state = _rule[3];
       if (rule.length !== 5) {
-        throw new Error("Lexer: Invalid rule of length ".concat(rule.length));
+        var e = new Error("Lexer: Invalid rule of length ".concat(rule.length));
+        throw this._augment_exception(e);
       }
       if (is_string(re)) {
         if (re !== _char4) {
@@ -4784,6 +4798,13 @@ var Lexer = /*#__PURE__*/function () {
         var _char5 = this.__input__[i];
         var prev_char = this.__input__[i - 1] || '';
         var next_char = this.__input__[i + 1] || '';
+        if (start) {
+          this._start = {
+            col: this._i - this._newline,
+            line: this._line,
+            offset: this._i
+          };
+        }
         if (_char5 === '\n') {
           ++this._line;
           var newline = this._newline;
@@ -4792,9 +4813,9 @@ var Lexer = /*#__PURE__*/function () {
             // we don't want to check inside the token (e.g. strings)
             this._newline = i + 1;
           }
+          this._col = this._i - newline;
           if (this._whitespace && this._state === null) {
             this._next = i + 1;
-            this._col = this._i - newline;
             return true;
           }
         }
@@ -4846,20 +4867,24 @@ var Lexer = /*#__PURE__*/function () {
           continue loop;
         }
         // no rule for token
-        var line = this.__input__.split('\n')[this._line];
-        throw new Error("Invalid Syntax at line ".concat(this._line + 1, "\n").concat(line));
+        this.__input__.split('\n')[this._line];
+        var e = new Error("Invalid Syntax");
+        throw this._augment_exception(e);
       }
       // we need to ignore comments because they can be the last expression in code
       // without extra newline at the end
       if (![null, Lexer.comment].includes(this._state)) {
         var _this$__input__$subst, _this$__input__$subst2;
-        var line_number = (_this$__input__$subst = (_this$__input__$subst2 = this.__input__.substring(0, this._newline).match(/\n/g)) === null || _this$__input__$subst2 === void 0 ? void 0 : _this$__input__$subst2.length) !== null && _this$__input__$subst !== void 0 ? _this$__input__$subst : 0;
-        var _line = this.__input__.substring(this._newline);
+        (_this$__input__$subst = (_this$__input__$subst2 = this.__input__.substring(0, this._newline).match(/\n/g)) === null || _this$__input__$subst2 === void 0 ? void 0 : _this$__input__$subst2.length) !== null && _this$__input__$subst !== void 0 ? _this$__input__$subst : 0;
+        this.__input__.substring(this._newline);
+        var _e;
         if (this.__input__[this._i] === '#') {
-          var expr = this.__input__.substring(this._i).replace(/^([^\s()\[\]]+).*/, '$1');
-          throw new Error("Invalid Syntax at line ".concat(line_number + 1, ": invalid token ").concat(expr));
+          var expr = this.__input__.substring(this._i).replace(/^([^ ()\[\]]+).*(\n[\s\S]+)?/, '$1');
+          _e = new Error("Syntax Error: invalid token ".concat(expr));
+        } else {
+          _e = new Unterminated("Syntax Error: Unterminated expression");
         }
-        throw new Unterminated("Invalid Syntax at line ".concat(line_number + 1, ": Unterminated expression ").concat(_line));
+        throw this._augment_exception(_e);
       }
     }
   }]);
@@ -5125,26 +5150,28 @@ var Parser = /*#__PURE__*/function () {
     key: "_peek",
     value: function () {
       var _peek2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee() {
-        var token, e;
+        var token, e, _t;
         return _regeneratorRuntime.wrap(function (_context) {
           while (1) switch (_context.prev = _context.next) {
             case 0:
+              _context.prev = 0;
+            case 1:
               token = this.__lexer__.peek(true);
               if (!(token === eof)) {
-                _context.next = 1;
-                break;
-              }
-              return _context.abrupt("return", eof);
-            case 1:
-              if (!this._is_comment(token.token)) {
                 _context.next = 2;
                 break;
               }
-              this.skip();
-              return _context.abrupt("continue", 0);
+              return _context.abrupt("return", eof);
             case 2:
-              if (!is_directive(token.token)) {
+              if (!this._is_comment(token.token)) {
                 _context.next = 3;
+                break;
+              }
+              this.skip();
+              return _context.abrupt("continue", 1);
+            case 3:
+              if (!is_directive(token.token)) {
+                _context.next = 4;
                 break;
               }
               this.skip();
@@ -5153,37 +5180,41 @@ var Parser = /*#__PURE__*/function () {
               } else if (token.token === '#!no-fold-case') {
                 this._state.fold_case = false;
               }
-              return _context.abrupt("continue", 0);
-            case 3:
+              return _context.abrupt("continue", 1);
+            case 4:
               if (!(token.token === '#;')) {
-                _context.next = 6;
+                _context.next = 7;
                 break;
               }
               this.skip();
               if (!(this.__lexer__.peek() === eof)) {
-                _context.next = 4;
+                _context.next = 5;
                 break;
               }
               e = new Error('Lexer: syntax error eof found after comment');
               throw this._augment_exception(e);
-            case 4:
-              _context.next = 5;
-              return this._read_object();
             case 5:
-              return _context.abrupt("continue", 0);
+              _context.next = 6;
+              return this._read_object();
             case 6:
-              return _context.abrupt("continue", 7);
+              return _context.abrupt("continue", 1);
             case 7:
+              return _context.abrupt("continue", 8);
+            case 8:
               token = this._formatter(token);
               if (this._state.fold_case) {
                 token.token = foldcase_string(token.token);
               }
               return _context.abrupt("return", token);
-            case 8:
+            case 9:
+              _context.prev = 9;
+              _t = _context["catch"](0);
+              throw this._augment_exception(_t);
+            case 10:
             case "end":
               return _context.stop();
           }
-        }, _callee, this);
+        }, _callee, this, [[0, 9]]);
       }));
       function _peek() {
         return _peek2.apply(this, arguments);
@@ -5326,7 +5357,7 @@ var Parser = /*#__PURE__*/function () {
                 break;
               }
               --this._state.parentheses;
-              this.skip();
+              this.skip(token);
               return _context5.abrupt("continue", 10);
             case 4:
               if (!(token.token === '.' && !is_nil(head))) {
@@ -5346,7 +5377,7 @@ var Parser = /*#__PURE__*/function () {
                 _context5.next = 7;
                 break;
               }
-              e = new Error('Parser: syntax error more than one element after dot');
+              e = new Error('Syntax Error: more than one element after dot');
               throw this._augment_exception(e);
             case 7:
               _context5.next = 8;
@@ -5383,7 +5414,7 @@ var Parser = /*#__PURE__*/function () {
     key: "_read_value",
     value: function () {
       var _read_value2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee6() {
-        var token, e, result;
+        var token, e, result, _t2;
         return _regeneratorRuntime.wrap(function (_context6) {
           while (1) switch (_context6.prev = _context6.next) {
             case 0:
@@ -5395,19 +5426,24 @@ var Parser = /*#__PURE__*/function () {
                 _context6.next = 2;
                 break;
               }
-              e = new Error('Parser: Expected token eof found');
+              e = new Error('Syntax Error: Expected token eof found');
               throw this._augment_exception(e);
             case 2:
+              _context6.prev = 2;
               result = parse_argument(token.token);
               if (this._meta) {
                 result = augment_object(result, token, this.__file__);
               }
               return _context6.abrupt("return", result);
             case 3:
+              _context6.prev = 3;
+              _t2 = _context6["catch"](2);
+              throw this._augment_exception(_t2);
+            case 4:
             case "end":
               return _context6.stop();
           }
-        }, _callee6, this);
+        }, _callee6, this, [[2, 3]]);
       }));
       function _read_value() {
         return _read_value2.apply(this, arguments);
@@ -5424,7 +5460,7 @@ var Parser = /*#__PURE__*/function () {
     value: function () {
       var _invoke_special = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee7(special, object, is_symbol) {
         var _this6 = this;
-        var args, msg, e, code, eval_args, result, _e;
+        var args, msg, e, code, eval_args, result, _e2;
         return _regeneratorRuntime.wrap(function (_context7) {
           while (1) switch (_context7.prev = _context7.next) {
             case 0:
@@ -5489,8 +5525,8 @@ var Parser = /*#__PURE__*/function () {
             case 4:
               return _context7.abrupt("return", result);
             case 5:
-              _e = new Error('Parse Error: invalid syntax extension: ' + type(special.value));
-              throw this._augment_exception(_e);
+              _e2 = new Error('Parse Error: invalid syntax extension: ' + type(special.value));
+              throw this._augment_exception(_e2);
             case 6:
             case "end":
               return _context7.stop();
@@ -5553,36 +5589,45 @@ var Parser = /*#__PURE__*/function () {
       var count = this._state.parentheses;
       var e;
       if (count < 0) {
-        e = new Error('Parser: unexpected parenthesis');
+        e = new Error('Syntax Error: unexpected parenthesis');
         if (prev) {
           e.__code__ = [prev.toString() + ')'];
         } else {
           e.__code__ = [')'];
         }
       } else {
-        e = new Error('Parser: expected parenthesis but eof found');
+        e = new Error('Syntax Error: expected parenthesis but eof found');
         var re = new RegExp("\\){".concat(count, "}$"));
         e.__code__ = [expr.toString().replace(re, '')];
       }
       throw this._augment_exception(e);
     }
   }, {
+    key: "_update_message",
+    value: function _update_message(e) {
+      var message = e.message;
+      message += " at line ".concat(e.__line__ + 1, " and column ").concat(e.__col__);
+      if (e.__file__) {
+        message += " in ".concat(e.__file__);
+      }
+      return message;
+    }
+  }, {
     key: "_augment_exception",
     value: function _augment_exception(e) {
-      var token = this._state.last_token;
-      if ('col' in token) {
-        var col = token.col,
-          offset = token.offset,
-          line = token.line;
-        e.message += " at line ".concat(line + 1, " and column ").concat(col + 1);
-        if (this.__lexer__.__file__) {
-          e.message += " in ".concat(this.__lexer__.__file__);
+      read_only(e, '__file__', this.__lexer__.__file__);
+      if (!Object.hasOwn(e, '__col__')) {
+        var token = this._state.last_token;
+        if ('col' in token) {
+          var col = token.col,
+            offset = token.offset,
+            line = token.line;
+          read_only(e, '__col__', col);
+          read_only(e, '__offset__', offset);
+          read_only(e, '__line__', line);
         }
-        read_only(e, '__col__', col);
-        read_only(e, '__offset__', offset);
-        read_only(e, '__line__', line);
-        read_only(e, '__file__', this.__lexer__.__file__);
       }
+      e.message = this._update_message(e);
       return e;
     }
     // TODO: Cover This function (array and object branch)
@@ -5689,7 +5734,7 @@ var Parser = /*#__PURE__*/function () {
     key: "_read_object",
     value: function () {
       var _read_object3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee1() {
-        var token, special, builtin, _is_symbol, was_close_paren, object, e, _e2, ref, _e3, ref_label, _t, _t2;
+        var token, special, builtin, _is_symbol, was_close_paren, object, e, _e3, ref, _e4, ref_label, _t3, _t4;
         return _regeneratorRuntime.wrap(function (_context1) {
           while (1) switch (_context1.prev = _context1.next) {
             case 0:
@@ -5719,25 +5764,25 @@ var Parser = /*#__PURE__*/function () {
               builtin = is_builtin(token.token);
               this.skip(token);
               _is_symbol = is_symbol_extension(token.token);
-              _t = this;
+              _t3 = this;
               _context1.next = 3;
               return this._peek();
             case 3:
-              was_close_paren = _t._is_close.call(_t, _context1.sent);
+              was_close_paren = _t3._is_close.call(_t3, _context1.sent);
               if (!_is_symbol) {
                 _context1.next = 4;
                 break;
               }
-              _t2 = undefined;
+              _t4 = undefined;
               _context1.next = 6;
               break;
             case 4:
               _context1.next = 5;
               return this._read_object();
             case 5:
-              _t2 = _context1.sent;
+              _t4 = _context1.sent;
             case 6:
-              object = _t2;
+              object = _t4;
               if (!(object === eof)) {
                 _context1.next = 7;
                 break;
@@ -5759,8 +5804,8 @@ var Parser = /*#__PURE__*/function () {
                 _context1.next = 9;
                 break;
               }
-              _e2 = new Error('Parse Error: expecting datum');
-              throw this._augment_exception(_e2);
+              _e3 = new Error('Parse Error: expecting datum');
+              throw this._augment_exception(_e3);
             case 9:
               return _context1.abrupt("return", new Pair(special.value, new Pair(object, _nil)));
             case 10:
@@ -5778,8 +5823,8 @@ var Parser = /*#__PURE__*/function () {
               }
               return _context1.abrupt("return", new DatumReference(ref, this._refs[ref]));
             case 12:
-              _e3 = new Error("Parse Error: invalid datum label #".concat(ref, "#"));
-              throw this._augment_exception(_e3);
+              _e4 = new Error("Parse Error: invalid datum label #".concat(ref, "#"));
+              throw this._augment_exception(_e4);
             case 13:
               ref_label = this._match_datum_label(token);
               if (!(ref_label !== null)) {
@@ -6023,7 +6068,7 @@ function uniterate_async(_x7) {
 // ----------------------------------------------------------------------
 function _uniterate_async() {
   _uniterate_async = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee23(object) {
-    var result, _iteratorAbruptCompletion, _didIteratorError, _iteratorError, _iterator, _step, item, _t28;
+    var result, _iteratorAbruptCompletion, _didIteratorError, _iteratorError, _iterator, _step, item, _t30;
     return _regeneratorRuntime.wrap(function (_context24) {
       while (1) switch (_context24.prev = _context24.next) {
         case 0:
@@ -6051,9 +6096,9 @@ function _uniterate_async() {
           break;
         case 6:
           _context24.prev = 6;
-          _t28 = _context24["catch"](1);
+          _t30 = _context24["catch"](1);
           _didIteratorError = true;
-          _iteratorError = _t28;
+          _iteratorError = _t30;
         case 7:
           _context24.prev = 7;
           _context24.prev = 8;
@@ -9201,13 +9246,13 @@ var recur_guard = -1e4;
 function macro_expand(single) {
   return /*#__PURE__*/function () {
     var _ref22 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee13(code, args) {
-      var env, bindings, let_names, let_macros, lambda, define, is_let_macro, builtin_let, is_procedure, is_lambda, proc_bindings, let_binding, is_macro, expand_let_binding, _expand_let_binding, traverse, _traverse, _t13, _t14, _t15;
+      var env, bindings, let_names, let_macros, lambda, define, is_let_macro, builtin_let, is_procedure, is_lambda, proc_bindings, let_binding, is_macro, expand_let_binding, _expand_let_binding, traverse, _traverse, _t15, _t16, _t17;
       return _regeneratorRuntime.wrap(function (_context13) {
         while (1) switch (_context13.prev = _context13.next) {
           case 0:
             _traverse = function _traverse3() {
               _traverse = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee12(node, n, env) {
-                var name, value, is_let, is_binding, code, result, _result, expr, scope, second, car, cdr, pair, _t9, _t0, _t1, _t10, _t11, _t12;
+                var name, value, is_let, is_binding, code, result, _result, expr, scope, second, car, cdr, pair, _t1, _t10, _t11, _t12, _t13, _t14;
                 return _regeneratorRuntime.wrap(function (_context12) {
                   while (1) switch (_context12.prev = _context12.next) {
                     case 0:
@@ -9309,16 +9354,16 @@ function macro_expand(single) {
                       bindings = proc_bindings(node.cdr.car);
                       second = node.cdr.car;
                     case 13:
-                      _t9 = Pair;
-                      _t0 = node.car;
                       _t1 = Pair;
-                      _t10 = second;
+                      _t10 = node.car;
+                      _t11 = Pair;
+                      _t12 = second;
                       _context12.next = 14;
                       return traverse(node.cdr.cdr, n, env);
                     case 14:
-                      _t11 = _context12.sent;
-                      _t12 = new _t1(_t10, _t11);
-                      return _context12.abrupt("return", new _t9(_t0, _t12));
+                      _t13 = _context12.sent;
+                      _t14 = new _t11(_t12, _t13);
+                      return _context12.abrupt("return", new _t1(_t10, _t14));
                     case 15:
                       // TODO: CYCLE DETECT
                       car = node.car;
@@ -9356,7 +9401,7 @@ function macro_expand(single) {
             };
             _expand_let_binding = function _expand_let_binding3() {
               _expand_let_binding = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee11(node, n) {
-                var pair, _t3, _t4, _t5, _t6, _t7, _t8;
+                var pair, _t5, _t6, _t7, _t8, _t9, _t0;
                 return _regeneratorRuntime.wrap(function (_context11) {
                   while (1) switch (_context11.prev = _context11.next) {
                     case 0:
@@ -9367,19 +9412,19 @@ function macro_expand(single) {
                       return _context11.abrupt("return", _nil);
                     case 1:
                       pair = node.car;
-                      _t3 = Pair;
-                      _t4 = Pair;
-                      _t5 = pair.car;
+                      _t5 = Pair;
+                      _t6 = Pair;
+                      _t7 = pair.car;
                       _context11.next = 2;
                       return traverse(pair.cdr, n, env);
                     case 2:
-                      _t6 = _context11.sent;
-                      _t7 = new _t4(_t5, _t6);
+                      _t8 = _context11.sent;
+                      _t9 = new _t6(_t7, _t8);
                       _context11.next = 3;
                       return expand_let_binding(node.cdr);
                     case 3:
-                      _t8 = _context11.sent;
-                      return _context11.abrupt("return", new _t3(_t7, _t8));
+                      _t0 = _context11.sent;
+                      return _context11.abrupt("return", new _t5(_t9, _t0));
                     case 4:
                     case "end":
                       return _context11.stop();
@@ -9447,27 +9492,27 @@ function macro_expand(single) {
               _context13.next = 2;
               break;
             }
-            _t13 = quote;
+            _t15 = quote;
             _context13.next = 1;
             return traverse(code, code.cdr.car.valueOf(), env);
           case 1:
-            return _context13.abrupt("return", _t13(_context13.sent.car));
+            return _context13.abrupt("return", _t15(_context13.sent.car));
           case 2:
             if (!single) {
               _context13.next = 4;
               break;
             }
-            _t14 = quote;
+            _t16 = quote;
             _context13.next = 3;
             return traverse(code, 1, env);
           case 3:
-            return _context13.abrupt("return", _t14(_context13.sent.car));
+            return _context13.abrupt("return", _t16(_context13.sent.car));
           case 4:
-            _t15 = quote;
+            _t17 = quote;
             _context13.next = 5;
             return traverse(code, -1, env);
           case 5:
-            return _context13.abrupt("return", _t15(_context13.sent.car));
+            return _context13.abrupt("return", _t17(_context13.sent.car));
           case 6:
           case "end":
             return _context13.stop();
@@ -13408,7 +13453,7 @@ Interpreter.prototype.exec = /*#__PURE__*/function () {
     var _this21 = this;
     var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
     return /*#__PURE__*/_regeneratorRuntime.mark(function _callee17() {
-      var _options$use_dynamic, use_dynamic, dynamic_env, _options$filename, filename, env, _e$message, _e$__source__, _e$__source__2, _e$__source__3, location, _t16;
+      var _options$use_dynamic, use_dynamic, dynamic_env, _options$filename, filename, env, _e$message, _e$__source__, _e$__source__2, _e$__source__3, location, _t18;
       return _regeneratorRuntime.wrap(function (_context17) {
         while (1) switch (_context17.prev = _context17.next) {
           case 0:
@@ -13450,23 +13495,23 @@ Interpreter.prototype.exec = /*#__PURE__*/function () {
             return _context17.abrupt("return", _context17.sent);
           case 3:
             _context17.prev = 3;
-            _t16 = _context17["catch"](1);
-            if (!((_e$message = _t16.message) !== null && _e$message !== void 0 && _e$message.includes('at line'))) {
+            _t18 = _context17["catch"](1);
+            if (!((_e$message = _t18.message) !== null && _e$message !== void 0 && _e$message.includes('at line'))) {
               location = '';
-              if (_t16 !== null && _t16 !== void 0 && (_e$__source__ = _t16.__source__) !== null && _e$__source__ !== void 0 && _e$__source__.__line__) {
-                location = " at line ".concat(_t16.__source__.__line__ + 1);
+              if (_t18 !== null && _t18 !== void 0 && (_e$__source__ = _t18.__source__) !== null && _e$__source__ !== void 0 && _e$__source__.__line__) {
+                location = " at line ".concat(_t18.__source__.__line__ + 1);
               } else {
                 location = " at line ".concat(_this21.__parser__.get_line() + 1);
               }
-              if (_t16 !== null && _t16 !== void 0 && (_e$__source__2 = _t16.__source__) !== null && _e$__source__2 !== void 0 && _e$__source__2.__col__) {
-                location += " column ".concat(_t16.__source__.__col__);
+              if (_t18 !== null && _t18 !== void 0 && (_e$__source__2 = _t18.__source__) !== null && _e$__source__2 !== void 0 && _e$__source__2.__col__) {
+                location += " column ".concat(_t18.__source__.__col__);
               }
-              if (_t16 !== null && _t16 !== void 0 && (_e$__source__3 = _t16.__source__) !== null && _e$__source__3 !== void 0 && _e$__source__3.__file__) {
-                location += " in ".concat(_t16.__source__.__file__);
+              if (_t18 !== null && _t18 !== void 0 && (_e$__source__3 = _t18.__source__) !== null && _e$__source__3 !== void 0 && _e$__source__3.__file__) {
+                location += " in ".concat(_t18.__source__.__file__);
               }
-              _t16.message += location;
+              _t18.message += location;
             }
-            throw _t16;
+            throw _t18;
           case 4:
           case "end":
             return _context17.stop();
@@ -14301,7 +14346,7 @@ var global_env = new Environment({
     if (is_node()) {
       return new Promise(/*#__PURE__*/function () {
         var _ref32 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee19(resolve, reject) {
-          var _path, _fs, root_dir, cmd, _args21, _t17;
+          var _path, _fs, root_dir, cmd, _args21, _t19;
           return _regeneratorRuntime.wrap(function (_context19) {
             while (1) switch (_context19.prev = _context19.next) {
               case 0:
@@ -14367,8 +14412,8 @@ var global_env = new Environment({
                 break;
               case 6:
                 _context19.prev = 6;
-                _t17 = _context19["catch"](0);
-                console.error(_t17);
+                _t19 = _context19["catch"](0);
+                console.error(_t19);
               case 7:
               case "end":
                 return _context19.stop();
@@ -14424,7 +14469,7 @@ var global_env = new Environment({
       var use_dynamic = _ref34.use_dynamic,
         error = _ref34.error;
       return /*#__PURE__*/_regeneratorRuntime.mark(function _callee20() {
-        var self, dynamic_env, scope, vars, test, body, eval_args, node, item, _loop3, _t18, _t19, _t20;
+        var self, dynamic_env, scope, vars, test, body, eval_args, node, item, _loop3, _t20, _t21, _t22;
         return _regeneratorRuntime.wrap(function (_context21) {
           while (1) switch (_context21.prev = _context21.next) {
             case 0:
@@ -14450,12 +14495,12 @@ var global_env = new Environment({
                 break;
               }
               item = node.car;
-              _t18 = scope;
-              _t19 = item.car;
+              _t20 = scope;
+              _t21 = item.car;
               _context21.next = 2;
               return evaluate(item.cdr.car, eval_args);
             case 2:
-              _t18.set.call(_t18, _t19, _context21.sent);
+              _t20.set.call(_t20, _t21, _context21.sent);
               node = node.cdr;
               _context21.next = 1;
               break;
@@ -14519,8 +14564,8 @@ var global_env = new Environment({
               _context21.next = 5;
               return evaluate(test.car, eval_args);
             case 5:
-              _t20 = _context21.sent;
-              if (!(_t20 === false)) {
+              _t22 = _context21.sent;
+              if (!(_t22 === false)) {
                 _context21.next = 7;
                 break;
               }
@@ -16847,40 +16892,40 @@ function resolve_promises(arg) {
   }
   function _promise() {
     _promise = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee21(node) {
-      var pair, _t21, _t22, _t23, _t24, _t25;
+      var pair, _t23, _t24, _t25, _t26, _t27;
       return _regeneratorRuntime.wrap(function (_context22) {
         while (1) switch (_context22.prev = _context22.next) {
           case 0:
-            _t21 = Pair;
+            _t23 = Pair;
             if (!node.have_cycles('car')) {
               _context22.next = 1;
               break;
             }
-            _t22 = node.car;
+            _t24 = node.car;
             _context22.next = 3;
             break;
           case 1:
             _context22.next = 2;
             return resolve(node.car);
           case 2:
-            _t22 = _context22.sent;
+            _t24 = _context22.sent;
           case 3:
-            _t23 = _t22;
+            _t25 = _t24;
             if (!node.have_cycles('cdr')) {
               _context22.next = 4;
               break;
             }
-            _t24 = node.cdr;
+            _t26 = node.cdr;
             _context22.next = 6;
             break;
           case 4:
             _context22.next = 5;
             return resolve(node.cdr);
           case 5:
-            _t24 = _context22.sent;
+            _t26 = _context22.sent;
           case 6:
-            _t25 = _t24;
-            pair = new _t21(_t23, _t25);
+            _t27 = _t26;
+            pair = new _t23(_t25, _t27);
             if (node[__data__]) {
               pair[__data__] = true;
             }
@@ -17349,7 +17394,7 @@ function exec_collect(collect_callback) {
     var _exec_lambda = _asyncToGenerator(function (arg) {
       var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
       return /*#__PURE__*/_regeneratorRuntime.mark(function _callee22() {
-        var env, dynamic_env, use_dynamic, parser_args, results, input, _iteratorAbruptCompletion2, _didIteratorError2, _iteratorError2, _iterator2, _step2, code, value, _t26, _t27;
+        var env, dynamic_env, use_dynamic, parser_args, results, input, _iteratorAbruptCompletion2, _didIteratorError2, _iteratorError2, _iterator2, _step2, code, value, _t28, _t29;
         return _regeneratorRuntime.wrap(function (_context23) {
           while (1) switch (_context23.prev = _context23.next) {
             case 0:
@@ -17374,8 +17419,8 @@ function exec_collect(collect_callback) {
                 use_dynamic: use_dynamic
               });
             case 1:
-              _t26 = _context23.sent;
-              return _context23.abrupt("return", [_t26]);
+              _t28 = _context23.sent;
+              return _context23.abrupt("return", [_t28]);
             case 2:
               input = Array.isArray(arg) ? arg : _parse(arg, parser_args);
               _iteratorAbruptCompletion2 = false;
@@ -17409,9 +17454,9 @@ function exec_collect(collect_callback) {
               break;
             case 9:
               _context23.prev = 9;
-              _t27 = _context23["catch"](3);
+              _t29 = _context23["catch"](3);
               _didIteratorError2 = true;
-              _iteratorError2 = _t27;
+              _iteratorError2 = _t29;
             case 10:
               _context23.prev = 10;
               _context23.prev = 11;
@@ -17978,10 +18023,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Thu, 05 Feb 2026 01:08:18 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Fri, 06 Feb 2026 16:53:18 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Thu, 05 Feb 2026 01:08:18 +0000').valueOf();
+  var date = LString('Fri, 06 Feb 2026 16:53:18 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -18021,7 +18066,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Thu, 05 Feb 2026 01:08:18 +0000';
+var date = 'Fri, 06 Feb 2026 16:53:18 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

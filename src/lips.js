@@ -568,7 +568,7 @@ function parse_argument(token, filename) {
         }
     }
     if (!result && token.match(/^#[iexobd]/)) {
-        throw new Error('Invalid numeric constant: ' + token);
+        throw new Error('Syntax Error: Invalid numeric constant: ' + token);
     }
     if (!result) {
         result = parse_symbol(token);
@@ -1090,7 +1090,7 @@ class Lexer {
         // hide internals from introspection
         [
             '_i', '_whitespace', '_col', '_newline', '_line',
-            '_state', '_next', '_token', '_prev_char'
+            '_state', '_next', '_token', '_prev_char', '_start'
         ].forEach(name => {
             Object.defineProperty(this, name, {
                 configurable: false,
@@ -1107,6 +1107,11 @@ class Lexer {
         this._i = this._line = this._col = this._newline = 0;
         this._state = this._next = this._token = null;
         this._prev_char = '';
+        this._start = {
+            col: 0,
+            line: 0,
+            offset: 0
+        };
     }
     get(name) {
         return this.__internal[name];
@@ -1128,6 +1133,12 @@ class Lexer {
             };
         }
         return this._token;
+    }
+    _augment_exception(e) {
+        read_only(e, '__col__', this._start.col);
+        read_only(e, '__offset__', this._start.offset);
+        read_only(e, '__line__', this._start.line);
+        return e;
     }
     peek(meta = false) {
         if (this._i >= this.__input__.length) {
@@ -1217,7 +1228,8 @@ class Lexer {
     match_rule(rule, { prev_char, char, next_char } = {}) {
         var [ re, prev_re, next_re, state ] = rule;
         if (rule.length !== 5) {
-            throw new Error(`Lexer: Invalid rule of length ${rule.length}`);
+            const e = new Error(`Lexer: Invalid rule of length ${rule.length}`);
+            throw this._augment_exception(e);
         }
         if (is_string(re)) {
             if (re !== char) {
@@ -1247,6 +1259,13 @@ class Lexer {
             const char = this.__input__[i];
             const prev_char = this.__input__[i - 1] || '';
             const next_char = this.__input__[i + 1] || '';
+            if (start) {
+                this._start = {
+                    col: this._i - this._newline,
+                    line: this._line,
+                    offset: this._i
+                };
+            }
             if (char === '\n') {
                 ++this._line;
                 const newline = this._newline;
@@ -1255,9 +1274,9 @@ class Lexer {
                     // we don't want to check inside the token (e.g. strings)
                     this._newline = i + 1;
                 }
+                this._col = this._i - newline;
                 if (this._whitespace && this._state === null) {
                     this._next = i + 1;
-                    this._col = this._i - newline;
                     return true;
                 }
             }
@@ -1297,18 +1316,22 @@ class Lexer {
             }
             // no rule for token
             const line = this.__input__.split('\n')[this._line];
-            throw new Error(`Invalid Syntax at line ${this._line + 1}\n${line}`);
+            const e = new Error(`Invalid Syntax`);
+            throw this._augment_exception(e);
         }
         // we need to ignore comments because they can be the last expression in code
         // without extra newline at the end
         if (![null, Lexer.comment].includes(this._state)) {
             const line_number = this.__input__.substring(0, this._newline).match(/\n/g)?.length ?? 0;
             const line = this.__input__.substring(this._newline);
+            let e;
             if (this.__input__[this._i] === '#') {
-                const expr = this.__input__.substring(this._i).replace(/^([^\s()\[\]]+).*/, '$1');
-                throw new Error(`Invalid Syntax at line ${line_number + 1}: invalid token ${expr}`);
+                const expr = this.__input__.substring(this._i).replace(/^([^ ()\[\]]+).*(\n[\s\S]+)?/, '$1');
+                e = new Error(`Syntax Error: invalid token ${expr}`);
+            } else {
+                e = new Unterminated(`Syntax Error: Unterminated expression`);
             }
-            throw new Unterminated(`Invalid Syntax at line ${line_number + 1}: Unterminated expression ${line}`);
+            throw this._augment_exception(e);
         }
     }
 }
@@ -1591,41 +1614,45 @@ class Parser {
         return this.__env__ && this.__env__.get(name, { throwError: false });
     }
     async _peek() {
-        let token;
-        while (true) {
-            token = this.__lexer__.peek(true);
-            if (token === eof) {
-                return eof;
-            }
-            if (this._is_comment(token.token)) {
-                this.skip();
-                continue;
-            }
-            if (is_directive(token.token)) {
-                this.skip();
-                if (token.token === '#!fold-case') {
-                    this._state.fold_case = true;
-                } else if (token.token === '#!no-fold-case') {
-                    this._state.fold_case = false;
+        try {
+            let token;
+            while (true) {
+                token = this.__lexer__.peek(true);
+                if (token === eof) {
+                    return eof;
                 }
-                continue;
-            }
-            if (token.token === '#;') {
-                this.skip();
-                if (this.__lexer__.peek() === eof) {
-                    const e = new Error('Lexer: syntax error eof found after comment');
-                    throw this._augment_exception(e);
+                if (this._is_comment(token.token)) {
+                    this.skip();
+                    continue;
                 }
-                await this._read_object();
-                continue;
+                if (is_directive(token.token)) {
+                    this.skip();
+                    if (token.token === '#!fold-case') {
+                        this._state.fold_case = true;
+                    } else if (token.token === '#!no-fold-case') {
+                        this._state.fold_case = false;
+                    }
+                    continue;
+                }
+                if (token.token === '#;') {
+                    this.skip();
+                    if (this.__lexer__.peek() === eof) {
+                        const e = new Error('Lexer: syntax error eof found after comment');
+                        throw this._augment_exception(e);
+                    }
+                    await this._read_object();
+                    continue;
+                }
+                break;
             }
-            break;
+            token = this._formatter(token);
+            if (this._state.fold_case) {
+                token.token = foldcase_string(token.token);
+            }
+            return token;
+        } catch (e) {
+            throw this._augment_exception(e);
         }
-        token = this._formatter(token);
-        if (this._state.fold_case) {
-            token.token = foldcase_string(token.token);
-        }
-        return token;
     }
     async peek() {
         const token = this._peek();
@@ -1675,7 +1702,7 @@ class Parser {
             }
             if (this._is_close(token)) {
                 --this._state.parentheses;
-                this.skip();
+                this.skip(token);
                 break;
             }
             if (token.token === '.' && !is_nil(head)) {
@@ -1683,7 +1710,7 @@ class Parser {
                 prev.cdr = await this._read_object();
                 dot = true;
             } else if (dot) {
-                const e = new Error('Parser: syntax error more than one element after dot');
+                const e = new Error('Syntax Error: more than one element after dot');
                 throw this._augment_exception(e);
             } else {
                 const node = await this._read_object();
@@ -1704,14 +1731,18 @@ class Parser {
     async _read_value() {
         let token = await this._read();
         if (token.token === eof) {
-            const e = new Error('Parser: Expected token eof found');
+            const e = new Error('Syntax Error: Expected token eof found');
             throw this._augment_exception(e);
         }
-        let result = parse_argument(token.token);
-        if (this._meta) {
-            result = augment_object(result, token, this.__file__);
+        try {
+            let result = parse_argument(token.token);
+            if (this._meta) {
+                result = augment_object(result, token, this.__file__);
+            }
+            return result;
+        } catch (e) {
+            throw this._augment_exception(e);
         }
-        return result;
     }
     _is_comment(token) {
         return token.match(/^;/) || (token.match(/^#\|/) && token.match(/\|#$/));
@@ -1800,32 +1831,39 @@ class Parser {
         const count = this._state.parentheses;
         let e;
         if (count < 0) {
-            e = new Error('Parser: unexpected parenthesis');
+            e = new Error('Syntax Error: unexpected parenthesis');
             if (prev) {
                 e.__code__ = [prev.toString() + ')'];
             } else {
                 e.__code__ = [')'];
             }
         } else {
-            e = new Error('Parser: expected parenthesis but eof found');
+            e = new Error('Syntax Error: expected parenthesis but eof found');
             const re = new RegExp(`\\){${count}}$`);
             e.__code__ = [expr.toString().replace(re, '')];
         }
         throw this._augment_exception(e);
     }
-    _augment_exception(e) {
-        const token = this._state.last_token;
-        if ('col' in token) {
-            const { col, offset, line } = token;
-            e.message += ` at line ${line + 1} and column ${col + 1}`;
-            if (this.__lexer__.__file__) {
-                e.message += ` in ${this.__lexer__.__file__}`;
-            }
-            read_only(e, '__col__', col);
-            read_only(e, '__offset__', offset);
-            read_only(e, '__line__', line);
-            read_only(e, '__file__' , this.__lexer__.__file__);
+    _update_message(e) {
+        let message = e.message;
+        message += ` at line ${e.__line__ + 1} and column ${e.__col__}`;
+        if (e.__file__) {
+            message += ` in ${e.__file__}`;
         }
+        return message;
+    }
+    _augment_exception(e) {
+        read_only(e, '__file__' , this.__lexer__.__file__);
+        if (!Object.hasOwn(e, '__col__')) {
+            const token = this._state.last_token;
+            if ('col' in token) {
+                const { col, offset, line } = token;
+                read_only(e, '__col__', col);
+                read_only(e, '__offset__', offset);
+                read_only(e, '__line__', line);
+            }
+        }
+        e.message = this._update_message(e);
         return e;
     }
     // TODO: Cover This function (array and object branch)
