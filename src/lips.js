@@ -536,7 +536,7 @@ function parse_symbol(arg) {
     return new LSymbol(arg);
 }
 // ----------------------------------------------------------------------
-function parse_argument(token, filename) {
+function parse_argument(token) {
     if (constants.hasOwnProperty(token)) {
         return constants[token];
     }
