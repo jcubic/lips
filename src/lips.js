@@ -1630,11 +1630,11 @@ class Parser {
                     return eof;
                 }
                 if (this._is_comment(token.token)) {
-                    this.skip();
+                    this._skip(token);
                     continue;
                 }
                 if (is_directive(token.token)) {
-                    this.skip();
+                    this._skip(token);
                     if (token.token === '#!fold-case') {
                         this._state.fold_case = true;
                     } else if (token.token === '#!no-fold-case') {
@@ -1643,7 +1643,7 @@ class Parser {
                     continue;
                 }
                 if (token.token === '#;') {
-                    this.skip();
+                    this._skip(token);
                     if (this.__lexer__.peek() === eof) {
                         const e = new Error('Lexer: syntax error eof found after comment');
                         throw this._augment_exception(e);
@@ -1664,26 +1664,30 @@ class Parser {
     }
     async peek() {
         const token = this._peek();
+        this._state.last_token = token;
         if (this._meta) {
             return token;
         }
         return token.token;
     }
-    _reset() {
-        this._refs.length = 0;
+    skip() {
+        this.__lexer__.skip();
     }
-    skip(token) {
+    _skip(token) {
         this._state.last_token = token;
         this.__lexer__.skip();
     }
+    _reset() {
+        this._refs.length = 0;
+    }
     async _read() {
         const token = await this._peek();
-        this.skip(token);
+        this._skip(token);
         return token;
     }
     async read() {
         const token = await this.peek();
-        this.skip(token);
+        this.skip();
         return token;
     }
     _match_datum_label(token) {
@@ -1710,11 +1714,11 @@ class Parser {
             }
             if (this._is_close(token)) {
                 --this._state.parentheses;
-                this.skip(token);
+                this._skip(token);
                 break;
             }
             if (token.token === '.' && !is_nil(head)) {
-                this.skip(token);
+                this._skip(token);
                 prev.cdr = await this._read_object();
                 dot = true;
             } else if (dot) {
@@ -1916,7 +1920,7 @@ class Parser {
             // result is returned by parser and it is quoted.
             const special = specials.get(token.token);
             const builtin = is_builtin(token.token);
-            this.skip(token);
+            this._skip(token);
             let expr;
             const is_symbol = is_symbol_extension(token.token);
             const was_close_paren = this._is_close(await this._peek());
@@ -1951,7 +1955,7 @@ class Parser {
         }
         const ref = this._match_datum_ref(token);
         if (ref !== null) {
-            this.skip(token);
+            this._skip(token);
             if (this._refs[ref]) {
                 return new DatumReference(ref, this._refs[ref]);
             }
@@ -1960,16 +1964,16 @@ class Parser {
         }
         const ref_label = this._match_datum_label(token);
         if (ref_label !== null) {
-            this.skip(token);
+            this._skip(token);
             this._refs[ref_label] = this._read_object();
             return this._refs[ref_label];
         } else if (this._is_close(token)) {
             --this._state.parentheses;
-            this.skip(token);
+            this._skip(token);
             // invalid state, we don't need to return anything
         } else if (this._is_open(token)) {
             ++this._state.parentheses;
-            this.skip(token);
+            this._skip(token);
             return this._read_list();
         } else {
             return this._read_value();
