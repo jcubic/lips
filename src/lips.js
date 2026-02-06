@@ -1250,6 +1250,11 @@ class Lexer {
         }
         return true;
     }
+    _recover_token() {
+        const re = /^([^\s()\[\]]*).*(\n[\s\S]+)?/
+        const offset = this._start.offset;
+        return this.__input__.substring(offset).replace(re, '$1');
+    }
     next_token() {
         if (this._i >= this.__input__.length) {
             return false;
@@ -1316,8 +1321,8 @@ class Lexer {
                 continue loop;
             }
             // no rule for token
-            const line = this.__input__.split('\n')[this._line];
-            const e = new Error(`Invalid Syntax`);
+            const line = this.__input__.split('\n')[this._start.line];
+            const e = new Error(`Invalid Syntax ${line}`);
             throw this._augment_exception(e);
         }
         // we need to ignore comments because they can be the last expression in code
@@ -1326,11 +1331,12 @@ class Lexer {
             const line_number = this.__input__.substring(0, this._newline).match(/\n/g)?.length ?? 0;
             const line = this.__input__.substring(this._newline);
             let e;
-            if (this.__input__[this._i] === '#') {
-                const expr = this.__input__.substring(this._i).replace(/^([^ ()\[\]]+).*(\n[\s\S]+)?/, '$1');
+            const offset = this._start.offset;
+            const expr = this._recover_token();
+            if (expr[0] === '#') {
                 e = new Error(`Syntax Error: invalid token ${expr}`);
             } else {
-                e = new Unterminated(`Syntax Error: Unterminated expression`);
+                e = new Unterminated(`Syntax Error: Unterminated expression ${expr}`);
             }
             throw this._augment_exception(e);
         }
@@ -1368,6 +1374,7 @@ Lexer.literal_rule = function literal_rule(string, symbol, p_re = null, n_re = n
     }
     return rules;
 };
+
 // ----------------------------------------------------------------------
 Lexer.string = Symbol.for('string');
 Lexer.string_escape = Symbol.for('string_escape');
