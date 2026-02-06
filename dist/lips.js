@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 06 Feb 2026 16:53:18 +0000
+ * build: Fri, 06 Feb 2026 18:57:00 +0000
  */
 
 (function (global, factory) {
@@ -3978,7 +3978,7 @@
       return str;
     } catch (e) {
       var msg = e.message.replace(/in JSON /, '').replace(/.*Error: /, '');
-      throw new Error("Invalid string literal: ".concat(msg));
+      throw new Error("Parse Error: Invalid string literal: ".concat(msg));
     }
   }
   // ----------------------------------------------------------------------
@@ -4651,7 +4651,8 @@
         read_only(e, '__col__', this._start.col);
         read_only(e, '__offset__', this._start.offset);
         read_only(e, '__line__', this._start.line);
-        return e;
+        read_only(e, '__file__', this.__file__);
+        return unify_error_message(e);
       }
     }, {
       key: "peek",
@@ -5527,7 +5528,7 @@
               case 4:
                 return _context7.abrupt("return", result);
               case 5:
-                _e2 = new Error('Parse Error: invalid syntax extension: ' + type(special.value));
+                _e2 = new Error('Syntax Error: invalid syntax extension: ' + type(special.value));
                 throw this._augment_exception(_e2);
               case 6:
               case "end":
@@ -5605,19 +5606,8 @@
         throw this._augment_exception(e);
       }
     }, {
-      key: "_update_message",
-      value: function _update_message(e) {
-        var message = e.message;
-        message += " at line ".concat(e.__line__ + 1, " and column ").concat(e.__col__);
-        if (e.__file__) {
-          message += " in ".concat(e.__file__);
-        }
-        return message;
-      }
-    }, {
       key: "_augment_exception",
       value: function _augment_exception(e) {
-        read_only(e, '__file__', this.__lexer__.__file__);
         if (!Object.hasOwn(e, '__col__')) {
           var token = this._state.last_token;
           if ('col' in token) {
@@ -5627,10 +5617,10 @@
             read_only(e, '__col__', col);
             read_only(e, '__offset__', offset);
             read_only(e, '__line__', line);
+            read_only(e, '__file__', this.__lexer__.__file__);
           }
         }
-        e.message = this._update_message(e);
-        return e;
+        return unify_error_message(e);
       }
       // TODO: Cover This function (array and object branch)
     }, {
@@ -5806,7 +5796,7 @@
                   _context1.next = 9;
                   break;
                 }
-                _e3 = new Error('Parse Error: expecting datum');
+                _e3 = new Error('Syntax Error: expecting datum');
                 throw this._augment_exception(_e3);
               case 9:
                 return _context1.abrupt("return", new Pair(special.value, new Pair(object, _nil)));
@@ -5825,7 +5815,7 @@
                 }
                 return _context1.abrupt("return", new DatumReference(ref, this._refs[ref]));
               case 12:
-                _e4 = new Error("Parse Error: invalid datum label #".concat(ref, "#"));
+                _e4 = new Error("Syntax Error: invalid datum label #".concat(ref, "#"));
                 throw this._augment_exception(_e4);
               case 13:
                 ref_label = this._match_datum_label(token);
@@ -13567,6 +13557,18 @@
     _inherits(IgnoreException, _Error2);
     return _createClass(IgnoreException);
   }(/*#__PURE__*/_wrapNativeSuper(Error)); // -------------------------------------------------------------------------
+  // :: Error is adding class of the error before the message in stack trace
+  // -------------------------------------------------------------------------
+  function unify_error_message(e) {
+    if (!e.message.match(/at line/)) {
+      e.message += " at line ".concat(e.__line__ + 1, " and column ").concat(e.__col__);
+    }
+    if (e.__file__) {
+      e.message += " in ".concat(e.__file__);
+    }
+    return e;
+  }
+  // -------------------------------------------------------------------------
   // :: Environment constructor (parent and name arguments are optional)
   // -------------------------------------------------------------------------
   function Environment(obj, parent, name) {
@@ -17368,11 +17370,8 @@
       use_dynamic: use_dynamic,
       error: function error(e, code) {
         if (e !== null && e !== void 0 && e.message) {
-          if (e.message.match(/^Error:/)) {
-            var re = /^(Error:)\s*([^:]+:\s*)/;
-            // clean duplicated Error: added by JS
-            e.message = e.message.replace(re, '$1 $2');
-          }
+          // TODO: remove when #480 is implemented
+          e.stack = e.stack.replace(/^Error: ([^\s]+ Error:)/, '$1');
           if (code) {
             if (!e.__source__) {
               e.__source__ = code;
@@ -18025,10 +18024,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Fri, 06 Feb 2026 16:53:18 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Fri, 06 Feb 2026 18:57:00 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Fri, 06 Feb 2026 16:53:18 +0000').valueOf();
+    var date = LString('Fri, 06 Feb 2026 18:57:00 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -18068,7 +18067,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Fri, 06 Feb 2026 16:53:18 +0000';
+  var date = 'Fri, 06 Feb 2026 18:57:00 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

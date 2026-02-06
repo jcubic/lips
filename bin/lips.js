@@ -10,7 +10,7 @@ const options = lily(process.argv.slice(2), { boolean });
 
 const use_dynamic = options.d || options.dynamic;
 const use_stack = options.t || options.trace;
-const meta = options.m || options.meta;
+const use_meta = options.m || options.meta;
 
 const quiet = options.q || options.quiet;
 
@@ -119,7 +119,12 @@ function print_error(e, stack) {
         console.log('Error is null');
         return;
     }
-    log_error(e.message);
+    const re = /^([^\s]+ )?Error:/;
+    let message = e.message;
+    if (!message.match(re)) {
+        message = `Runtime Error: ${message}`;
+    }
+    log_error(message);
     if (e.__code__) {
         strace = e.__code__.map((line, i) => {
             const prefix = `[${i+1}]: `;
@@ -131,9 +136,9 @@ function print_error(e, stack) {
         }).join('\n');
     }
     if (use_stack) {
-        console.error(e.stack.replace(/^Error: (Syntax Error)/, '$1'));
+        console.error(e.stack);
     } else {
-        console.error(e.message);
+        console.error(message);
     }
     if (strace) {
         console.error(strace);
@@ -141,7 +146,10 @@ function print_error(e, stack) {
     if (stack) {
         process.exit(1);
     } else {
-        console.error('Use (display exception.stack) to display JS stack trace.');
+        console.error('Use (display exception.stack) or use -t/-trace option to display JS stack trace.');
+    }
+    if (!use_meta) {
+        console.error('Use -m/-meta option to display column and filename of the exception');
     }
     global.exception = e;
 }
@@ -284,7 +292,7 @@ const interpreter = Interpreter('repl', {
     __dirname: __dirname,
     __filename: __filename,
     command_line,
-    meta,
+    meta: use_meta,
     // -------------------------------------------------------------------------
     'stack-trace': doc(function() {
         if (strace) {
