@@ -197,7 +197,7 @@ function bootstrap(interpreter) {
         return readCode(path);
     }
     const code = read(filename);
-    return run(code, { interpreter, filename, env: env.__parent__, stack: true });
+    return run(code, { interpreter, filename, env: env.__parent__ });
 }
 
 // -----------------------------------------------------------------------------
