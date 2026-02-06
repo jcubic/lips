@@ -577,6 +577,9 @@ function parse_argument(token, filename) {
 }
 // ----------------------------------------------------------------------
 function augment_object(object, meta, filename) {
+    if (!is_object(object)) {
+        return object;
+    }
     const { col, offset, line } = meta;
     read_only(object, '__col__', col);
     read_only(object, '__offset__', offset);
