@@ -2,7 +2,7 @@
 
 VERSION=1.0.0-beta.21
 VERSION_DASH=`echo -n "1.0.0-beta.21" | sed "s/-/%E2%80%93/"`
-BRANCH=`git branch | grep '^*' | sed 's/* //'`
+BRANCH=`git branch --show-current | grep -q '^master$$' && echo 'master' || echo 'devel'`
 DATE=`date -uR`
 YEAR=`date +%Y`
 DATE_SHORT=`date +%Y-%m-%d`
