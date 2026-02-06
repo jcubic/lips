@@ -1857,7 +1857,7 @@ class Parser {
         throw this._augment_exception(e);
     }
     _augment_exception(e) {
-        if (!Object.hasOwn(e, '__col__')) {
+        if (!is_augmented(e)) {
             const token = this._state.last_token;
             if ('col' in token) {
                 const { col, offset, line } = token;
@@ -7934,7 +7934,7 @@ function Interpreter(name, {
     set_interaction_env(this.__env__, inter);
 }
 // -------------------------------------------------------------------------
-Interpreter.prototype.exec = async function(arg, options = {}) {
+Interpreter.prototype.exec = function(arg, options = {}) {
     let {
         use_dynamic = false,
         dynamic_env,
@@ -7955,32 +7955,13 @@ Interpreter.prototype.exec = async function(arg, options = {}) {
     if (Array.isArray(arg)) {
         return exec(arg, { env, dynamic_env, use_dynamic, filename });
     } else {
-        try {
-            this.__parser__.prepare(arg, { filename });
-            return await exec(this.__parser__, {
-                env,
-                dynamic_env,
-                filename,
-                use_dynamic
-            });
-        } catch(e) {
-            if (!e.message?.includes('at line')) {
-                let location = '';
-                if (e?.__source__?.__line__) {
-                    location = ` at line ${e.__source__.__line__ + 1}`;
-                } else {
-                    location = ` at line ${this.__parser__.get_line() + 1}`;
-                }
-                if (e?.__source__?.__col__) {
-                    location += ` column ${e.__source__.__col__}`;
-                }
-                if (e?.__source__?.__file__) {
-                    location += ` in ${e.__source__.__file__}`;
-                }
-                e.message += location;
-            }
-            throw e;
-        }
+        this.__parser__.prepare(arg, { filename });
+        return exec(this.__parser__, {
+            env,
+            dynamic_env,
+            filename,
+            use_dynamic
+        });
     }
 };
 // -------------------------------------------------------------------------
@@ -8013,11 +7994,13 @@ function LipsError(message, args) {
 }
 LipsError.prototype = new Error();
 LipsError.prototype.constructor = LipsError;
+
 // -------------------------------------------------------------------------
 // :: Fake exception to handle try catch to break the execution
 // :: of body expression #163
 // -------------------------------------------------------------------------
 class IgnoreException extends Error { }
+
 // -------------------------------------------------------------------------
 // :: Error is adding class of the error before the message in stack trace
 // -------------------------------------------------------------------------
@@ -8030,6 +8013,12 @@ function unify_error_message(e) {
     }
     return e;
 }
+
+// -------------------------------------------------------------------------
+function is_augmented(object) {
+    return object && Object.hasOwn(object, '__col__');
+}
+
 // -------------------------------------------------------------------------
 // :: Environment constructor (parent and name arguments are optional)
 // -------------------------------------------------------------------------
@@ -11944,9 +11933,17 @@ function exec_with_stacktrace(code, { env, dynamic_env, use_dynamic } = {}) {
             if (e?.message) {
                 // TODO: remove when #480 is implemented
                 e.stack = e.stack.replace(/^Error: ([^\s]+ Error:)/, '$1');
+
                 if (code) {
-                    if (!e.__source__) {
-                        e.__source__ = code;
+                    // augment runtime errors
+                    if (!is_augmented(e) && is_augmented(code)) {
+                        read_only(e, '__col__', code.__col__);
+                        read_only(e, '__offset__', code.__offset__);
+                        read_only(e, '__line__', code.__line__);
+                        if (code.__fiile__) {
+                            read_only(e, '__file__', code.__fiile__);
+                        }
+                        unify_error_message(e);
                     }
                     // LIPS stack trace
                     if (!(e.__code__ instanceof Array)) {
