@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 06 Feb 2026 18:57:00 +0000
+ * build: Fri, 06 Feb 2026 19:29:08 +0000
  */
 
 (function (global, factory) {
@@ -4791,6 +4791,13 @@
         return true;
       }
     }, {
+      key: "_recover_token",
+      value: function _recover_token() {
+        var re = /^([^\s()\[\]]*).*(\n[\s\S]+)?/;
+        var offset = this._start.offset;
+        return this.__input__.substring(offset).replace(re, '$1');
+      }
+    }, {
       key: "next_token",
       value: function next_token() {
         if (this._i >= this.__input__.length) {
@@ -4870,8 +4877,8 @@
             continue loop;
           }
           // no rule for token
-          this.__input__.split('\n')[this._line];
-          var e = new Error("Invalid Syntax");
+          var line = this.__input__.split('\n')[this._start.line];
+          var e = new Error("Invalid Syntax ".concat(line));
           throw this._augment_exception(e);
         }
         // we need to ignore comments because they can be the last expression in code
@@ -4881,11 +4888,12 @@
           (_this$__input__$subst = (_this$__input__$subst2 = this.__input__.substring(0, this._newline).match(/\n/g)) === null || _this$__input__$subst2 === void 0 ? void 0 : _this$__input__$subst2.length) !== null && _this$__input__$subst !== void 0 ? _this$__input__$subst : 0;
           this.__input__.substring(this._newline);
           var _e;
-          if (this.__input__[this._i] === '#') {
-            var expr = this.__input__.substring(this._i).replace(/^([^ ()\[\]]+).*(\n[\s\S]+)?/, '$1');
+          this._start.offset;
+          var expr = this._recover_token();
+          if (expr[0] === '#') {
             _e = new Error("Syntax Error: invalid token ".concat(expr));
           } else {
-            _e = new Unterminated("Syntax Error: Unterminated expression");
+            _e = new Unterminated("Syntax Error: Unterminated expression ".concat(expr));
           }
           throw this._augment_exception(_e);
         }
@@ -4925,6 +4933,7 @@
     }
     return rules;
   };
+
   // ----------------------------------------------------------------------
   Lexer.string = Symbol["for"]('string');
   Lexer.string_escape = Symbol["for"]('string_escape');
@@ -18024,10 +18033,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Fri, 06 Feb 2026 18:57:00 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Fri, 06 Feb 2026 19:29:08 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Fri, 06 Feb 2026 18:57:00 +0000').valueOf();
+    var date = LString('Fri, 06 Feb 2026 19:29:08 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -18067,7 +18076,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Fri, 06 Feb 2026 18:57:00 +0000';
+  var date = 'Fri, 06 Feb 2026 19:29:08 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);
