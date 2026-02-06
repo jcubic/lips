@@ -452,13 +452,13 @@ if (options.version || options.V) {
                        'me>\n\n  [-h --help]\t\tthis help message\n  [-e --eval]\t\texecute code\n  [-' +
                        'V --version]\tdisplay version information according to srfi-176\n  [-c --compi' +
                        'le]\tparse and compile the file into binary file format\n  [-b --bootstrap]\tp' +
-                       'oint to a file that should be used for bootstraping standard library,\n\t\t\td' +
-                       'efault is ./dist/std.xcb. use none to disable bootstraping\n  [-q --quiet]\t\t' +
-                       'don\'t display banner in REPL\n  [-d --dynamic]\trun interpreter with dynamic ' +
-                       'scope\n  [-t --trace]\t\tprint JavaScript and scheme stack traces when extensi' +
-                       'ons is thrown\n  [-m --meta]\t\tadd meta information to the parsed code that e' +
-                       'nhance exceptions message\n\nif called without arguments it will run the REPL ' +
-                       'and if called with one argument\nit will treat it as filename and execute it.',
+                       'oint to a file that should be used for bootstrapping standard library,\n\t\t\t' +
+                       'default is ./dist/std.xcb. use none to disable bootstrapping\n  [-q --quiet]\t' +
+                       '\tdon\'t display banner in REPL\n  [-d --dynamic]\trun interpreter with dynami' +
+                       'c scope\n  [-t --trace]\t\tprint JavaScript and scheme stack traces when exten' +
+                       'sions is thrown\n  [-m --meta]\t\tadd meta information to the parsed code that' +
+                       ' enhance exceptions message\n\nif called without arguments it will run the REP' +
+                       'L and if called with one argument\nit will treat it as filename and execute it.',
                        intro, path.basename(name)));
 } else {
     const entry = '   ' + (use_dynamic ? 'dynamic' : 'lexical') + ' scope $1';
