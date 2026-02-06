@@ -2,7 +2,7 @@
 
 VERSION={{VERSION}}
 VERSION_DASH=`echo -n "{{VERSION}}" | sed "s/-/%E2%80%93/"`
-BRANCH=`git branch | grep '^*' | sed 's/* //'`
+BRANCH=`git branch --show-current | grep -q '^master$$' && echo 'master' || echo 'devel'`
 DATE=`date -uR`
 YEAR=`date +%Y`
 DATE_SHORT=`date +%Y-%m-%d`
