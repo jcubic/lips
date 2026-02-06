@@ -451,14 +451,14 @@ if (options.version || options.V) {
     console.log(format('%s\nusage:\n  %s -q | -c | -h | -m | -t | -b <file> | -d | -e <code> | <filena' +
                        'me>\n\n  [-h --help]\t\tthis help message\n  [-e --eval]\t\texecute code\n  [-' +
                        'V --version]\tdisplay version information according to srfi-176\n  [-c --compi' +
-                       'le]\tparse and compile the file into binary file format\n  [-b --boostrap]\tpo' +
-                       'int to a file that should be used for boostraping standard library,\n\t\t\tdef' +
-                       'ault is ./dist/std.xcb. use none to disable boostraping\n  [-q --quiet]\t\tdon' +
-                       '\'t display banner in REPL\n  [-d --dynamic]\trun interpreterreter with dynami' +
-                       'c scope\n  [-t --trace]\t\tprint JavaScript and scheme stack traces when exten' +
-                       'sions is thrown\n  [-m --meta]\t\tadd meta information to the parsed code that' +
-                       ' enhance exceptions message\n\nif called without arguments it will run the REP' +
-                       'L and if called with one argument\nit will treat it as filename and execute it.',
+                       'le]\tparse and compile the file into binary file format\n  [-b --bootstrap]\tp' +
+                       'oint to a file that should be used for bootstraping standard library,\n\t\t\td' +
+                       'efault is ./dist/std.xcb. use none to disable bootstraping\n  [-q --quiet]\t\t' +
+                       'don\'t display banner in REPL\n  [-d --dynamic]\trun interpreter with dynamic ' +
+                       'scope\n  [-t --trace]\t\tprint JavaScript and scheme stack traces when extensi' +
+                       'ons is thrown\n  [-m --meta]\t\tadd meta information to the parsed code that e' +
+                       'nhance exceptions message\n\nif called without arguments it will run the REPL ' +
+                       'and if called with one argument\nit will treat it as filename and execute it.',
                        intro, path.basename(name)));
 } else {
     const entry = '   ' + (use_dynamic ? 'dynamic' : 'lexical') + ' scope $1';
