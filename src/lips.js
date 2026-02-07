@@ -8005,6 +8005,33 @@ LipsError.prototype.constructor = LipsError;
 class IgnoreException extends Error { }
 
 // -------------------------------------------------------------------------
+function augument_exception(e, code) {
+    if (e?.message) {
+        // TODO: remove when #480 is implemented
+        e.stack = e.stack.replace(/^Error: ([^\s]+ Error:)/, '$1');
+
+        if (code) {
+            // augment runtime errors
+            if (!is_augmented(e) && is_augmented(code)) {
+                read_only(e, '__col__', code.__col__);
+                read_only(e, '__offset__', code.__offset__);
+                read_only(e, '__line__', code.__line__);
+                if (code.__fiile__) {
+                    read_only(e, '__file__', code.__fiile__);
+                }
+                unify_error_message(e);
+            }
+            // LIPS stack trace
+            if (!(e.__code__ instanceof Array)) {
+                e.__code__ = [];
+            }
+            e.__code__.push(code.toString(true));
+        }
+    }
+    return e;
+}
+
+// -------------------------------------------------------------------------
 // :: Error is adding class of the error before the message in stack trace
 // -------------------------------------------------------------------------
 function unify_error_message(e) {
@@ -11915,6 +11942,7 @@ function evaluate(code, { env, dynamic_env, use_dynamic, error = noop, ...rest }
         }
         return result;
     } catch (e) {
+        augument_exception(e, code);
         error && error.call(env, e, code);
     }
 }
@@ -11933,28 +11961,6 @@ function exec_with_stacktrace(code, { env, dynamic_env, use_dynamic } = {}) {
         dynamic_env,
         use_dynamic,
         error: (e, code) => {
-            if (e?.message) {
-                // TODO: remove when #480 is implemented
-                e.stack = e.stack.replace(/^Error: ([^\s]+ Error:)/, '$1');
-
-                if (code) {
-                    // augment runtime errors
-                    if (!is_augmented(e) && is_augmented(code)) {
-                        read_only(e, '__col__', code.__col__);
-                        read_only(e, '__offset__', code.__offset__);
-                        read_only(e, '__line__', code.__line__);
-                        if (code.__fiile__) {
-                            read_only(e, '__file__', code.__fiile__);
-                        }
-                        unify_error_message(e);
-                    }
-                    // LIPS stack trace
-                    if (!(e.__code__ instanceof Array)) {
-                        e.__code__ = [];
-                    }
-                    e.__code__.push(code.toString(true));
-                }
-            }
             if (!(e instanceof IgnoreException)) {
                 throw e;
             }
