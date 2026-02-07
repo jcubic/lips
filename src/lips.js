@@ -1575,28 +1575,23 @@ function augment_exception(e, code) {
     if (!is_object(e)) {
         e = new PromiseRejection(to_string(e));
     }
-    if (e?.message) {
-        // TODO: remove when #480 is implemented
-        e.stack = e.stack.replace(/^Error: ([^\s]+ Error:)/, '$1');
-
-        if (code) {
-            // augment runtime errors
-            if (!is_augmented(e) && is_augmented(code)) {
-                read_only(e, '__col__', code.__col__);
-                read_only(e, '__offset__', code.__offset__);
-                read_only(e, '__line__', code.__line__);
-                if (code.__fiile__) {
-                    read_only(e, '__file__', code.__fiile__);
-                }
-                unify_error_message(e);
+    if (code) {
+        // augment runtime errors
+        if (!is_augmented(e) && is_augmented(code)) {
+            read_only(e, '__col__', code.__col__);
+            read_only(e, '__offset__', code.__offset__);
+            read_only(e, '__line__', code.__line__);
+            if (code.__file__) {
+                read_only(e, '__file__', code.__file__);
             }
-            // LIPS stack trace
-            if (!(e.__code__ instanceof Array)) {
-                e.__code__ = [];
-            }
-            e.__code__.push(code.toString(true));
         }
+        // LIPS stack trace
+        if (!(e.__code__ instanceof Array)) {
+            e.__code__ = [];
+        }
+        e.__code__.push(code.toString(true));
     }
+    unify_error_message(e);
     return e;
 }
 
@@ -1604,11 +1599,16 @@ function augment_exception(e, code) {
 // :: Error is adding class of the error before the message in stack trace
 // -------------------------------------------------------------------------
 function unify_error_message(e) {
-    if (!e.message.match(/at line/)) {
-        e.message += ` at line ${e.__line__ + 1} and column ${e.__col__}`;
-    }
-    if (e.__file__) {
-        e.message += ` in ${e.__file__}`;
+    if (is_augmented(e)) {
+        if (!e.message.match(/at line/)) {
+            e.message += ` at line ${e.__line__ + 1} and column ${e.__col__}`;
+            if (e.__file__) {
+                e.message += ` in ${e.__file__}`;
+            }
+        }
+        if (e.stack) {
+            e.stack = e.message + '\n' + e.stack.replace(/.*\n/, '');
+        }
     }
     return e;
 }
@@ -11967,20 +11967,23 @@ function evaluate_with_stacktrace(code, { error, env, ...rest } = {}) {
 
 // -------------------------------------------------------------------------
 function exec_with_stacktrace(code, args = {}) {
-    return evaluate(code, {
-        ...args,
-        error: (e, code) => {
-            augment_exception(e, code);
-            if (!(e instanceof IgnoreException)) {
-                throw e;
+    try {
+        return evaluate(code, {
+            ...args,
+            error: (e, code) => {
+                augment_exception(e, code);
+                if (!(e instanceof IgnoreException)) {
+                    throw e;
+                }
             }
-        }
-    });
+        });
+    } catch (e) {
+        throw augment_exception(e);
+    }
 }
 // -------------------------------------------------------------------------
 function exec_collect(collect_callback) {
     return async function exec_lambda(arg, options = {}) {
-        try {
         let { env, dynamic_env, use_dynamic, ...parser_args } = options;
         if (!is_env(dynamic_env)) {
             dynamic_env = env === true ? user_env : env || user_env;
@@ -12000,9 +12003,6 @@ function exec_collect(collect_callback) {
             results.push(collect_callback(code, value));
         }
         return results;
-        } catch(e) {
-            throw augment_exception(e);
-        }
     };
 }
 // -------------------------------------------------------------------------

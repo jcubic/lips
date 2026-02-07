@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 07 Feb 2026 21:45:59 +0000
+ * build: Sat, 07 Feb 2026 23:35:10 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -5094,31 +5094,26 @@ var PromiseRejection = /*#__PURE__*/function (_RuntimeError) {
   return _createClass(PromiseRejection);
 }(RuntimeError); // -------------------------------------------------------------------------
 function augment_exception(e, code) {
-  var _e2;
   if (!is_object(e)) {
     e = new PromiseRejection(to_string(e));
   }
-  if ((_e2 = e) !== null && _e2 !== void 0 && _e2.message) {
-    // TODO: remove when #480 is implemented
-    e.stack = e.stack.replace(/^Error: ([^\s]+ Error:)/, '$1');
-    if (code) {
-      // augment runtime errors
-      if (!is_augmented(e) && is_augmented(code)) {
-        read_only(e, '__col__', code.__col__);
-        read_only(e, '__offset__', code.__offset__);
-        read_only(e, '__line__', code.__line__);
-        if (code.__fiile__) {
-          read_only(e, '__file__', code.__fiile__);
-        }
-        unify_error_message(e);
+  if (code) {
+    // augment runtime errors
+    if (!is_augmented(e) && is_augmented(code)) {
+      read_only(e, '__col__', code.__col__);
+      read_only(e, '__offset__', code.__offset__);
+      read_only(e, '__line__', code.__line__);
+      if (code.__file__) {
+        read_only(e, '__file__', code.__file__);
       }
-      // LIPS stack trace
-      if (!(e.__code__ instanceof Array)) {
-        e.__code__ = [];
-      }
-      e.__code__.push(code.toString(true));
     }
+    // LIPS stack trace
+    if (!(e.__code__ instanceof Array)) {
+      e.__code__ = [];
+    }
+    e.__code__.push(code.toString(true));
   }
+  unify_error_message(e);
   return e;
 }
 
@@ -5126,11 +5121,16 @@ function augment_exception(e, code) {
 // :: Error is adding class of the error before the message in stack trace
 // -------------------------------------------------------------------------
 function unify_error_message(e) {
-  if (!e.message.match(/at line/)) {
-    e.message += " at line ".concat(e.__line__ + 1, " and column ").concat(e.__col__);
-  }
-  if (e.__file__) {
-    e.message += " in ".concat(e.__file__);
+  if (is_augmented(e)) {
+    if (!e.message.match(/at line/)) {
+      e.message += " at line ".concat(e.__line__ + 1, " and column ").concat(e.__col__);
+      if (e.__file__) {
+        e.message += " in ".concat(e.__file__);
+      }
+    }
+    if (e.stack) {
+      e.stack = e.message + '\n' + e.stack.replace(/.*\n/, '');
+    }
   }
   return e;
 }
@@ -5570,7 +5570,7 @@ var Parser = /*#__PURE__*/function () {
     value: function () {
       var _invoke_special = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee7(special, object, is_symbol) {
         var _this6 = this;
-        var args, msg, e, code, eval_args, result, _e3;
+        var args, msg, e, code, eval_args, result, _e2;
         return _regeneratorRuntime.wrap(function (_context7) {
           while (1) switch (_context7.prev = _context7.next) {
             case 0:
@@ -5635,8 +5635,8 @@ var Parser = /*#__PURE__*/function () {
             case 4:
               return _context7.abrupt("return", result);
             case 5:
-              _e3 = new Error('Syntax Error: invalid syntax extension: ' + type(special.value));
-              throw this._augment_exception(_e3);
+              _e2 = new Error('Syntax Error: invalid syntax extension: ' + type(special.value));
+              throw this._augment_exception(_e2);
             case 6:
             case "end":
               return _context7.stop();
@@ -5833,7 +5833,7 @@ var Parser = /*#__PURE__*/function () {
     key: "_read_object",
     value: function () {
       var _read_object3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee1() {
-        var token, special, builtin, _is_symbol, was_close_paren, object, e, _e4, ref, _e5, ref_label, _t3, _t4;
+        var token, special, builtin, _is_symbol, was_close_paren, object, e, _e3, ref, _e4, ref_label, _t3, _t4;
         return _regeneratorRuntime.wrap(function (_context1) {
           while (1) switch (_context1.prev = _context1.next) {
             case 0:
@@ -5903,8 +5903,8 @@ var Parser = /*#__PURE__*/function () {
                 _context1.next = 9;
                 break;
               }
-              _e4 = new Error('Syntax Error: expecting datum');
-              throw this._augment_exception(_e4);
+              _e3 = new Error('Syntax Error: expecting datum');
+              throw this._augment_exception(_e3);
             case 9:
               return _context1.abrupt("return", new Pair(special.value, new Pair(object, _nil)));
             case 10:
@@ -5922,8 +5922,8 @@ var Parser = /*#__PURE__*/function () {
               }
               return _context1.abrupt("return", new DatumReference(ref, this._refs[ref]));
             case 12:
-              _e5 = new Error("Syntax Error: invalid datum label #".concat(ref, "#"));
-              throw this._augment_exception(_e5);
+              _e4 = new Error("Syntax Error: invalid datum label #".concat(ref, "#"));
+              throw this._augment_exception(_e4);
             case 13:
               ref_label = this._match_datum_label(token);
               if (!(ref_label !== null)) {
@@ -6159,7 +6159,7 @@ function uniterate_async(_x7) {
 // ----------------------------------------------------------------------
 function _uniterate_async() {
   _uniterate_async = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee22(object) {
-    var result, _iteratorAbruptCompletion, _didIteratorError, _iteratorError, _iterator, _step, item, _t30;
+    var result, _iteratorAbruptCompletion, _didIteratorError, _iteratorError, _iterator, _step, item, _t29;
     return _regeneratorRuntime.wrap(function (_context23) {
       while (1) switch (_context23.prev = _context23.next) {
         case 0:
@@ -6187,9 +6187,9 @@ function _uniterate_async() {
           break;
         case 6:
           _context23.prev = 6;
-          _t30 = _context23["catch"](1);
+          _t29 = _context23["catch"](1);
           _didIteratorError = true;
-          _iteratorError = _t30;
+          _iteratorError = _t29;
         case 7:
           _context23.prev = 7;
           _context23.prev = 8;
@@ -17406,14 +17406,18 @@ function evaluate_with_stacktrace(code) {
 // -------------------------------------------------------------------------
 function exec_with_stacktrace(code) {
   var args = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-  return evaluate(code, _objectSpread(_objectSpread({}, args), {}, {
-    error: function error(e, code) {
-      augment_exception(e, code);
-      if (!(e instanceof IgnoreException)) {
-        throw e;
+  try {
+    return evaluate(code, _objectSpread(_objectSpread({}, args), {}, {
+      error: function error(e, code) {
+        augment_exception(e, code);
+        if (!(e instanceof IgnoreException)) {
+          throw e;
+        }
       }
-    }
-  }));
+    }));
+  } catch (e) {
+    throw augment_exception(e);
+  }
 }
 // -------------------------------------------------------------------------
 function exec_collect(collect_callback) {
@@ -17421,19 +17425,18 @@ function exec_collect(collect_callback) {
     var _exec_lambda = _asyncToGenerator(function (arg) {
       var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
       return /*#__PURE__*/_regeneratorRuntime.mark(function _callee21() {
-        var _env, _dynamic_env, use_dynamic, parser_args, results, input, _iteratorAbruptCompletion2, _didIteratorError2, _iteratorError2, _iterator2, _step2, code, value, _t27, _t28, _t29;
+        var env, dynamic_env, use_dynamic, parser_args, results, input, _iteratorAbruptCompletion2, _didIteratorError2, _iteratorError2, _iterator2, _step2, code, value, _t27, _t28;
         return _regeneratorRuntime.wrap(function (_context22) {
           while (1) switch (_context22.prev = _context22.next) {
             case 0:
-              _context22.prev = 0;
-              _env = options.env, _dynamic_env = options.dynamic_env, use_dynamic = options.use_dynamic, parser_args = _objectWithoutProperties(options, _excluded0);
-              if (!is_env(_dynamic_env)) {
-                _dynamic_env = _env === true ? user_env : _env || user_env;
+              env = options.env, dynamic_env = options.dynamic_env, use_dynamic = options.use_dynamic, parser_args = _objectWithoutProperties(options, _excluded0);
+              if (!is_env(dynamic_env)) {
+                dynamic_env = env === true ? user_env : env || user_env;
               }
-              if (_env === true) {
-                _env = user_env;
+              if (env === true) {
+                env = user_env;
               } else {
-                _env = _env || user_env;
+                env = env || user_env;
               }
               results = [];
               if (!is_pair(arg)) {
@@ -17442,8 +17445,8 @@ function exec_collect(collect_callback) {
               }
               _context22.next = 1;
               return exec_with_stacktrace(arg, {
-                env: _env,
-                dynamic_env: _dynamic_env,
+                env: env,
+                dynamic_env: dynamic_env,
                 use_dynamic: use_dynamic
               });
             case 1:
@@ -17466,8 +17469,8 @@ function exec_collect(collect_callback) {
               code = _step2.value;
               _context22.next = 6;
               return exec_with_stacktrace(code, {
-                env: _env,
-                dynamic_env: _dynamic_env,
+                env: env,
+                dynamic_env: dynamic_env,
                 use_dynamic: use_dynamic
               });
             case 6:
@@ -17508,14 +17511,10 @@ function exec_collect(collect_callback) {
             case 15:
               return _context22.abrupt("return", results);
             case 16:
-              _context22.prev = 16;
-              _t29 = _context22["catch"](0);
-              throw augment_exception(_t29);
-            case 17:
             case "end":
               return _context22.stop();
           }
-        }, _callee21, null, [[0, 16], [3, 9, 10, 15], [11,, 12, 14]]);
+        }, _callee21, null, [[3, 9, 10, 15], [11,, 12, 14]]);
       })();
     });
     function exec_lambda(_x18) {
@@ -18055,10 +18054,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 07 Feb 2026 21:45:59 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sat, 07 Feb 2026 23:35:10 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 07 Feb 2026 21:45:59 +0000').valueOf();
+  var date = LString('Sat, 07 Feb 2026 23:35:10 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -18098,7 +18097,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 07 Feb 2026 21:45:59 +0000';
+var date = 'Sat, 07 Feb 2026 23:35:10 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
