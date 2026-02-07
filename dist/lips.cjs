@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 07 Feb 2026 21:09:57 +0000
+ * build: Sat, 07 Feb 2026 21:45:59 +0000
  */
 
 'use strict';
@@ -90,6 +90,32 @@ function _nonIterableRest() {
 
 function _toArray(r) {
   return _arrayWithHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray$1(r) || _nonIterableRest();
+}
+
+function asyncGeneratorStep(n, t, e, r, o, a, c) {
+  try {
+    var i = n[a](c),
+      u = i.value;
+  } catch (n) {
+    return void e(n);
+  }
+  i.done ? t(u) : Promise.resolve(u).then(r, o);
+}
+function _asyncToGenerator(n) {
+  return function () {
+    var t = this,
+      e = arguments;
+    return new Promise(function (r, o) {
+      var a = n.apply(t, e);
+      function _next(n) {
+        asyncGeneratorStep(a, r, o, _next, _throw, "next", n);
+      }
+      function _throw(n) {
+        asyncGeneratorStep(a, r, o, _next, _throw, "throw", n);
+      }
+      _next(void 0);
+    });
+  };
 }
 
 function _typeof$1(o) {
@@ -161,32 +187,6 @@ function _wrapNativeSuper(t) {
       }
     }), _setPrototypeOf(Wrapper, t);
   }, _wrapNativeSuper(t);
-}
-
-function asyncGeneratorStep(n, t, e, r, o, a, c) {
-  try {
-    var i = n[a](c),
-      u = i.value;
-  } catch (n) {
-    return void e(n);
-  }
-  i.done ? t(u) : Promise.resolve(u).then(r, o);
-}
-function _asyncToGenerator(n) {
-  return function () {
-    var t = this,
-      e = arguments;
-    return new Promise(function (r, o) {
-      var a = n.apply(t, e);
-      function _next(n) {
-        asyncGeneratorStep(a, r, o, _next, _throw, "next", n);
-      }
-      function _throw(n) {
-        asyncGeneratorStep(a, r, o, _next, _throw, "throw", n);
-      }
-      _next(void 0);
-    });
-  };
 }
 
 function _classCallCheck(a, n) {
@@ -3493,7 +3493,8 @@ var _excluded = ["token"],
   _excluded6 = ["use_dynamic", "error"],
   _excluded7 = ["use_dynamic"],
   _excluded8 = ["env", "dynamic_env", "use_dynamic", "error"],
-  _excluded9 = ["env", "dynamic_env", "use_dynamic"];
+  _excluded9 = ["error", "env"],
+  _excluded0 = ["env", "dynamic_env", "use_dynamic"];
 function _classPrivateFieldInitSpec(e, t, a) { _checkPrivateRedeclaration(e, t), t.set(e, a); }
 function _checkPrivateRedeclaration(e, t) { if (t.has(e)) throw new TypeError("Cannot initialize the same private elements twice on an object"); }
 function _classPrivateFieldGet(s, a) { return s.get(_assertClassBrand(s, a)); }
@@ -5049,6 +5050,100 @@ function match_or_null(re, _char6) {
   }
   return re === null || _char6.match(re);
 }
+// -------------------------------------------------------------------------
+// Lips Exception used in error function
+// -------------------------------------------------------------------------
+function LipsError(message, args) {
+  this.name = 'LipsError';
+  this.message = message;
+  this.args = args;
+  this.stack = new Error().stack;
+}
+LipsError.prototype = new Error();
+LipsError.prototype.constructor = LipsError;
+
+// -------------------------------------------------------------------------
+// :: Fake exception to handle try catch to break the execution
+// :: of body expression #163
+// -------------------------------------------------------------------------
+var IgnoreException = /*#__PURE__*/function (_Error) {
+  function IgnoreException() {
+    _classCallCheck(this, IgnoreException);
+    return _callSuper(this, IgnoreException, arguments);
+  }
+  _inherits(IgnoreException, _Error);
+  return _createClass(IgnoreException);
+}(/*#__PURE__*/_wrapNativeSuper(Error));
+var Unterminated = /*#__PURE__*/function (_Error2) {
+  function Unterminated() {
+    _classCallCheck(this, Unterminated);
+    return _callSuper(this, Unterminated, arguments);
+  }
+  _inherits(Unterminated, _Error2);
+  return _createClass(Unterminated);
+}(/*#__PURE__*/_wrapNativeSuper(Error));
+var RuntimeError = /*#__PURE__*/function (_Error3) {
+  function RuntimeError() {
+    _classCallCheck(this, RuntimeError);
+    return _callSuper(this, RuntimeError, arguments);
+  }
+  _inherits(RuntimeError, _Error3);
+  return _createClass(RuntimeError);
+}(/*#__PURE__*/_wrapNativeSuper(Error));
+var PromiseRejection = /*#__PURE__*/function (_RuntimeError) {
+  function PromiseRejection() {
+    _classCallCheck(this, PromiseRejection);
+    return _callSuper(this, PromiseRejection, arguments);
+  }
+  _inherits(PromiseRejection, _RuntimeError);
+  return _createClass(PromiseRejection);
+}(RuntimeError); // -------------------------------------------------------------------------
+function augment_exception(e, code) {
+  var _e2;
+  if (!is_object(e)) {
+    e = new PromiseRejection(to_string(e));
+  }
+  if ((_e2 = e) !== null && _e2 !== void 0 && _e2.message) {
+    // TODO: remove when #480 is implemented
+    e.stack = e.stack.replace(/^Error: ([^\s]+ Error:)/, '$1');
+    if (code) {
+      // augment runtime errors
+      if (!is_augmented(e) && is_augmented(code)) {
+        read_only(e, '__col__', code.__col__);
+        read_only(e, '__offset__', code.__offset__);
+        read_only(e, '__line__', code.__line__);
+        if (code.__fiile__) {
+          read_only(e, '__file__', code.__fiile__);
+        }
+        unify_error_message(e);
+      }
+      // LIPS stack trace
+      if (!(e.__code__ instanceof Array)) {
+        e.__code__ = [];
+      }
+      e.__code__.push(code.toString(true));
+    }
+  }
+  return e;
+}
+
+// -------------------------------------------------------------------------
+// :: Error is adding class of the error before the message in stack trace
+// -------------------------------------------------------------------------
+function unify_error_message(e) {
+  if (!e.message.match(/at line/)) {
+    e.message += " at line ".concat(e.__line__ + 1, " and column ").concat(e.__col__);
+  }
+  if (e.__file__) {
+    e.message += " in ".concat(e.__file__);
+  }
+  return e;
+}
+
+// -------------------------------------------------------------------------
+function is_augmented(object) {
+  return object && Object.hasOwn(object, '__col__');
+}
 // ----------------------------------------------------------------------
 // :: Parser inspired by BiwaScheme
 // :: ref: https://github.com/biwascheme/biwascheme/blob/master/src/system/parser.js
@@ -5480,7 +5575,7 @@ var Parser = /*#__PURE__*/function () {
     value: function () {
       var _invoke_special = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee7(special, object, is_symbol) {
         var _this6 = this;
-        var args, msg, e, code, eval_args, result, _e2;
+        var args, msg, e, code, eval_args, result, _e3;
         return _regeneratorRuntime.wrap(function (_context7) {
           while (1) switch (_context7.prev = _context7.next) {
             case 0:
@@ -5545,8 +5640,8 @@ var Parser = /*#__PURE__*/function () {
             case 4:
               return _context7.abrupt("return", result);
             case 5:
-              _e2 = new Error('Syntax Error: invalid syntax extension: ' + type(special.value));
-              throw this._augment_exception(_e2);
+              _e3 = new Error('Syntax Error: invalid syntax extension: ' + type(special.value));
+              throw this._augment_exception(_e3);
             case 6:
             case "end":
               return _context7.stop();
@@ -5743,7 +5838,7 @@ var Parser = /*#__PURE__*/function () {
     key: "_read_object",
     value: function () {
       var _read_object3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee1() {
-        var token, special, builtin, _is_symbol, was_close_paren, object, e, _e3, ref, _e4, ref_label, _t3, _t4;
+        var token, special, builtin, _is_symbol, was_close_paren, object, e, _e4, ref, _e5, ref_label, _t3, _t4;
         return _regeneratorRuntime.wrap(function (_context1) {
           while (1) switch (_context1.prev = _context1.next) {
             case 0:
@@ -5813,8 +5908,8 @@ var Parser = /*#__PURE__*/function () {
                 _context1.next = 9;
                 break;
               }
-              _e3 = new Error('Syntax Error: expecting datum');
-              throw this._augment_exception(_e3);
+              _e4 = new Error('Syntax Error: expecting datum');
+              throw this._augment_exception(_e4);
             case 9:
               return _context1.abrupt("return", new Pair(special.value, new Pair(object, _nil)));
             case 10:
@@ -5832,8 +5927,8 @@ var Parser = /*#__PURE__*/function () {
               }
               return _context1.abrupt("return", new DatumReference(ref, this._refs[ref]));
             case 12:
-              _e4 = new Error("Syntax Error: invalid datum label #".concat(ref, "#"));
-              throw this._augment_exception(_e4);
+              _e5 = new Error("Syntax Error: invalid datum label #".concat(ref, "#"));
+              throw this._augment_exception(_e5);
             case 13:
               ref_label = this._match_datum_label(token);
               if (!(ref_label !== null)) {
@@ -5876,14 +5971,6 @@ var Parser = /*#__PURE__*/function () {
     }()
   }]);
 }();
-var Unterminated = /*#__PURE__*/function (_Error) {
-  function Unterminated() {
-    _classCallCheck(this, Unterminated);
-    return _callSuper(this, Unterminated, arguments);
-  }
-  _inherits(Unterminated, _Error);
-  return _createClass(Unterminated);
-}(/*#__PURE__*/_wrapNativeSuper(Error));
 Parser.Unterminated = Unterminated;
 // ----------------------------------------------------------------------
 // :: Parser helper that handles circular list structures
@@ -6077,7 +6164,7 @@ function uniterate_async(_x7) {
 // ----------------------------------------------------------------------
 function _uniterate_async() {
   _uniterate_async = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee22(object) {
-    var result, _iteratorAbruptCompletion, _didIteratorError, _iteratorError, _iterator, _step, item, _t29;
+    var result, _iteratorAbruptCompletion, _didIteratorError, _iteratorError, _iterator, _step, item, _t30;
     return _regeneratorRuntime.wrap(function (_context23) {
       while (1) switch (_context23.prev = _context23.next) {
         case 0:
@@ -6105,9 +6192,9 @@ function _uniterate_async() {
           break;
         case 6:
           _context23.prev = 6;
-          _t29 = _context23["catch"](1);
+          _t30 = _context23["catch"](1);
           _didIteratorError = true;
-          _iteratorError = _t29;
+          _iteratorError = _t30;
         case 7:
           _context23.prev = 7;
           _context23.prev = 8;
@@ -13513,72 +13600,6 @@ Interpreter.prototype.set = function (name, value) {
 Interpreter.prototype.constant = function (name, value) {
   return this.__env__.constant(name, value);
 };
-// -------------------------------------------------------------------------
-// Lips Exception used in error function
-// -------------------------------------------------------------------------
-function LipsError(message, args) {
-  this.name = 'LipsError';
-  this.message = message;
-  this.args = args;
-  this.stack = new Error().stack;
-}
-LipsError.prototype = new Error();
-LipsError.prototype.constructor = LipsError;
-
-// -------------------------------------------------------------------------
-// :: Fake exception to handle try catch to break the execution
-// :: of body expression #163
-// -------------------------------------------------------------------------
-var IgnoreException = /*#__PURE__*/function (_Error2) {
-  function IgnoreException() {
-    _classCallCheck(this, IgnoreException);
-    return _callSuper(this, IgnoreException, arguments);
-  }
-  _inherits(IgnoreException, _Error2);
-  return _createClass(IgnoreException);
-}(/*#__PURE__*/_wrapNativeSuper(Error)); // -------------------------------------------------------------------------
-function augument_exception(e, code) {
-  if (e !== null && e !== void 0 && e.message) {
-    // TODO: remove when #480 is implemented
-    e.stack = e.stack.replace(/^Error: ([^\s]+ Error:)/, '$1');
-    if (code) {
-      // augment runtime errors
-      if (!is_augmented(e) && is_augmented(code)) {
-        read_only(e, '__col__', code.__col__);
-        read_only(e, '__offset__', code.__offset__);
-        read_only(e, '__line__', code.__line__);
-        if (code.__fiile__) {
-          read_only(e, '__file__', code.__fiile__);
-        }
-        unify_error_message(e);
-      }
-      // LIPS stack trace
-      if (!(e.__code__ instanceof Array)) {
-        e.__code__ = [];
-      }
-      e.__code__.push(code.toString(true));
-    }
-  }
-  return e;
-}
-
-// -------------------------------------------------------------------------
-// :: Error is adding class of the error before the message in stack trace
-// -------------------------------------------------------------------------
-function unify_error_message(e) {
-  if (!e.message.match(/at line/)) {
-    e.message += " at line ".concat(e.__line__ + 1, " and column ").concat(e.__col__);
-  }
-  if (e.__file__) {
-    e.message += " in ".concat(e.__file__);
-  }
-  return e;
-}
-
-// -------------------------------------------------------------------------
-function is_augmented(object) {
-  return object && Object.hasOwn(object, '__col__');
-}
 
 // -------------------------------------------------------------------------
 // :: Environment constructor (parent and name arguments are optional)
@@ -15931,7 +15952,7 @@ var global_env = new Environment({
           args.error = function (e) {
             throw e;
           };
-          unpromise(evaluate(new Pair(new LSymbol('begin'), finally_clause.cdr), args), function () {
+          unpromise(evaluate_with_stacktrace(new Pair(new LSymbol('begin'), finally_clause.cdr), args), function () {
             cont(result);
           });
         };
@@ -15962,7 +15983,7 @@ var global_env = new Environment({
                 throw new IgnoreException('[CATCH]');
               }
             };
-            var _value7 = evaluate(new Pair(new LSymbol('begin'), catch_clause.cdr.cdr), catch_args);
+            var _value7 = evaluate_with_stacktrace(new Pair(new LSymbol('begin'), catch_clause.cdr.cdr), catch_args);
             unpromise(_value7, function handler(result) {
               if (!catch_error) {
                 _next2(result, finalize);
@@ -15975,7 +15996,7 @@ var global_env = new Environment({
           }
         }
       };
-      var value = evaluate(code.car, args);
+      var value = evaluate_with_stacktrace(code.car, args);
       unpromise(value, function (result) {
         _next2(result, resolve);
       }, args.error);
@@ -17359,7 +17380,6 @@ function evaluate(code) {
       }
       return result;
     } catch (e) {
-      augument_exception(e, code);
       error && error.call(env, e, code);
     }
   }(rest);
@@ -17372,22 +17392,33 @@ var compile = exec_collect(function (code) {
 var exec = exec_collect(function (code, value) {
   return value;
 });
+
+// -------------------------------------------------------------------------
+function evaluate_with_stacktrace(code) {
+  var _ref48 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+    error = _ref48.error,
+    env = _ref48.env,
+    rest = _objectWithoutProperties(_ref48, _excluded9);
+  try {
+    return exec_with_stacktrace(code, _objectSpread({
+      env: env
+    }, rest));
+  } catch (e) {
+    error && error.call(env, e);
+  }
+}
+
 // -------------------------------------------------------------------------
 function exec_with_stacktrace(code) {
-  var _ref48 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-    env = _ref48.env,
-    dynamic_env = _ref48.dynamic_env,
-    use_dynamic = _ref48.use_dynamic;
-  return evaluate(code, {
-    env: env,
-    dynamic_env: dynamic_env,
-    use_dynamic: use_dynamic,
+  var args = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+  return evaluate(code, _objectSpread(_objectSpread({}, args), {}, {
     error: function error(e, code) {
+      augment_exception(e, code);
       if (!(e instanceof IgnoreException)) {
         throw e;
       }
     }
-  });
+  }));
 }
 // -------------------------------------------------------------------------
 function exec_collect(collect_callback) {
@@ -17395,18 +17426,19 @@ function exec_collect(collect_callback) {
     var _exec_lambda = _asyncToGenerator(function (arg) {
       var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
       return /*#__PURE__*/_regeneratorRuntime.mark(function _callee21() {
-        var env, dynamic_env, use_dynamic, parser_args, results, input, _iteratorAbruptCompletion2, _didIteratorError2, _iteratorError2, _iterator2, _step2, code, value, _t27, _t28;
+        var _env, _dynamic_env, use_dynamic, parser_args, results, input, _iteratorAbruptCompletion2, _didIteratorError2, _iteratorError2, _iterator2, _step2, code, value, _t27, _t28, _t29;
         return _regeneratorRuntime.wrap(function (_context22) {
           while (1) switch (_context22.prev = _context22.next) {
             case 0:
-              env = options.env, dynamic_env = options.dynamic_env, use_dynamic = options.use_dynamic, parser_args = _objectWithoutProperties(options, _excluded9);
-              if (!is_env(dynamic_env)) {
-                dynamic_env = env === true ? user_env : env || user_env;
+              _context22.prev = 0;
+              _env = options.env, _dynamic_env = options.dynamic_env, use_dynamic = options.use_dynamic, parser_args = _objectWithoutProperties(options, _excluded0);
+              if (!is_env(_dynamic_env)) {
+                _dynamic_env = _env === true ? user_env : _env || user_env;
               }
-              if (env === true) {
-                env = user_env;
+              if (_env === true) {
+                _env = user_env;
               } else {
-                env = env || user_env;
+                _env = _env || user_env;
               }
               results = [];
               if (!is_pair(arg)) {
@@ -17415,8 +17447,8 @@ function exec_collect(collect_callback) {
               }
               _context22.next = 1;
               return exec_with_stacktrace(arg, {
-                env: env,
-                dynamic_env: dynamic_env,
+                env: _env,
+                dynamic_env: _dynamic_env,
                 use_dynamic: use_dynamic
               });
             case 1:
@@ -17439,8 +17471,8 @@ function exec_collect(collect_callback) {
               code = _step2.value;
               _context22.next = 6;
               return exec_with_stacktrace(code, {
-                env: env,
-                dynamic_env: dynamic_env,
+                env: _env,
+                dynamic_env: _dynamic_env,
                 use_dynamic: use_dynamic
               });
             case 6:
@@ -17481,10 +17513,14 @@ function exec_collect(collect_callback) {
             case 15:
               return _context22.abrupt("return", results);
             case 16:
+              _context22.prev = 16;
+              _t29 = _context22["catch"](0);
+              throw augment_exception(_t29);
+            case 17:
             case "end":
               return _context22.stop();
           }
-        }, _callee21, null, [[3, 9, 10, 15], [11,, 12, 14]]);
+        }, _callee21, null, [[0, 16], [3, 9, 10, 15], [11,, 12, 14]]);
       })();
     });
     function exec_lambda(_x18) {
@@ -18024,10 +18060,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 07 Feb 2026 21:09:57 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sat, 07 Feb 2026 21:45:59 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 07 Feb 2026 21:09:57 +0000').valueOf();
+  var date = LString('Sat, 07 Feb 2026 21:45:59 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -18067,7 +18103,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 07 Feb 2026 21:09:57 +0000';
+var date = 'Sat, 07 Feb 2026 21:45:59 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

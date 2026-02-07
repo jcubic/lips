@@ -1549,6 +1549,74 @@ function match_or_null(re, char) {
     }
     return re === null || char.match(re);
 }
+// -------------------------------------------------------------------------
+// Lips Exception used in error function
+// -------------------------------------------------------------------------
+function LipsError(message, args) {
+    this.name = 'LipsError';
+    this.message = message;
+    this.args = args;
+    this.stack = (new Error()).stack;
+}
+LipsError.prototype = new Error();
+LipsError.prototype.constructor = LipsError;
+
+// -------------------------------------------------------------------------
+// :: Fake exception to handle try catch to break the execution
+// :: of body expression #163
+// -------------------------------------------------------------------------
+class IgnoreException extends Error { }
+class Unterminated extends Error { }
+class RuntimeError extends Error { }
+class PromiseRejection extends RuntimeError { }
+
+// -------------------------------------------------------------------------
+function augment_exception(e, code) {
+    if (!is_object(e)) {
+        e = new PromiseRejection(to_string(e));
+    }
+    if (e?.message) {
+        // TODO: remove when #480 is implemented
+        e.stack = e.stack.replace(/^Error: ([^\s]+ Error:)/, '$1');
+
+        if (code) {
+            // augment runtime errors
+            if (!is_augmented(e) && is_augmented(code)) {
+                read_only(e, '__col__', code.__col__);
+                read_only(e, '__offset__', code.__offset__);
+                read_only(e, '__line__', code.__line__);
+                if (code.__fiile__) {
+                    read_only(e, '__file__', code.__fiile__);
+                }
+                unify_error_message(e);
+            }
+            // LIPS stack trace
+            if (!(e.__code__ instanceof Array)) {
+                e.__code__ = [];
+            }
+            e.__code__.push(code.toString(true));
+        }
+    }
+    return e;
+}
+
+// -------------------------------------------------------------------------
+// :: Error is adding class of the error before the message in stack trace
+// -------------------------------------------------------------------------
+function unify_error_message(e) {
+    if (!e.message.match(/at line/)) {
+        e.message += ` at line ${e.__line__ + 1} and column ${e.__col__}`;
+    }
+    if (e.__file__) {
+        e.message += ` in ${e.__file__}`;
+    }
+    return e;
+}
+
+// -------------------------------------------------------------------------
+function is_augmented(object) {
+    return object && Object.hasOwn(object, '__col__');
+}
 // ----------------------------------------------------------------------
 // :: Parser inspired by BiwaScheme
 // :: ref: https://github.com/biwascheme/biwascheme/blob/master/src/system/parser.js
@@ -1983,7 +2051,7 @@ class Parser {
         }
     }
 }
-class Unterminated extends Error { }
+
 Parser.Unterminated = Unterminated;
 // ----------------------------------------------------------------------
 // :: Parser helper that handles circular list structures
@@ -7985,68 +8053,6 @@ Interpreter.prototype.set = function(name, value) {
 Interpreter.prototype.constant = function(name, value) {
     return this.__env__.constant(name, value);
 };
-// -------------------------------------------------------------------------
-// Lips Exception used in error function
-// -------------------------------------------------------------------------
-function LipsError(message, args) {
-    this.name = 'LipsError';
-    this.message = message;
-    this.args = args;
-    this.stack = (new Error()).stack;
-}
-LipsError.prototype = new Error();
-LipsError.prototype.constructor = LipsError;
-
-// -------------------------------------------------------------------------
-// :: Fake exception to handle try catch to break the execution
-// :: of body expression #163
-// -------------------------------------------------------------------------
-class IgnoreException extends Error { }
-
-// -------------------------------------------------------------------------
-function augument_exception(e, code) {
-    if (e?.message) {
-        // TODO: remove when #480 is implemented
-        e.stack = e.stack.replace(/^Error: ([^\s]+ Error:)/, '$1');
-
-        if (code) {
-            // augment runtime errors
-            if (!is_augmented(e) && is_augmented(code)) {
-                read_only(e, '__col__', code.__col__);
-                read_only(e, '__offset__', code.__offset__);
-                read_only(e, '__line__', code.__line__);
-                if (code.__fiile__) {
-                    read_only(e, '__file__', code.__fiile__);
-                }
-                unify_error_message(e);
-            }
-            // LIPS stack trace
-            if (!(e.__code__ instanceof Array)) {
-                e.__code__ = [];
-            }
-            e.__code__.push(code.toString(true));
-        }
-    }
-    return e;
-}
-
-// -------------------------------------------------------------------------
-// :: Error is adding class of the error before the message in stack trace
-// -------------------------------------------------------------------------
-function unify_error_message(e) {
-    if (!e.message.match(/at line/)) {
-        e.message += ` at line ${e.__line__ + 1} and column ${e.__col__}`;
-    }
-    if (e.__file__) {
-        e.message += ` in ${e.__file__}`;
-    }
-    return e;
-}
-
-// -------------------------------------------------------------------------
-function is_augmented(object) {
-    return object && Object.hasOwn(object, '__col__');
-}
 
 // -------------------------------------------------------------------------
 // :: Environment constructor (parent and name arguments are optional)
@@ -10588,7 +10594,7 @@ var global_env = new Environment({
                     args.error = (e) => {
                         throw e;
                     };
-                    unpromise(evaluate(new Pair(
+                    unpromise(evaluate_with_stacktrace(new Pair(
                         new LSymbol('begin'),
                         finally_clause.cdr
                     ), args), function() {
@@ -10623,7 +10629,7 @@ var global_env = new Environment({
                                 throw new IgnoreException('[CATCH]');
                             }
                         };
-                        const value = evaluate(new Pair(
+                        const value = evaluate_with_stacktrace(new Pair(
                             new LSymbol('begin'),
                             catch_clause.cdr.cdr
                         ), catch_args);
@@ -10639,7 +10645,7 @@ var global_env = new Environment({
                     }
                 }
             };
-            const value = evaluate(code.car, args);
+            const value = evaluate_with_stacktrace(code.car, args);
             unpromise(value, function(result) {
                 next(result, resolve);
             }, args.error);
@@ -11938,7 +11944,6 @@ function evaluate(code, { env, dynamic_env, use_dynamic, error = noop, ...rest }
         }
         return result;
     } catch (e) {
-        augument_exception(e, code);
         error && error.call(env, e, code);
     }
 }
@@ -11950,13 +11955,22 @@ const compile = exec_collect(function(code) {
 const exec = exec_collect(function(code, value) {
     return value;
 });
+
 // -------------------------------------------------------------------------
-function exec_with_stacktrace(code, { env, dynamic_env, use_dynamic } = {}) {
+function evaluate_with_stacktrace(code, { error, env, ...rest } = {}) {
+    try {
+        return exec_with_stacktrace(code, { env, ...rest });
+    } catch(e) {
+        error && error.call(env, e);
+    }
+}
+
+// -------------------------------------------------------------------------
+function exec_with_stacktrace(code, args = {}) {
     return evaluate(code, {
-        env,
-        dynamic_env,
-        use_dynamic,
+        ...args,
         error: (e, code) => {
+            augment_exception(e, code);
             if (!(e instanceof IgnoreException)) {
                 throw e;
             }
@@ -11966,6 +11980,7 @@ function exec_with_stacktrace(code, { env, dynamic_env, use_dynamic } = {}) {
 // -------------------------------------------------------------------------
 function exec_collect(collect_callback) {
     return async function exec_lambda(arg, options = {}) {
+        try {
         let { env, dynamic_env, use_dynamic, ...parser_args } = options;
         if (!is_env(dynamic_env)) {
             dynamic_env = env === true ? user_env : env || user_env;
@@ -11985,6 +12000,9 @@ function exec_collect(collect_callback) {
             results.push(collect_callback(code, value));
         }
         return results;
+        } catch(e) {
+            throw augment_exception(e);
+        }
     };
 }
 // -------------------------------------------------------------------------
