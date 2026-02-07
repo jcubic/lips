@@ -1570,7 +1570,7 @@ class Parser {
             fold_case: false
         }, { hidden: true });
         // keep the arguments of the parser for (load ...)
-        internal_env.set('__parser_args__', { meta, filename, formatter });
+        get_internal_env(env).set('__parser_args__', { meta, filename, formatter });
     }
     prepare(arg, { filename = null } = {}) {
         if (arg instanceof LString) {
@@ -1593,7 +1593,7 @@ class Parser {
     _with_syntax_scope(fn) {
         // expose parser and change stdin so parser extension can use current-input
         // to read data from the parser stream #150
-        const internal = get_internal(this.__env__);
+        const internal = get_internal_env(this.__env__);
         const stdin = internal.get('stdin');
         global_env.set('lips',  { ...lips, __parser__: this });
         internal.set('stdin', new ParserInputPort(this, this.__env__));
@@ -7617,7 +7617,7 @@ OutputFilePort.prototype.fs = function() {
     return this._fs;
 };
 OutputFilePort.prototype.internal = function(name) {
-    return user_env.get('**internal-env**').get(name);
+    return internal_env.get(name);
 };
 OutputFilePort.prototype.close = function() {
     return new Promise((resolve, reject) => {
@@ -7934,7 +7934,7 @@ function Interpreter(name, {
         inter.set('stdout', stdout);
     }
     inter.set('command-line', command_line);
-    set_interaction_env(this.__env__, inter);
+    set_interaction_env(this.__env__, this.__env__, inter);
 }
 // -------------------------------------------------------------------------
 Interpreter.prototype.exec = function(arg, options = {}) {
@@ -7954,7 +7954,6 @@ Interpreter.prototype.exec = function(arg, options = {}) {
     if (!dynamic_env) {
         dynamic_env = env;
     }
-    global_env.set('**interaction-environment**', this.__env__);
     if (Array.isArray(arg)) {
         return exec(arg, { env, dynamic_env, use_dynamic, filename });
     } else {
@@ -8405,18 +8404,40 @@ var get = doc('get', function get(object, ...args) {
 // -------------------------------------------------------------------------
 // Function gets internal protected data
 // -------------------------------------------------------------------------
-function get_internal(env) {
-    return interaction(env, '**internal-env**');
+function set_interaction_env(env, interaction, internal) {
+    interaction.constant('**internal-env**', internal);
+    interaction.doc(
+        '**internal-env**',
+        `**internal-env**
+
+         Constant used to hide stdin, stdout and stderr so they don't interfere
+         with variables with the same name. Constants are an internal type
+         of variable that can't be redefined, defining a variable with the same name
+         will throw an error.`
+    );
+    env.set('**interaction-environment**', interaction);
+    env.doc(
+        '**interaction-environment**',
+        `**interaction-environment**
+
+        Internal dynamic, global variable used to find interpreter environment.
+        It's used so the read and write functions can locate **internal-env**
+        that contains the references to stdin, stdout and stderr.`
+    );
 }
 // -------------------------------------------------------------------------
-function internal(env, name) {
-    const internal_env = get_internal(env);
+function get_internal_env(env) {
+    return get_interaction_env(env, '**internal-env**');
+}
+// -------------------------------------------------------------------------
+function get_internal_value(env, name) {
+    const internal_env = get_internal_env(env);
     return internal_env.get(name);
 }
 // -------------------------------------------------------------------------
 // Get variable from interaction environment
 // -------------------------------------------------------------------------
-function interaction(env, name) {
+function get_interaction_env(env, name) {
     var interaction_env = env.get('**interaction-environment**');
     return interaction_env.get(name);
 }
@@ -8459,7 +8480,7 @@ var global_env = new Environment({
     // ---------------------------------------------------------------------
     'peek-char': doc('peek-char', function(port = null) {
         if (port === null) {
-            port = internal(this, 'stdin');
+            port = get_internal_value(this, 'stdin');
         }
         typecheck_text_port('peek-char', port, 'input-port');
         return port.peek_char();
@@ -8471,7 +8492,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'read-line': doc('read-line', function(port = null) {
         if (port === null) {
-            port = internal(this, 'stdin');
+            port = get_internal_value(this, 'stdin');
         }
         typecheck_text_port('read-line', port, 'input-port');
         return port.read_line();
@@ -8482,7 +8503,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'read-char': doc('read-char', function(port = null) {
         if (port === null) {
-            port = internal(this, 'stdin');
+            port = get_internal_value(this, 'stdin');
         }
         typecheck_text_port('read-char', port, 'input-port');
         return port.read_char();
@@ -8495,7 +8516,7 @@ var global_env = new Environment({
         const { env } = this;
         var port;
         if (arg === null) {
-            port = internal(env, 'stdin');
+            port = get_internal_value(env, 'stdin');
         } else {
             port = arg;
         }
@@ -8526,9 +8547,7 @@ var global_env = new Environment({
     print: doc('print', function print(...args) {
         const display = global_env.get('display');
         const newline = global_env.get('newline');
-        const { use_dynamic } = this;
-        const env = global_env;
-        const dynamic_env = global_env;
+        const { env, dynamic_env, use_dynamic } = this;
         args.forEach(arg => {
             call_function(display, [arg], { env, dynamic_env, use_dynamic });
             call_function(newline, [], { env, dynamic_env, use_dynamic });
@@ -8584,9 +8603,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     newline: doc('newline', function newline(port = null) {
         const display = global_env.get('display');
-        const { use_dynamic } = this;
-        const env = global_env;
-        const dynamic_env = global_env;
+        const { use_dynamic, env, dynamic_env } = this;
         call_function(display, ['\n', port], { env, dynamic_env, use_dynamic });
     }, `(newline [port])
 
@@ -8594,7 +8611,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     display: doc('display', function display(arg, port = null) {
         if (port === null) {
-            port = internal(this, 'stdout');
+            port = get_internal_value(this, 'stdout');
         } else {
             typecheck('display', port, 'output-port');
         }
@@ -8602,14 +8619,14 @@ var global_env = new Environment({
         if (!(port instanceof OutputBinaryFilePort)) {
             value = global_env.get('repr')(arg);
         }
-        port.write.call(global_env, value);
+        port.write.call(this, value);
     }, `(display string [port])
 
         This function outputs the string to the standard output or
         the port if given. No newline.`),
     // ------------------------------------------------------------------
     'display-error': doc('display-error', function error(...args) {
-        const port = internal(this, 'stderr');
+        const port = get_internal_value(this, 'stderr');
         const repr = global_env.get('repr');
         const value = args.map(repr).join(' ');
         port.write.call(global_env, value);
@@ -8809,6 +8826,7 @@ var global_env = new Environment({
         }
         const filename = basename(file);
         const IS_BIN = file.match(/\.xcb$/);
+        const eval_args = get_internal_value(this, '__parser_args__');
         function run(code) {
             if (IS_BIN) {
                 code = unserialize_bin(code);
@@ -8826,7 +8844,6 @@ var global_env = new Environment({
                     code = unserialize(code);
                 }
             }
-            const eval_args = internal_env.get('__parser_args__');
             return exec(code, { env, ...eval_args, filename });
         }
         function fetch(file) {
@@ -10542,7 +10559,7 @@ var global_env = new Environment({
 
         Function that parses a string into a number.`),
     // ------------------------------------------------------------------
-    'try': doc(new Macro('try', function(code, { use_dynamic, error }) {
+    'try': doc(new Macro('try', function(code, { use_dynamic, error, ...rest }) {
         return new Promise((resolve, reject) => {
             let catch_clause, finally_clause, body_error;
             if (LSymbol.is(code.cdr.car.car, 'catch')) {
@@ -11207,31 +11224,10 @@ var global_env = new Environment({
 }, undefined, 'global');
 var user_env = global_env.inherit('user-env');
 // -------------------------------------------------------------------------
-function set_interaction_env(interaction, internal) {
-    interaction.constant('**internal-env**', internal);
-    interaction.doc(
-        '**internal-env**',
-        `**internal-env**
+set_interaction_env(global_env, user_env, internal_env);
 
-         Constant used to hide stdin, stdout and stderr so they don't interfere
-         with variables with the same name. Constants are an internal type
-         of variable that can't be redefined, defining a variable with the same name
-         will throw an error.`
-    );
-    global_env.set('**interaction-environment**', interaction);
-}
-// -------------------------------------------------------------------------
-set_interaction_env(user_env, internal_env);
-global_env.doc(
-    '**interaction-environment**',
-    `**interaction-environment**
-
-    Internal dynamic, global variable used to find interpreter environment.
-    It's used so the read and write functions can locate **internal-env**
-    that contains the references to stdin, stdout and stderr.`
-);
 function set_fs(fs) {
-    user_env.get('**internal-env**').set('fs', fs);
+    internal_env.set('fs', fs);
 }
 
 // -------------------------------------------------------------------------

@@ -17,6 +17,7 @@
 * fix cleanup after parsing syntax extension throws an error
 * fix unwanted argument unboxing from lips constructors [#483](https://github.com/jcubic/lips/issues/483)
 * fix warning about rejected Promise in try..catch [#482](https://github.com/jcubic/lips/issues/482) [#484](https://github.com/jcubic/lips/issues/484)
+* fix overwriting internal state when using multiple Interpters [#495](https://github.com/jcubic/lips/issues/495)
 
 ## 1.0.0-beta.21
 ### Breaking

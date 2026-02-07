@@ -630,32 +630,28 @@
   "(current-output-port)
 
    Returns the default stdout port."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'stdout))))
+  (--> (%internal) (get 'stdout)))
 
 ;; -----------------------------------------------------------------------------
 (define (current-error-port)
   "(current-output-port)
 
    Returns the default stderr port."
-  (let-env (interaction-environment)
-     (--> **internal-env** (get 'stderr))))
+  (--> (%internal) (get 'stderr)))
 
 ;; -----------------------------------------------------------------------------
 (define (current-input-port)
   "(current-input-port)
 
    Returns the default stdin port."
-  (let-env (interaction-environment)
-     (--> **internal-env** (get 'stdin))))
+  (--> (%internal) (get 'stdin)))
 
 ;; -----------------------------------------------------------------------------
 (define (command-line)
   "(command-line)
 
    Returns the command line arguments, or an empty list if not running under Node.js."
-  (let ((args (let-env (interaction-environment)
-                       (--> **internal-env** (get 'command-line)))))
+  (let ((args (--> (%internal) (get 'command-line))))
     (if (or (null? args) (zero? (length args)))
         '("")
         (vector->list args))))
@@ -1573,8 +1569,7 @@
        Code that uses this function in binary mode needs to check
        if the result is ArrayBuffer or Node.js/BrowserFS Buffer object."
       (if (not read-file)
-          (let ((fs (--> (interaction-environment)
-                         (get '**internal-env**)
+          (let ((fs (--> (%internal)
                          (get 'fs &(:throwError false)))))
             (if (not (null? fs))
                 (let ((*read-file* (promisify fs.readFile)))
@@ -1600,6 +1595,10 @@
               (fetch-url path binary))))))
 
 ;; -----------------------------------------------------------------------------
+(define-macro (%internal)
+  `(let-env **interaction-environment** **internal-env**))
+
+;; -----------------------------------------------------------------------------
 (define %read-binary-file (curry %read-file true))
 (define %read-text-file (curry %read-file false))
 
@@ -1609,7 +1608,7 @@
 
    Returns a promisified version of a fs function or throws an exception
    if fs is not available."
-  (let ((fs (--> lips.env (get '**internal-env**) (get 'fs &(:throwError false)))))
+  (let ((fs (--> (%internal) (get 'fs &(:throwError false)))))
     (if (null? fs)
         (throw (new Error (string-append message ": fs not defined")))
         (promisify (. fs fn)))))

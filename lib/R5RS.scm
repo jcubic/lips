@@ -967,24 +967,21 @@
   "(char-whitespace? chr)
 
    Returns true if character is whitespace."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'space-unicode-regex))))
+  (--> (%internal) (get 'space-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (%define-chr-re (char-numeric? chr)
   "(char-numeric? chr)
 
    Returns true if character is number."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'numeral-unicode-regex))))
+  (--> (%internal) (get 'numeral-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (%define-chr-re (char-alphabetic? chr)
   "(char-alphabetic? chr)
 
    Returns true if character is leter of the ASCII alphabet."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'letter-unicode-regex))))
+  (--> (%internal) (get 'letter-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (define (%char-cmp name chr1 chr2)
@@ -1437,8 +1434,7 @@
    Procedure use port and make it current-input-port then thunk is executed.
    After thunk is executed current-input-port is restored and given port
    is closed."
-  (let* ((env **interaction-environment**)
-         (internal-env (env.get '**internal-env**))
+  (let* ((internal-env (%internal))
          (old-stdin (internal-env.get "stdin")))
     (internal-env.set "stdin" port)
     (try
@@ -1468,8 +1464,7 @@
 ;; -----------------------------------------------------------------------------
 (define (with-output-to-file string thunk)
   (let* ((port (open-output-file string))
-         (env **interaction-environment**)
-         (internal-env (env.get '**internal-env**))
+         (internal-env (%internal))
          (old-stdout (internal-env.get "stdout")))
     (internal-env.set "stdout" port)
     (try
@@ -1481,7 +1476,7 @@
 ;; -----------------------------------------------------------------------------
 (define (file-exists? filename)
   (new Promise (lambda (resolve)
-                 (let ((fs (--> lips.env (get '**internal-env**) (get 'fs))))
+                 (let ((fs (--> (%internal) (get 'fs))))
                    (if (null? fs)
                        (throw (new Error "file-exists?: fs not defined"))
                        (fs.stat filename (lambda (err stat)

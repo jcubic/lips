@@ -630,32 +630,28 @@
   "(current-output-port)
 
    Returns the default stdout port."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'stdout))))
+  (--> (%internal) (get 'stdout)))
 
 ;; -----------------------------------------------------------------------------
 (define (current-error-port)
   "(current-output-port)
 
    Returns the default stderr port."
-  (let-env (interaction-environment)
-     (--> **internal-env** (get 'stderr))))
+  (--> (%internal) (get 'stderr)))
 
 ;; -----------------------------------------------------------------------------
 (define (current-input-port)
   "(current-input-port)
 
    Returns the default stdin port."
-  (let-env (interaction-environment)
-     (--> **internal-env** (get 'stdin))))
+  (--> (%internal) (get 'stdin)))
 
 ;; -----------------------------------------------------------------------------
 (define (command-line)
   "(command-line)
 
    Returns the command line arguments, or an empty list if not running under Node.js."
-  (let ((args (let-env (interaction-environment)
-                       (--> **internal-env** (get 'command-line)))))
+  (let ((args (--> (%internal) (get 'command-line))))
     (if (or (null? args) (zero? (length args)))
         '("")
         (vector->list args))))
@@ -1573,8 +1569,7 @@
        Code that uses this function in binary mode needs to check
        if the result is ArrayBuffer or Node.js/BrowserFS Buffer object."
       (if (not read-file)
-          (let ((fs (--> (interaction-environment)
-                         (get '**internal-env**)
+          (let ((fs (--> (%internal)
                          (get 'fs &(:throwError false)))))
             (if (not (null? fs))
                 (let ((*read-file* (promisify fs.readFile)))
@@ -1600,6 +1595,10 @@
               (fetch-url path binary))))))
 
 ;; -----------------------------------------------------------------------------
+(define-macro (%internal)
+  `(let-env **interaction-environment** **internal-env**))
+
+;; -----------------------------------------------------------------------------
 (define %read-binary-file (curry %read-file true))
 (define %read-text-file (curry %read-file false))
 
@@ -1609,7 +1608,7 @@
 
    Returns a promisified version of a fs function or throws an exception
    if fs is not available."
-  (let ((fs (--> lips.env (get '**internal-env**) (get 'fs &(:throwError false)))))
+  (let ((fs (--> (%internal) (get 'fs &(:throwError false)))))
     (if (null? fs)
         (throw (new Error (string-append message ": fs not defined")))
         (promisify (. fs fn)))))
@@ -2791,24 +2790,21 @@
   "(char-whitespace? chr)
 
    Returns true if character is whitespace."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'space-unicode-regex))))
+  (--> (%internal) (get 'space-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (%define-chr-re (char-numeric? chr)
   "(char-numeric? chr)
 
    Returns true if character is number."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'numeral-unicode-regex))))
+  (--> (%internal) (get 'numeral-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (%define-chr-re (char-alphabetic? chr)
   "(char-alphabetic? chr)
 
    Returns true if character is leter of the ASCII alphabet."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'letter-unicode-regex))))
+  (--> (%internal) (get 'letter-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (define (%char-cmp name chr1 chr2)
@@ -3261,8 +3257,7 @@
    Procedure use port and make it current-input-port then thunk is executed.
    After thunk is executed current-input-port is restored and given port
    is closed."
-  (let* ((env **interaction-environment**)
-         (internal-env (env.get '**internal-env**))
+  (let* ((internal-env (%internal))
          (old-stdin (internal-env.get "stdin")))
     (internal-env.set "stdin" port)
     (try
@@ -3292,8 +3287,7 @@
 ;; -----------------------------------------------------------------------------
 (define (with-output-to-file string thunk)
   (let* ((port (open-output-file string))
-         (env **interaction-environment**)
-         (internal-env (env.get '**internal-env**))
+         (internal-env (%internal))
          (old-stdout (internal-env.get "stdout")))
     (internal-env.set "stdout" port)
     (try
@@ -3305,7 +3299,7 @@
 ;; -----------------------------------------------------------------------------
 (define (file-exists? filename)
   (new Promise (lambda (resolve)
-                 (let ((fs (--> lips.env (get '**internal-env**) (get 'fs))))
+                 (let ((fs (--> (%internal) (get 'fs))))
                    (if (null? fs)
                        (throw (new Error "file-exists?: fs not defined"))
                        (fs.stat filename (lambda (err stat)

@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 06 Feb 2026 20:47:53 +0000
+ * build: Sat, 07 Feb 2026 21:09:57 +0000
  */
 
 (function (global, factory) {
@@ -3492,9 +3492,10 @@
     _excluded3 = ["env"],
     _excluded4 = ["stderr", "stdin", "stdout", "meta", "command_line", "filename"],
     _excluded5 = ["use_dynamic"],
-    _excluded6 = ["use_dynamic"],
-    _excluded7 = ["env", "dynamic_env", "use_dynamic", "error"],
-    _excluded8 = ["env", "dynamic_env", "use_dynamic"];
+    _excluded6 = ["use_dynamic", "error"],
+    _excluded7 = ["use_dynamic"],
+    _excluded8 = ["env", "dynamic_env", "use_dynamic", "error"],
+    _excluded9 = ["env", "dynamic_env", "use_dynamic"];
   function _classPrivateFieldInitSpec(e, t, a) { _checkPrivateRedeclaration(e, t), t.set(e, a); }
   function _checkPrivateRedeclaration(e, t) { if (t.has(e)) throw new TypeError("Cannot initialize the same private elements twice on an object"); }
   function _classPrivateFieldGet(s, a) { return s.get(_assertClassBrand(s, a)); }
@@ -5086,7 +5087,7 @@
         hidden: true
       });
       // keep the arguments of the parser for (load ...)
-      internal_env.set('__parser_args__', {
+      get_internal_env(env).set('__parser_args__', {
         meta: meta,
         filename: filename,
         formatter: formatter
@@ -5122,7 +5123,7 @@
         var _this5 = this;
         // expose parser and change stdin so parser extension can use current-input
         // to read data from the parser stream #150
-        var internal = get_internal(this.__env__);
+        var internal = get_internal_env(this.__env__);
         var stdin = internal.get('stdin');
         global_env.set('lips', _objectSpread(_objectSpread({}, lips), {}, {
           __parser__: this
@@ -13125,7 +13126,7 @@
     return this._fs;
   };
   OutputFilePort.prototype.internal = function (name) {
-    return user_env.get('**internal-env**').get(name);
+    return internal_env.get(name);
   };
   OutputFilePort.prototype.close = function () {
     var _this16 = this;
@@ -13455,7 +13456,7 @@
       inter.set('stdout', stdout);
     }
     inter.set('command-line', command_line);
-    set_interaction_env(this.__env__, inter);
+    set_interaction_env(this.__env__, this.__env__, inter);
   }
   // -------------------------------------------------------------------------
   Interpreter.prototype.exec = function (arg) {
@@ -13476,7 +13477,6 @@
     if (!dynamic_env) {
       dynamic_env = env;
     }
-    global_env.set('**interaction-environment**', this.__env__);
     if (Array.isArray(arg)) {
       return exec(arg, {
         env: env,
@@ -13539,6 +13539,32 @@
     _inherits(IgnoreException, _Error2);
     return _createClass(IgnoreException);
   }(/*#__PURE__*/_wrapNativeSuper(Error)); // -------------------------------------------------------------------------
+  function augument_exception(e, code) {
+    if (e !== null && e !== void 0 && e.message) {
+      // TODO: remove when #480 is implemented
+      e.stack = e.stack.replace(/^Error: ([^\s]+ Error:)/, '$1');
+      if (code) {
+        // augment runtime errors
+        if (!is_augmented(e) && is_augmented(code)) {
+          read_only(e, '__col__', code.__col__);
+          read_only(e, '__offset__', code.__offset__);
+          read_only(e, '__line__', code.__line__);
+          if (code.__fiile__) {
+            read_only(e, '__file__', code.__fiile__);
+          }
+          unify_error_message(e);
+        }
+        // LIPS stack trace
+        if (!(e.__code__ instanceof Array)) {
+          e.__code__ = [];
+        }
+        e.__code__.push(code.toString(true));
+      }
+    }
+    return e;
+  }
+
+  // -------------------------------------------------------------------------
   // :: Error is adding class of the error before the message in stack trace
   // -------------------------------------------------------------------------
   function unify_error_message(e) {
@@ -13904,18 +13930,25 @@
   // -------------------------------------------------------------------------
   // Function gets internal protected data
   // -------------------------------------------------------------------------
-  function get_internal(env) {
-    return interaction(env, '**internal-env**');
+  function set_interaction_env(env, interaction, internal) {
+    interaction.constant('**internal-env**', internal);
+    interaction.doc('**internal-env**', "**internal-env**\n\n         Constant used to hide stdin, stdout and stderr so they don't interfere\n         with variables with the same name. Constants are an internal type\n         of variable that can't be redefined, defining a variable with the same name\n         will throw an error.");
+    env.set('**interaction-environment**', interaction);
+    env.doc('**interaction-environment**', "**interaction-environment**\n\n        Internal dynamic, global variable used to find interpreter environment.\n        It's used so the read and write functions can locate **internal-env**\n        that contains the references to stdin, stdout and stderr.");
   }
   // -------------------------------------------------------------------------
-  function internal(env, name) {
-    var internal_env = get_internal(env);
+  function get_internal_env(env) {
+    return get_interaction_env(env, '**internal-env**');
+  }
+  // -------------------------------------------------------------------------
+  function get_internal_value(env, name) {
+    var internal_env = get_internal_env(env);
     return internal_env.get(name);
   }
   // -------------------------------------------------------------------------
   // Get variable from interaction environment
   // -------------------------------------------------------------------------
-  function interaction(env, name) {
+  function get_interaction_env(env, name) {
     var interaction_env = env.get('**interaction-environment**');
     return interaction_env.get(name);
   }
@@ -13961,7 +13994,7 @@
     'peek-char': doc('peek-char', function () {
       var port = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
       if (port === null) {
-        port = internal(this, 'stdin');
+        port = get_internal_value(this, 'stdin');
       }
       typecheck_text_port('peek-char', port, 'input-port');
       return port.peek_char();
@@ -13970,7 +14003,7 @@
     'read-line': doc('read-line', function () {
       var port = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
       if (port === null) {
-        port = internal(this, 'stdin');
+        port = get_internal_value(this, 'stdin');
       }
       typecheck_text_port('read-line', port, 'input-port');
       return port.read_line();
@@ -13979,7 +14012,7 @@
     'read-char': doc('read-char', function () {
       var port = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
       if (port === null) {
-        port = internal(this, 'stdin');
+        port = get_internal_value(this, 'stdin');
       }
       typecheck_text_port('read-char', port, 'input-port');
       return port.read_char();
@@ -13996,7 +14029,7 @@
               case 0:
                 env = _this23.env;
                 if (arg === null) {
-                  port = internal(env, 'stdin');
+                  port = get_internal_value(env, 'stdin');
                 } else {
                   port = arg;
                 }
@@ -14028,9 +14061,9 @@
     print: doc('print', function print() {
       var display = global_env.get('display');
       var newline = global_env.get('newline');
-      var use_dynamic = this.use_dynamic;
-      var env = global_env;
-      var dynamic_env = global_env;
+      var env = this.env,
+        dynamic_env = this.dynamic_env,
+        use_dynamic = this.use_dynamic;
       for (var _len18 = arguments.length, args = new Array(_len18), _key18 = 0; _key18 < _len18; _key18++) {
         args[_key18] = arguments[_key18];
       }
@@ -14085,9 +14118,9 @@
     newline: doc('newline', function newline() {
       var port = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
       var display = global_env.get('display');
-      var use_dynamic = this.use_dynamic;
-      var env = global_env;
-      var dynamic_env = global_env;
+      var use_dynamic = this.use_dynamic,
+        env = this.env,
+        dynamic_env = this.dynamic_env;
       call_function(display, ['\n', port], {
         env: env,
         dynamic_env: dynamic_env,
@@ -14098,7 +14131,7 @@
     display: doc('display', function display(arg) {
       var port = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
       if (port === null) {
-        port = internal(this, 'stdout');
+        port = get_internal_value(this, 'stdout');
       } else {
         typecheck('display', port, 'output-port');
       }
@@ -14106,11 +14139,11 @@
       if (!(port instanceof OutputBinaryFilePort)) {
         value = global_env.get('repr')(arg);
       }
-      port.write.call(global_env, value);
+      port.write.call(this, value);
     }, "(display string [port])\n\n        This function outputs the string to the standard output or\n        the port if given. No newline."),
     // ------------------------------------------------------------------
     'display-error': doc('display-error', function error() {
-      var port = internal(this, 'stderr');
+      var port = get_internal_value(this, 'stderr');
       var repr = global_env.get('repr');
       for (var _len20 = arguments.length, args = new Array(_len20), _key20 = 0; _key20 < _len20; _key20++) {
         args[_key20] = arguments[_key20];
@@ -14297,6 +14330,7 @@
       }
       var filename = basename(file);
       var IS_BIN = file.match(/\.xcb$/);
+      var eval_args = get_internal_value(this, '__parser_args__');
       function run(code) {
         if (IS_BIN) {
           code = unserialize_bin(code);
@@ -14314,7 +14348,6 @@
             code = unserialize(code);
           }
         }
-        var eval_args = internal_env.get('__parser_args__');
         return exec(code, _objectSpread(_objectSpread({
           env: env
         }, eval_args), {}, {
@@ -15872,6 +15905,7 @@
       var _this26 = this;
       var use_dynamic = _ref41.use_dynamic;
         _ref41.error;
+        _objectWithoutProperties(_ref41, _excluded6);
       return new Promise(function (resolve, reject) {
         var catch_clause, finally_clause;
         if (LSymbol.is(code.cdr.car.car, 'catch')) {
@@ -16483,16 +16517,9 @@
   }, undefined, 'global');
   var user_env = global_env.inherit('user-env');
   // -------------------------------------------------------------------------
-  function set_interaction_env(interaction, internal) {
-    interaction.constant('**internal-env**', internal);
-    interaction.doc('**internal-env**', "**internal-env**\n\n         Constant used to hide stdin, stdout and stderr so they don't interfere\n         with variables with the same name. Constants are an internal type\n         of variable that can't be redefined, defining a variable with the same name\n         will throw an error.");
-    global_env.set('**interaction-environment**', interaction);
-  }
-  // -------------------------------------------------------------------------
-  set_interaction_env(user_env, internal_env);
-  global_env.doc('**interaction-environment**', "**interaction-environment**\n\n    Internal dynamic, global variable used to find interpreter environment.\n    It's used so the read and write functions can locate **internal-env**\n    that contains the references to stdin, stdout and stderr.");
+  set_interaction_env(global_env, user_env, internal_env);
   function set_fs(fs) {
-    user_env.get('**internal-env**').set('fs', fs);
+    internal_env.set('fs', fs);
   }
 
   // -------------------------------------------------------------------------
@@ -16944,7 +16971,7 @@
   // -------------------------------------------------------------------------
   function evaluate_args(rest, _ref44) {
     var use_dynamic = _ref44.use_dynamic,
-      options = _objectWithoutProperties(_ref44, _excluded6);
+      options = _objectWithoutProperties(_ref44, _excluded7);
     var args = [];
     var node = rest;
     function next() {
@@ -17233,7 +17260,7 @@
       use_dynamic = _ref47.use_dynamic,
       _ref47$error = _ref47.error,
       error = _ref47$error === void 0 ? noop : _ref47$error,
-      rest = _objectWithoutProperties(_ref47, _excluded7);
+      rest = _objectWithoutProperties(_ref47, _excluded8);
     return function (rest) {
       try {
         if (!is_env(dynamic_env)) {
@@ -17334,6 +17361,7 @@
         }
         return result;
       } catch (e) {
+        augument_exception(e, code);
         error && error.call(env, e, code);
       }
     }(rest);
@@ -17357,27 +17385,6 @@
       dynamic_env: dynamic_env,
       use_dynamic: use_dynamic,
       error: function error(e, code) {
-        if (e !== null && e !== void 0 && e.message) {
-          // TODO: remove when #480 is implemented
-          e.stack = e.stack.replace(/^Error: ([^\s]+ Error:)/, '$1');
-          if (code) {
-            // augment runtime errors
-            if (!is_augmented(e) && is_augmented(code)) {
-              read_only(e, '__col__', code.__col__);
-              read_only(e, '__offset__', code.__offset__);
-              read_only(e, '__line__', code.__line__);
-              if (code.__fiile__) {
-                read_only(e, '__file__', code.__fiile__);
-              }
-              unify_error_message(e);
-            }
-            // LIPS stack trace
-            if (!(e.__code__ instanceof Array)) {
-              e.__code__ = [];
-            }
-            e.__code__.push(code.toString(true));
-          }
-        }
         if (!(e instanceof IgnoreException)) {
           throw e;
         }
@@ -17394,7 +17401,7 @@
           return _regeneratorRuntime.wrap(function (_context22) {
             while (1) switch (_context22.prev = _context22.next) {
               case 0:
-                env = options.env, dynamic_env = options.dynamic_env, use_dynamic = options.use_dynamic, parser_args = _objectWithoutProperties(options, _excluded8);
+                env = options.env, dynamic_env = options.dynamic_env, use_dynamic = options.use_dynamic, parser_args = _objectWithoutProperties(options, _excluded9);
                 if (!is_env(dynamic_env)) {
                   dynamic_env = env === true ? user_env : env || user_env;
                 }
@@ -18019,10 +18026,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Fri, 06 Feb 2026 20:47:53 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sat, 07 Feb 2026 21:09:57 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Fri, 06 Feb 2026 20:47:53 +0000').valueOf();
+    var date = LString('Sat, 07 Feb 2026 21:09:57 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -18062,7 +18069,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Fri, 06 Feb 2026 20:47:53 +0000';
+  var date = 'Sat, 07 Feb 2026 21:09:57 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);
