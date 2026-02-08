@@ -1586,10 +1586,10 @@ function augment_exception(e, code) {
             }
         }
         // LIPS stack trace
-        if (!(e.__code__ instanceof Array)) {
-            e.__code__ = [];
+        if (!(e.__stack__ instanceof Array)) {
+            e.__stack__ = [];
         }
-        e.__code__.push(code.toString(true));
+        e.__stack__.push(code.toString(true));
     }
     unify_error_message(e);
     return e;
@@ -1916,14 +1916,14 @@ class Parser {
         if (count < 0) {
             e = new Error('Syntax Error: unexpected parenthesis');
             if (prev) {
-                e.__code__ = [prev.toString() + ')'];
+                e.__stack__ = [prev.toString() + ')'];
             } else {
-                e.__code__ = [')'];
+                e.__stack__ = [')'];
             }
         } else {
             e = new Error('Syntax Error: expected parenthesis but eof found');
             const re = new RegExp(`\\){${count}}$`);
-            e.__code__ = [expr.toString().replace(re, '')];
+            e.__stack__ = [expr.toString().replace(re, '')];
         }
         throw this._augment_exception(e);
     }

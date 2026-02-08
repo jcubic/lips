@@ -125,8 +125,8 @@ function print_error(e, stack) {
         message = `Runtime Error: ${message}`;
     }
     log_error(message);
-    if (e.__code__) {
-        strace = e.__code__.map((line, i) => {
+    if (e.__stack__) {
+        strace = e.__stack__.map((line, i) => {
             const prefix = `[${i+1}]: `;
             const formatter = new Formatter(line);
             const output = formatter.break().format({

@@ -3,6 +3,7 @@
 * syntax extensions now expect a reference to a function or a macro
 * replace `set-obj!` with `set-object!` [#439](https://github.com/jcubic/lips/issues/439)
 * REPL -t/-trace will toggle only JavaScript stack, Scheme stack traces are now always on
+* stack trace in exceptions is now `Error::__stack__`
 ### Features
 * add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)

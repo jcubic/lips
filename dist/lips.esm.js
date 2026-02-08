@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 07 Feb 2026 23:35:10 +0000
+ * build: Sun, 08 Feb 2026 13:23:16 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -5108,10 +5108,10 @@ function augment_exception(e, code) {
       }
     }
     // LIPS stack trace
-    if (!(e.__code__ instanceof Array)) {
-      e.__code__ = [];
+    if (!(e.__stack__ instanceof Array)) {
+      e.__stack__ = [];
     }
-    e.__code__.push(code.toString(true));
+    e.__stack__.push(code.toString(true));
   }
   unify_error_message(e);
   return e;
@@ -5701,14 +5701,14 @@ var Parser = /*#__PURE__*/function () {
       if (count < 0) {
         e = new Error('Syntax Error: unexpected parenthesis');
         if (prev) {
-          e.__code__ = [prev.toString() + ')'];
+          e.__stack__ = [prev.toString() + ')'];
         } else {
-          e.__code__ = [')'];
+          e.__stack__ = [')'];
         }
       } else {
         e = new Error('Syntax Error: expected parenthesis but eof found');
         var re = new RegExp("\\){".concat(count, "}$"));
-        e.__code__ = [expr.toString().replace(re, '')];
+        e.__stack__ = [expr.toString().replace(re, '')];
       }
       throw this._augment_exception(e);
     }
@@ -18054,10 +18054,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 07 Feb 2026 23:35:10 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 08 Feb 2026 13:23:16 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 07 Feb 2026 23:35:10 +0000').valueOf();
+  var date = LString('Sun, 08 Feb 2026 13:23:16 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -18097,7 +18097,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 07 Feb 2026 23:35:10 +0000';
+var date = 'Sun, 08 Feb 2026 13:23:16 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
