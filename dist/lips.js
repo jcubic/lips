@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 08 Feb 2026 13:23:16 +0000
+ * build: Sun, 08 Feb 2026 14:27:11 +0000
  */
 
 (function (global, factory) {
@@ -5531,10 +5531,11 @@
       key: "_read_value",
       value: function () {
         var _read_value2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee6() {
-          var token, e, result, _t2;
+          var token, result, _t2;
           return _regeneratorRuntime.wrap(function (_context6) {
             while (1) switch (_context6.prev = _context6.next) {
               case 0:
+                _context6.prev = 0;
                 _context6.next = 1;
                 return this._read();
               case 1:
@@ -5543,10 +5544,8 @@
                   _context6.next = 2;
                   break;
                 }
-                e = new Error('Syntax Error: Expected token eof found');
-                throw this._augment_exception(e);
+                throw new Error('Syntax Error: Expected token eof found');
               case 2:
-                _context6.prev = 2;
                 result = parse_argument(token.token);
                 if (this._meta) {
                   result = augment_object(result, token, this.__file__);
@@ -5554,13 +5553,13 @@
                 return _context6.abrupt("return", result);
               case 3:
                 _context6.prev = 3;
-                _t2 = _context6["catch"](2);
+                _t2 = _context6["catch"](0);
                 throw this._augment_exception(_t2);
               case 4:
               case "end":
                 return _context6.stop();
             }
-          }, _callee6, this, [[2, 3]]);
+          }, _callee6, this, [[0, 3]]);
         }));
         function _read_value() {
           return _read_value2.apply(this, arguments);
@@ -18061,10 +18060,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sun, 08 Feb 2026 13:23:16 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sun, 08 Feb 2026 14:27:11 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sun, 08 Feb 2026 13:23:16 +0000').valueOf();
+    var date = LString('Sun, 08 Feb 2026 14:27:11 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = function _format(x) {
       return x.toString().padStart(2, '0');
@@ -18104,7 +18103,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Sun, 08 Feb 2026 13:23:16 +0000';
+  var date = 'Sun, 08 Feb 2026 14:27:11 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

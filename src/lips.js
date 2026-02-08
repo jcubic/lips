@@ -1812,12 +1812,11 @@ class Parser {
         return head;
     }
     async _read_value() {
-        let token = await this._read();
-        if (token.token === eof) {
-            const e = new Error('Syntax Error: Expected token eof found');
-            throw this._augment_exception(e);
-        }
         try {
+            let token = await this._read();
+            if (token.token === eof) {
+                throw new Error('Syntax Error: Expected token eof found');
+            }
             let result = parse_argument(token.token);
             if (this._meta) {
                 result = augment_object(result, token, this.__file__);
