@@ -16,6 +16,9 @@ const env = {
         }
         this.get('__buffer__').push(x);
     }),
+    append(x) {
+        return this.get('__buffer__').push(x);
+    },
     sleep(time) {
         return new Promise(resolve => {
             setTimeout(resolve, time.valueOf());
@@ -23,14 +26,14 @@ const env = {
     }
 };
 
-test('javascript: async buffer access', async function(t) {
-    const interpreter_1 = Interpreter('repl', {
+test('javascript: parallel async execution', async (t) => {
+    const interpreter_1 = Interpreter('test', {
         __buffer__: [],
         meta: true,
         ...env
     });
 
-    const interpreter_2 = Interpreter('repl', {
+    const interpreter_2 = Interpreter('test', {
         __buffer__: [],
         meta: false,
         ...env
@@ -41,6 +44,16 @@ test('javascript: async buffer access', async function(t) {
         interpreter_2.exec('(begin (sleep 50) (display "world") (newline))')
     ]);
 
-    t.deepEqual(interpreter_1.__env__.get('__buffer__'), ['hello', '\n']);
-    t.deepEqual(interpreter_2.__env__.get('__buffer__'), ['world', '\n']);
+    t.deepEqual(interpreter_1.get('__buffer__'), ['hello', '\n']);
+    t.deepEqual(interpreter_2.get('__buffer__'), ['world', '\n']);
+});
+
+test('javascript: should bind function', (t) => {
+    const i = Interpreter('test', {
+        __buffer__: [],
+        ...env
+    });
+
+    i.get('append')('hello');
+    t.deepEqual(i.get('__buffer__'), ['hello']);
 });
