@@ -106,14 +106,11 @@ publish:
 	$(CD) npm && $(NPM) publish --access=public
 	$(RM) -rf npm
 
-jest-test: dist/lips.js
-	@$(JEST) --coverage spec/*.spec.js
-
 test: dist/lips.js dist/std.xcb
 	@$(NPM) run test
 
 test-file: dist/lips.js dist/std.xcb
-	@$(NPM) run test -- -- -f $(FILE)
+	@$(NPM) run test-file -- -- -f $(FILE)
 
 test-update: dist/lips.js dist/std.scm
 	@$(NPM) run test-update
