@@ -15,7 +15,12 @@ const env = {
             x = this.get('repr')(x);
         }
         this.get('__buffer__').push(x);
-    })
+    }),
+    sleep(time) {
+        return new Promise(resolve => {
+            setTimeout(resolve, time.valueOf());
+        });
+    }
 };
 
 test('javascript: async buffer access', async function(t) {
@@ -32,13 +37,8 @@ test('javascript: async buffer access', async function(t) {
     });
 
     await Promise.all([
-        interpreter_1.exec('(let-env lips.env.__parent__ (load "./dist/std.scm"))'),
-        interpreter_2.exec('(let-env lips.env.__parent__ (load "./dist/std.scm"))'),
-    ]);
-
-    await Promise.all([
-        interpreter_1.exec('(begin (wait 100) (display "hello") (newline))'),
-        interpreter_2.exec('(begin (wait 50) (display "world") (newline))')
+        interpreter_1.exec('(begin (sleep 100) (display "hello") (newline))'),
+        interpreter_2.exec('(begin (sleep 50) (display "world") (newline))')
     ]);
 
     t.deepEqual(interpreter_1.__env__.get('__buffer__'), ['hello', '\n']);
