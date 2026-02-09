@@ -462,3 +462,7 @@
 (test "parser: invalid datum ref error"
       (lambda (t)
         (t.snapshot (to.throw.error (load "./tests/files/parser-invalid-ref.scm")))))
+
+(test "parser: syntax extension error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-syntax-extension-error.scm")))))

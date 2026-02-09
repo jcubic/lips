@@ -119,6 +119,9 @@ function print_error(e, stack) {
         console.log('Error is null');
         return;
     }
+    if (!(e instanceof Error)) {
+        e = new Error(e.toString());
+    }
     const re = /^([^\s]+ )?Error:/;
     let message = e.message;
     if (!message.match(re)) {

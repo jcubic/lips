@@ -1573,7 +1573,7 @@ class PromiseRejection extends RuntimeError { }
 // -------------------------------------------------------------------------
 function augment_exception(e, code) {
     if (!is_object(e) || is_native(e)) {
-        e = new PromiseRejection(`Runtime Error: ${to_string(e)}`);
+        return e;
     }
     if (code) {
         // augment runtime errors

@@ -1,2 +1,2 @@
 (let ((x 10))
-  (Promise.reject 10))
+  (Promise.reject (new Error "Nasty")))
