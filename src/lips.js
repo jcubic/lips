@@ -1256,7 +1256,7 @@ class Lexer {
     _recover_token() {
         const re = /^([^\s()\[\]]*).*(\n[\s\S]+)?/
         const offset = this._start.offset;
-        return this.__input__.substring(offset).replace(re, '$1');
+        return this.__input__.substring(offset).replace(re, '$1').trim();
     }
     next_token() {
         if (this._i >= this.__input__.length) {
@@ -1572,8 +1572,8 @@ class PromiseRejection extends RuntimeError { }
 
 // -------------------------------------------------------------------------
 function augment_exception(e, code) {
-    if (!is_object(e)) {
-        e = new PromiseRejection(to_string(e));
+    if (!is_object(e) || is_native(e)) {
+        e = new PromiseRejection(`Runtime Error: ${to_string(e)}`);
     }
     if (code) {
         // augment runtime errors
@@ -1605,9 +1605,9 @@ function unify_error_message(e) {
             if (e.__file__) {
                 e.message += ` in ${e.__file__}`;
             }
-        }
-        if (e.stack) {
-            e.stack = e.message + '\n' + e.stack.replace(/.*\n/, '');
+            if (e.stack) {
+                e.stack = e.message + '\n' + e.stack.replace(/.*\n/, '');
+            }
         }
     }
     return e;
@@ -11936,9 +11936,7 @@ function evaluate(code, { env, dynamic_env, use_dynamic, error = noop, ...rest }
                 return new QuotedPromise(result);
             }
             return result.catch(e => {
-                if (!(e instanceof IgnoreException)) {
-                    throw e;
-                }
+                error && error.call(env, e, code);
             });
         }
         return result;
@@ -11956,6 +11954,9 @@ const exec = exec_collect(function(code, value) {
 });
 
 // -------------------------------------------------------------------------
+// :: used as evaluate in try..catch to get stack trac
+// -------------------------------------------------------------------------
+
 function evaluate_with_stacktrace(code, { error, env, ...rest } = {}) {
     try {
         return exec_with_stacktrace(code, { env, ...rest });
@@ -11966,19 +11967,15 @@ function evaluate_with_stacktrace(code, { error, env, ...rest } = {}) {
 
 // -------------------------------------------------------------------------
 function exec_with_stacktrace(code, args = {}) {
-    try {
-        return evaluate(code, {
-            ...args,
-            error: (e, code) => {
-                augment_exception(e, code);
-                if (!(e instanceof IgnoreException)) {
-                    throw e;
-                }
+    return evaluate(code, {
+        ...args,
+        error: (e, code) => {
+            e = augment_exception(e, code);
+            if (!(e instanceof IgnoreException)) {
+                throw e;
             }
-        });
-    } catch (e) {
-        throw augment_exception(e);
-    }
+        }
+    });
 }
 // -------------------------------------------------------------------------
 function exec_collect(collect_callback) {

@@ -77,6 +77,14 @@
   (let ((result (gensym)))
     `(try (begin ,@body #f) (catch (e) #t))))
 
+(define-macro (to.throw.error . body)
+  "(to.throw code)
+
+   If code throw exception it will return true, otherwise
+   it will return false."
+  (let ((result (gensym)))
+    `(try (begin ,@body #f) (catch (e) e))))
+
 (define (%test-specs t specs)
   "(%test-specs t list)
 
@@ -107,3 +115,16 @@
                                  `(list ,(symbol->string (car spec))
                                         ,@spec))
                                body))))
+
+(define (with-parser-internal before thunk after)
+  (before (--> (%internal) (get "__parser_args__")))
+  (thunk)
+  (before (--> (%internal) (get "__parser_args__"))))
+
+(define-macro (with-meta . body)
+  `(with-parser-internal (lambda (internals)
+                           (set-object! internals 'meta #t))
+                         (lambda ()
+                           ,@body)
+                         (lambda (internals)
+                           (set-object! internals 'meta #f))))

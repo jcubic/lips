@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 08 Feb 2026 14:27:11 +0000
+ * build: Mon, 09 Feb 2026 16:01:39 +0000
  */
 
 'use strict';
@@ -4798,7 +4798,7 @@ var Lexer = /*#__PURE__*/function () {
     value: function _recover_token() {
       var re = /^([^\s()\[\]]*).*(\n[\s\S]+)?/;
       var offset = this._start.offset;
-      return this.__input__.substring(offset).replace(re, '$1');
+      return this.__input__.substring(offset).replace(re, '$1').trim();
     }
   }, {
     key: "next_token",
@@ -5099,8 +5099,8 @@ var PromiseRejection = /*#__PURE__*/function (_RuntimeError) {
   return _createClass(PromiseRejection);
 }(RuntimeError); // -------------------------------------------------------------------------
 function augment_exception(e, code) {
-  if (!is_object(e)) {
-    e = new PromiseRejection(to_string(e));
+  if (!is_object(e) || is_native(e)) {
+    e = new PromiseRejection("Runtime Error: ".concat(to_string(e)));
   }
   if (code) {
     // augment runtime errors
@@ -5132,9 +5132,9 @@ function unify_error_message(e) {
       if (e.__file__) {
         e.message += " in ".concat(e.__file__);
       }
-    }
-    if (e.stack) {
-      e.stack = e.message + '\n' + e.stack.replace(/.*\n/, '');
+      if (e.stack) {
+        e.stack = e.message + '\n' + e.stack.replace(/.*\n/, '');
+      }
     }
   }
   return e;
@@ -17372,9 +17372,7 @@ function evaluate(code) {
           return new QuotedPromise(result);
         }
         return result["catch"](function (e) {
-          if (!(e instanceof IgnoreException)) {
-            throw e;
-          }
+          error && error.call(env, e, code);
         });
       }
       return result;
@@ -17393,6 +17391,9 @@ var exec = exec_collect(function (code, value) {
 });
 
 // -------------------------------------------------------------------------
+// :: used as evaluate in try..catch to get stack trac
+// -------------------------------------------------------------------------
+
 function evaluate_with_stacktrace(code) {
   var _ref48 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
     error = _ref48.error,
@@ -17410,18 +17411,14 @@ function evaluate_with_stacktrace(code) {
 // -------------------------------------------------------------------------
 function exec_with_stacktrace(code) {
   var args = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-  try {
-    return evaluate(code, _objectSpread(_objectSpread({}, args), {}, {
-      error: function error(e, code) {
-        augment_exception(e, code);
-        if (!(e instanceof IgnoreException)) {
-          throw e;
-        }
+  return evaluate(code, _objectSpread(_objectSpread({}, args), {}, {
+    error: function error(e, code) {
+      e = augment_exception(e, code);
+      if (!(e instanceof IgnoreException)) {
+        throw e;
       }
-    }));
-  } catch (e) {
-    throw augment_exception(e);
-  }
+    }
+  }));
 }
 // -------------------------------------------------------------------------
 function exec_collect(collect_callback) {
@@ -18058,10 +18055,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 08 Feb 2026 14:27:11 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Mon, 09 Feb 2026 16:01:40 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 08 Feb 2026 14:27:11 +0000').valueOf();
+  var date = LString('Mon, 09 Feb 2026 16:01:40 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -18101,7 +18098,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 08 Feb 2026 14:27:11 +0000';
+var date = 'Mon, 09 Feb 2026 16:01:40 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

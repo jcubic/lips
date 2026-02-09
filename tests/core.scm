@@ -773,6 +773,19 @@
                       (vector item true)))
               (loop (cdr lst)))))))
 
+(test "core: runtime error augmentation"
+      (lambda (t)
+        (let ((file "./tests/files/runtime-error.scm"))
+          (with-meta
+           (t.snapshot (to.throw.error (load file)))))))
+
+
+(test "core: promise rejection augmentation"
+      (lambda (t)
+        (let ((file "./tests/files/runtime-promise-reject.scm"))
+          (with-meta
+           (t.snapshot (to.throw.error (load file)))))))
+
 ;; TODO
 ;; begin*
 ;; set-object! throws with null or boolean

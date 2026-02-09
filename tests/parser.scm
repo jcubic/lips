@@ -430,3 +430,35 @@
                         (t.is (instanceof Error result) #t)
                         (t.snapshot result)))
                     code))))
+
+(test "lexer: unterminated expression"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/lexer-hash-error.scm")))))
+
+(test "lexer: unterminated regex"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/lexer-unterminated-regex.scm")))))
+
+(test "parser: dot error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-invalid-list.scm")))))
+
+(test "parser: unterminted list error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-unterminated-list.scm")))))
+
+(test "parser: unexpected parenthesis error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-unexpected-paren.scm")))))
+
+(test "parser: missing object in syntax extension (eof) error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-syntax-expect-object-eof.scm")))))
+
+(test "parser: missing object in syntax extension inside list error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-syntax-expect-object.scm")))))
+
+(test "parser: invalid datum ref error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-invalid-ref.scm")))))
