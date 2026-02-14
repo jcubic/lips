@@ -48,13 +48,6 @@ without problem unlike in JavaScript when you use
 pass it as an argument.
 ```
 
-## ..
-```
-(.. foo.bar.baz)
-
-Gets the value from a nested object where the argument is a period separated symbol.
-```
-
 ## *
 ```
 (* . numbers)

@@ -178,18 +178,6 @@
    (and (object? x) (procedure? (. x Symbol.iterator))))
 
 ;; -----------------------------------------------------------------------------
-(define-macro (.. expr)
-  "(.. foo.bar.baz)
-
-   Gets the value from a nested object where the argument is a period separated symbol."
-  (if (not (symbol? expr))
-      expr
-      (let ((parts (split "." (symbol->string expr))))
-        (if (single parts)
-            expr
-            `(. ,(string->symbol (car parts)) ,@(cdr parts))))))
-
-;; -----------------------------------------------------------------------------
 (define (gensym-literal symbol)
   "(gensym-literal symbol)
 
@@ -480,8 +468,10 @@
   (let ((rules (gensym "rules")))
     `(let ((,rules lips.Formatter.rules)
            (Ahead (lambda (pattern)
-                    (let ((Ahead (.. lips.Formatter.Ahead)))
-                      (new Ahead (if (string? pattern) (new RegExp pattern) pattern)))))
+                    (new lips.Formatter.Ahead
+                         (if (string? pattern)
+                             (new RegExp pattern)
+                             pattern))))
            (* (Symbol.for "*"))
            (Pattern (lambda (pattern flag)
                       (new lips.Formatter.Pattern (list->array pattern)
@@ -904,7 +894,7 @@
 
    Evaluates body after delay, it returns the timer ID from setTimeout.
    To clear the timer you can use native JS clearTimeout function."
-  `(setTimeout (lambda () (try (begin ,@body) (catch (e) (error (.. e.message))))) ,time))
+  `(setTimeout (lambda () (try (begin ,@body) (catch (e) (error e.message)))) ,time))
 
 ;; -----------------------------------------------------------------------------
 (define-macro (wait time . expr)

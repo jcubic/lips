@@ -1,8 +1,8 @@
 ;; -*- scheme -*-
 
-(define Component (.. preact.Component))
-(define render (.. preact.render))
-(define h (.. preact.h))
+(define Component preact.Component)
+(define render preact.render)
+(define h preact.h)
 
 
 (define (ls.get namespace)
@@ -20,9 +20,9 @@
    (constructor (lambda (self)))
    (render (lambda (self props state)
              (with-tags (:li () (list
-                                  (:span () (.. props.title))
+                                  (:span () props.title)
                                   (:button (:onclick (lambda (e)
-                                                       ((.. props.delete) (.. props.id))))
+                                                       (props.delete props.id)))
                                            "delete")))))))
 
 
@@ -32,13 +32,13 @@
     (render (lambda (self props state)
               (with-tags (:button (:onclick (lambda (e)
                                               (alert "foo")))
-                                  (.. props.name))))))
+                                  props.name)))))
 
 ;;(define-class App Component
 ;;  (constructor (lambda (self)
 ;;                 (set-object! self 'state '((items . '())))))
 ;;  (add-item (lambda (self)
-;;              (let* ((state (.. self.state))
+;;              (let* ((state self.state)
 ;;                     (items (cdr (assoc state 'items)))
 ;;                     (new-items (append
 ;;

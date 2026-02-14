@@ -124,9 +124,9 @@
 
 (test "core: timing test"
       (lambda (t)
-        (--> t (is (function? (.. Date.now)) true))
+        (--> t (is (function? Date.now) true))
         (define start (--> Date (now)))
-        (wait 100 (--> t (is (>= (- (--> Date (now)) start) 100) true)))))
+        (wait 100 (--> t (is (>= (- (Date.now) start) 100) true)))))
 
 (test "core: values"
       (lambda (t)
@@ -157,7 +157,7 @@
 (test "core: dot comma"
       (lambda (t)
         ;; found in https://doc.scheme.org/surveys/DotComma/
-        (t.is  (let ((b 312)) `(a .,b)) '(a . 312))))
+        (t.is (let ((b 312)) `(a .,b)) '(a . 312))))
 
 (test "core: quote as delimiter"
       (lambda (t)
