@@ -16,8 +16,8 @@
     "version": "node version.mjs"
   },
   "dependencies": {
-    "@docusaurus/core": "^3.6.1",
-    "@docusaurus/preset-classic": "^3.6.1",
+    "@docusaurus/core": "^3.10.1",
+    "@docusaurus/preset-classic": "^3.10.1",
     "@mdx-js/react": "^3.1.0",
     "@sentry/browser": "^9.5.0",
     "clsx": "^2.1.1",
