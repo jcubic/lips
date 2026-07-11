@@ -262,7 +262,7 @@ function log(message) {
 // -----------------------------------------------------------------------------
 let strace;
 let rl;
-let buffer;
+let output;
 var newline;
 const moduleURL = new URL(import.meta.url);
 const __dirname = path.dirname(moduleURL.pathname);
@@ -470,24 +470,27 @@ if (options.version || options.V) {
     }
     var prompt = 'lips> ';
     var continue_prompt = '... ';
-    var terminal = !!process.stdin.isTTY && !(process.env.EMACS || process.env.INSIDE_EMACS);
-    buffer = make_buffer(process.stdout);
+    const is_emacs = process.env.EMACS || process.env.INSIDE_EMACS;
+    var is_terminal = !!process.stdin.isTTY && !is_emacs;
+    output = is_emacs ? process.stdout : make_buffer(process.stdout);
     const history_size = Number(env.LIPS_REPL_HISTORY_SIZE);
     const history_size_valid = !Number.isNaN(history_size) && history_size > 0;
     rl = readline.createInterface({
         input: process.stdin,
-        output: buffer,
+        output,
         prompt: prompt,
         historySize: history_size_valid ? historySize : 1000,
-        terminal
+        terminal: is_terminal
     });
-    rl.on('close', () => {
-        setTimeout(() => {
-            rl.setPrompt('');
-            buffer.flush('\n');
-        }, 10);
-    });
-    setupHistory(rl, terminal ? env.LIPS_REPL_HISTORY : '', run_repl);
+    if (!is_emacs) {
+        rl.on('close', () => {
+            setTimeout(() => {
+                rl.setPrompt('');
+                output.flush('\n');
+            }, 10);
+        });
+    }
+    setupHistory(rl, is_terminal ? env.LIPS_REPL_HISTORY : '', run_repl);
 }
 
 function is_open(token) {
@@ -628,7 +631,7 @@ function run_repl(err, rl) {
                 rl.setPrompt(continue_prompt);
             }
             rl.prompt();
-            if (terminal) {
+            if (is_terminal) {
                 rl.write(' '.repeat(prompt.length - continue_prompt.length));
             }
         } else {
@@ -745,7 +748,7 @@ function run_repl(err, rl) {
                 if (cmd.match(/\x1b\[201~$/)) {
                     cmd = code;
                 }
-                if (terminal) {
+                if (is_terminal) {
                     const output = ansi_rewrite_above(scheme(code));
                     process.stdout.write(output);
                 }
