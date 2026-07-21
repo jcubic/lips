@@ -283,6 +283,18 @@ In both platforms you can access global JavaScript objects like normal variables
 ;; ==> "hello, LIPS"
 ```
 
+### js-eval
+
+The same way as any JavaScript function of a variable from the window, you can access JavaScript
+eval using `self.eval`:
+
+```scheme
+(define greet (self.eval "(function() {
+                            alert('Hello, LIPS Scheme');
+                          })"))
+(greet)
+```
+
 ### Date and Time
 
 Since we have full access to JavaScript, we can access the `Date` object to manipulate date and time.
