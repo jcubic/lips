@@ -1,0 +1,293 @@
+{
+  "repo_notes": [
+    {
+      "content": "Do NOT generate any dedicated wiki pages or documentation for Tail Call Optimization (TCO), Trampoline, or Thunk concepts. This is currently dead code and an experimental feature. The real Tail Call Optimisation together with Continuations are in development and tracked on GitHub issue #127. Completely omit it from the documentation structure."
+    }
+  ],
+  "pages": [
+    {
+      "title": "Overview",
+      "purpose": "Introduce LIPS (Lisp Is Pretty Simple), a Scheme-based Lisp interpreter in JavaScript, explaining its purpose, design philosophy, and key features at a high level",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Installation and Quick Start",
+      "purpose": "Guide users through installing LIPS via npm, CDN, or standalone executable, and provide quick examples of running code in Node.js, browsers, and the REPL",
+      "parent": "Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Architecture Overview",
+      "purpose": "Present high-level system architecture showing how the core interpreter, standard library, CLI, web components, and build system interact",
+      "parent": "Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Project History and Evolution",
+      "purpose": "Document the evolution of LIPS through versions, major features added, breaking changes, and the roadmap for future development",
+      "parent": "Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Core Interpreter",
+      "purpose": "Detailed documentation of the JavaScript core that implements lexing, parsing, evaluation, and the type system",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Lexer and Parser",
+      "purpose": "Explain the tokenization state machine, parser architecture, handling of special forms, datum labels, quasiquotation, and parser extensions",
+      "parent": "Core Interpreter",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Evaluator and Environments",
+      "purpose": "Document the evaluation engine, environment hierarchy, lexical vs dynamic scoping, variable binding, and special form handling",
+      "parent": "Core Interpreter",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Data Types System",
+      "purpose": "Detail all LIPS data types: LSymbol (with interning and gensyms), LNumber (BigInt, rationals, complex), Pair, LString, LCharacter, and special values",
+      "parent": "Core Interpreter",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Macro System",
+      "purpose": "Explain both Lisp macros (define-macro) and hygienic macros (syntax-rules), including pattern matching, hygiene guarantees, and macro expansion process",
+      "parent": "Core Interpreter",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "CBOR Serialization",
+      "purpose": "Document the CBOR encoding/decoding system used for binary compilation, including structure optimization, packed values, bundled strings, and extension mechanism",
+      "parent": "Core Interpreter",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Asynchronous Operations",
+      "purpose": "Explain promise handling, QuotedPromise wrapper, automatic async/await, and integration with JavaScript's asynchronous programming model",
+      "parent": "Core Interpreter",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Standard Library",
+      "purpose": "Document the self-hosted Scheme standard library that provides core functions, macros, and R5RS/R7RS compliance",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Core Functions and Macros",
+      "purpose": "Detail fundamental procedures and macros like define, lambda, let, cond, map, filter, and control flow constructs",
+      "parent": "Standard Library",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "R5RS and R7RS Compliance",
+      "purpose": "Explain how LIPS implements R5RS and R7RS standards through compatibility layers, including aliases and standard-specific features",
+      "parent": "Standard Library",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "SRFI Support",
+      "purpose": "List built-in and loadable SRFIs, explain the @lips loading mechanism, and document each SRFI's functionality",
+      "parent": "Standard Library",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Object System and Records",
+      "purpose": "Document define-class for ES6-style classes, define-record-type for R7RS records, and the object literal syntax",
+      "parent": "Standard Library",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "I/O and Port System",
+      "purpose": "Explain input/output ports, file operations, string ports, binary ports, and the buffered output system",
+      "parent": "Standard Library",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "JavaScript Integration",
+      "purpose": "Document how LIPS integrates with JavaScript, enabling seamless interop between Scheme and JS code",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Accessing JavaScript Objects",
+      "purpose": "Explain dot notation, the new operator, the --> macro for method chaining, set! for mutations, and object literal syntax",
+      "parent": "JavaScript Integration",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Promise and Async Handling",
+      "purpose": "Detail automatic promise resolution, promise quotation ('> syntax), and integration with JavaScript async/await",
+      "parent": "JavaScript Integration",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Module Systems",
+      "purpose": "Document require for Node.js modules, ES module dynamic imports, and loading Scheme files with load/include",
+      "parent": "JavaScript Integration",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "User Interfaces",
+      "purpose": "Document the various ways users can interact with LIPS: command line, web browser, and bookmarklet",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Command Line Interface and REPL",
+      "purpose": "Explain the lips CLI executable, REPL features (history, syntax highlighting, indentation), command-line flags, and script execution",
+      "parent": "User Interfaces",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Web-based Interactive Interpreter",
+      "purpose": "Document the React/TypeScript web REPL component, its integration with jQuery Terminal, examples system, and deployment",
+      "parent": "User Interfaces",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Bookmarklet REPL",
+      "purpose": "Explain the bookmarklet for injecting a REPL into any webpage, its limitations, and use cases",
+      "parent": "User Interfaces",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Development Guide",
+      "purpose": "Guide developers contributing to LIPS or extending it for their own projects",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Building and Distribution Pipeline",
+      "purpose": "Document the Makefile build system, Rollup bundling, binary compilation of standard library, and npm package structure",
+      "parent": "Development Guide",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Testing Framework",
+      "purpose": "Explain the test infrastructure using Jasmine, syntax.scm macro tests, helper utilities, and test organization",
+      "parent": "Development Guide",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Extensibility Mechanisms",
+      "purpose": "Document reader macros, parser extensions via specials map, define-symbol-macro, and custom syntax examples like defstruct",
+      "parent": "Development Guide",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    }
+  ]
+}
