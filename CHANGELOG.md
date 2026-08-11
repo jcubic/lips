@@ -2,7 +2,7 @@
 ### Breaking
 * syntax extensions now expect a reference to a function or a macro
 * replace `set-obj!` with `set-object!` [#439](https://github.com/jcubic/lips/issues/439)
-* REPL -t/-trace will toggle only JavaScript stack, Scheme stack traces are now always on
+* REPL -t/--trace will toggle only JavaScript stack, Scheme stack traces are now always on
 * stack trace in exceptions is now `Error::__stack__`
 * remove `..` macro [#500](https://github.com/jcubic/lips/issues/500)
 ### Features
@@ -10,7 +10,8 @@
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
 * `Environment:doc` now returns doc string for functions and macros additional to variables
 * Improve and unify Syntax Errors
-* Meta info from Runtime errors in REPL can be enabled with `-m`/`-meta`
+* Meta info from Runtime errors in REPL can be enabled with `-m`/`--meta`
+* implement simple regex based syntax-extension
 ### Bugfix
 * fix doc string for `make-rectangular`
 * `-inf.0`/`+inf.0` are now real lips numbers
@@ -20,6 +21,7 @@
 * fix unwanted argument unboxing from lips constructors [#483](https://github.com/jcubic/lips/issues/483)
 * fix warning about rejected Promise in try..catch [#482](https://github.com/jcubic/lips/issues/482) [#484](https://github.com/jcubic/lips/issues/484)
 * fix overwriting internal state when using multiple Interpters [#495](https://github.com/jcubic/lips/issues/495)
+* fix syntax extension conflict with datum syntax
 
 ## 1.0.0-beta.21
 ### Breaking

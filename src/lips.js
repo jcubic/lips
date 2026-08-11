@@ -991,7 +991,10 @@ var specials = {
     SPLICE: Symbol.for('splice'),
     SYMBOL: Symbol.for('symbol'),
     names: function() {
-        return Object.keys(this.__list__);
+        return Array.from(this.__list__.keys());
+    },
+    regex: function() {
+        return Array.from(this.__regex__.keys());
     },
     type: function(name) {
         try {
@@ -1001,7 +1004,15 @@ var specials = {
         }
     },
     get: function(name) {
-        return this.__list__[name];
+        const regex = [...this.__regex__.keys()];
+        if (regex.length) {
+            for (const re of regex) {
+                if (name.match(re)) {
+                    return this.__regex__.get(re);
+                }
+            }
+        }
+        return this.__list__.get(name);
     },
     // events are used in Lexer dynamic rules
     off: function(name, fn = null) {
@@ -1028,31 +1039,46 @@ var specials = {
         }
     },
     remove: function(name) {
-        delete this.__list__[name];
+        delete this.get_list(name).delete(name);
         this.trigger('remove');
     },
     append: function(name, value, type) {
-        this.__list__[name] = {
+        this.get_list(name).set(name, {
             seq: name,
             value,
             type
-        };
+        });
         this.trigger('append');
     },
+    get_list: function(prop) {
+        if (is_regex(prop)) {
+            return this.__regex__;
+        } else {
+            return this.__list__;
+        }
+    },
     __events__: {},
-    __list__: {}
+    __list__: new Map(),
+    __regex__: new Map()
 };
 function is_special(token) {
-    return specials.names().includes(token);
+    const names = specials.names();
+    const regex = specials.regex();
+    if (regex.length) {
+        return regex.some(re => {
+            return token.match(re);
+        });
+    }
+    return names.includes(token);
 }
 function is_builtin(token) {
     return specials.__builtins__.includes(token);
 }
 function is_literal(special) {
-    return specials.type(special) === specials.LITERAL;
+    return special.type === specials.LITERAL;
 }
 function is_symbol_extension(special) {
-    return specials.type(special) === specials.SYMBOL;
+    return special.type === specials.SYMBOL;
 }
 // ----------------------------------------------------------------------
 const defined_specials = [
@@ -1357,12 +1383,16 @@ Lexer.literal_rule = function literal_rule(string, symbol, p_re = null, n_re = n
     if (string.length === 1) {
         return [[string, p_re, n_re, null, null]];
     }
-    var rules = [];
-    for (let i = 0, len = string.length; i < len; ++i) {
+    return Lexer.make_rule(string, symbol, p_re, n_re);
+};
+
+Lexer.make_rule = function make_rule(seq, symbol, p_re = null, n_re = null) {
+    const rules = [];
+    for (let i = 0, len = seq.length; i < len; ++i) {
         const rule = [];
-        rule.push(string[i]);
-        rule.push(string[i - 1] || p_re);
-        rule.push(string[i + 1] || n_re);
+        rule.push(seq[i]);
+        rule.push(seq[i - 1] || p_re);
+        rule.push(seq[i + 1] || n_re);
         if (i === 0) {
             rule.push(null);
             rule.push(symbol);
@@ -1376,6 +1406,18 @@ Lexer.literal_rule = function literal_rule(string, symbol, p_re = null, n_re = n
         rules.push(rule);
     }
     return rules;
+};
+
+Lexer.regex_rule = function regex_rule(regex, symbol, p_re = null, n_re = null) {
+    if (regex.source) {
+        const parts = regex.source.match(/(\[[^\]]+\][*+]?|.)/g).map(str => {
+            if (str.length === 1) {
+                return str;
+            }
+            return new RegExp(str);
+        });
+        return Lexer.make_rule(parts, symbol, p_re, n_re);
+    }
 };
 
 // ----------------------------------------------------------------------
@@ -1506,9 +1548,16 @@ Object.defineProperty(Lexer, 'rules', {
             return Lexer._cache.rules;
         }
         const parsable = Object.keys(parsable_contants).concat(directives, hash_literals);
-        const tokens = specials.names().concat(parsable).sort((a, b) => {
+        let tokens = specials.names().concat(parsable).sort((a, b) => {
+            if (is_regex(a)) {
+                a = a.source;
+            }
+            if (is_regex(b)) {
+                b = b.source;
+            }
             return b.length - a.length || a.localeCompare(b);
         });
+        const regex = specials.regex();
 
         // syntax-extensions tokens that share the same first character after hash
         // should have same symbol, but because tokens are sorted, the longer
@@ -1532,11 +1581,25 @@ Object.defineProperty(Lexer, 'rules', {
             return acc.concat(rules);
         }, []);
 
-        Lexer._cache.rules = Lexer._rules.concat(
+        const regex_specials = regex.reduce((acc, token) => {
+            const symbol = Symbol.for(token.source);
+            const rules = Lexer.regex_rule(token, symbol, null, Lexer.boundary);
+            return acc.concat(rules);
+        }, []);
+
+        Lexer._cache.rules = regex_specials.concat(
+            Lexer._rules,
             Lexer._brackets,
             special_rules,
             Lexer._symbol_rules
         );
+        /*
+        Lexer._cache.rules = special_rules.concat(
+            Lexer._rules,
+            Lexer._brackets,
+            Lexer._symbol_rules
+        );
+        */
 
         Lexer._cache.valid = true;
         return Lexer._cache.rules;
@@ -1832,7 +1895,7 @@ class Parser {
     async invoke_special(special, object, is_symbol) {
         if (typeof special.value === 'function') {
             let args;
-            if (is_literal(special.seq)) {
+            if (is_literal(special)) {
                 args = [object];
             } else if (is_pair(object) || is_nil(object)) {
                 args = object.to_array(false);
@@ -1852,7 +1915,7 @@ class Parser {
             throw this._augment_exception(e);
         } else if (special.value instanceof Macro) {
             let code = object ?? nil;
-            if (is_literal(special.seq)) {
+            if (is_literal(special)) {
                 code = Pair(code, nil);
             }
             if (special.value instanceof Syntax) {
@@ -1980,7 +2043,8 @@ class Parser {
             return token;
         }
         this._state.line = this.__lexer__.__token__.line;
-        if (is_special(token.token)) {
+        const special = specials.get(token.token);
+        if (special) {
             // Built-in parser extensions are mapping short symbols to longer symbols
             // that can be function or macro. Parser doesn't care
             // if it's not built-in and the extension can be macro or function.
@@ -1988,11 +2052,10 @@ class Parser {
             // result is returned by parser as is the macro.
             // MACRO: if macro is used, then it is evaluated in place and the
             // result is returned by parser and it is quoted.
-            const special = specials.get(token.token);
             const builtin = is_builtin(token.token);
             this._skip(token);
             let expr;
-            const is_symbol = is_symbol_extension(token.token);
+            const is_symbol = is_symbol_extension(special);
             const was_close_paren = this._is_close(await this._peek());
             // expression passed to syntax extension
             const object = is_symbol ? undefined : await this._read_object();
@@ -2004,7 +2067,7 @@ class Parser {
                 return this.invoke_special(special, object, is_symbol);
             }
             // Built-in parser extensions just expand into lists like 'x ==> (quote x)
-            if (is_literal(token.token)) {
+            if (is_literal(special)) {
                 if (was_close_paren) {
                     const e = new Error('Syntax Error: expecting datum');
                     throw this._augment_exception(e);
@@ -5397,6 +5460,10 @@ function is_nil(value) {
 // ----------------------------------------------------------------------
 function is_function(o) {
     return typeof o === 'function' && typeof o.bind === 'function';
+}
+// ----------------------------------------------------------------------------
+function is_regex(x) {
+    return is_object(x) && x instanceof RegExp;
 }
 // ----------------------------------------------------------------------------
 function is_value(obj) {
@@ -10301,7 +10368,7 @@ var global_env = new Environment({
          and specific type of number e.g. complex.`),
     // ------------------------------------------------------------------
     'unset-special!': doc('unset-special!', function(symbol) {
-        typecheck('remove-special!', symbol, 'string');
+        typecheck('remove-special!', symbol, ['string', 'regex']);
         specials.remove(symbol.valueOf());
     }, `(unset-special! name)
 
@@ -10309,7 +10376,7 @@ var global_env = new Environment({
         name must be a string.`),
     // ------------------------------------------------------------------
     'set-special!': doc('set-special!', function(seq, value, type = specials.LITERAL) {
-        typecheck('set-special!', seq, 'string', 1);
+        typecheck('set-special!', seq, ['string', 'regex'], 1);
         typecheck('set-special!', value, ['function', 'macro', 'syntax'], 2);
         specials.append(seq.valueOf(), value, type);
     }, `(set-special! seq value [type])
