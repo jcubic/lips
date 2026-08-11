@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.20-blue.svg)](https://www.npmjs.com/package/@jcubic/lips)
 ![1.0.0 Complete](https://img.shields.io/github/milestones/progress-percent/jcubic/lips/1?label=1.0.0%20Complete)
 [![Build and test](https://github.com/jcubic/lips/actions/workflows/build.yaml/badge.svg?branch=continuations-2&event=push)](https://github.com/jcubic/lips/actions/workflows/build.yaml)
-[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=continuations-2&2f1d0848aad7c67e1ba0d270778509a8)](https://coveralls.io/github/jcubic/lips?branch=continuations-2)
+[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=continuations-2&adf562e19bb5b4b9756e2667408589c8)](https://coveralls.io/github/jcubic/lips?branch=continuations-2)
 [![Join Gitter Chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jcubic/lips)
 ![NPM Download Count](https://img.shields.io/npm/dm/@jcubic/lips)
 ![JSDelivr Download count](https://img.shields.io/jsdelivr/npm/hm/@jcubic/lips)
@@ -354,7 +354,9 @@ I would also love to see if you use the library, I may even share the links of p
 
 ## Acknowledgments
 * Font used in logo is [Telegrafico](https://www.dafont.com/telegrafico.font) by [ficod](https://www.deviantart.com/ficod).
-* Part of the current Parser is inspired by implementation in [BiwaScheme](https://www.biwascheme.org/) by Yutaka HARA (yhara).
+* Part of the current Parser is inspired by [BiwaScheme](https://www.biwascheme.org/) by Yutaka HARA (yhara).
+* [TCO](https://lips.js.org/docs/scheme-intro/core#tail-call-optimization) and
+  [Continuations](https://lips.js.org/docs/scheme-intro/continuations) imeplementation inspired by [js-scheme](https://bluishcoder.co.nz/jsscheme/) by Alex Yakovlev
 * `fetch` polyfill use [unfetch](https://github.com/developit/unfetch) by Jason Miller.
 * Browser `init` function use [ContentLoaded](http://javascript.nwbox.com/ContentLoaded/).
 * The rationalize algorithm is based on [Kawa Scheme](https://www.gnu.org/software/kawa/index.html) by Per M.A. Bothner, Alan Bawden and Marc Feeley.

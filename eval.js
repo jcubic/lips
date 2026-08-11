@@ -60,9 +60,9 @@ const code = `
 
 `;
 
-Promise.all(['./lib/bootstrap.scm', './asserts.scm'].map(fname => {
+Promise.all(['./lib/bootstrap.scm', './asserts.scm', './perf.scm'].map(fname => {
     return fs.readFile(fname, 'utf8');
-})).then(([lib, asserts]) => {
+})).then(([lib, asserts, perf]) => {
     // lib is ignored for now
     return exec(asserts, { env });
     // this is old testing code that work like REPL

@@ -547,35 +547,238 @@
             (list (list 1 2) (list 10 5) (list 3 4) (list 20 2)))
         '(3 5 12 10))
 
+(assert (map (lambda (a b) (+ a b)) '(1 2 3 4) '(10 10 10 10))
+        '(11 12 13 14))
 
-;;(print (let ((str "=")) (str.repeat 80)))
+(let ((i 1))
+  (for-each (lambda (x)
+              (assert x i)
+              (set! i (+ i 1)))
+            '(1 2 3 4)))
 
-;;(print (my-map (lambda (x) (+ x 10)) (list 1 2 3 4)))
+(define list-product
+  (lambda (s)
+    (call/cc
+     (lambda (exit)
+       (let recur ((s s))
+         (if (null? s) 1
+             (if (= (car s) 0) (exit 0)
+                 (* (car s) (recur (cdr s))))))))))
 
+(assert (list-product '(0 1 2 3 4 10 20 30)) 0)
+(assert (list-product '(1 2 3 4 10 20 30)) 144000)
 
 #;(print (try
         (throw "Nasty")
         (catch (e)
                e.message)))
 
+(let ((x 10))
+  (print `(1 ,@(list x 1) 3)))
+
+(print `(1 ,@(list 1 2 3)))
+
+(define result '())
+
+(let ((k #f) (i 0))
+  (set! result (append result `(1 ,(call/cc (lambda (cc) (set! k cc) i)) 3)))
+  (set! i (+ i 1))
+  (if (< i 3)
+      (let ((next (* i 10)))
+        (k next))))
+
+(assert result '(1 20 3))
+
+(set! result '())
+
+(let ((k #f) (i 0))
+  (define l `(1 ,(call/cc (lambda (cc) (set! k cc) i)) 3))
+  (set! result (append result (list l)))
+  (set! i (+ i 1))
+  (if (< i 3)
+      (let ((next (* i 10)))
+        (k next))))
+
+(assert result '((1 0 3) (1 10 3) (1 20 3)))
+
+(define (test . code)
+  `(let ()
+     ,@(map (lambda (x)
+              `(print ,x))
+            code)))
+
+(assert (test 1 2 3 4) '(let ()
+                          (print 1)
+                          (print 2)
+                          (print 3)
+                          (print 4)))
+
 ;; internal LIPS code debugger
 #;(let-env lips.env.__parent__
          (define DEBUG "expander"))
 
-;;(macroexpand '(hello 10))
 
-#;(define-macro (foo code)
-  (let ((x (gensym)))
-    `(list ',x ',code)))
 
-#;(assert (foo (1 2 3)) '(#:g1 (1 2 3)))
+(define (foo) 'bar)
 
-#;(let ((k #f) (i 0))
-  (display `(1 ,(call/cc (lambda (cc) (set! k cc) i)) 3))
-  (newline)
+;; T1 splice empty list
+(assert `(x ,@() x) '(x x))
+
+;; T11 join symbol (improper via splicing an atom)
+(assert (let ((x 'foo)) `(a ,@x)) '(a . foo))
+
+;; function call
+(define (fun a b) (+ a b))
+(assert `(1 2 3 ,(fun 2 2) 5) '(1 2 3 4 5))
+
+;; value
+(define value 42)
+(assert `(1 2 3 ,value 4) (list 1 2 3 value 4))
+
+;; single splice
+(define (f2 a b) (list a b))
+(assert `(1 2 3 ,@(f2 4 5) 6) '(1 2 3 4 5 6))
+
+;; single pair
+(assert `(1 . 2) '(1 . 2))
+(assert `(,(car (list 1 2 3)) . 2) '(1 . 2))
+(assert `(1 . ,(cadr (list 1 2 3))) '(1 . 2))
+(assert `(,(car (list 1 2 3)) . ,(cadr (list 1 2 3))) '(1 . 2))
+
+;; pair syntax
+(assert `(,(car (list 1 2 3)) . (1 2 3)) (list 1 1 2 3))
+
+;; alist with values
+(assert `((1 . ,(car (list 1 2)))
+          (2 . ,(cadr (list 1 "foo"))))
+        '((1 . 1) (2 . "foo")))
+
+;; nested backquote processing
+(assert `(1 2 3 ,(cadr `(1 ,(concat "foo" "bar") 3)) 4)
+        '(1 2 3 "foobar" 4))
+
+;; ignore splice on empty list
+(assert `(list ,@(list)) '(list))
+
+;; improper list splicing
+(assert (let ((x '(1 2 3))) `(foo . ,x)) '(foo 1 2 3))
+
+;; unquote-splicing and improper list
+(assert (let ((result `((foo ,(- 10 3)) ,@(cdr '(c)) . ,(car '(cons)))))
+          result)
+        '((foo 7) . cons))
+
+;; T9 quasiquote quote unquoted
+(assert `',(foo) '(quote bar))
+(assert (let ((x 'foo)) `',x) '(quote foo))
+
+;; T10 unquote simple and double unquote symbol
+(assert (let ((y 20)) `(let ((x 10)) `(list ,x ,,y)))
+        '(let ((x 10)) (quasiquote (list (unquote x) (unquote 20)))))
+
+;; T7 single unquote
+(assert `(let ((name 'x)) `(let ((name 'y)) `(list ',name)))
+        '(let ((name (quote x)))
+           (quasiquote (let ((name (quote y)))
+                         (quasiquote (list (quote (unquote name))))))))
+
+;; T12 unquote from double quotation
+(assert (let ((x '(1 2)))
+          `(let ((x '(2 3)))
+             (begin
+               `(list ,(car x))
+               `(list ,,(car x)))))
+        '(let ((x (quote (2 3))))
+           (begin
+             (quasiquote (list (unquote (car x))))
+             (quasiquote (list (unquote 1))))))
+
+;; multiple backquote/unquote
+(assert ``(a ,,(+ 1 2) ,(+ 3 4))
+        '(quasiquote (a (unquote 3) (unquote (+ 3 4)))))
+
+;; constant quasiquote (should be shared/eq)
+(define (const) `(1 2))
+(assert (eq? (const) (const)) #t)
+
+;; should create new pair
+(define (mk1 x) `(1 2 ,@x))
+(assert (eq? (mk1 '(1)) (mk1 '(2))) #f)
+(define (mk2 x) `(1 2 ,x))
+(assert (eq? (mk2 10) (mk2 20)) #f)
+
+;; T5b single-level nested unquote-splice kept as data
+(assert `(1 `,@(list (+ 1 2)) 4)
+        '(1 (quasiquote (unquote-splicing (list (+ 1 2)))) 4))
+
+;; T8 double backquote and unquote on list (eval)
+(assert (eval (let ((x '((list 1 2 3) (list 4 5 6) (list 7 8 9))))
+                `(list `(,,@x)))
+              (interaction-environment))
+        '(((1 2 3) (4 5 6) (7 8 9))))
+
+;; T6 return list (eval)
+(assert (eval (let ((x '((list 1 2 3) (list 1 2 3) (list 1 2 3))))
+                `(list `(,@,(car x))))
+              (interaction-environment))
+        '((1 2 3)))
+
+;; T3 double splice the list (eval)
+(define t3-expr (let ((x '((list 1 2 3) (list 4 5 6) (list 7 8 9))))
+                  `(list `(,@,@x))))
+(assert t3-expr
+        '(list (quasiquote ((unquote-splicing (list 1 2 3)
+                                              (list 4 5 6)
+                                              (list 7 8 9))))))
+(assert (eval t3-expr (interaction-environment)) '((1 2 3 4 5 6 7 8 9)))
+
+;; T4 backquote & unquote multiple times
+(assert `(```,,,,@(list 1 2))
+        '((quasiquote (quasiquote (quasiquote (unquote (unquote (unquote 1 2))))))))
+
+;; T5a quasiquote unquote-splice (extreme)
+(assert `(1 ```,,@,,@(list (+ 1 2)) 4)
+        '(1 (quasiquote (quasiquote (quasiquote (unquote (unquote-splicing (unquote 3)))))) 4))
+
+;; T15 double unquote-splicing (#362)
+(assert (let ((x '(1 2 3)) (y '(11 22 33)) (l '(x y)))
+          ``(,@,@l ,@,@l))
+        '(quasiquote ((unquote-splicing x y) (unquote-splicing x y))))
+
+;; --- vectors ---
+(assert `#(,(+ 1 2) ,(+ 2 3) ,(Promise.resolve 7)) #(3 5 7))
+(assert `(foo #(10 ,@(list 1 2 3))) '(foo #(10 1 2 3)))
+
+;; --- objects (compared by property access, repr is #<Object>) ---
+(define obj1 `&(:foo ,(+ 1 2) :bar ,(Promise.resolve 10)))
+(assert (. obj1 'foo) 3)
+(assert (. obj1 'bar) 10)
+
+(define obj-in-list `(foo &(:foo ,(+ 1 2) :bar 10)))
+(assert (car obj-in-list) 'foo)
+(assert (. (cadr obj-in-list) 'foo) 3)
+(assert (. (cadr obj-in-list) 'bar) 10)
+
+(define cc-log '())
+(let ((k #f) (i 0))
+  (define v `(a ,(call/cc (lambda (cc) (set! k cc) i)) z))
+  (set! cc-log (cons v cc-log))
   (set! i (+ i 1))
-  (if (< i 3)
-      (k (* i 10))))
+  (if (< i 3) (k (* i 100))))
+(assert (reverse cc-log) '((a 0 z) (a 100 z) (a 200 z)))
+
+;; escape continuation out of the middle of a build
+(assert (call/cc (lambda (return) `(1 2 ,(return 'escaped) 4))) 'escaped)
+
+;; re-entrant continuation captured inside an unquote-splicing
+(define cc-log2 '())
+(let ((k #f) (n 0))
+  (define v `(x ,@(list (call/cc (lambda (c) (set! k c) n))) y))
+  (set! cc-log2 (cons v cc-log2))
+  (set! n (+ n 1))
+  (if (< n 3) (k (* n 10))))
+(assert (reverse cc-log2) '((x 0 y) (x 10 y) (x 20 y)))
+
 
 ;; example quasiquote cc/ `(1 <x> <y>) (<x> 10) (<y> 20)
 
@@ -590,7 +793,7 @@
 ;; - [ ] quote promise (move macro to js)
 ;; - [ ] ignore
 ;; - [ ] try..catch
-;; - [ ] quasiquote
+;; - [x] quasiquote
 ;; - [ ] macro for define
 ;; - [ ] --> and object literals
 ;; - [ ] syntax-rules
@@ -602,5 +805,5 @@
 ;; - [ ] standard REPL
 ;; - [ ] automated tests
 
-;;(print "DONE")
-;;(print (concat "tests passed: " (passed.toString) "/" (tests.toString)))
+(print "DONE")
+(print (concat "tests passed: " (passed.toString) "/" (tests.toString)))

@@ -22,6 +22,8 @@
 (define vector->list array->list)
 (define call-with-current-continuation call/cc)
 (define string-append concat)
+(define (interaction-environment)
+  (current-environment))
 
 (define-macro (or . args)
   "(or expr1 expr2 ...)
@@ -79,19 +81,91 @@
    with that many argument as number of list arguments. The return
    values of the fn calls are accumulated in a result list and
    returned by map."
-  (let loop ((lists lists) (result '()))
+  (let loop ((lists lists) (k (lambda (x) x)))
     (if (%some? null? lists)
-      (reverse result)
-      (loop (%map1 cdr lists)
-            (cons (apply function (%map1 car lists))
-                  result)))))
+        (k '())
+        (loop (%map1 cdr lists)
+              (lambda (rest)
+                (k (cons (apply function (%map1 car lists)) rest)))))))
 
-(define (for-each . args)
+(define (for-each function . lists)
   "(for-each fn list1 list2 ...)
 
    Higher-order function that calls function `fn` on each
    value of the argument. If you provide more than one list
    it will take each value from each list and call `fn` function
    with that many arguments as number of list arguments."
-  (apply map args)
-  #void)
+  (let loop ((lists lists))
+    (if (not (%some? null? lists))
+        (begin
+          (apply function (%map1 car lists))
+          (loop (%map1 cdr lists))))))
+
+
+
+(define (tail-recursive-map f lst)
+  ;; Use a mutable box to store the result
+  (let ((result '())
+        (result-tail '()))
+    (define (helper remaining-list)
+      (if (null? remaining-list)
+          ;; When the list is empty, return the accumulated result
+          result
+          (let ((new-element (f (car remaining-list))))
+            ;; Create a new pair for the current element
+            (let ((new-pair (cons new-element '())))
+              ;; If this is the first element, initialize the result
+              (if (null? result)
+                  (set! result new-pair))
+              ;; Always update the tail pointer
+              (if (not (null? result-tail))
+                  (set-cdr! result-tail new-pair))
+              (set! result-tail new-pair))
+            ;; Recurse with the rest of the list
+            (helper (cdr remaining-list)))))
+    ;; Start the recursion
+    (helper lst)))
+
+
+(define (consify expression)
+  (if (pair? expression)
+      (list 'cons
+            (consify (car expression))
+            (consify (cdr expression)))
+      (cond ((null? expression) expression)
+            ((symbol? expression) (list 'quote expression))
+            (else expression))))
+
+(set-special! "#" 'vector-literal lips.specials.SPLICE)
+
+(define-macro (vector-literal . args)
+  (if (not (or (pair? args) (eq? args '())))
+      (throw (new Error (concat "Parse Error: vector require pair got "
+                                (type args) " in " (repr args))))
+      (let ((v (list->array args)))
+        (Object.freeze v)
+        v)))
+
+(define (%key? x)
+  (and (symbol? x)
+       (== ((. x '__name__ 'indexOf) ":") 0)))
+
+(define (%key->string x)
+  ((. x '__name__ 'substring) 1))
+
+(set-special! "&" 'object-literal lips.specials.SPLICE)
+
+(define-macro (object-literal . args)
+  (let ((obj (gensym "obj")))
+    (let loop ((lst args) (body '()))
+      (if (null? lst)
+          `(let ((,obj (Object.fromEntries (Array))))
+             ,@(reverse body)
+             ,obj)
+          (let* ((k (car lst))
+                 (key (%key->string k))
+                 (rest (cdr lst))
+                 (has-value (and (pair? rest) (not (%key? (car rest)))))
+                 (value (if has-value (car rest) #void)))
+            (loop (if has-value (cddr lst) rest)
+                  (cons `(set-obj! ,obj ,key ',value) body)))))))

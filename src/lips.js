@@ -5963,6 +5963,31 @@ function LNumber(n, force = false) {
     }
 }
 
+LNumber._registry = new FinalizationRegistry(value => {
+  LNumber._cache.delete(value);
+});
+LNumber._cache = new Map();
+
+LNumber.get = function (value) {
+    if (LNumber._cache.has(value)) {
+        const ref = LNumber._cache.get(value);
+        const obj = ref.deref();
+        if (obj) {
+            return obj;
+        }
+    }
+
+    const obj = new LNumber(value);
+    LNumber._cache.set(value, new WeakRef(obj));
+
+    LNumber._registry.register(obj, value);
+    return obj;
+};
+
+LNumber.prototype.dec = function(n) {
+    this.constant(this.__value__ - n.__value__, this.__type__);
+};
+
 // -------------------------------------------------------------------------
 LNumber.prototype.constant = function(value, type) {
     enumerable(this, '__value__', value);
@@ -8993,7 +9018,7 @@ var global_env = new Environment({
         return tco_eval(code, {
             env,
             dynamic_env: env,
-            error: reject
+            error: (e) => { throw e; }
         });
     }, `(eval expr)
         (eval expr environment)
@@ -9265,336 +9290,183 @@ var global_env = new Environment({
         Special form used in the quasiquote macro. It evaluates the expression inside and
         substitutes the value into quasiquote's result.`),
     // ------------------------------------------------------------------
-    quasiquote: Macro.defmacro('quasiquote', function(source, state) {
-        const arg = source.cdr;
-        const { use_dynamic, error } = state;
-        const self = this;
-        //var max_unquote = 1;
-        const dynamic_env = self;
-        // -----------------------------------------------------------------
-        function is_struct(value) {
-            return is_pair(value) ||
-                is_plain_object(value) ||
-                Array.isArray(value);
+    looper: function(num) {
+        var x = [];
+        while (num.cmp(0) != 0) {
+            x.push(num);
+            num = num.sub(1);
         }
+    },
+    // ------------------------------------------------------------------
+    quasiquote: (function() {
         // -----------------------------------------------------------------
-        function resolve_pair(pair, fn, test = is_struct) {
-            if (is_pair(pair)) {
-                var car = pair.car;
-                var cdr = pair.cdr;
-                if (test(car)) {
-                    car = fn(car);
-                }
-                if (test(cdr)) {
-                    cdr = fn(cdr);
-                }
-                if (is_promise(car) || is_promise(cdr)) {
-                    return promise_all([car, cdr]).then(([car, cdr]) => {
-                        return new Pair(car, cdr);
-                    });
-                } else {
-                    return new Pair(car, cdr);
-                }
-            }
-            return pair;
+        // :: New quasiquote based on Alan Bawden's paper
+        // :: "Quasiquotation in Lisp". Instead of building the result inline
+        // :: the macro expands into code (append/cons/list/quote/...) that is
+        // :: then evaluated by the main tco_eval loop. Because the unquoted
+        // :: expressions become ordinary sub-expressions they compose with
+        // :: continuations, promises and tail calls for free.
+        // -----------------------------------------------------------------
+        function symbol(name) {
+            return new LSymbol(name);
         }
-        // -----------------------------------------------------------------
-        function join(eval_pair, value) {
-            if (is_nil(eval_pair) && is_nil(value)) {
-                //return nil;
-            }
-            if (is_pair(eval_pair)) {
-                if (!is_nil(value)) {
-                    eval_pair.append(value);
-                }
-            } else {
-                eval_pair = new Pair(
-                    eval_pair,
-                    value
-                );
-            }
-            return eval_pair;
+        function make_list(...items) {
+            return Pair.fromArray(items, false);
         }
-        // -----------------------------------------------------------------
-        function quote_vector(arr, unquote_cnt, max_unq) {
-            return arr.reduce((acc, x) => {
-                if (!is_pair(x)) {
-                    acc.push(x);
-                    return acc;
+        function quote(x) {
+            return make_list(symbol('quote'), x);
+        }
+        function make_cons(a, b) {
+            return make_list(symbol('cons'), a, b);
+        }
+        // (quote ()) - an expression that evaluates to the empty list
+        function is_quote_nil(x) {
+            return is_pair(x) &&
+                LSymbol.is(x.car, 'quote') &&
+                is_pair(x.cdr) &&
+                is_nil(x.cdr.car);
+        }
+        // build (append a b) with a couple of algebraic simplifications so
+        // that the common cases produce clean code and splicing an atom in
+        // tail position (e.g. `(a . ,@x)) creates a proper improper list.
+        function make_append(a, b) {
+            if (is_quote_nil(b)) {
+                return a;
+            }
+            if (is_quote_nil(a)) {
+                return b;
+            }
+            return make_list(symbol('append'), a, b);
+        }
+        function vector_to_list(vector) {
+            return Pair.fromArray(vector, false);
+        }
+        // expand code in "value" position - result is code producing the value.
+        // A passive unquote/unquote-splicing (depth > 1) is rebuilt with `cons`
+        // so that a nested active splice inside it (e.g. `,,@x`) can add several
+        // operands to the marker: (unquote a b c).
+        function qq_expand(x, depth) {
+            if (is_pair(x)) {
+                if (LSymbol.is(x.car, 'unquote')) {
+                    if (depth === 1) {
+                        return x.cdr.car;
+                    }
+                    return make_cons(quote(symbol('unquote')),
+                                     qq_expand(x.cdr, depth - 1));
                 }
                 if (LSymbol.is(x.car, 'unquote-splicing')) {
-                    let result;
-                    if (unquote_cnt + 1 < max_unq) {
-                        result = recur(x.cdr, unquote_cnt + 1, max_unq);
-                    } else {
-                        result = evaluate(x.cdr.car, {
-                            env: self,
-                            use_dynamic,
-                            dynamic_env,
-                            error
-                        });
+                    if (depth === 1) {
+                        // tail splice, e.g. `(a . ,@x)
+                        return x.cdr.car;
                     }
-                    if (!is_pair(result)) {
-                        throw new Error(`Expecting list ${type(x)} found`);
-                    }
-                    return acc.concat(result.to_array());
+                    return make_cons(quote(symbol('unquote-splicing')),
+                                     qq_expand(x.cdr, depth - 1));
                 }
-                acc.push(recur(x, unquote_cnt, max_unq));
-                return acc;
-            }, []);
+                if (LSymbol.is(x.car, 'quasiquote')) {
+                    return make_list(symbol('list'), quote(symbol('quasiquote')),
+                                     qq_expand(x.cdr.car, depth + 1));
+                }
+                return make_append(qq_expand_list(x.car, depth),
+                                   qq_expand(x.cdr, depth));
+            }
+            if (Array.isArray(x)) {
+                return make_list(symbol('list->array'),
+                                 qq_expand(vector_to_list(x), depth));
+            }
+            if (is_plain_object(x)) {
+                return qq_expand_object(x, depth);
+            }
+            return quote(x);
         }
-        // -----------------------------------------------------------------
-        function quote_object(object, unquote_cnt, max_unq) {
-            const result = {};
-            unquote_cnt++;
-            Object.keys(object).forEach(key => {
+        // expand code in "list element" position - result is code producing a
+        // list that is spliced (via append) into the surrounding list
+        function qq_expand_list(x, depth) {
+            if (is_pair(x)) {
+                if (LSymbol.is(x.car, 'unquote')) {
+                    if (depth === 1) {
+                        // (unquote a b ...) with several operands splices them
+                        // all: ,a -> (list a), (unquote a b) -> (list a b)
+                        return new Pair(symbol('list'), x.cdr);
+                    }
+                    return make_list(symbol('list'),
+                        make_cons(quote(symbol('unquote')),
+                                  qq_expand(x.cdr, depth - 1)));
+                }
+                if (LSymbol.is(x.car, 'unquote-splicing')) {
+                    if (depth === 1) {
+                        // (unquote-splicing a b ...) -> (append a b ...)
+                        return new Pair(symbol('append'), x.cdr);
+                    }
+                    return make_list(symbol('list'),
+                        make_cons(quote(symbol('unquote-splicing')),
+                                  qq_expand(x.cdr, depth - 1)));
+                }
+                if (LSymbol.is(x.car, 'quasiquote')) {
+                    return make_list(symbol('list'),
+                        make_list(symbol('list'), quote(symbol('quasiquote')),
+                                  qq_expand(x.cdr.car, depth + 1)));
+                }
+                return make_list(symbol('list'),
+                    make_append(qq_expand_list(x.car, depth),
+                                qq_expand(x.cdr, depth)));
+            }
+            if (Array.isArray(x)) {
+                return make_list(symbol('list'),
+                    make_list(symbol('list->array'),
+                              qq_expand(vector_to_list(x), depth)));
+            }
+            if (is_plain_object(x)) {
+                return make_list(symbol('list'), qq_expand_object(x, depth));
+            }
+            return quote(make_list(x));
+        }
+        // objects (&(...)) have no splicing; expand into code that builds a
+        // fresh object and assigns each value with set-obj! (so that list/pair
+        // values are stored verbatim rather than recursively converted):
+        //
+        //   (let ((obj (Object.fromEntries (Array))))
+        //     (set-obj! obj "key" <value>)
+        //     ...
+        //     obj)
+        function qq_expand_object(object, depth) {
+            const obj = gensym('obj');
+            const setters = Object.keys(object).map(key => {
                 const value = object[key];
-                if (is_pair(value)) {
-                    if (LSymbol.is(value.car, 'unquote-splicing')) {
-                        throw new Error("You can't call `unquote-splicing` " +
-                                        "inside object");
-                    }
-                    let output;
-                    if (unquote_cnt < max_unq) {
-                        output = recur(value.cdr.car, unquote_cnt, max_unq);
-                    } else {
-                        output = evaluate(value.cdr.car, {
-                            env: self,
-                            dynamic_env,
-                            use_dynamic,
-                            error
-                        });
-                    }
-                    result[key] = output;
-                } else {
-                    result[key] = value;
+                if (is_pair(value) && LSymbol.is(value.car, 'unquote-splicing')) {
+                    throw new Error("You can't call `unquote-splicing` inside an object");
                 }
+                return make_list(symbol('set-obj!'), obj, LString(key),
+                                 qq_expand(value, depth));
             });
-            if (Object.isFrozen(object)) {
-                Object.freeze(result);
+            const bindings = make_list(
+                make_list(obj, make_list(symbol('Object.fromEntries'),
+                                         make_list(symbol('Array'))))
+            );
+            return Pair.fromArray([symbol('let'), bindings, ...setters, obj], false);
+        }
+        return Macro.defmacro('quasiquote', function(source, state) {
+            const arg = source.cdr;
+            let result;
+            if (plain_quasiquote(arg.car)) {
+                // fully literal quasiquote behaves like quote (shared constant)
+                result = quote(arg.car);
+            } else {
+                result = qq_expand(arg.car, 1);
             }
+            // returning something other than `state` makes evaluate_code set
+            // it as the object to evaluate next, so the generated builder code
+            // runs through the normal tco_eval loop.
+            state.object = result;
+            state.ready = false;
             return result;
-        }
-        // -----------------------------------------------------------------
-        function unquote_splice(pair, unquote_cnt, max_unq) {
-            if (unquote_cnt < max_unq) {
-                let cdr = nil;
-                if (!is_nil(pair.cdr)) {
-                    cdr = recur(pair.cdr, unquote_cnt - 1, max_unq);
-                }
-                return new Pair(
-                    new Pair(
-                        pair.car.car,
-                        recur(pair.car.cdr, unquote_cnt, max_unq)
-                    ),
-                    cdr
-                );
-            }
-            var lists = [];
-            return (function next(node) {
-                var value = evaluate(node.car, {
-                    env: self,
-                    dynamic_env,
-                    use_dynamic,
-                    error
-                });
-                lists.push(value);
-                if (is_pair(node.cdr)) {
-                    return next(node.cdr);
-                }
-                return unpromise(lists, function(arr) {
-                    if (arr.some(x => !is_pair(x))) {
-                        if (is_pair(pair.cdr) &&
-                            LSymbol.is(pair.cdr.car, '.') &&
-                            is_pair(pair.cdr.cdr) &&
-                            is_nil(pair.cdr.cdr.cdr)) {
-                            return pair.cdr.cdr.car;
-                        }
-                        if (!(is_nil(pair.cdr) || is_pair(pair.cdr))) {
-                            const msg = "You can't splice atom inside list";
-                            throw new Error(msg);
-                        }
-                        if (arr.length > 1) {
-                            const msg = "You can't splice multiple atoms inside list";
-                            throw new Error(msg);
-                        }
-                        if (!(is_pair(pair.cdr) && is_nil(arr[0]))) {
-                            return arr[0];
-                        }
-                    }
-                    // don't create Cycles
-                    arr = arr.map(eval_pair => {
-                        if (splices.has(eval_pair)) {
-                            return eval_pair.clone();
-                        } else {
-                            splices.add(eval_pair);
-                            return eval_pair;
-                        }
-                    });
-                    const value = recur(pair.cdr, 0, 1);
-                    if (is_nil(value) && is_nil(arr[0])) {
-                        return undefined;
-                    }
-                    return unpromise(value, value => {
-                        if (is_nil(arr[0])) {
-                            return value;
-                        }
-                        if (arr.length === 1) {
-                            return join(arr[0], value);
-                        }
-                        var result = arr.reduce((result, eval_pair) => {
-                            return join(result, eval_pair);
-                        });
-                        return join(result, value);
-                    });
-                });
-            })(pair.car.cdr);
-        }
-        // -----------------------------------------------------------------
-        var splices = new Set();
-        function recur(pair, unquote_cnt, max_unq) {
-            if (is_pair(pair)) {
-                if (is_pair(pair.car)) {
-                    if (LSymbol.is(pair.car.car, 'unquote-splicing')) {
-                        return unquote_splice(pair, unquote_cnt + 1, max_unq);
-                    }
-                    if (LSymbol.is(pair.car.car, 'unquote')) {
-                        // + 2 - one for unquote and one for unquote splicing
-                        if (unquote_cnt + 2 === max_unq &&
-                            is_pair(pair.car.cdr) &&
-                            is_pair(pair.car.cdr.car) &&
-                            LSymbol.is(pair.car.cdr.car.car, 'unquote-splicing')) {
-                            const rest = pair.car.cdr;
-                            return new Pair(
-                                new Pair(
-                                    new LSymbol('unquote'),
-                                    unquote_splice(rest, unquote_cnt + 2, max_unq)
-                                ),
-                                nil
-                            );
-                        } else if (is_pair(pair.car.cdr) &&
-                                   !is_nil(pair.car.cdr.cdr)) {
-                            if (is_pair(pair.car.cdr.car)) {
-                                // values inside unquote are lists
-                                const result = [];
-                                return (function recur(node) {
-                                    if (is_nil(node)) {
-                                        return Pair.fromArray(result);
-                                    }
-                                    return unpromise(evauluate(node.car, {
-                                        env: self,
-                                        dynamic_env,
-                                        use_dynamic,
-                                        error
-                                    }), function(next) {
-                                        result.push(next);
-                                        return recur(node.cdr);
-                                    });
-                                })(pair.car.cdr);
-                            } else {
-                                // same as in guile if (unquote 1 2 3) it should be
-                                // spliced - scheme spec say it's unspecify but it
-                                // work like in CL
-                                return pair.car.cdr;
-                            }
-                        }
-                    }
-                }
-                if (LSymbol.is(pair.car, 'quasiquote')) {
-                    var cdr = recur(pair.cdr, unquote_cnt, max_unq + 1);
-                    return new Pair(pair.car, cdr);
-                }
-                if (LSymbol.is(pair.car, 'quote')) {
-                    return new Pair(
-                        pair.car,
-                        recur(pair.cdr, unquote_cnt, max_unq)
-                    );
-                }
-                if (LSymbol.is(pair.car, 'unquote')) {
-                    unquote_cnt++;
-                    if (unquote_cnt < max_unq) {
-                        return new Pair(
-                            new LSymbol('unquote'),
-                            recur(pair.cdr, unquote_cnt, max_unq)
-                        );
-                    }
-                    if (unquote_cnt > max_unq) {
-                        throw new Error("You can't call `unquote` outside " +
-                                        "of quasiquote");
-                    }
-                    if (is_pair(pair.cdr)) {
-                        if (!is_nil(pair.cdr.cdr)) {
-                            if (is_pair(pair.cdr.car)) {
-                                // TODO: test if this part is needed
-                                // this part was duplicated in previous section
-                                // if (LSymbol.is(pair.car.car, 'unquote')) {
-                                // so this probably can be removed
-                                const result = [];
-                                // evaluate all values in unquote
-                                return (function recur(node) {
-                                    if (is_nil(node)) {
-                                        return Pair.fromArray(result);
-                                    }
-                                    return unpromise(evaluate(node.car, {
-                                        env: self,
-                                        dynamic_env,
-                                        use_dynamic,
-                                        error
-                                    }), function(next) {
-                                        result.push(next);
-                                        return recur(node.cdr);
-                                    });
-                                })(pair.cdr);
-                            } else {
-                                return pair.cdr;
-                            }
-                        } else {
-                            return tco_eval(pair.cdr.car, {
-                                env: self,
-                                dynamic_env,
-                                error
-                            });
-                        }
-                    } else {
-                        return pair.cdr;
-                    }
-                }
-                return resolve_pair(pair, (pair) => {
-                    return recur(pair, unquote_cnt, max_unq);
-                });
-            } else if (is_plain_object(pair)) {
-                return quote_object(pair, unquote_cnt, max_unq);
-            } else if (pair instanceof Array) {
-                return quote_vector(pair, unquote_cnt, max_unq);
-            }
-            return pair;
-        }
-        // -----------------------------------------------------------------
-        function clear(node) {
-            if (is_pair(node)) {
-                delete node[__data__];
-                if (!node.have_cycles('car')) {
-                    clear(node.car);
-                }
-                if (!node.have_cycles('cdr')) {
-                    clear(node.cdr);
-                }
-            }
-        }
-        // -----------------------------------------------------------------
-        if (plain_quasiquote(arg.car)) {
-            state.object = arg.car;
-        } else {
-            state.object = recur(arg.car, 0, 1);
-        }
-        state.ready = true;
-        return state;
-    }, `(quasiquote list)
+        }, `(quasiquote list)
 
-        Similar macro to \`quote\` but inside it you can use special expressions (unquote
-        x) abbreviated to ,x that will evaluate x and insert its value verbatim or
-        (unquote-splicing x) abbreviated to ,@x that will evaluate x and splice the value
-        into the result. Best used with macros but it can be used outside.`),
+            Similar macro to \`quote\` but inside it you can use special expressions
+            (unquote x) abbreviated to ,x that will evaluate x and insert its value
+            verbatim or (unquote-splicing x) abbreviated to ,@x that will evaluate x
+            and splice the value into the result. Best used with macros but it
+            can be used outside.`);
+    })(),
     // ------------------------------------------------------------------
     clone: doc('clone', function clone(list) {
         typecheck('clone', list, 'pair');
