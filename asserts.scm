@@ -787,6 +787,16 @@
 (assert (reverse cc-log2) '((x 0 y) (x 10 y) (x 20 y)))
 
 
+(define cc-promises '())
+(let ((k #f) (i 0))
+  (define p '>(Promise.resolve (call/cc (lambda (cc) (set! k cc) i))))
+  (set! cc-promises (cons p cc-promises))
+  (set! i (+ i 1))
+  (if (< i 3)
+      (k (* i 10))))
+
+(assert (reverse (map await cc-promises)) '(0 10 20))
+
 ;; example quasiquote cc/ `(1 <x> <y>) (<x> 10) (<y> 20)
 
 ;; TODO:
@@ -797,12 +807,12 @@
 ;; - [x] do and while
 ;; - [x] syntax extensions
 ;; - [x] load
-;; - [ ] quote promise (move macro to js)
+;; - [x] quote promise (move macro to js)
 ;; - [ ] ignore
-;; - [ ] try..catch
+;; - [x] try..catch
 ;; - [x] quasiquote
 ;; - [ ] macro for define
-;; - [ ] --> and object literals
+;; - [x] --> and object literals
 ;; - [ ] syntax-rules
 ;; - [ ] macroexpand
 ;; - [ ] dynamic scope
