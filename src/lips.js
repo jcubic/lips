@@ -9314,6 +9314,20 @@ var global_env = new Environment({
         function symbol(name) {
             return new LSymbol(name);
         }
+        // Resolve builtin operators to their function values so the generated
+        // builder code is hygienic: a local binding that shadows an operator
+        // name - e.g. `(define-macro (cond . list) ...)` shadows `list`, or a
+        // rest arg named `append`/`cons` - must not break the expansion. By
+        // embedding the function value (not a symbol) the call bypasses lexical
+        // lookup entirely. Looked up lazily because global_env is still being
+        // populated when this macro is created.
+        const op_cache = {};
+        function op(name) {
+            if (!(name in op_cache)) {
+                op_cache[name] = global_env.get(name);
+            }
+            return op_cache[name];
+        }
         function make_list(...items) {
             return Pair.fromArray(items, false);
         }
@@ -9321,7 +9335,7 @@ var global_env = new Environment({
             return make_list(symbol('quote'), x);
         }
         function make_cons(a, b) {
-            return make_list(symbol('cons'), a, b);
+            return make_list(op('cons'), a, b);
         }
         // (quote ()) - an expression that evaluates to the empty list
         function is_quote_nil(x) {
@@ -9340,7 +9354,7 @@ var global_env = new Environment({
             if (is_quote_nil(a)) {
                 return b;
             }
-            return make_list(symbol('append'), a, b);
+            return make_list(op('append'), a, b);
         }
         function vector_to_list(vector) {
             return Pair.fromArray(vector, false);
@@ -9367,14 +9381,14 @@ var global_env = new Environment({
                                      qq_expand(x.cdr, depth - 1));
                 }
                 if (LSymbol.is(x.car, 'quasiquote')) {
-                    return make_list(symbol('list'), quote(symbol('quasiquote')),
+                    return make_list(op('list'), quote(symbol('quasiquote')),
                                      qq_expand(x.cdr.car, depth + 1));
                 }
                 return make_append(qq_expand_list(x.car, depth),
                                    qq_expand(x.cdr, depth));
             }
             if (Array.isArray(x)) {
-                return make_list(symbol('list->array'),
+                return make_list(op('list->array'),
                                  qq_expand(vector_to_list(x), depth));
             }
             if (is_plain_object(x)) {
@@ -9390,37 +9404,37 @@ var global_env = new Environment({
                     if (depth === 1) {
                         // (unquote a b ...) with several operands splices them
                         // all: ,a -> (list a), (unquote a b) -> (list a b)
-                        return new Pair(symbol('list'), x.cdr);
+                        return new Pair(op('list'), x.cdr);
                     }
-                    return make_list(symbol('list'),
+                    return make_list(op('list'),
                         make_cons(quote(symbol('unquote')),
                                   qq_expand(x.cdr, depth - 1)));
                 }
                 if (LSymbol.is(x.car, 'unquote-splicing')) {
                     if (depth === 1) {
                         // (unquote-splicing a b ...) -> (append a b ...)
-                        return new Pair(symbol('append'), x.cdr);
+                        return new Pair(op('append'), x.cdr);
                     }
-                    return make_list(symbol('list'),
+                    return make_list(op('list'),
                         make_cons(quote(symbol('unquote-splicing')),
                                   qq_expand(x.cdr, depth - 1)));
                 }
                 if (LSymbol.is(x.car, 'quasiquote')) {
-                    return make_list(symbol('list'),
-                        make_list(symbol('list'), quote(symbol('quasiquote')),
+                    return make_list(op('list'),
+                        make_list(op('list'), quote(symbol('quasiquote')),
                                   qq_expand(x.cdr.car, depth + 1)));
                 }
-                return make_list(symbol('list'),
+                return make_list(op('list'),
                     make_append(qq_expand_list(x.car, depth),
                                 qq_expand(x.cdr, depth)));
             }
             if (Array.isArray(x)) {
-                return make_list(symbol('list'),
-                    make_list(symbol('list->array'),
+                return make_list(op('list'),
+                    make_list(op('list->array'),
                               qq_expand(vector_to_list(x), depth)));
             }
             if (is_plain_object(x)) {
-                return make_list(symbol('list'), qq_expand_object(x, depth));
+                return make_list(op('list'), qq_expand_object(x, depth));
             }
             return quote(make_list(x));
         }
@@ -9439,7 +9453,7 @@ var global_env = new Environment({
                 if (is_pair(value) && LSymbol.is(value.car, 'unquote-splicing')) {
                     throw new Error("You can't call `unquote-splicing` inside an object");
                 }
-                return make_list(symbol('set-obj!'), obj, LString(key),
+                return make_list(op('set-obj!'), obj, LString(key),
                                  qq_expand(value, depth));
             });
             const bindings = make_list(
