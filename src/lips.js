@@ -9541,8 +9541,15 @@ var global_env = new Environment({
             return nil;
         }
         if (is_pair(arg)) {
-            var arr = global_env.get('list->array')(arg).reverse();
-            return global_env.get('array->list')(arr);
+            // reverse the spine directly - going through list->array/array->list
+            // would deep-convert element vectors (JS arrays) into lists.
+            let result = nil;
+            let node = arg;
+            while (is_pair(node)) {
+                result = new Pair(node.car, result);
+                node = node.cdr;
+            }
+            return result;
         } else if (Array.isArray(arg)) {
             return arg.reverse();
         } else {
