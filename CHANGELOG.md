@@ -22,6 +22,7 @@
 * fix warning about rejected Promise in try..catch [#482](https://github.com/jcubic/lips/issues/482) [#484](https://github.com/jcubic/lips/issues/484)
 * fix overwriting internal state when using multiple Interpters [#495](https://github.com/jcubic/lips/issues/495)
 * fix syntax extension conflict with datum syntax
+* fix `unset-special!` not removing regex based syntax extensions
 
 ## 1.0.0-beta.21
 ### Breaking
