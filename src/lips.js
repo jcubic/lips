@@ -5562,6 +5562,9 @@ function let_macro(name) {
         function new_env(env) {
             return env.inherit(star ? `${name} [${i++}]` : name);
         }
+        // the environment where init expressions are evaluated: `let` uses the
+        // outer/enclosing env, `letrec`/`let*` use the let scope.
+        const outer_env = state.env;
         let env = new_env(state.env);
         const vars = code.car;
         let value = nil;
@@ -5585,9 +5588,10 @@ function let_macro(name) {
                     delete state.object;
                 } else {
                     state.object = next.car.cdr.car;
-                }
-                if (name === 'let*') {
-                    state.env = env;
+                    // restore the env for the next init expression - evaluating
+                    // the previous one may have left state.env in a called
+                    // lambda's scope.
+                    state.env = (name === 'let') ? outer_env : env;
                 }
                 read_only(this, '__object__', next);
             }
@@ -9491,9 +9495,13 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'append!': doc('append!', function(...items) {
         var is_list = global_env.get('list?');
-        return items.reduce((acc, item) => {
+        const last = items.length - 1;
+        return items.reduce((acc, item, i) => {
             typecheck('append!', acc, ['nil', 'pair']);
-            if ((is_pair(item) || is_nil(item)) && !is_list(item)) {
+            // only the non-last arguments must be proper lists; the last
+            // argument may be an improper list or any object (R7RS append) so
+            // that e.g. `(append '(a) '(b . c)) => (a b . c) works.
+            if (i < last && (is_pair(item) || is_nil(item)) && !is_list(item)) {
                 throw new Error('append!: Invalid argument, value is not a list');
             }
             if (is_nil(acc)) {
