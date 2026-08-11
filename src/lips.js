@@ -9960,93 +9960,57 @@ var global_env = new Environment({
 
         Function that parses a string into a number.`),
     // ------------------------------------------------------------------
-    'try': doc(new Macro('try', function(source, { use_dynamic, error }) {
+    'try': doc(new Macro('try', function(source, state) {
         const code = source.cdr;
-        // TODO: add continuations or as top level expression
-        return new Promise((resolve, reject) => {
-            let catch_clause, finally_clause, body_error;
-            if (LSymbol.is(code.cdr.car.car, 'catch')) {
-                catch_clause = code.cdr.car;
-                if (is_pair(code.cdr.cdr) &&
-                    LSymbol.is(code.cdr.cdr.car.car, 'finally')) {
-                    finally_clause = code.cdr.cdr.car;
-                }
-            } else if (LSymbol.is(code.cdr.car.car, 'finally')) {
-                finally_clause = code.cdr.car;
+        let catch_clause = null, finally_clause = null;
+        let rest = code.cdr;
+        if (is_pair(rest) && is_pair(rest.car) &&
+            LSymbol.is(rest.car.car, 'catch')) {
+            catch_clause = rest.car;
+            rest = rest.cdr;
+        }
+        if (is_pair(rest) && is_pair(rest.car) &&
+            LSymbol.is(rest.car.car, 'finally')) {
+            finally_clause = rest.car;
+        }
+        if (!catch_clause && !finally_clause) {
+            throw new Error('try: invalid syntax');
+        }
+        let catch_var = null;
+        if (catch_clause) {
+            if (!is_pair(catch_clause.cdr) || !is_pair(catch_clause.cdr.car)) {
+                throw new Error('try: invalid syntax: catch require variable name');
             }
-            if (!(finally_clause || catch_clause)) {
-                throw new Error('try: invalid syntax');
+            catch_var = catch_clause.cdr.car.car;
+            if (!(catch_var instanceof LSymbol)) {
+                throw new Error('try: invalid syntax: catch require variable name');
             }
-            function finalize(result) {
-                resolve(result);
-                throw new IgnoreException('[CATCH]');
-            }
-            let next = (result, next) => {
-                next(result);
-            }
-            if (finally_clause) {
-                next = function(result, cont) {
-                    // prevent infinite loop when finally throw exception
-                    next = reject;
-                    args.error = (e) => {
-                        throw e;
-                    };
-                    unpromise(evaluate(new Pair(
-                        new LSymbol('begin'),
-                        finally_clause.cdr
-                    ), args), function() {
-                        cont(result);
-                    });
-                };
-            }
-            const args = {
-                env: this,
-                use_dynamic,
-                dynamic_env: this,
-                error: (e) => {
-                    if (e instanceof IgnoreException) {
-                        throw e;
-                    }
-                    body_error = true;
-                    if (catch_clause) {
-                        var env = this.inherit('try');
-                        const name = catch_clause.cdr.car.car;
-                        if (!(name instanceof LSymbol)) {
-                            throw new Error('try: invalid syntax: catch require variable name');
-                        }
-                        env.set(name, e);
-                        let catch_error;
-                        var catch_args = {
-                            env,
-                            use_dynamic,
-                            dynamic_env: this,
-                            error: (e) => {
-                                catch_error = true;
-                                reject(e);
-                                throw new IgnoreException('[CATCH]');
-                            }
-                        };
-                        const value = evaluate(new Pair(
-                            new LSymbol('begin'),
-                            catch_clause.cdr.cdr
-                        ), catch_args);
-                        unpromise(value, function handler(result) {
-                            if (!catch_error) {
-                                next(result, finalize);
-                            }
-                        });
-                    } else {
-                        next(undefined, () => {
-                            reject(e);
-                        });
-                    }
-                }
-            };
-            const value = tco_eval(code.car, args);
-            unpromise(value, function(result) {
-                next(result, resolve);
-            }, args.error);
+        }
+        // Register an exception handler for the dynamic extent of the body.
+        // The main tco_generator loop dispatches to it (running the catch
+        // and/or finally clause) when an exception is thrown while evaluating
+        // the body - see the loop in tco_generator.
+        const handler = {
+            env: this,
+            use_dynamic: state.use_dynamic,
+            dynamic_env: state.dynamic_env,
+            catch_var,
+            catch_body: catch_clause ? catch_clause.cdr.cdr : null,
+            finally_body: finally_clause ? finally_clause.cdr : null,
+            return_cc: state.cc,
+            source
+        };
+        try_handlers.push(handler);
+        // normal completion of the body: unregister the handler, run finally
+        // (if any) and continue with the body's value.
+        state.cc = new Continuation('try', null, source, state, function(st) {
+            const result = st.object;
+            unregister_handler(handler);
+            finish_try(st, handler, 'return', result);
         });
+        state.object = code.car;
+        state.ready = false;
+        return state;
     }), `(try expr (catch (e) code))
          (try expr (catch (e) code) (finally code))
          (try expr (finally code))
@@ -11324,6 +11288,52 @@ const top_cc = new Continuation('top', null, null, {}, (state) => {
 });
 
 // -------------------------------------------------------------------------
+// :: Exception handler stack used by the `try` macro. Instead of running the
+// :: body in a nested eval, `try` pushes a handler here and lets the main
+// :: tco_generator loop dispatch to it when an exception is thrown. This makes
+// :: try/catch/finally cooperate with the continuation machinery (call/cc can
+// :: be captured inside the body or the catch clause and re-entered).
+// -------------------------------------------------------------------------
+const try_handlers = [];
+// -------------------------------------------------------------------------
+function unregister_handler(handler) {
+    const i = try_handlers.indexOf(handler);
+    if (i !== -1) {
+        try_handlers.splice(i, 1);
+    }
+}
+// -------------------------------------------------------------------------
+// After a try body or catch clause finishes, run the finally clause (if any)
+// and then either continue with a value (kind === 'return') or re-throw the
+// exception (kind === 'raise'). Everything is expressed as continuations so it
+// flows through the normal loop.
+function finish_try(state, handler, kind, payload) {
+    function done(st) {
+        if (kind === 'return') {
+            st.env = handler.env;
+            st.dynamic_env = handler.dynamic_env;
+            st.use_dynamic = handler.use_dynamic;
+            st.cc = handler.return_cc;
+            st.object = payload;
+            st.ready = true;
+        } else {
+            // re-throw after finally - caught by an outer handler or the loop
+            throw payload;
+        }
+    }
+    if (handler.finally_body) {
+        state.env = handler.env;
+        state.dynamic_env = handler.dynamic_env;
+        state.use_dynamic = handler.use_dynamic;
+        state.cc = new Continuation('finally', null, handler.source, state, done);
+        state.object = new Pair(new LSymbol('begin'), handler.finally_body);
+        state.ready = false;
+    } else {
+        done(state);
+    }
+}
+
+// -------------------------------------------------------------------------
 function tco_eval(...args) {
     return uniterate(tco_generator(...args));
 }
@@ -11342,26 +11352,58 @@ function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand 
         env = env || user_env;
     }
     const state = new State(code, cc || top_cc, { env, cc, dynamic_env, macro_expand });
-    try {
-        while (true) {
+    // handlers registered by an enclosing eval don't belong to this loop - only
+    // dispatch to handlers pushed while running this generator.
+    const handler_base = try_handlers.length;
+    while (true) {
+        try {
             if (yield* state.eval()) {
                 state.ready = false;
                 yield state.cont();
             }
+        } catch(e) {
+            if (e instanceof State) {
+                // normal top-level return - drop any handlers still registered
+                // by this loop (their dynamic extent ends here).
+                try_handlers.length = handler_base;
+                return e.object;
+            }
+            // an active `try` in this loop? redirect to its catch/finally.
+            if (!(e instanceof IgnoreException) &&
+                try_handlers.length > handler_base) {
+                const handler = try_handlers.pop();
+                if (handler.catch_body) {
+                    const catch_env = handler.env.inherit('catch');
+                    catch_env.set(handler.catch_var, e);
+                    state.env = catch_env;
+                    state.dynamic_env = handler.dynamic_env;
+                    state.use_dynamic = handler.use_dynamic;
+                    // after the catch clause: run finally, continue with value
+                    state.cc = new Continuation('catch', null, handler.source,
+                                                state, function(st) {
+                        finish_try(st, handler, 'return', st.object);
+                    });
+                    state.object = new Pair(new LSymbol('begin'), handler.catch_body);
+                    state.ready = false;
+                } else {
+                    // finally-only: run finally then re-throw the exception
+                    finish_try(state, handler, 'raise', e);
+                }
+                continue;
+            }
+            // exception unwinds past this loop - drop handlers it registered
+            // (an IgnoreException, or an error with no matching handler here).
+            try_handlers.length = handler_base;
+            e.__code__ = state.cc.trace(cc => {
+                return to_string(cc.__code__, true);
+            });
+            // save the code if no continuation trace
+            if (!e.__code__.length) {
+                e.__code__ = [to_string(code, true)];
+            }
+            state.error && state.error(e);
+            throw e;
         }
-    } catch(e) {
-        if (e instanceof State) {
-            return e.object;
-        }
-        e.__code__ = state.cc.trace(cc => {
-            return to_string(cc.__code__, true);
-        });
-        // save the code if no continuation trace
-        if (!e.__code__.length) {
-            e.__code__ = [to_string(code, true)];
-        }
-        state.error && state.error(e);
-        throw e;
     }
 }
 

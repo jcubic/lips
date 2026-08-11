@@ -568,7 +568,14 @@
 (assert (list-product '(0 1 2 3 4 10 20 30)) 0)
 (assert (list-product '(1 2 3 4 10 20 30)) 144000)
 
-#;(print (try
+
+(let ((i 0) (k #f))
+  (print (--> Array (from (call/cc (lambda (cc) (set! k cc) "foo bar")))))
+  (set! i (+ i 1))
+  (if (< i 3)
+      (k (--> (* i 10) (toString)))))
+
+(print (try
         (throw "Nasty")
         (catch (e)
                e.message)))

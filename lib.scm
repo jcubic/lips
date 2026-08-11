@@ -1,6 +1,81 @@
 (define tests 0)
 (define passed 0)
 
+(define-macro (--> expr . body)
+  "Helper macro that simplifies calling methods on objects. It works with chaining
+   usage: (--> ($ \"body\")
+               (css \"color\" \"red\")
+               (on \"click\" (lambda () (display \"click\"))))
+
+          (--> document (querySelectorAll \"div\"))
+
+          (--> (fetch \"https://jcubic.pl\")
+               (text)
+               (match #/<title>([^<]+)<\\/title>/)
+               1)
+
+          (--> document
+               (querySelectorAll \".cmd-prompt\")
+               0
+               'innerHTML
+               (replace #/<(\"[^\"]+\"|[^>])+>/g \"\"))
+
+          (--> document.body
+               (style.setProperty \"--color\" \"red\"))"
+  (let ((obj (gensym "obj")))
+    `(let* ((,obj ,expr))
+       ,@(map (lambda (code)
+                (let* ((value (gensym "value"))
+                       (name (if (quoted-symbol? code)
+                                 (symbol->string (cadr code))
+                                 (if (symbol? code)
+                                     (symbol->string code)
+                                     (if (pair? code)
+                                         (symbol->string (car code))
+                                         code))))
+                       (accessor (if (string? name)
+                                     `(. ,obj ,@(split "." name))
+                                     `(. ,obj ,name)))
+                       (call (and (pair? code) (not (quoted-symbol? code)))))
+                  `(let ((,value ,accessor))
+                     ,(if call
+                          `(if (not (function? ,value))
+                               (throw (new Error (string-append "--> " ,(repr name)
+                                                                " is not a function"
+                                                                " in expression "
+                                                                ,(repr `(--> ,expr . ,body)))))
+                               (set! ,obj (,value ,@(cdr code))))
+                          `(set! ,obj ,value)))))
+              body)
+       ,obj)))
+
+(define (quoted-symbol? x)
+   "(quoted-symbol? code)
+
+   Helper function that tests if value is a quoted symbol. To be used in macros
+   that pass literal code that is transformed by parser.
+
+   usage:
+
+      (define-macro (test x)
+         (if (quoted-symbol? x)
+             `',(cadr x)))
+
+      (list 'hello (test 'world))"
+   (and (pair? x) (eq? (car x) 'quote) (symbol? (cadr x)) (null? (cddr x))))
+
+(define (symbol->string s)
+  "(symbol->string symbol)
+
+   Function that converts a LIPS symbol to a string."
+  (typecheck "symbol->string" s "symbol")
+  (let ((name s.__name__))
+    (let ((str (if (string? name)
+                   name
+                   (name.toString))))
+      (str.freeze)
+      str)))
+
 (define-macro (assert a b)
   (let ((a_expr (gensym "a"))
         (b_expr (gensym "b")))
@@ -24,6 +99,13 @@
 (define string-append concat)
 (define (interaction-environment)
   (current-environment))
+(define (number->string n . rest)
+  (if (null? rest)
+      (n.toString)
+      (n.toString (car rest))))
+(define (symbol->string s)
+  (let ((name s.__name__))
+    (if (string? name) name (name.toString))))
 
 (define-macro (or . args)
   "(or expr1 expr2 ...)
