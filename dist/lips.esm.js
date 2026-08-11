@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Tue, 11 Aug 2026 14:47:33 +0000
+ * build: Tue, 11 Aug 2026 17:06:03 +0000
  */
 
 function _isNativeReflectConstruct$1() {
@@ -5024,11 +5024,10 @@ var Lexer = /*#__PURE__*/function () {
           ++i;
           continue;
         }
-        // a character can be accumulated into the current token when no rule
-        // matched it, unless it is a structural boundary in a state that
-        // can't contain one; there it ends the collectable content so we
-        // prefer backtracking to a conflicting start rule
-        var can_collect = this._state !== null && (Lexer.greedy_states.has(this._state) || !_char5.match(Lexer.boundary));
+        // an open-ended state accumulates a character that no rule matched
+        // (the original greedy behaviour); a state with complete rules ends
+        // the token here so we can backtrack to a conflicting start rule
+        var can_collect = this._state !== null && Lexer.greedy_states.has(this._state);
         if (!was_retry && can_collect) {
           // collect char in token
           ++i;
@@ -5086,9 +5085,14 @@ Lexer.make_rule = function make_rule(seq, symbol) {
   var n_re = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
   var rules = [];
   for (var i = 0, len = seq.length; i < len; ++i) {
+    var part = seq[i];
+    // a quantified regex part (e.g. [0-9]+) matches one or more characters,
+    // so the character before it may itself be part of the run: its own
+    // previous-character constraint has to be relaxed to null
+    var quantified = is_regex(part) && /[*+]$/.test(part.source);
     var rule = [];
-    rule.push(seq[i]);
-    rule.push(seq[i - 1] || p_re);
+    rule.push(part);
+    rule.push(quantified ? null : seq[i - 1] || p_re);
     rule.push(seq[i + 1] || n_re);
     if (i === 0) {
       rule.push(null);
@@ -5101,6 +5105,12 @@ Lexer.make_rule = function make_rule(seq, symbol) {
       rule.push(symbol);
     }
     rules.push(rule);
+    // add a self-loop so the additional characters of the quantified part
+    // keep the token active with an explicit rule instead of relying on the
+    // greedy collect fallback
+    if (quantified) {
+      rules.push([part, null, null, symbol, symbol]);
+    }
   }
   return rules;
 };
@@ -5135,16 +5145,16 @@ Lexer.i_comment = Symbol["for"]('i_comment');
 Lexer.l_datum = Symbol["for"]('l_datum');
 Lexer.dot = Symbol["for"]('dot');
 // ----------------------------------------------------------------------
-// :: States whose tokens may legitimately contain boundary characters
-// :: (whitespace, parentheses, quote), such as strings, comments and regex
-// :: literals. In every other state (datum labels, syntax extensions, ...) a
-// :: boundary character that no rule matches ends the token's collectable
-// :: content, so the lexer can backtrack to a conflicting rule instead of
-// :: greedily swallowing the rest of the input up to some distant spurious
-// :: match (e.g. an extension or datum rule `#2...` running until a later
-// :: `#0=`).
+// :: States with open-ended content (strings, comments, regex literals,
+// :: symbols, character names) accumulate any character that no rule matches,
+// :: the original greedy behaviour. Every other state (datum labels, syntax
+// :: extensions) has a complete set of rules for the characters it can
+// :: contain, so a character with no matching rule ends the token and lets the
+// :: lexer backtrack to a conflicting rule instead of greedily swallowing the
+// :: rest of the input up to some distant spurious match (e.g. an extension or
+// :: datum rule `#2...` running until a later `#0=`).
 // ----------------------------------------------------------------------
-Lexer.greedy_states = new Set([Lexer.string, Lexer.string_escape, Lexer.comment, Lexer.b_comment, Lexer.i_comment, Lexer.regex, Lexer.regex_init, Lexer.regex_class, Lexer.character, Lexer.b_symbol, Lexer.b_symbol_ex]);
+Lexer.greedy_states = new Set([Lexer.string, Lexer.string_escape, Lexer.symbol, Lexer.comment, Lexer.b_comment, Lexer.i_comment, Lexer.regex, Lexer.regex_init, Lexer.regex_class, Lexer.character, Lexer.b_symbol, Lexer.b_symbol_ex]);
 // ----------------------------------------------------------------------
 Lexer.boundary = /^$|[\s()[\]']/;
 // ----------------------------------------------------------------------
@@ -5167,7 +5177,10 @@ Lexer._rules = [
 // inline commentss
 [/#/, null, /;/, null, Lexer.i_comment], [/;/, /#/, null, Lexer.i_comment, null],
 // datum label
-[/#/, null, /[0-9]/, null, Lexer.l_datum], [/=/, /[0-9]/, null, Lexer.l_datum, null], [/#/, /[0-9]/, null, Lexer.l_datum, null],
+[/#/, null, /[0-9]/, null, Lexer.l_datum],
+// consume the digits of the label so the state has an explicit rule for
+// every character it can contain and never falls back to greedy collecting
+[/[0-9]/, null, null, Lexer.l_datum, Lexer.l_datum], [/=/, /[0-9]/, null, Lexer.l_datum, null], [/#/, /[0-9]/, null, Lexer.l_datum, null],
 // for dot comma `(a .,b)
 [/\./, Lexer.boundary, /,/, null, null],
 // block symbols
@@ -18253,10 +18266,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Tue, 11 Aug 2026 14:47:33 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Tue, 11 Aug 2026 17:06:03 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Tue, 11 Aug 2026 14:47:33 +0000').valueOf();
+  var date = LString('Tue, 11 Aug 2026 17:06:03 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -18296,7 +18309,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Tue, 11 Aug 2026 14:47:33 +0000';
+var date = 'Tue, 11 Aug 2026 17:06:03 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

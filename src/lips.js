@@ -1454,12 +1454,11 @@ class Lexer {
                 ++i;
                 continue;
             }
-            // a character can be accumulated into the current token when no rule
-            // matched it, unless it is a structural boundary in a state that
-            // can't contain one; there it ends the collectable content so we
-            // prefer backtracking to a conflicting start rule
+            // an open-ended state accumulates a character that no rule matched
+            // (the original greedy behaviour); a state with complete rules ends
+            // the token here so we can backtrack to a conflicting start rule
             const can_collect = this._state !== null &&
-                (Lexer.greedy_states.has(this._state) || !char.match(Lexer.boundary));
+                Lexer.greedy_states.has(this._state);
             if (!was_retry && can_collect) {
                 // collect char in token
                 ++i;
@@ -1512,9 +1511,14 @@ Lexer.literal_rule = function literal_rule(string, symbol, p_re = null, n_re = n
 Lexer.make_rule = function make_rule(seq, symbol, p_re = null, n_re = null) {
     const rules = [];
     for (let i = 0, len = seq.length; i < len; ++i) {
+        const part = seq[i];
+        // a quantified regex part (e.g. [0-9]+) matches one or more characters,
+        // so the character before it may itself be part of the run: its own
+        // previous-character constraint has to be relaxed to null
+        const quantified = is_regex(part) && /[*+]$/.test(part.source);
         const rule = [];
-        rule.push(seq[i]);
-        rule.push(seq[i - 1] || p_re);
+        rule.push(part);
+        rule.push(quantified ? null : (seq[i - 1] || p_re));
         rule.push(seq[i + 1] || n_re);
         if (i === 0) {
             rule.push(null);
@@ -1527,6 +1531,12 @@ Lexer.make_rule = function make_rule(seq, symbol, p_re = null, n_re = null) {
             rule.push(symbol);
         }
         rules.push(rule);
+        // add a self-loop so the additional characters of the quantified part
+        // keep the token active with an explicit rule instead of relying on the
+        // greedy collect fallback
+        if (quantified) {
+            rules.push([part, null, null, symbol, symbol]);
+        }
     }
     return rules;
 };
@@ -1561,18 +1571,19 @@ Lexer.i_comment = Symbol.for('i_comment');
 Lexer.l_datum = Symbol.for('l_datum');
 Lexer.dot = Symbol.for('dot');
 // ----------------------------------------------------------------------
-// :: States whose tokens may legitimately contain boundary characters
-// :: (whitespace, parentheses, quote), such as strings, comments and regex
-// :: literals. In every other state (datum labels, syntax extensions, ...) a
-// :: boundary character that no rule matches ends the token's collectable
-// :: content, so the lexer can backtrack to a conflicting rule instead of
-// :: greedily swallowing the rest of the input up to some distant spurious
-// :: match (e.g. an extension or datum rule `#2...` running until a later
-// :: `#0=`).
+// :: States with open-ended content (strings, comments, regex literals,
+// :: symbols, character names) accumulate any character that no rule matches,
+// :: the original greedy behaviour. Every other state (datum labels, syntax
+// :: extensions) has a complete set of rules for the characters it can
+// :: contain, so a character with no matching rule ends the token and lets the
+// :: lexer backtrack to a conflicting rule instead of greedily swallowing the
+// :: rest of the input up to some distant spurious match (e.g. an extension or
+// :: datum rule `#2...` running until a later `#0=`).
 // ----------------------------------------------------------------------
 Lexer.greedy_states = new Set([
     Lexer.string,
     Lexer.string_escape,
+    Lexer.symbol,
     Lexer.comment,
     Lexer.b_comment,
     Lexer.i_comment,
@@ -1637,6 +1648,9 @@ Lexer._rules = [
 
     // datum label
     [/#/, null, /[0-9]/, null, Lexer.l_datum],
+    // consume the digits of the label so the state has an explicit rule for
+    // every character it can contain and never falls back to greedy collecting
+    [/[0-9]/, null, null, Lexer.l_datum, Lexer.l_datum],
     [/=/, /[0-9]/, null, Lexer.l_datum, null],
     [/#/, /[0-9]/, null, Lexer.l_datum, null],
 
