@@ -1039,7 +1039,19 @@ var specials = {
         }
     },
     remove: function(name) {
-        delete this.get_list(name).delete(name);
+        const list = this.get_list(name);
+        if (is_regex(name)) {
+            // regex specials are keyed by RegExp objects, which Map compares by
+            // identity; a freshly constructed regex never matches, so look the
+            // entry up by its string representation (source + flags) instead
+            for (const key of list.keys()) {
+                if (String(key) === String(name)) {
+                    list.delete(key);
+                }
+            }
+        } else {
+            list.delete(name);
+        }
         this.trigger('remove');
     },
     append: function(name, value, type) {
@@ -1284,57 +1296,145 @@ class Lexer {
         const offset = this._start.offset;
         return this.__input__.substring(offset).replace(re, '$1').trim();
     }
+    _backtrack(stack) {
+        // restore the lexer bookkeeping saved in the most recent choice point
+        // and return where scanning should resume (character + rule index)
+        const cp = stack.pop();
+        this._state = null;
+        this._line = cp.line;
+        this._newline = cp.newline;
+        this._col = cp.col;
+        return { i: cp.i, rule_index: cp.rule_index };
+    }
+    _token_error() {
+        let e;
+        const expr = this._recover_token();
+        if (expr[0] === '#') {
+            e = new Error(`Syntax Error: invalid token ${expr}`);
+        } else {
+            e = new Unterminated(`Syntax Error: Unterminated expression ${expr}`);
+        }
+        throw this._augment_exception(e);
+    }
     next_token() {
         if (this._i >= this.__input__.length) {
             return false;
         }
+        const rules = Lexer.rules;
+        const len = this.__input__.length;
+        // The generic symbol rules are always last; backtracking must not fall
+        // into them (see below), so we remember where they start.
+        const symbol_start = rules.length - Lexer._symbol_rules.length;
+        // The FSM is greedy: at every character it commits to the first matching
+        // rule. When two rules can start the same token (e.g. a regex syntax
+        // extension `#[0-9]+a` and a datum label `#2=` both match `#` + digit)
+        // the greedy choice can walk into a dead-end while the other rule would
+        // have completed the token. To support such conflicting rules we keep a
+        // stack of choice points recorded whenever a specific (non-symbol) rule
+        // can start a token (`state === null`) and backtrack to the next
+        // alternative when the current branch fails to complete a token.
+        const stack = [];
+        // whether a specific (non-symbol) rule ever started a token in this
+        // scan; if so, exhausting the alternatives is a token error rather than
+        // an unmatchable character
+        let attempted = false;
         let start = true;
-        loop:
-        for (let i = this._i, len = this.__input__.length; i < len; ++i) {
+        let i = this._i;
+        // index of the first rule to try at the current character; only ever
+        // non-zero right after a backtrack, so forward scanning stays unchanged
+        let rule_index = 0;
+        // true when we jumped back to `i` via backtracking and the per-character
+        // preprocessing (newline/whitespace bookkeeping) must not run again
+        let resume = false;
+        while (true) {
+            if (i >= len) {
+                // reached the end of the input without completing a token: try
+                // the next alternative start rule before giving up (backtracking
+                // never reaches the symbol rules, so an unterminated string is
+                // still reported as an error rather than becoming a symbol)
+                if (![null, Lexer.comment].includes(this._state) && stack.length) {
+                    ({ i, rule_index } = this._backtrack(stack));
+                    resume = true;
+                    continue;
+                }
+                break;
+            }
             const char = this.__input__[i];
             const prev_char = this.__input__[i - 1] || '';
             const next_char = this.__input__[i + 1] || '';
-            if (start) {
-                this._start = {
-                    col: this._i - this._newline,
-                    line: this._line,
-                    offset: this._i
-                };
-            }
-            if (char === '\n') {
-                ++this._line;
-                const newline = this._newline;
-                if (this._state === null) {
-                    // keep beginning of the newline to calculate col
-                    // we don't want to check inside the token (e.g. strings)
-                    this._newline = i + 1;
+            if (!resume) {
+                if (start) {
+                    this._start = {
+                        col: this._i - this._newline,
+                        line: this._line,
+                        offset: this._i
+                    };
                 }
-                this._col = this._i - newline;
-                if (this._whitespace && this._state === null) {
-                    this._next = i + 1;
-                    return true;
-                }
-            }
-            // skip leading spaces
-            if (start && this._state === null && char.match(/\s/)) {
-                if (this._whitespace) {
-                    if (!next_char.match(/\s/)) {
+                if (char === '\n') {
+                    ++this._line;
+                    const newline = this._newline;
+                    if (this._state === null) {
+                        // keep beginning of the newline to calculate col
+                        // we don't want to check inside the token (e.g. strings)
+                        this._newline = i + 1;
+                    }
+                    this._col = this._i - newline;
+                    if (this._whitespace && this._state === null) {
                         this._next = i + 1;
-                        this._col = this._i - this._newline;
                         return true;
+                    }
+                }
+                // skip leading spaces
+                if (start && this._state === null && char.match(/\s/)) {
+                    if (this._whitespace) {
+                        if (!next_char.match(/\s/)) {
+                            this._next = i + 1;
+                            this._col = this._i - this._newline;
+                            return true;
+                        } else {
+                            ++i;
+                            continue;
+                        }
                     } else {
+                        this._i = i + 1;
+                        ++i;
                         continue;
                     }
-                } else {
-                    this._i = i + 1;
-                    continue;
                 }
+                start = false;
             }
-            start = false;
-            for (let rule of Lexer.rules) {
+            resume = false;
+            let matched = false;
+            // forward scanning tries every rule; a backtrack retry (rule_index
+            // non-zero) stops before the generic symbol rules so a failed
+            // specific token is reported as an error rather than reinterpreted
+            // as a symbol
+            const retry = rule_index > 0;
+            const limit = retry ? symbol_start : rules.length;
+            for (let r = rule_index; r < limit; ++r) {
+                const rule = rules[r];
                 if (this.match_rule(rule, { prev_char, char, next_char })) {
                     // change state to null if end of the token
-                    var next_state = rule[rule.length - 1];
+                    const next_state = rule[rule.length - 1];
+                    if (next_state === null && retry && !next_char.match(Lexer.boundary)) {
+                        // maximal munch: while backtracking don't accept a rule
+                        // that completes a token before a token boundary, e.g.
+                        // the single character `#` vector special completing `#`
+                        // in the middle of an invalid `#4`
+                        continue;
+                    }
+                    if (this._state === null && next_state !== null && r < symbol_start) {
+                        // a specific token can start here; remember the remaining
+                        // non-symbol rules so we can retry them on a dead-end
+                        attempted = true;
+                        stack.push({
+                            i,
+                            rule_index: r + 1,
+                            line: this._line,
+                            newline: this._newline,
+                            col: this._col
+                        });
+                    }
                     this._state = next_state;
                     if (this._state === null) {
                         this._next = i + 1;
@@ -1342,12 +1442,45 @@ class Lexer {
                         return true;
                     }
                     // token is activated
-                    continue loop;
+                    matched = true;
+                    break;
                 }
             }
-            if (this._state !== null) {
+            // only the first character after a backtrack starts at a non-zero
+            // rule index; capture that before resetting for forward scanning
+            const was_retry = rule_index > 0;
+            rule_index = 0;
+            if (matched) {
+                ++i;
+                continue;
+            }
+            // a character can be accumulated into the current token when no rule
+            // matched it, unless it is a structural boundary in a state that
+            // can't contain one; there it ends the collectable content so we
+            // prefer backtracking to a conflicting start rule
+            const can_collect = this._state !== null &&
+                (Lexer.greedy_states.has(this._state) || !char.match(Lexer.boundary));
+            if (!was_retry && can_collect) {
                 // collect char in token
-                continue loop;
+                ++i;
+                continue;
+            }
+            // no (more) rule matches at this character
+            if (stack.length) {
+                // backtrack to the next alternative start rule
+                ({ i, rule_index } = this._backtrack(stack));
+                resume = true;
+                continue;
+            }
+            if (can_collect) {
+                // no alternatives left, keep collecting (e.g. a long symbol)
+                ++i;
+                continue;
+            }
+            if (attempted) {
+                // a specific token started here but none of the conflicting
+                // rules completed it: report it as an invalid/unterminated token
+                this._token_error();
             }
             // no rule for token
             const line = this.__input__.split('\n')[this._start.line];
@@ -1357,17 +1490,7 @@ class Lexer {
         // we need to ignore comments because they can be the last expression in code
         // without extra newline at the end
         if (![null, Lexer.comment].includes(this._state)) {
-            const line_number = this.__input__.substring(0, this._newline).match(/\n/g)?.length ?? 0;
-            const line = this.__input__.substring(this._newline);
-            let e;
-            const offset = this._start.offset;
-            const expr = this._recover_token();
-            if (expr[0] === '#') {
-                e = new Error(`Syntax Error: invalid token ${expr}`);
-            } else {
-                e = new Unterminated(`Syntax Error: Unterminated expression ${expr}`);
-            }
-            throw this._augment_exception(e);
+            this._token_error();
         }
     }
 }
@@ -1437,6 +1560,29 @@ Lexer.b_comment = Symbol.for('b_comment');
 Lexer.i_comment = Symbol.for('i_comment');
 Lexer.l_datum = Symbol.for('l_datum');
 Lexer.dot = Symbol.for('dot');
+// ----------------------------------------------------------------------
+// :: States whose tokens may legitimately contain boundary characters
+// :: (whitespace, parentheses, quote), such as strings, comments and regex
+// :: literals. In every other state (datum labels, syntax extensions, ...) a
+// :: boundary character that no rule matches ends the token's collectable
+// :: content, so the lexer can backtrack to a conflicting rule instead of
+// :: greedily swallowing the rest of the input up to some distant spurious
+// :: match (e.g. an extension or datum rule `#2...` running until a later
+// :: `#0=`).
+// ----------------------------------------------------------------------
+Lexer.greedy_states = new Set([
+    Lexer.string,
+    Lexer.string_escape,
+    Lexer.comment,
+    Lexer.b_comment,
+    Lexer.i_comment,
+    Lexer.regex,
+    Lexer.regex_init,
+    Lexer.regex_class,
+    Lexer.character,
+    Lexer.b_symbol,
+    Lexer.b_symbol_ex
+]);
 // ----------------------------------------------------------------------
 Lexer.boundary = /^$|[\s()[\]']/;
 // ----------------------------------------------------------------------
@@ -1587,19 +1733,17 @@ Object.defineProperty(Lexer, 'rules', {
             return acc.concat(rules);
         }, []);
 
+        // NOTE: the generic symbol rules must stay last; next_token() never
+        // backtracks into them so that a token that started matching a specific
+        // rule (a syntax extension, a datum label, a string, ...) but failed to
+        // complete reports an error instead of being silently reinterpreted as
+        // a symbol
         Lexer._cache.rules = regex_specials.concat(
             Lexer._rules,
             Lexer._brackets,
             special_rules,
             Lexer._symbol_rules
         );
-        /*
-        Lexer._cache.rules = special_rules.concat(
-            Lexer._rules,
-            Lexer._brackets,
-            Lexer._symbol_rules
-        );
-        */
 
         Lexer._cache.valid = true;
         return Lexer._cache.rules;

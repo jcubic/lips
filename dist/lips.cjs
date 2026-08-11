@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Mon, 09 Feb 2026 16:01:39 +0000
+ * build: Tue, 11 Aug 2026 14:47:33 +0000
  */
 
 'use strict';
@@ -4479,7 +4479,10 @@ var specials = {
   SPLICE: Symbol["for"]('splice'),
   SYMBOL: Symbol["for"]('symbol'),
   names: function names() {
-    return Object.keys(this.__list__);
+    return Array.from(this.__list__.keys());
+  },
+  regex: function regex() {
+    return Array.from(this.__regex__.keys());
   },
   type: function type(name) {
     try {
@@ -4489,7 +4492,24 @@ var specials = {
     }
   },
   get: function get(name) {
-    return this.__list__[name];
+    var regex = _toConsumableArray(this.__regex__.keys());
+    if (regex.length) {
+      var _iterator3 = _createForOfIteratorHelper(regex),
+        _step3;
+      try {
+        for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
+          var re = _step3.value;
+          if (name.match(re)) {
+            return this.__regex__.get(re);
+          }
+        }
+      } catch (err) {
+        _iterator3.e(err);
+      } finally {
+        _iterator3.f();
+      }
+    }
+    return this.__list__.get(name);
   },
   // events are used in Lexer dynamic rules
   off: function off(name) {
@@ -4530,31 +4550,67 @@ var specials = {
     }
   },
   remove: function remove(name) {
-    delete this.__list__[name];
+    var list = this.get_list(name);
+    if (is_regex(name)) {
+      // regex specials are keyed by RegExp objects, which Map compares by
+      // identity; a freshly constructed regex never matches, so look the
+      // entry up by its string representation (source + flags) instead
+      var _iterator4 = _createForOfIteratorHelper(list.keys()),
+        _step4;
+      try {
+        for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
+          var key = _step4.value;
+          if (String(key) === String(name)) {
+            list["delete"](key);
+          }
+        }
+      } catch (err) {
+        _iterator4.e(err);
+      } finally {
+        _iterator4.f();
+      }
+    } else {
+      list["delete"](name);
+    }
     this.trigger('remove');
   },
   append: function append(name, value, type) {
-    this.__list__[name] = {
+    this.get_list(name).set(name, {
       seq: name,
       value: value,
       type: type
-    };
+    });
     this.trigger('append');
   },
+  get_list: function get_list(prop) {
+    if (is_regex(prop)) {
+      return this.__regex__;
+    } else {
+      return this.__list__;
+    }
+  },
   __events__: {},
-  __list__: {}
+  __list__: new Map(),
+  __regex__: new Map()
 };
 function is_special(token) {
-  return specials.names().includes(token);
+  var names = specials.names();
+  var regex = specials.regex();
+  if (regex.length) {
+    return regex.some(function (re) {
+      return token.match(re);
+    });
+  }
+  return names.includes(token);
 }
 function is_builtin(token) {
   return specials.__builtins__.includes(token);
 }
 function is_literal(special) {
-  return specials.type(special) === specials.LITERAL;
+  return special.type === specials.LITERAL;
 }
 function is_symbol_extension(special) {
-  return specials.type(special) === specials.SYMBOL;
+  return special.type === specials.SYMBOL;
 }
 // ----------------------------------------------------------------------
 var defined_specials = [["'", new LSymbol('quote'), specials.LITERAL], ['`', new LSymbol('quasiquote'), specials.LITERAL], [',@', new LSymbol('unquote-splicing'), specials.LITERAL], [',', new LSymbol('unquote'), specials.LITERAL], ["'>", new LSymbol('quote-promise'), specials.LITERAL]];
@@ -4801,83 +4857,206 @@ var Lexer = /*#__PURE__*/function () {
       return this.__input__.substring(offset).replace(re, '$1').trim();
     }
   }, {
+    key: "_backtrack",
+    value: function _backtrack(stack) {
+      // restore the lexer bookkeeping saved in the most recent choice point
+      // and return where scanning should resume (character + rule index)
+      var cp = stack.pop();
+      this._state = null;
+      this._line = cp.line;
+      this._newline = cp.newline;
+      this._col = cp.col;
+      return {
+        i: cp.i,
+        rule_index: cp.rule_index
+      };
+    }
+  }, {
+    key: "_token_error",
+    value: function _token_error() {
+      var e;
+      var expr = this._recover_token();
+      if (expr[0] === '#') {
+        e = new Error("Syntax Error: invalid token ".concat(expr));
+      } else {
+        e = new Unterminated("Syntax Error: Unterminated expression ".concat(expr));
+      }
+      throw this._augment_exception(e);
+    }
+  }, {
     key: "next_token",
     value: function next_token() {
       if (this._i >= this.__input__.length) {
         return false;
       }
+      var rules = Lexer.rules;
+      var len = this.__input__.length;
+      // The generic symbol rules are always last; backtracking must not fall
+      // into them (see below), so we remember where they start.
+      var symbol_start = rules.length - Lexer._symbol_rules.length;
+      // The FSM is greedy: at every character it commits to the first matching
+      // rule. When two rules can start the same token (e.g. a regex syntax
+      // extension `#[0-9]+a` and a datum label `#2=` both match `#` + digit)
+      // the greedy choice can walk into a dead-end while the other rule would
+      // have completed the token. To support such conflicting rules we keep a
+      // stack of choice points recorded whenever a specific (non-symbol) rule
+      // can start a token (`state === null`) and backtrack to the next
+      // alternative when the current branch fails to complete a token.
+      var stack = [];
+      // whether a specific (non-symbol) rule ever started a token in this
+      // scan; if so, exhausting the alternatives is a token error rather than
+      // an unmatchable character
+      var attempted = false;
       var start = true;
-      loop: for (var i = this._i, len = this.__input__.length; i < len; ++i) {
+      var i = this._i;
+      // index of the first rule to try at the current character; only ever
+      // non-zero right after a backtrack, so forward scanning stays unchanged
+      var rule_index = 0;
+      // true when we jumped back to `i` via backtracking and the per-character
+      // preprocessing (newline/whitespace bookkeeping) must not run again
+      var resume = false;
+      while (true) {
+        if (i >= len) {
+          // reached the end of the input without completing a token: try
+          // the next alternative start rule before giving up (backtracking
+          // never reaches the symbol rules, so an unterminated string is
+          // still reported as an error rather than becoming a symbol)
+          if (![null, Lexer.comment].includes(this._state) && stack.length) {
+            var _this$_backtrack = this._backtrack(stack);
+            i = _this$_backtrack.i;
+            rule_index = _this$_backtrack.rule_index;
+            resume = true;
+            continue;
+          }
+          break;
+        }
         var _char5 = this.__input__[i];
         var prev_char = this.__input__[i - 1] || '';
         var next_char = this.__input__[i + 1] || '';
-        if (start) {
-          this._start = {
-            col: this._i - this._newline,
-            line: this._line,
-            offset: this._i
-          };
-        }
-        if (_char5 === '\n') {
-          ++this._line;
-          var newline = this._newline;
-          if (this._state === null) {
-            // keep beginning of the newline to calculate col
-            // we don't want to check inside the token (e.g. strings)
-            this._newline = i + 1;
+        if (!resume) {
+          if (start) {
+            this._start = {
+              col: this._i - this._newline,
+              line: this._line,
+              offset: this._i
+            };
           }
-          this._col = this._i - newline;
-          if (this._whitespace && this._state === null) {
-            this._next = i + 1;
-            return true;
-          }
-        }
-        // skip leading spaces
-        if (start && this._state === null && _char5.match(/\s/)) {
-          if (this._whitespace) {
-            if (!next_char.match(/\s/)) {
-              this._next = i + 1;
-              this._col = this._i - this._newline;
-              return true;
-            } else {
-              continue;
+          if (_char5 === '\n') {
+            ++this._line;
+            var newline = this._newline;
+            if (this._state === null) {
+              // keep beginning of the newline to calculate col
+              // we don't want to check inside the token (e.g. strings)
+              this._newline = i + 1;
             }
-          } else {
-            this._i = i + 1;
-            continue;
+            this._col = this._i - newline;
+            if (this._whitespace && this._state === null) {
+              this._next = i + 1;
+              return true;
+            }
           }
-        }
-        start = false;
-        var _iterator3 = _createForOfIteratorHelper(Lexer.rules),
-          _step3;
-        try {
-          for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
-            var rule = _step3.value;
-            if (this.match_rule(rule, {
-              prev_char: prev_char,
-              "char": _char5,
-              next_char: next_char
-            })) {
-              // change state to null if end of the token
-              var next_state = rule[rule.length - 1];
-              this._state = next_state;
-              if (this._state === null) {
+          // skip leading spaces
+          if (start && this._state === null && _char5.match(/\s/)) {
+            if (this._whitespace) {
+              if (!next_char.match(/\s/)) {
                 this._next = i + 1;
                 this._col = this._i - this._newline;
                 return true;
+              } else {
+                ++i;
+                continue;
               }
-              // token is activated
-              continue loop;
+            } else {
+              this._i = i + 1;
+              ++i;
+              continue;
             }
           }
-        } catch (err) {
-          _iterator3.e(err);
-        } finally {
-          _iterator3.f();
+          start = false;
         }
-        if (this._state !== null) {
+        resume = false;
+        var matched = false;
+        // forward scanning tries every rule; a backtrack retry (rule_index
+        // non-zero) stops before the generic symbol rules so a failed
+        // specific token is reported as an error rather than reinterpreted
+        // as a symbol
+        var retry = rule_index > 0;
+        var _limit = retry ? symbol_start : rules.length;
+        for (var r = rule_index; r < _limit; ++r) {
+          var rule = rules[r];
+          if (this.match_rule(rule, {
+            prev_char: prev_char,
+            "char": _char5,
+            next_char: next_char
+          })) {
+            // change state to null if end of the token
+            var next_state = rule[rule.length - 1];
+            if (next_state === null && retry && !next_char.match(Lexer.boundary)) {
+              // maximal munch: while backtracking don't accept a rule
+              // that completes a token before a token boundary, e.g.
+              // the single character `#` vector special completing `#`
+              // in the middle of an invalid `#4`
+              continue;
+            }
+            if (this._state === null && next_state !== null && r < symbol_start) {
+              // a specific token can start here; remember the remaining
+              // non-symbol rules so we can retry them on a dead-end
+              attempted = true;
+              stack.push({
+                i: i,
+                rule_index: r + 1,
+                line: this._line,
+                newline: this._newline,
+                col: this._col
+              });
+            }
+            this._state = next_state;
+            if (this._state === null) {
+              this._next = i + 1;
+              this._col = this._i - this._newline;
+              return true;
+            }
+            // token is activated
+            matched = true;
+            break;
+          }
+        }
+        // only the first character after a backtrack starts at a non-zero
+        // rule index; capture that before resetting for forward scanning
+        var was_retry = rule_index > 0;
+        rule_index = 0;
+        if (matched) {
+          ++i;
+          continue;
+        }
+        // a character can be accumulated into the current token when no rule
+        // matched it, unless it is a structural boundary in a state that
+        // can't contain one; there it ends the collectable content so we
+        // prefer backtracking to a conflicting start rule
+        var can_collect = this._state !== null && (Lexer.greedy_states.has(this._state) || !_char5.match(Lexer.boundary));
+        if (!was_retry && can_collect) {
           // collect char in token
-          continue loop;
+          ++i;
+          continue;
+        }
+        // no (more) rule matches at this character
+        if (stack.length) {
+          // backtrack to the next alternative start rule
+          var _this$_backtrack2 = this._backtrack(stack);
+          i = _this$_backtrack2.i;
+          rule_index = _this$_backtrack2.rule_index;
+          resume = true;
+          continue;
+        }
+        if (can_collect) {
+          // no alternatives left, keep collecting (e.g. a long symbol)
+          ++i;
+          continue;
+        }
+        if (attempted) {
+          // a specific token started here but none of the conflicting
+          // rules completed it: report it as an invalid/unterminated token
+          this._token_error();
         }
         // no rule for token
         var line = this.__input__.split('\n')[this._start.line];
@@ -4887,18 +5066,7 @@ var Lexer = /*#__PURE__*/function () {
       // we need to ignore comments because they can be the last expression in code
       // without extra newline at the end
       if (![null, Lexer.comment].includes(this._state)) {
-        var _this$__input__$subst, _this$__input__$subst2;
-        (_this$__input__$subst = (_this$__input__$subst2 = this.__input__.substring(0, this._newline).match(/\n/g)) === null || _this$__input__$subst2 === void 0 ? void 0 : _this$__input__$subst2.length) !== null && _this$__input__$subst !== void 0 ? _this$__input__$subst : 0;
-        this.__input__.substring(this._newline);
-        var _e;
-        this._start.offset;
-        var expr = this._recover_token();
-        if (expr[0] === '#') {
-          _e = new Error("Syntax Error: invalid token ".concat(expr));
-        } else {
-          _e = new Unterminated("Syntax Error: Unterminated expression ".concat(expr));
-        }
-        throw this._augment_exception(_e);
+        this._token_error();
       }
     }
   }]);
@@ -4916,12 +5084,17 @@ Lexer.literal_rule = function literal_rule(string, symbol) {
   if (string.length === 1) {
     return [[string, p_re, n_re, null, null]];
   }
+  return Lexer.make_rule(string, symbol, p_re, n_re);
+};
+Lexer.make_rule = function make_rule(seq, symbol) {
+  var p_re = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
+  var n_re = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
   var rules = [];
-  for (var i = 0, len = string.length; i < len; ++i) {
+  for (var i = 0, len = seq.length; i < len; ++i) {
     var rule = [];
-    rule.push(string[i]);
-    rule.push(string[i - 1] || p_re);
-    rule.push(string[i + 1] || n_re);
+    rule.push(seq[i]);
+    rule.push(seq[i - 1] || p_re);
+    rule.push(seq[i + 1] || n_re);
     if (i === 0) {
       rule.push(null);
       rule.push(symbol);
@@ -4935,6 +5108,19 @@ Lexer.literal_rule = function literal_rule(string, symbol) {
     rules.push(rule);
   }
   return rules;
+};
+Lexer.regex_rule = function regex_rule(regex, symbol) {
+  var p_re = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
+  var n_re = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
+  if (regex.source) {
+    var parts = regex.source.match(/(\[[^\]]+\][*+]?|.)/g).map(function (str) {
+      if (str.length === 1) {
+        return str;
+      }
+      return new RegExp(str);
+    });
+    return Lexer.make_rule(parts, symbol, p_re, n_re);
+  }
 };
 
 // ----------------------------------------------------------------------
@@ -4953,6 +5139,17 @@ Lexer.b_comment = Symbol["for"]('b_comment');
 Lexer.i_comment = Symbol["for"]('i_comment');
 Lexer.l_datum = Symbol["for"]('l_datum');
 Lexer.dot = Symbol["for"]('dot');
+// ----------------------------------------------------------------------
+// :: States whose tokens may legitimately contain boundary characters
+// :: (whitespace, parentheses, quote), such as strings, comments and regex
+// :: literals. In every other state (datum labels, syntax extensions, ...) a
+// :: boundary character that no rule matches ends the token's collectable
+// :: content, so the lexer can backtrack to a conflicting rule instead of
+// :: greedily swallowing the rest of the input up to some distant spurious
+// :: match (e.g. an extension or datum rule `#2...` running until a later
+// :: `#0=`).
+// ----------------------------------------------------------------------
+Lexer.greedy_states = new Set([Lexer.string, Lexer.string_escape, Lexer.comment, Lexer.b_comment, Lexer.i_comment, Lexer.regex, Lexer.regex_init, Lexer.regex_class, Lexer.character, Lexer.b_symbol, Lexer.b_symbol_ex]);
 // ----------------------------------------------------------------------
 Lexer.boundary = /^$|[\s()[\]']/;
 // ----------------------------------------------------------------------
@@ -5014,8 +5211,15 @@ Object.defineProperty(Lexer, 'rules', {
     }
     var parsable = Object.keys(parsable_contants).concat(directives, hash_literals);
     var tokens = specials.names().concat(parsable).sort(function (a, b) {
+      if (is_regex(a)) {
+        a = a.source;
+      }
+      if (is_regex(b)) {
+        b = b.source;
+      }
       return b.length - a.length || a.localeCompare(b);
     });
+    var regex = specials.regex();
 
     // syntax-extensions tokens that share the same first character after hash
     // should have same symbol, but because tokens are sorted, the longer
@@ -5038,7 +5242,18 @@ Object.defineProperty(Lexer, 'rules', {
       var rules = Lexer.literal_rule(token, symbol, null, after);
       return acc.concat(rules);
     }, []);
-    Lexer._cache.rules = Lexer._rules.concat(Lexer._brackets, special_rules, Lexer._symbol_rules);
+    var regex_specials = regex.reduce(function (acc, token) {
+      var symbol = Symbol["for"](token.source);
+      var rules = Lexer.regex_rule(token, symbol, null, Lexer.boundary);
+      return acc.concat(rules);
+    }, []);
+
+    // NOTE: the generic symbol rules must stay last; next_token() never
+    // backtracks into them so that a token that started matching a specific
+    // rule (a syntax extension, a datum label, a string, ...) but failed to
+    // complete reports an error instead of being silently reinterpreted as
+    // a symbol
+    Lexer._cache.rules = regex_specials.concat(Lexer._rules, Lexer._brackets, special_rules, Lexer._symbol_rules);
     Lexer._cache.valid = true;
     return Lexer._cache.rules;
   }
@@ -5082,25 +5297,9 @@ var Unterminated = /*#__PURE__*/function (_Error2) {
   _inherits(Unterminated, _Error2);
   return _createClass(Unterminated);
 }(/*#__PURE__*/_wrapNativeSuper(Error));
-var RuntimeError = /*#__PURE__*/function (_Error3) {
-  function RuntimeError() {
-    _classCallCheck(this, RuntimeError);
-    return _callSuper(this, RuntimeError, arguments);
-  }
-  _inherits(RuntimeError, _Error3);
-  return _createClass(RuntimeError);
-}(/*#__PURE__*/_wrapNativeSuper(Error));
-var PromiseRejection = /*#__PURE__*/function (_RuntimeError) {
-  function PromiseRejection() {
-    _classCallCheck(this, PromiseRejection);
-    return _callSuper(this, PromiseRejection, arguments);
-  }
-  _inherits(PromiseRejection, _RuntimeError);
-  return _createClass(PromiseRejection);
-}(RuntimeError); // -------------------------------------------------------------------------
 function augment_exception(e, code) {
   if (!is_object(e) || is_native(e)) {
-    e = new PromiseRejection("Runtime Error: ".concat(to_string(e)));
+    return e;
   }
   if (code) {
     // augment runtime errors
@@ -5574,7 +5773,7 @@ var Parser = /*#__PURE__*/function () {
     value: function () {
       var _invoke_special = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee7(special, object, is_symbol) {
         var _this6 = this;
-        var args, msg, e, code, eval_args, result, _e2;
+        var args, msg, e, code, eval_args, result, _e;
         return _regeneratorRuntime.wrap(function (_context7) {
           while (1) switch (_context7.prev = _context7.next) {
             case 0:
@@ -5582,7 +5781,7 @@ var Parser = /*#__PURE__*/function () {
                 _context7.next = 2;
                 break;
               }
-              if (is_literal(special.seq)) {
+              if (is_literal(special)) {
                 args = [object];
               } else if (is_pair(object) || is_nil(object)) {
                 args = object.to_array(false);
@@ -5608,7 +5807,7 @@ var Parser = /*#__PURE__*/function () {
                 break;
               }
               code = object !== null && object !== void 0 ? object : _nil;
-              if (is_literal(special.seq)) {
+              if (is_literal(special)) {
                 code = Pair(code, _nil);
               }
               if (special.value instanceof Syntax) {
@@ -5639,8 +5838,8 @@ var Parser = /*#__PURE__*/function () {
             case 4:
               return _context7.abrupt("return", result);
             case 5:
-              _e2 = new Error('Syntax Error: invalid syntax extension: ' + type(special.value));
-              throw this._augment_exception(_e2);
+              _e = new Error('Syntax Error: invalid syntax extension: ' + type(special.value));
+              throw this._augment_exception(_e);
             case 6:
             case "end":
               return _context7.stop();
@@ -5837,7 +6036,7 @@ var Parser = /*#__PURE__*/function () {
     key: "_read_object",
     value: function () {
       var _read_object3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee1() {
-        var token, special, builtin, _is_symbol, was_close_paren, object, e, _e3, ref, _e4, ref_label, _t3, _t4;
+        var token, special, builtin, _is_symbol, was_close_paren, object, e, _e2, ref, _e3, ref_label, _t3, _t4;
         return _regeneratorRuntime.wrap(function (_context1) {
           while (1) switch (_context1.prev = _context1.next) {
             case 0:
@@ -5852,7 +6051,8 @@ var Parser = /*#__PURE__*/function () {
               return _context1.abrupt("return", token);
             case 2:
               this._state.line = this.__lexer__.__token__.line;
-              if (!is_special(token.token)) {
+              special = specials.get(token.token);
+              if (!special) {
                 _context1.next = 11;
                 break;
               }
@@ -5863,10 +6063,9 @@ var Parser = /*#__PURE__*/function () {
               // result is returned by parser as is the macro.
               // MACRO: if macro is used, then it is evaluated in place and the
               // result is returned by parser and it is quoted.
-              special = specials.get(token.token);
               builtin = is_builtin(token.token);
               this._skip(token);
-              _is_symbol = is_symbol_extension(token.token);
+              _is_symbol = is_symbol_extension(special);
               _t3 = this;
               _context1.next = 3;
               return this._peek();
@@ -5899,7 +6098,7 @@ var Parser = /*#__PURE__*/function () {
               }
               return _context1.abrupt("return", this.invoke_special(special, object, _is_symbol));
             case 8:
-              if (!is_literal(token.token)) {
+              if (!is_literal(special)) {
                 _context1.next = 10;
                 break;
               }
@@ -5907,8 +6106,8 @@ var Parser = /*#__PURE__*/function () {
                 _context1.next = 9;
                 break;
               }
-              _e3 = new Error('Syntax Error: expecting datum');
-              throw this._augment_exception(_e3);
+              _e2 = new Error('Syntax Error: expecting datum');
+              throw this._augment_exception(_e2);
             case 9:
               return _context1.abrupt("return", new Pair(special.value, new Pair(object, _nil)));
             case 10:
@@ -5926,8 +6125,8 @@ var Parser = /*#__PURE__*/function () {
               }
               return _context1.abrupt("return", new DatumReference(ref, this._refs[ref]));
             case 12:
-              _e4 = new Error("Syntax Error: invalid datum label #".concat(ref, "#"));
-              throw this._augment_exception(_e4);
+              _e3 = new Error("Syntax Error: invalid datum label #".concat(ref, "#"));
+              throw this._augment_exception(_e3);
             case 13:
               ref_label = this._match_datum_label(token);
               if (!(ref_label !== null)) {
@@ -6367,20 +6566,20 @@ function match(pattern, input) {
       }
     */
     function get_first_match(patterns, input) {
-      var _iterator4 = _createForOfIteratorHelper(patterns),
-        _step4;
+      var _iterator5 = _createForOfIteratorHelper(patterns),
+        _step5;
       try {
-        for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
-          var _p = _step4.value;
+        for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
+          var _p = _step5.value;
           var _m = inner_match(_p, input);
           if (_m !== -1) {
             return _m;
           }
         }
       } catch (err) {
-        _iterator4.e(err);
+        _iterator5.e(err);
       } finally {
-        _iterator4.f();
+        _iterator5.f();
       }
       return -1;
     }
@@ -6530,19 +6729,19 @@ Formatter.exception_shift = function (token, settings) {
       if (!regexes.length) {
         return false;
       }
-      var _iterator5 = _createForOfIteratorHelper(regexes),
-        _step5;
+      var _iterator6 = _createForOfIteratorHelper(regexes),
+        _step6;
       try {
-        for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
-          var re = _step5.value;
+        for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
+          var re = _step6.value;
           if (token.match(re)) {
             return true;
           }
         }
       } catch (err) {
-        _iterator5.e(err);
+        _iterator6.e(err);
       } finally {
-        _iterator5.f();
+        _iterator6.f();
       }
     }
     return false;
@@ -6719,14 +6918,14 @@ Formatter.prototype["break"] = function () {
         sexp[count] = previousSexp(sub, count);
       }
     });
-    var _iterator6 = _createForOfIteratorHelper(rules),
-      _step6;
+    var _iterator7 = _createForOfIteratorHelper(rules),
+      _step7;
     try {
-      for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
-        var _step6$value = _slicedToArray(_step6.value, 3),
-          pattern = _step6$value[0],
-          count = _step6$value[1],
-          ext = _step6$value[2];
+      for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
+        var _step7$value = _slicedToArray(_step7.value, 3),
+          pattern = _step7$value[0],
+          count = _step7$value[1],
+          ext = _step7$value[2];
         var debug = pattern === comment_re;
         count = count.valueOf();
         // 0 count mean ignore the previous S-Expression
@@ -6764,9 +6963,9 @@ Formatter.prototype["break"] = function () {
         }
       }
     } catch (err) {
-      _iterator6.e(err);
+      _iterator7.e(err);
     } finally {
-      _iterator6.f();
+      _iterator7.f();
     }
   }
   this.__code__ = tokens.join('');
@@ -8824,19 +9023,19 @@ function to_string(obj, quote, skip_cycles) {
     }
   }
   // standard objects that have toString
-  var _iterator7 = _createForOfIteratorHelper(native_types),
-    _step7;
+  var _iterator8 = _createForOfIteratorHelper(native_types),
+    _step8;
   try {
-    for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
-      var _type2 = _step7.value;
+    for (_iterator8.s(); !(_step8 = _iterator8.n()).done;) {
+      var _type2 = _step8.value;
       if (obj instanceof _type2) {
         return obj.toString(quote);
       }
     }
   } catch (err) {
-    _iterator7.e(err);
+    _iterator8.e(err);
   } finally {
-    _iterator7.f();
+    _iterator8.f();
   }
   if (obj instanceof LNumber) {
     return obj.toString();
@@ -10634,6 +10833,10 @@ function is_function(o) {
   return typeof o === 'function' && typeof o.bind === 'function';
 }
 // ----------------------------------------------------------------------------
+function is_regex(x) {
+  return is_object(x) && x instanceof RegExp;
+}
+// ----------------------------------------------------------------------------
 function is_value(obj) {
   return obj instanceof Value;
 }
@@ -10867,11 +11070,11 @@ function bind(fn, context) {
   }
   var bound = fn.bind(context);
   var props = Object.getOwnPropertyNames(fn);
-  var _iterator8 = _createForOfIteratorHelper(props),
-    _step8;
+  var _iterator9 = _createForOfIteratorHelper(props),
+    _step9;
   try {
-    for (_iterator8.s(); !(_step8 = _iterator8.n()).done;) {
-      var prop = _step8.value;
+    for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
+      var prop = _step9.value;
       if (filter_fn_names(prop)) {
         try {
           bound[prop] = fn[prop];
@@ -10881,9 +11084,9 @@ function bind(fn, context) {
       }
     }
   } catch (err) {
-    _iterator8.e(err);
+    _iterator9.e(err);
   } finally {
-    _iterator8.f();
+    _iterator9.f();
   }
   hidden_prop(bound, '__fn__', fn);
   hidden_prop(bound, '__context__', context);
@@ -11330,17 +11533,17 @@ function LString(string) {
       return fn.apply(this.__string__, args);
     };
   };
-  var _iterator9 = _createForOfIteratorHelper(_keys),
-    _step9;
+  var _iterator0 = _createForOfIteratorHelper(_keys),
+    _step0;
   try {
-    for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
-      var key = _step9.value;
+    for (_iterator0.s(); !(_step0 = _iterator0.n()).done;) {
+      var key = _step0.value;
       LString.prototype[key] = wrap(String.prototype[key]);
     }
   } catch (err) {
-    _iterator9.e(err);
+    _iterator0.e(err);
   } finally {
-    _iterator9.f();
+    _iterator0.f();
   }
 }
 LString.prototype[Symbol.iterator] = /*#__PURE__*/_regeneratorRuntime.mark(function _callee14() {
@@ -15756,13 +15959,13 @@ var global_env = new Environment({
   'typecheck-number': doc(typecheck_number, "(typecheck-number label value type [position])\n\n         Function similar to typecheck but checks if the argument is a number\n         and specific type of number e.g. complex."),
   // ------------------------------------------------------------------
   'unset-special!': doc('unset-special!', function (symbol) {
-    typecheck('remove-special!', symbol, 'string');
+    typecheck('remove-special!', symbol, ['string', 'regex']);
     specials.remove(symbol.valueOf());
   }, "(unset-special! name)\n\n        Function that removes a special symbol from parser added by `set-special!`,\n        name must be a string."),
   // ------------------------------------------------------------------
   'set-special!': doc('set-special!', function (seq, value) {
     var type = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : specials.LITERAL;
-    typecheck('set-special!', seq, 'string', 1);
+    typecheck('set-special!', seq, ['string', 'regex'], 1);
     typecheck('set-special!', value, ['function', 'macro', 'syntax'], 2);
     specials.append(seq.valueOf(), value, type);
   }, "(set-special! seq value [type])\n\n        Add a new syntax extension to the parser. When parser found the new seq string\n        in the input stream it will invoke the function or a macro and return the output\n        at parse time.\n\n        The arguments to the function or macro depends on the type of extension:\n\n        * lips.specials.SYMBOL will not process the next tokens only call the extension\n        * lips.specials.LITERAL will read next expression and pass it as first argument\n        * lips.specials.SPLICE will read next expression which needs to be a list and\n          spread the list into the function arguments."),
@@ -17551,11 +17754,11 @@ function balanced(code) {
     return brackets.includes(token);
   });
   var stack = new Stack();
-  var _iterator0 = _createForOfIteratorHelper(tokens),
-    _step0;
+  var _iterator1 = _createForOfIteratorHelper(tokens),
+    _step1;
   try {
-    for (_iterator0.s(); !(_step0 = _iterator0.n()).done;) {
-      var token = _step0.value;
+    for (_iterator1.s(); !(_step1 = _iterator1.n()).done;) {
+      var token = _step1.value;
       if (open_tokens.includes(token)) {
         stack.push(token);
       } else if (!stack.is_empty()) {
@@ -17574,9 +17777,9 @@ function balanced(code) {
       }
     }
   } catch (err) {
-    _iterator0.e(err);
+    _iterator1.e(err);
   } finally {
-    _iterator0.f();
+    _iterator1.f();
   }
   return stack.is_empty();
 }
@@ -18055,10 +18258,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Mon, 09 Feb 2026 16:01:40 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Tue, 11 Aug 2026 14:47:33 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Mon, 09 Feb 2026 16:01:40 +0000').valueOf();
+  var date = LString('Tue, 11 Aug 2026 14:47:33 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -18098,7 +18301,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Mon, 09 Feb 2026 16:01:40 +0000';
+var date = 'Tue, 11 Aug 2026 14:47:33 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
