@@ -141,6 +141,20 @@
 
 (set-special! "&&" macro)
 
+(define-macro (nested-list x) `(quote ,x))
+
+(set-special! "#2a" nested-list lips.specials.LITERAL)
+
+(define parser/t19 #2a((1 2) (1 2)))
+
+(unset-special! "#2a")
+
+(set-special! #/#[0-9]+a/ nested-list lips.specials.LITERAL)
+
+(define parser/t20 (list #2a((1 2) (1 2)) #3a((1 2) (1 2) (1 2))))
+
+(unset-special! #/#[0-9]+a/)
+
 (test "parser: #!fold-case"
       (lambda (t)
         (define foo 10)
@@ -416,6 +430,15 @@
         (t.is parser/t18 '(quote 6))
         (t.is (to.throw (lips.parse "#+(1 2 3)")) #t)
         (t.is (to.throw (lips.parse "#sum(1 2 3)")) #t)))
+
+
+(test "parser: datum conflict"
+      (lambda (t)
+        (t.is parser/t19 '((1 2) (1 2)))))
+
+(test "parser: regex syntax extension"
+      (lambda (t)
+        (t.is parser/t20 '(((1 2) (1 2)) ((1 2) (1 2) (1 2))))))
 
 (test "parser: syntax errors"
       (lambda (t)
