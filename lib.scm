@@ -1,81 +1,6 @@
 (define tests 0)
 (define passed 0)
 
-(define-macro (--> expr . body)
-  "Helper macro that simplifies calling methods on objects. It works with chaining
-   usage: (--> ($ \"body\")
-               (css \"color\" \"red\")
-               (on \"click\" (lambda () (display \"click\"))))
-
-          (--> document (querySelectorAll \"div\"))
-
-          (--> (fetch \"https://jcubic.pl\")
-               (text)
-               (match #/<title>([^<]+)<\\/title>/)
-               1)
-
-          (--> document
-               (querySelectorAll \".cmd-prompt\")
-               0
-               'innerHTML
-               (replace #/<(\"[^\"]+\"|[^>])+>/g \"\"))
-
-          (--> document.body
-               (style.setProperty \"--color\" \"red\"))"
-  (let ((obj (gensym "obj")))
-    `(let* ((,obj ,expr))
-       ,@(map (lambda (code)
-                (let* ((value (gensym "value"))
-                       (name (if (quoted-symbol? code)
-                                 (symbol->string (cadr code))
-                                 (if (symbol? code)
-                                     (symbol->string code)
-                                     (if (pair? code)
-                                         (symbol->string (car code))
-                                         code))))
-                       (accessor (if (string? name)
-                                     `(. ,obj ,@(split "." name))
-                                     `(. ,obj ,name)))
-                       (call (and (pair? code) (not (quoted-symbol? code)))))
-                  `(let ((,value ,accessor))
-                     ,(if call
-                          `(if (not (function? ,value))
-                               (throw (new Error (string-append "--> " ,(repr name)
-                                                                " is not a function"
-                                                                " in expression "
-                                                                ,(repr `(--> ,expr . ,body)))))
-                               (set! ,obj (,value ,@(cdr code))))
-                          `(set! ,obj ,value)))))
-              body)
-       ,obj)))
-
-(define (quoted-symbol? x)
-   "(quoted-symbol? code)
-
-   Helper function that tests if value is a quoted symbol. To be used in macros
-   that pass literal code that is transformed by parser.
-
-   usage:
-
-      (define-macro (test x)
-         (if (quoted-symbol? x)
-             `',(cadr x)))
-
-      (list 'hello (test 'world))"
-   (and (pair? x) (eq? (car x) 'quote) (symbol? (cadr x)) (null? (cddr x))))
-
-(define (symbol->string s)
-  "(symbol->string symbol)
-
-   Function that converts a LIPS symbol to a string."
-  (typecheck "symbol->string" s "symbol")
-  (let ((name s.__name__))
-    (let ((str (if (string? name)
-                   name
-                   (name.toString))))
-      (str.freeze)
-      str)))
-
 (define-macro (assert a b)
   (let ((a_expr (gensym "a"))
         (b_expr (gensym "b")))
@@ -99,90 +24,15 @@
 (define string-append concat)
 (define (interaction-environment)
   (current-environment))
+
 (define (number->string n . rest)
   (if (null? rest)
       (n.toString)
       (n.toString (car rest))))
+
 (define (symbol->string s)
   (let ((name s.__name__))
     (if (string? name) name (name.toString))))
-
-(define-macro (or . args)
-  "(or expr1 expr2 ...)
-
-   Macro that executes the values one by one and returns the first that is
-   a truthy value. If there are no expressions that evaluate to true it
-   returns false."
-  (if (null? args)
-      #f
-      (if (null? (cdr args))
-          (car args)
-          (let ((name (gensym)))
-            `(let ((,name ,(car args)))
-               (if ,name ,name (or ,@(cdr args))))))))
-
-(define-macro (and . args)
-  "(and expr1 expr2 ...)
-
-   Macro that evaluates each expression in sequence and if any value returns false
-   it will stop and return false. If each value returns true it will return the
-   last value. If it's called without arguments it will return true."
-  (if (null? args)
-      #t
-      (if (null? (cdr args))
-          (car args)
-          `(if ,(car args) (and ,@(cdr args)) #f))))
-
-;; map implementation based on https://stackoverflow.com/a/21629316/387194
-(define (%some? function list)
-  "(%some? function lst)
-
-   Help function that check if function predicate return true for every elemet
-   of the list. If argument is not a list it returns #f."
-  (and (pair? list)
-       (or (function (car list))
-           (%some? function (cdr list)))))
-
-(define (%map1 function list)
-  "(%map1 function list)
-
-   Helper single list map function, used by map."
-  (let loop ((list list) (result ()))
-    (if (null? list)
-        (reverse result)
-        (loop (cdr list)
-              (cons (function (car list))
-                    result)))))
-
-(define (map function . lists)
-  "(map fn list1 list2 ...)
-
-   Higher-order function that calls function `fn` with each
-   value of the list. If you provide more then one list as argument
-   it will take each value from each list and call `fn` function
-   with that many argument as number of list arguments. The return
-   values of the fn calls are accumulated in a result list and
-   returned by map."
-  (let loop ((lists lists) (k (lambda (x) x)))
-    (if (%some? null? lists)
-        (k '())
-        (loop (%map1 cdr lists)
-              (lambda (rest)
-                (k (cons (apply function (%map1 car lists)) rest)))))))
-
-(define (for-each function . lists)
-  "(for-each fn list1 list2 ...)
-
-   Higher-order function that calls function `fn` on each
-   value of the argument. If you provide more than one list
-   it will take each value from each list and call `fn` function
-   with that many arguments as number of list arguments."
-  (let loop ((lists lists))
-    (if (not (%some? null? lists))
-        (begin
-          (apply function (%map1 car lists))
-          (loop (%map1 cdr lists))))))
-
 
 
 (define (tail-recursive-map f lst)
