@@ -742,20 +742,27 @@
                           (value (read (open-input-string expr))))
                      (loop "" (vector-append result (vector part expr)) (read-char)))
                    (let inner ((next (peek-char port)))
-                     (cond ((char=? next #\space) (read-char) (inner (peek-char port)))
+                     (cond ((char=? next #\space)
+                            (read-char port)
+                            (inner (peek-char port)))
                            ((char=? next #\})
-                            (read-char)
-                            (loop "" (vector-append result (vector part expr)) (read-char)))
+                            (read-char port)
+                            (loop ""
+                                  (vector-append result (vector part expr))
+                                  (read-char port)))
                            (else
-                            (error (string-append "Parse Error: expecting } got " (repr next)))))))))
+                            (error (string-append "Parse Error: expecting } got "
+                                                  (repr next)))))))))
             ((char=? char #\\)
-             (loop (string-append part (repr (read-char))) result (read-char)))
+             (loop (string-append part (repr (read-char port)))
+                   result
+                   (read-char port)))
             ((char=? char #\")
              (vector->list (vector-append result (vector part))))
             ((eof-object? char)
              (error "Parse Error: expecting character #eof found"))
             (else
-             (loop (string-append part (repr char)) result (read-char)))))))
+             (loop (string-append part (repr char)) result (read-char port)))))))
 
 ;; -----------------------------------------------------------------------------
 (define (%string-interpolation)
