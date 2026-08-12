@@ -11785,7 +11785,7 @@ function next_pair(state) {
             evaluate_lambda(fn, args.concat(last), state, this);
         } else if (is_function(fn)) {
             state.cc = this.__continuation__;
-            state.object = call_function(fn, prepare_fn_args(fn, args), state);
+            state.object = box(call_function(fn, prepare_fn_args(fn, args), state));
             state.ready = !is_promise(state.object);
         } else {
             throw new Error(`${type(fn)} is not callable`);
