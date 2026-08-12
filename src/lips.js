@@ -1942,6 +1942,7 @@ function unpromise(value, fn = x => x, error = null) {
         } else if (ret.catch) {
             return ret.catch(error);
         }
+        return ret;
     }
     if (value instanceof Array) {
         return unpromise_array(value, fn, error);
