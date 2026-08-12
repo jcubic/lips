@@ -11372,7 +11372,7 @@ function lambda_scope(self, fn, code, args, { use_dynamic, error, cc }) {
     let { dynamic_env } = is_context(this) ? this : { dynamic_env: self };
     const env = self.inherit('lambda');
     dynamic_env = dynamic_env.inherit('lambda');
-    if (this && !is_context(this)) {
+    if (this && !is_context(this) && !is_continuation(this)) {
         if (this && !this.__instance__) {
             Object.defineProperty(this, '__instance__', {
                 enumerable: false,
