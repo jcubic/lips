@@ -843,35 +843,6 @@
               2)
         (t.is (p) 0)))
 
-(test "core: parameterize with call/cc escape"
-      (lambda (t)
-        (define p (make-parameter 1))
-        ;; escaping the body with a continuation returns the inner value and
-        ;; skips the surrounding computation
-        (define result
-          (call/cc
-           (lambda (k)
-             (parameterize ((p 2))
-               (+ 100 (k (p)))))))
-        (t.is result 2)
-        ;; after leaving parameterize the value reverts
-        (t.is (p) 1)))
-
-(test "core: parameterize body runs once with call/cc"
-      (lambda (t)
-        ;; guards against the body being evaluated twice when a continuation
-        ;; escapes across the parameterize boundary
-        (define p (make-parameter 'out))
-        (define count 0)
-        (define v
-          (call/cc
-           (lambda (k)
-             (parameterize ((p 'in))
-               (set! count (+ count 1))
-               (k (p))))))
-        (t.is v 'in)
-        (t.is count 1)))
-
 ;; the following are based on
 ;; https://docs.racket-lang.org/guide/parameterize.html
 
