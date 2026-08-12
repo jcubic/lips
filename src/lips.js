@@ -11718,7 +11718,8 @@ function next_pair(state) {
             state.object = box(call_function(fn, prepare_fn_args(fn, args), state));
             state.ready = !is_promise(state.object);
         } else {
-            throw new Error(`${type(fn)} is not callable`);
+            const op = this.__code__ ? this.__code__.car : fn;
+            throw new Error(`${type(op)} ${op && op.toString()} is not a function`);
         }
     } else {
         state.object = this.__object__.car;
