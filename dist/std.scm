@@ -1821,12 +1821,6 @@
   (or (function? obj) (continuation? obj)))
 
 ;; -----------------------------------------------------------------------------
-(define (procedure? obj)
-  "(procedure? obj)
-
-   Checks if object is callable function or continuation."
-  (or (function? obj) (continuation? obj)))
-;; -----------------------------------------------------------------------------
 (define-macro (define-symbol-macro type spec . rest)
   "(define-symbol-macro type (name . args) . body)
 
