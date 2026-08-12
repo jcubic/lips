@@ -1,5 +1,16 @@
 (load "./lib.scm")
 
+
+(define (syntax-test x)
+  (call/cc (lambda (return)
+             (for-each (lambda (item)
+                         (return item)
+                         (print x))
+                       x))))
+
+(set-special! "&&" 'syntax-test lips.specials.LITERAL)
+(assert &&(1 2 3) 1)
+
 (define-macro (test x)
   (let ((name (gensym "name")))
     `(let ((,name ,x))
@@ -568,22 +579,24 @@
 (assert (list-product '(0 1 2 3 4 10 20 30)) 0)
 (assert (list-product '(1 2 3 4 10 20 30)) 144000)
 
+(define -->result '())
 
 (let ((i 0) (k #f))
-  (print (--> Array (from (call/cc (lambda (cc) (set! k cc) "foo bar")))))
+  (define value (--> Array (from (call/cc (lambda (cc) (set! k cc) "foo bar")))))
+  (set! -->result (append -->result (list value)))
   (set! i (+ i 1))
   (if (< i 3)
       (k (--> (* i 10) (toString)))))
 
-(print (try
-        (throw "Nasty")
-        (catch (e)
-               e.message)))
+(assert (map (lambda (x) (x.join "")) -->result) '("foo bar" "10" "20"))
 
-(let ((x 10))
-  (print `(1 ,@(list x 1) 3)))
+(assert (try
+         (throw "Nasty")
+         (catch (e)
+                e.message))
+        "Nasty")
 
-(print `(1 ,@(list 1 2 3)))
+(assert (sort '(3 2 1) <) '(1 2 3))
 
 (define result '())
 
