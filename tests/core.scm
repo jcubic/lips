@@ -294,7 +294,9 @@
 
 (test "core: quoted promise of object with then method"
       (lambda (t)
-        (let ((p '>(object :then (lambda () 10))))
+        (let ((p '>(object :then (lambda (fn)
+                                   (fn 10)
+                                   this))))
           (--> p (then (lambda (result)
                          (t.is result 10))))
           (t.is (await p) 10))))
