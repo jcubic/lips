@@ -274,10 +274,10 @@
                body ...
                (set! counter (+ counter 1))
                (if (< counter limit) (k #f))))))
-        (t.is (let ((i 0) (acc '()))
+        (t.is (let ((i 0) (k '()))
                 (repeat-until i 3
-                  (set! acc (cons i acc)))
-                (reverse acc))
+                  (set! k (cons i k)))
+                (reverse k))
               '(0 1 2))
         ;; a continuation captured inside a `when` (a syntax-rules macro) and
         ;; re-entered from outside it
@@ -637,3 +637,22 @@
               (k (--> (* i 10) (toString)))))
 
         (t.is (map (lambda (x) (x.join "")) -->result) '("foo bar" "10" "20"))))
+
+(test "continuations: exit macro"
+      (lambda (t)
+        (define-syntax syntax-rules-test
+          (syntax-rules ()
+            ((_ name ...)
+             (call/cc (lambda (name)
+                        ...)))))
+
+        (define sr-eject #f)
+
+        (define sr-result (syntax-rules-test
+                           eject
+                           (for-each (lambda (x)
+                                       (eject x)
+                                       (set! sr-eject #t))
+                                     '(1 2 3 4))))
+        (t.is sr-result 1)
+        (t.is sr-eject #f)))
