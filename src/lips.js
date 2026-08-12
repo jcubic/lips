@@ -3920,13 +3920,21 @@ function uniterate(object, error = (e) => { throw e; }) {
         return object;
     }
     const iterator = object[Symbol.iterator]();
-    return (function next(value) {
+    // drive the generator; `action` either resumes it with a value
+    // (iterator.next) or injects an exception at the current yield
+    // (iterator.throw) - the latter lets a rejected promise propagate through
+    // try/catch inside the generator instead of escaping asynchronously.
+    return (function drive(action) {
         try {
-            let object = iterator.next(value);
+            let object = action();
             while (!object.done) {
-                value = object.value;
+                const value = object.value;
                 if (is_promise(value)) {
-                    return unpromise(value, next, error);
+                    return unpromise(
+                        value,
+                        (v) => drive(() => iterator.next(v)),
+                        (e) => drive(() => iterator.throw(e))
+                    );
                 }
                 object = iterator.next(value);
             }
@@ -3934,7 +3942,7 @@ function uniterate(object, error = (e) => { throw e; }) {
         } catch(e) {
             error(e);
         }
-    })();
+    })(() => iterator.next());
 }
 // ----------------------------------------------------------------------
 // :: Macro constructor
@@ -10030,12 +10038,12 @@ var global_env = new Environment({
             return_cc: state.cc,
             source
         };
-        try_handlers.push(handler);
+        state.handlers.push(handler);
         // normal completion of the body: unregister the handler, run finally
         // (if any) and continue with the body's value.
         state.cc = new Continuation('try', null, source, state, function(st) {
             const result = st.object;
-            unregister_handler(handler);
+            unregister_handler(st, handler);
             finish_try(st, handler, 'return', result);
         });
         state.object = code.car;
@@ -11208,6 +11216,10 @@ class State {
         this.ready = false;
         this.macro_expand = macro_expand;
         this.promise_quote = false;
+        // exception handlers registered by `try` in THIS eval loop. Kept per
+        // state (not global) so they survive async suspension at an `await`
+        // and can't be clobbered by other interleaving eval loops.
+        this.handlers = [];
     }
     cont() {
         if (is_debug('continuations')) {
@@ -11254,12 +11266,10 @@ const top_cc = new Continuation('top', null, null, {}, (state) => {
 // :: try/catch/finally cooperate with the continuation machinery (call/cc can
 // :: be captured inside the body or the catch clause and re-entered).
 // -------------------------------------------------------------------------
-const try_handlers = [];
-// -------------------------------------------------------------------------
-function unregister_handler(handler) {
-    const i = try_handlers.indexOf(handler);
+function unregister_handler(state, handler) {
+    const i = state.handlers.indexOf(handler);
     if (i !== -1) {
-        try_handlers.splice(i, 1);
+        state.handlers.splice(i, 1);
     }
 }
 // -------------------------------------------------------------------------
@@ -11314,7 +11324,6 @@ function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand 
     const state = new State(code, cc || top_cc, { env, cc, dynamic_env, macro_expand });
     // handlers registered by an enclosing eval don't belong to this loop - only
     // dispatch to handlers pushed while running this generator.
-    const handler_base = try_handlers.length;
     while (true) {
         try {
             if (yield* state.eval()) {
@@ -11323,15 +11332,13 @@ function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand 
             }
         } catch(e) {
             if (e instanceof State) {
-                // normal top-level return - drop any handlers still registered
-                // by this loop (their dynamic extent ends here).
-                try_handlers.length = handler_base;
                 return e.object;
             }
             // an active `try` in this loop? redirect to its catch/finally.
-            if (!(e instanceof IgnoreException) &&
-                try_handlers.length > handler_base) {
-                const handler = try_handlers.pop();
+            // state.handlers is per-loop, so a handler survives an `await`
+            // suspension and is never wiped by another eval loop.
+            if (!(e instanceof IgnoreException) && state.handlers.length) {
+                const handler = state.handlers.pop();
                 if (handler.catch_body) {
                     const catch_env = handler.env.inherit('catch');
                     catch_env.set(handler.catch_var, e);
@@ -11351,9 +11358,8 @@ function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand 
                 }
                 continue;
             }
-            // exception unwinds past this loop - drop handlers it registered
-            // (an IgnoreException, or an error with no matching handler here).
-            try_handlers.length = handler_base;
+            // exception unwinds past this loop (an IgnoreException, or an error
+            // with no matching handler here) - let it propagate.
             e.__code__ = state.cc.trace(cc => {
                 return to_string(cc.__code__, true);
             });
