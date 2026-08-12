@@ -11639,6 +11639,8 @@ function next_set(state) {
             const object = env.get(name, { throwError: false });
             if (object) {
                 env.get('set-obj!').call(env, object, key, value);
+                // set! return value is unspecified/void
+                delete state.object;
                 state.ready = true;
                 return;
             }
