@@ -4245,6 +4245,27 @@ Syntax.prototype.toString = function() {
     return '#<syntax>';
 };
 // ----------------------------------------------------------------------
+// :: The result of expanding a syntax-rules macro: the transcribed
+// :: expression, the hygienic scope it must be evaluated in, and the
+// :: gensym->name map used to un-rename literal symbols in the produced
+// :: value. The transformer returns this instead of evaluating the
+// :: expansion itself, so the caller can evaluate it in the MAIN tco_eval
+// :: loop (same continuation chain) - otherwise a continuation captured
+// :: inside, or re-entering, a macro body cannot cross the macro boundary.
+// ----------------------------------------------------------------------
+class SyntaxExpansion {
+    constructor(expr, env, names) {
+        this.expr = expr;
+        this.env = env;
+        this.names = names;
+    }
+    // eager evaluation, used by the legacy evaluate()/evaluate_syntax path
+    eval(eval_args) {
+        const result = tco_eval(this.expr, { ...eval_args, env: this.env });
+        return clear_gensyms(result, this.names);
+    }
+}
+// ----------------------------------------------------------------------
 // :: SRFI-139
 // ----------------------------------------------------------------------
 class SyntaxParameter {
@@ -9250,12 +9271,12 @@ var global_env = new Environment({
                         if (macro_expand) {
                             return { expr, scope: new_env };
                         }
-                        var result = tco_eval(expr, { ...eval_args, env: new_env });
-                        // Hack: update the result if there are generated
-                        //       gensyms that should be literal symbols
-                        // TODO: maybe not the part move when literal elisps may
-                        //       be generated, maybe they will need to be mark somehow
-                        return clear_gensyms(result, names);
+                        // Return the expansion instead of evaluating it here in
+                        // a nested tco_eval - the caller evaluates it in the main
+                        // loop so continuations work across the macro boundary.
+                        // The gensym->literal fixup (clear_gensyms) is applied to
+                        // the produced value by whoever evaluates the expansion.
+                        return new SyntaxExpansion(expr, new_env, names);
                     }
                     rules = rules.cdr;
                 }
@@ -10983,6 +11004,9 @@ function evaluate_args(rest, { use_dynamic, ...options }) {
 // -------------------------------------------------------------------------
 function evaluate_syntax(macro, code, eval_args) {
     var value = macro.invoke(code, eval_args);
+    if (value instanceof SyntaxExpansion) {
+        value = value.eval(eval_args);
+    }
     return unpromise(resolve_promises(value), function(value) {
         if (is_pair(value)) {
             value.mark_cycles();
@@ -11636,13 +11660,24 @@ function* evaluate_code(state) {
                 if (is_promise(result)) {
                     result = yield result;
                 }
-                if (result !== state) {
+                if (result instanceof SyntaxExpansion) {
+                    // A syntax-rules macro: evaluate its expansion in THIS loop
+                    // (same continuation chain) so a continuation captured
+                    // inside - or re-entering - the macro body works across the
+                    // boundary. If the expansion introduced hygienic gensyms, a
+                    // follow-up continuation restores their literal names in the
+                    // produced value. The caller's dynamic environment is kept.
+                    if (result.names.length) {
+                        state.cc = new Continuation('syntax', null, code, state,
+                                                    next_syntax, { names: result.names });
+                    }
+                    state.env = result.env;
+                    state.object = result.expr;
+                    state.ready = false;
+                } else if (result !== state) {
                     state.object = result;
-                    // A Syntax (syntax-rules) - or a SyntaxParameter that wraps
-                    // one - evaluates its expansion in the hygienic scope and
-                    // returns the final value, so it must not be evaluated
-                    // again. A define-macro returns expansion code that still
-                    // has to be evaluated.
+                    // define-macro returns expansion code that still has to be
+                    // evaluated; other Macro/SyntaxParameter values are final.
                     state.ready = first instanceof Syntax ||
                         first instanceof SyntaxParameter;
                 }
@@ -11690,8 +11725,21 @@ function next_begin(state) {
 // the parameterize body finished - state.object holds its value. Restore the
 // dynamic environment that was active before parameterize and hand the value to
 // the enclosing continuation (see the `parameterize` macro).
+// -------------------------------------------------------------------------
 function next_parameterize(state) {
     state.dynamic_env = this._state.dynamic_env;
+    state.env = this.__env__;
+    state.cc = this.__continuation__;
+    state.ready = true;
+}
+
+// -------------------------------------------------------------------------
+// a syntax-rules expansion finished evaluating - state.object holds its value.
+// Restore hygienic gensyms to their literal names (see the macro branch in
+// evaluate_code and clear_gensyms).
+// -------------------------------------------------------------------------
+function next_syntax(state) {
+    state.object = clear_gensyms(state.object, this._state.names);
     state.env = this.__env__;
     state.cc = this.__continuation__;
     state.ready = true;
