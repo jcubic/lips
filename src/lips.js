@@ -11606,7 +11606,11 @@ function* evaluate_code(state) {
 
 // -------------------------------------------------------------------------
 function next_if(state) {
-    state.object = state.object ? this.__object__.car : this.__object__.cdr.car;
+    if (is_false(state.object)) {
+        state.object = this.__object__.cdr.car;
+    } else {
+        state.object = this.__object__.car;
+    }
     state.cc = this.__continuation__;
     state.env = this.__env__;
     state.ready = false;
