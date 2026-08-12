@@ -8811,6 +8811,10 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'call/cc': doc(new Macro('call/cc', function(source, state) {
         const cc = state.cc.clone();
+        // snapshot the active try handlers so invoking this continuation
+        // restores the exact set that was in effect here - escaping a `try`
+        // drops its handler, re-entering one re-arms it.
+        cc._state.handlers = state.handlers.slice();
         state.cc = new Continuation('call/cc', null, source, state, function(state) {
             state.env = this.__env__;
             state.cc = this.__continuation__;
@@ -11721,7 +11725,13 @@ function next_pair(state) {
         } else if (is_continuation(fn)) {
             state.ready = true;
             state.object = args[0];
-            state.cc = fn.clone(false);
+            const clone = fn.clone(false);
+            // restore the try handlers captured when this continuation was
+            // created, so escaping/re-entering a `try` updates the active set.
+            if (clone._state.handlers) {
+                state.handlers = clone._state.handlers.slice();
+            }
+            state.cc = clone;
         } else if (fn === __apply__ && is_lambda(args[0])) {
             const fn = args.shift();
             typecheck('apply', fn, 'function', 1);
