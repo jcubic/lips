@@ -3,9 +3,14 @@
 import lily from '@jcubic/lily';
 
 const boolean = [
-    'd', 'dynamic', 'q', 'quiet', 'V', 'version', 'trace', 't', 'c', 'compile'
+    'd', 'dynamic', 'q', 'quiet', 'V', 'version', 'trace', 't', 'c', 'compile',
+    'm', 'meta'
 ];
 const options = lily(process.argv.slice(2), { boolean });
+
+const use_dynamic = options.d || options.dynamic;
+const use_stack = options.t || options.trace;
+const use_meta = options.m || options.meta;
 
 const quiet = options.q || options.quiet;
 
@@ -48,15 +53,27 @@ import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
 
-const kDebounceHistoryMS = 15;
+const DEBOUNCE_HISTORY = 15;
+const HISTORY_SEPARATOR = os.EOL;
+const HISTORY_FILE = '.lips_history';
+const ERROR_FILE = '.lips_error'
+const SUPPORTS_PASTE_BRACKETS = test_brackets();
 
-const supports_paste_brackets = satisfies(process.version, '>=18.19.0 <19') ||
-      satisfies(process.version, '>=20.6.0');
+// -----------------------------------------------------------------------------
+function test_brackets() {
+    if (process.versions.bun) {
+        return false;
+    }
+    return satisfies(process.version, '>=18.19.0 <19') ||
+        satisfies(process.version, '>=20.6.0');
+}
 
 // -----------------------------------------------------------------------------
 process.on('uncaughtException', function (err) {
     log_error(err.message);
     log_error(err.stack);
+    console.error(err.message);
+    console.error(err.stack);
 });
 
 // -----------------------------------------------------------------------------
@@ -65,7 +82,7 @@ function log_error(message) {
     message = message.split('\n').map(line => {
         return `${date}: ${line}`;
     }).join('\n');
-    fs.appendFileSync(home_file('lips.error.log'), message + '\n');
+    fs.appendFileSync(home_file(ERROR_FILE), message + '\n');
 }
 
 function home_file(filename) {
@@ -77,14 +94,19 @@ function debug(message) {
     console.log(message);
 }
 // -----------------------------------------------------------------------------
-async function run(code, interpreter, use_dynamic = false, env = null, stack = false, log_unterminated = true) {
+async function run(code, {
+    interpreter,
+    env = null,
+    filename = null,
+    log_unterminated = true
+}) {
     try {
-        return await interpreter.exec(code, { use_dynamic, env });
+        return await interpreter.exec(code, { use_dynamic, env, filename });
     } catch(e) {
         if (e instanceof Parser.Unterminated && !log_unterminated) {
             return;
         }
-        print_error(e, stack);
+        print_error(e, use_stack);
     }
 }
 
@@ -94,9 +116,17 @@ function print_error(e, stack) {
         console.log('Error is null');
         return;
     }
-    log_error(e.message);
-    if (e.__code__) {
-        strace = e.__code__.map((line, i) => {
+    if (!(e instanceof Error)) {
+        e = new Error(e.toString());
+    }
+    const re = /^([^\s]+ )?Error:/;
+    let message = e.message;
+    if (!message.match(re)) {
+        message = `Runtime Error: ${message}`;
+    }
+    log_error(message);
+    if (e.__stack__) {
+        strace = e.__stack__.map((line, i) => {
             const prefix = `[${i+1}]: `;
             const formatter = new Formatter(line);
             const output = formatter.break().format({
@@ -105,15 +135,21 @@ function print_error(e, stack) {
             return prefix + output;
         }).join('\n');
     }
-    if (stack) {
+    if (use_stack) {
         console.error(e.stack);
+    } else {
+        console.error(message);
+    }
+    if (strace) {
         console.error(strace);
+    }
+    if (stack) {
         process.exit(1);
     } else {
-        console.error(e.message);
-        console.error('Call (stack-trace) to see the stack');
-        console.error('Thrown exception is in global exception variable, use ' +
-                      '(display exception.stack) to display JS stack trace');
+        console.error('Use (display exception.stack) or use -t/-trace option to display JS stack trace.');
+    }
+    if (!use_meta) {
+        console.error('Use -m/-meta option to display column and filename of the exception');
     }
     global.exception = e;
 }
@@ -134,7 +170,7 @@ function print(result) {
                 process.stdout.write('\x1b[K' + value);
                 return true;
             } catch(e) {
-                print_error(e, options.t || options.trace);
+                print_error(e, use_stack);
             }
         }
     }
@@ -146,7 +182,7 @@ function bootstrap(interpreter) {
     if (bootstrap === 'none') {
         return Promise.resolve();
     }
-    const file = bootstrap ? bootstrap : './dist/std.xcb';
+    const filename = bootstrap ? bootstrap : './dist/std.xcb';
     function read(name) {
         var path;
         try {
@@ -155,13 +191,13 @@ function bootstrap(interpreter) {
             try {
                 path = require.resolve(`../${name}`);
             } catch (e) {
-                path = require.resolve(`@jcubic/lips/../${name}`);
+                path = require.resolve(`lips/../${name}`);
             }
         }
         return readCode(path);
     }
-    const code = read(file);
-    return run(code, interpreter, false, env.__parent__, true);
+    const code = read(filename);
+    return run(code, { interpreter, filename, env: env.__parent__ });
 }
 
 // -----------------------------------------------------------------------------
@@ -215,14 +251,14 @@ function log(message) {
 // -----------------------------------------------------------------------------
 let strace;
 let rl;
-let buffer;
+let output;
 var newline;
 const moduleURL = new URL(import.meta.url);
 const __dirname = path.dirname(moduleURL.pathname);
 const __filename = path.basename(moduleURL.pathname);
 const command_line = [];
 let last_line = '';
-const interp = Interpreter('repl', {
+const interpreter = Interpreter('repl', {
     stdin: InputPort(function() {
         return new Promise(function(resolve) {
             rl = readline.createInterface({
@@ -248,6 +284,7 @@ const interp = Interpreter('repl', {
     __dirname: __dirname,
     __filename: __filename,
     command_line,
+    meta: use_meta,
     // -------------------------------------------------------------------------
     'stack-trace': doc(function() {
         if (strace) {
@@ -323,16 +360,18 @@ if (options.version || options.V) {
     ].map(([key, ...values]) => {
         return [LSymbol(key), ...values];
     }));
-    bootstrap(interp).then(function() {
+    bootstrap(interpreter).then(function() {
         // Scheme can access JS global.output
-        return run('(for-each (lambda (x) (write x) (newline)) output)', interp, options.d || options.dynamic);
+        return run('(for-each (lambda (x) (write x) (newline)) output)', {
+            interpreter,
+            use_dynamic
+        });
     });
 } else if (options.e || options.eval) {
     // from 1.0 documentation should use -e but it's not a breaking change
-    bootstrap(interp).then(function() {
+    bootstrap(interpreter).then(function() {
         const code = options.e || options.eval;
-        const dynamic = options.d || options.dynamic;
-        return run(code, interp, dynamic, null, true).then(print);
+        return run(code, { interpreter }).then(print);
     });
 } else if ((options.c || options.compile) && options._.length === 1) {
     try {
@@ -345,8 +384,8 @@ if (options.version || options.V) {
         const compiled_name = filename.replace(/\.[^.]+$/, '') + ext;
         var code = readFile(filename);
         const cwd = process.cwd();
-        bootstrap(interp).then(function() {
-            return compile(code, interp.__env__).then(code => {
+        bootstrap(interpreter).then(function() {
+            return compile(code, interpreter.__env__).then(code => {
                 if (!quiet) {
                     console.log(`Writing ${compiled_name} ...`);
                 }
@@ -388,9 +427,8 @@ if (options.version || options.V) {
     command_line.push(...get_command_line_args());
     try {
         const code = readCode(filename);
-        bootstrap(interp).then(() => {
-            const dynamic = options.d || options.dynamic;
-            return run(code, interp, dynamic, null, options.t || options.trace);
+        bootstrap(interpreter).then(() => {
+            return run(code, { interpreter, filename });
         });
     } catch (err) {
         log_error(err.message || err);
@@ -401,46 +439,46 @@ if (options.version || options.V) {
 } else if (options.h || options.help) {
     var name = process.argv[1];
     var intro = banner.replace(/(Jankiewicz\n)[\s\S]+$/, '$1');
-    console.log(format('%s\nusage:\n  %s -q | -c | -h | -t | -b <file> | -d | -e <code> | <filename>\n' +
-                       '\n  [-h --help]\t\tthis help message\n  [-e --eval]\t\texecute code\n  [-V --v' +
-                       'ersion]\tdisplay version information according to srfi-176\n  [-c --compile]\t' +
-                       'parse and compile the file into binary file format\n  [-b --boostrap]\tpoint t' +
-                       'o a file that should be used for boostraping standard library,\n\t\t\tdefault ' +
-                       'is ./dist/std.xcb. use none to disable boostraping\n  [-q --quiet]\t\tdon\'t d' +
-                       'isplay banner in REPL\n  [-d --dynamic]\trun interpreter with dynamic scope\n ' +
-                       ' [-t --trace]\t\tprint JavaScript and scheme stack traces when extensions is th' +
-                       'rown\n\nif called without arguments it will run the REPL and if called with on' +
-                       'e argument\nit will treat it as filename and execute it.',
+    console.log(format('%s\nusage:\n  %s -q | -c | -h | -m | -t | -b <file> | -d | -e <code> | <filena' +
+                       'me>\n\n  [-h --help]\t\tthis help message\n  [-e --eval]\t\texecute code\n  [-' +
+                       'V --version]\tdisplay version information according to srfi-176\n  [-c --compi' +
+                       'le]\tparse and compile the file into binary file format\n  [-b --bootstrap]\tp' +
+                       'oint to a file that should be used for bootstrapping standard library,\n\t\t\t' +
+                       'default is ./dist/std.xcb. use none to disable bootstrapping\n  [-q --quiet]\t' +
+                       '\tdon\'t display banner in REPL\n  [-d --dynamic]\trun interpreter with dynami' +
+                       'c scope\n  [-t --trace]\t\tprint JavaScript and scheme stack traces when exten' +
+                       'sions is thrown\n  [-m --meta]\t\tadd meta information to the parsed code that' +
+                       ' enhance exceptions message\n\nif called without arguments it will run the REP' +
+                       'L and if called with one argument\nit will treat it as filename and execute it.',
                        intro, path.basename(name)));
 } else {
-    const dynamic = options.d || options.dynamic;
-    const entry = '   ' + (dynamic ? 'dynamic' : 'lexical') + ' scope $1';
+    const entry = '   ' + (use_dynamic ? 'dynamic' : 'lexical') + ' scope $1';
     if (process.stdin.isTTY && !quiet) {
         console.log(banner.replace(/(\n\nLIPS.+)/m, entry));
     }
     var prompt = 'lips> ';
     var continue_prompt = '... ';
-    var terminal = !!process.stdin.isTTY && !(process.env.EMACS || process.env.INSIDE_EMACS);
-    buffer = make_buffer(process.stdout);
+    const is_emacs = process.env.EMACS || process.env.INSIDE_EMACS;
+    var is_terminal = !!process.stdin.isTTY && !is_emacs;
+    output = is_emacs ? process.stdout : make_buffer(process.stdout);
+    const history_size = Number(env.LIPS_REPL_HISTORY_SIZE);
+    const history_size_valid = !Number.isNaN(history_size) && history_size > 0;
     rl = readline.createInterface({
         input: process.stdin,
-        output: buffer,
+        output,
         prompt: prompt,
-        terminal
+        historySize: history_size_valid ? historySize : 1000,
+        terminal: is_terminal
     });
-    rl.on('close', () => {
-        setTimeout(() => {
-            rl.setPrompt('');
-            buffer.flush('\n');
-        }, 10);
-    });
-    const historySize = Number(env.LIPS_REPL_HISTORY_SIZE);
-    if (!Number.isNaN(historySize) && historySize > 0) {
-        rl.historySize = historySize;
-    } else {
-        rl.historySize = 1000;
+    if (!is_emacs) {
+        rl.on('close', () => {
+            setTimeout(() => {
+                rl.setPrompt('');
+                output.flush('\n');
+            }, 10);
+        });
     }
-    setupHistory(rl, terminal ? env.LIPS_REPL_HISTORY : '', run_repl);
+    setupHistory(rl, is_terminal ? env.LIPS_REPL_HISTORY : '', run_repl);
 }
 
 function is_open(token) {
@@ -462,21 +500,13 @@ function debug_log(filename) {
 
 // buffer Proxy to prevent flicker when Node writes to stdout
 function make_buffer(stream) {
-    const DEBUG = false;
     const buffer = [];
-    const fname = home_file('lips__debug.log');
-    if (DEBUG) {
-        fs.truncate(fname, 0, () => {});
-    }
-    const log = DEBUG ? debug_log(fname) : () => {};
     function flush(data, ...args) {
         if (buffer.length) {
             const payload = buffer.join('') + data;
             buffer.length = 0;
-            log(`flush ::: ${payload}`);
             stream.write(payload, ...args);
         } else {
-            log('write :::');
             stream.write(data, ...args);
         }
     }
@@ -490,7 +520,6 @@ function make_buffer(stream) {
                     log(data);
                     if (data.match(/\x1b\[(?:1G|0J)|(^(?:lips>|\.\.\.) )/)) {
                         buffer.push(data);
-                        log('buffer :::');
                     } else {
                         flush(data, ...args);
                     }
@@ -554,7 +583,7 @@ function ansi_rewrite_above(ansi_code) {
     const lines = ansi_code.split('\n');
     const stdout = lines.map((line, i) => {
         const prefix = i === 0 ? prompt : continue_prompt;
-        return prefix + line;
+        return prefix + line + '\x1b[K';
     }).join('\x1b[E') + '\x1b[E';
     const len = lines.length;
     // overwrite all lines to get rid of any artifacts left my stdin
@@ -583,14 +612,14 @@ function run_repl(err, rl) {
         // we don't do indentation for paste bracket mode
         // indentation will also not work for old Node.js
         // because it's too problematice to make it right
-        if ((is_brackets_mode() || !supports_paste_brackets)) {
-            rl.prompt();
+        if ((is_brackets_mode() || !SUPPORTS_PASTE_BRACKETS)) {
             if (is_emacs) {
                 rl.setPrompt('');
             } else {
                 rl.setPrompt(continue_prompt);
             }
-            if (terminal) {
+            rl.prompt();
+            if (is_terminal) {
                 rl.write(' '.repeat(prompt.length - continue_prompt.length));
             }
         } else {
@@ -683,8 +712,8 @@ function run_repl(err, rl) {
             }
         }, 0);
     });
-    bootstrap(interp).then(function() {
-        if (supports_paste_brackets) {
+    bootstrap(interpreter).then(function() {
+        if (SUPPORTS_PASTE_BRACKETS) {
             // this make sure that the paste brackets ANSI escape
             // is added to cmd so they can be processed in 'line' event
             process.stdin.on('keypress', (key, meta) => {
@@ -707,7 +736,7 @@ function run_repl(err, rl) {
                 if (cmd.match(/\x1b\[201~$/)) {
                     cmd = code;
                 }
-                if (terminal) {
+                if (is_terminal) {
                     const output = ansi_rewrite_above(scheme(code));
                     process.stdout.write(output);
                 }
@@ -720,7 +749,9 @@ function run_repl(err, rl) {
                     rl.pause();
                     cmd = '';
                     prev_eval = prev_eval.then(function() {
-                        const result = run(code, interp, dynamic, null, options.t || options.trace, false);
+                        const result = run(code, {
+                            interpreter
+                        });
                         return result;
                     }).then(function(result) {
                         if (process.stdin.isTTY) {
@@ -749,8 +780,7 @@ function run_repl(err, rl) {
                     continue_multiline(code);
                 }
             } catch (e) {
-                console.error(e.message);
-                console.error(e.stack);
+                print_error(e, use_stack);
                 cmd = '';
                 rl.setPrompt(prompt);
                 rl.prompt();
@@ -761,6 +791,14 @@ function run_repl(err, rl) {
         log_error(e.message || e);
         console.error('Internal Error: bootstrap filed');
     });
+}
+
+function unserialize_history(data, repl) {
+    return data.split(HISTORY_SEPARATOR, repl.historySize);
+}
+
+function serialize_history(history) {
+    return history.join(HISTORY_SEPARATOR);
 }
 
 // source: Node.js https://github.com/nodejs/node/blob/master/lib/internal/repl/history.js
@@ -781,7 +819,7 @@ function setupHistory(repl, historyPath, ready) {
 
   if (!historyPath) {
     try {
-      historyPath = path.join(os.homedir(), '.lips_repl_history');
+      historyPath = path.join(os.homedir(), HISTORY_FILE);
     } catch (err) {
       _writeToOutput(repl, '\nError: Could not get the home directory.\n' +
         'REPL session history will not be persisted.\n');
@@ -829,7 +867,7 @@ function setupHistory(repl, historyPath, ready) {
     }
 
     if (data) {
-      repl.history = data.split(/[\n\r]+/, repl.historySize);
+      repl.history = unserialize_history(data, repl);
     } else {
       repl.history = [];
     }
@@ -863,7 +901,7 @@ function setupHistory(repl, historyPath, ready) {
       clearTimeout(timer);
     }
 
-    timer = setTimeout(flushHistory, kDebounceHistoryMS);
+    timer = setTimeout(flushHistory, DEBOUNCE_HISTORY);
   }
 
   function flushHistory() {
@@ -873,7 +911,7 @@ function setupHistory(repl, historyPath, ready) {
       return;
     }
     writing = true;
-    const historyData = repl.history.join(os.EOL);
+    const historyData = serialize_history(repl.history);
     fs.write(repl._historyHandle, historyData, 0, 'utf8', onwritten);
   }
 

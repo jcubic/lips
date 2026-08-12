@@ -77,11 +77,10 @@ const type_constants = new Map([
 ]);
 // -------------------------------------------------------------------------
 
-let fs, path, nodeRequire;
+let fs, path, node_require;
 
 const BN = root.BN;
 
-/* eslint-disable */
 /* c8 ignore next 32 */
 function contentLoaded(win, fn) {
     var done = false, top = true,
@@ -129,11 +128,11 @@ function log(x, ...args) {
         }));
     }
 }
-/* eslint-enable */
+
 // ----------------------------------------------------------------------
 /* c8 ignore next */
 function is_debug(n = null) {
-    let debug = (user_env && user_env.get('DEBUG', { throwError: false }));
+    const debug = user_env?.get('DEBUG', { throwError: false });
     if (n === null) {
         return debug === true;
     }
@@ -143,8 +142,7 @@ function is_debug(n = null) {
     }
     return debug === n;
 }
-/* eslint-enable */
-/* eslint-disable max-len */
+
 // functions generate regexes to match number rational, integer, complex, complex+rational
 function num_mnemicic_re(mnemonic) {
     return mnemonic ? `(?:#${mnemonic}(?:#[ie])?|#[ie]#${mnemonic})` : '(?:#[ie])?';
@@ -291,7 +289,7 @@ const complex_bare_re = new RegExp('^(?:' + gen_complex_re('', '[0-9a-f]') + ')$
 const complex_bare_match_re = make_complex_match_re('', '[0-9a-fA-F]');
 
 const pre_num_parse_re = /((?:#[xodbie]){0,2})(.*)/i;
-/* eslint-enable */
+
 function num_pre_parse(arg) {
     var parts = arg.match(pre_num_parse_re);
     var options = {};
@@ -470,7 +468,8 @@ function parse_float(arg) {
             parse.number.match(/e\+?[0-9]/i)) {
             return LNumber(value);
         }
-        // calculate big int and big fraction by hand - it don't fit into JS float
+        // calculate big int and big fraction by hand
+        // it doesn't fit into JS float
         const { mantisa, exponent } = parse_big_int(parse.number);
         if (mantisa !== undefined && exponent !== undefined) {
             const factor = LNumber(10).pow(LNumber(Math.abs(exponent)));
@@ -503,7 +502,7 @@ function parse_string(string) {
         return str;
     } catch (e) {
         const msg = e.message.replace(/in JSON /, '').replace(/.*Error: /, '');
-        throw new Error(`Invalid string literal: ${msg}`);
+        throw new Error(`Parse Error: Invalid string literal: ${msg}`);
     }
 }
 // ----------------------------------------------------------------------
@@ -541,8 +540,7 @@ function parse_symbol(arg) {
     return new LSymbol(arg);
 }
 // ----------------------------------------------------------------------
-function parse_argument(arg, meta = false) {
-    const token = meta ? arg.token : arg;
+function parse_argument(token) {
     if (constants.hasOwnProperty(token)) {
         return constants[token];
     }
@@ -574,18 +572,26 @@ function parse_argument(arg, meta = false) {
         }
     }
     if (!result && token.match(/^#[iexobd]/)) {
-        throw new Error('Invalid numeric constant: ' + arg);
+        throw new Error('Syntax Error: Invalid numeric constant: ' + token);
     }
     if (!result) {
         result = parse_symbol(token);
     }
-    if (meta) {
-        const { col, offset, line } = arg;
-        read_only(result, '__col__', col);
-        read_only(result, '__offset__', offset);
-        read_only(result, '__line__', line);
-    }
     return result;
+}
+// ----------------------------------------------------------------------
+function augment_object(object, meta, filename) {
+    if (!is_object(object)) {
+        return object;
+    }
+    const { col, offset, line } = meta;
+    read_only(object, '__col__', col);
+    read_only(object, '__offset__', offset);
+    read_only(object, '__line__', line);
+    if (filename) {
+        read_only(object, '__file__', filename);
+    }
+    return object;
 }
 // ----------------------------------------------------------------------
 function is_atom_string(str) {
@@ -744,7 +750,7 @@ function strip_s_comments(tokens) {
 // ----------------------------------------------------------------------
 // Detect if object is ES6 Symbol that work with polyfills
 // ----------------------------------------------------------------------
-function isSymbol(x) {
+function is_symbol(x) {
     return typeof x === 'symbol' ||
         typeof x === 'object' &&
         Object.prototype.toString.call(x) === '[object Symbol]';
@@ -752,25 +758,29 @@ function isSymbol(x) {
 // ----------------------------------------------------------------------
 // :: LSymbol constructor
 // ----------------------------------------------------------------------
-function LSymbol(name) {
+function LSymbol(name, interned = true) {
     if (name instanceof LString) {
         name = name.valueOf();
     }
-    if (LSymbol.list[name] instanceof LSymbol) {
+    if (interned && LSymbol.list[name] instanceof LSymbol) {
         return LSymbol.list[name];
     }
     if (typeof this !== 'undefined' && this.constructor !== LSymbol ||
         typeof this === 'undefined') {
-        return new LSymbol(name);
+        return new LSymbol(name, interned);
     }
     this.__name__ = name;
-    if (typeof name === 'string') {
+    if (interned && typeof name === 'string') {
         LSymbol.list[name] = this;
     }
 }
 LSymbol.list = {};
 LSymbol.literal = Symbol.for('__literal__');
 LSymbol.object = Symbol.for('__object__');
+// ----------------------------------------------------------------------
+LSymbol.prototype.is_interned = function() {
+    return LSymbol.list[this.__name__] == this;
+};
 // ----------------------------------------------------------------------
 LSymbol.is = function(symbol, name) {
     return symbol instanceof LSymbol &&
@@ -781,7 +791,7 @@ LSymbol.is = function(symbol, name) {
 // ----------------------------------------------------------------------
 LSymbol.prototype.toString = function(quote) {
     //return '#<symbol \'' + this.name + '\'>';
-    if (isSymbol(this.__name__)) {
+    if (is_symbol(this.__name__)) {
         return symbol_to_string(this.__name__);
     }
     var str = this.valueOf();
@@ -814,6 +824,18 @@ LSymbol.prototype.is_gensym = function() {
 function symbol_to_string(obj) {
     return obj.toString().replace(/^Symbol\(([^)]+)\)/, '$1');
 }
+
+// -------------------------------------------------------------------------
+function normalize_name(name) {
+    if (name instanceof LSymbol) {
+        return name.valueOf();
+    }
+    if (name instanceof LString) {
+        return name.valueOf();
+    }
+    return name;
+}
+
 // -------------------------------------------------------------------------
 function is_gensym(symbol) {
     if (typeof symbol === 'symbol') {
@@ -825,7 +847,7 @@ function is_gensym(symbol) {
 const gensym = (function() {
     var count = 0;
     function with_props(name, sym) {
-        var symbol = new LSymbol(sym);
+        var symbol = new LSymbol(sym, false);
         hidden_prop(symbol, '__literal__', name);
         return symbol;
     }
@@ -838,7 +860,7 @@ const gensym = (function() {
         }
         if (is_gensym(name)) {
             // don't do double gynsyms in nested syntax-rules
-            return LSymbol(name);
+            return LSymbol(name, false);
         }
         // use ES6 symbol as name for lips symbol (they are unique)
         if (name !== null) {
@@ -964,7 +986,7 @@ function escape_quoted_promises(array) {
     while (i--) {
         const value = array[i];
         if (value instanceof QuotedPromise) {
-            escaped[i] = new Value(value);
+            escaped[i] = new Value(value, 'promise');
         } else {
             escaped[i] = value;
         }
@@ -976,7 +998,7 @@ function unescape_quoted_promises(array) {
     var unescaped = new Array(array.length), i = array.length;
     while (i--) {
         var value = array[i];
-        if (value instanceof Value) {
+        if (Value.of('promise', value)) {
             unescaped[i] = value.valueOf();
         } else {
             unescaped[i] = value;
@@ -992,19 +1014,28 @@ var specials = {
     SPLICE: Symbol.for('splice'),
     SYMBOL: Symbol.for('symbol'),
     names: function() {
-        return Object.keys(this.__list__);
+        return Array.from(this.__list__.keys());
+    },
+    regex: function() {
+        return Array.from(this.__regex__.keys());
     },
     type: function(name) {
         try {
             return this.get(name).type;
         } catch(e) {
-            console.log({name});
-            console.log(e);
             return null;
         }
     },
     get: function(name) {
-        return this.__list__[name];
+        const regex = [...this.__regex__.keys()];
+        if (regex.length) {
+            for (const re of regex) {
+                if (name.match(re)) {
+                    return this.__regex__.get(re);
+                }
+            }
+        }
+        return this.__list__.get(name);
     },
     // events are used in Lexer dynamic rules
     off: function(name, fn = null) {
@@ -1031,31 +1062,58 @@ var specials = {
         }
     },
     remove: function(name) {
-        delete this.__list__[name];
+        const list = this.get_list(name);
+        if (is_regex(name)) {
+            // regex specials are keyed by RegExp objects, which Map compares by
+            // identity; a freshly constructed regex never matches, so look the
+            // entry up by its string representation (source + flags) instead
+            for (const key of list.keys()) {
+                if (String(key) === String(name)) {
+                    list.delete(key);
+                }
+            }
+        } else {
+            list.delete(name);
+        }
         this.trigger('remove');
     },
     append: function(name, value, type) {
-        this.__list__[name] = {
+        this.get_list(name).set(name, {
             seq: name,
-            symbol: value,
+            value,
             type
-        };
+        });
         this.trigger('append');
     },
+    get_list: function(prop) {
+        if (is_regex(prop)) {
+            return this.__regex__;
+        } else {
+            return this.__list__;
+        }
+    },
     __events__: {},
-    __list__: {}
+    __list__: new Map(),
+    __regex__: new Map()
 };
 function is_special(token) {
-    return specials.names().includes(token);
+    const names = specials.names();
+    const regex = specials.regex();
+    if (regex.length) {
+        return regex.some(re => {
+            return token.match(re);
+        });
+    }
+    return names.includes(token);
 }
 function is_builtin(token) {
     return specials.__builtins__.includes(token);
 }
 function is_literal(special) {
-    return specials.type(special) === specials.LITERAL;
+    return special.type === specials.LITERAL;
 }
 function is_symbol_extension(special) {
-    return specials.type(special) === specials.SYMBOL;
+    return special.type === specials.SYMBOL;
 }
 // ----------------------------------------------------------------------
 const defined_specials = [
@@ -1071,6 +1129,7 @@ Object.freeze(builtins);
 
 Object.defineProperty(specials, '__builtins__', {
     writable: false,
+    enumerable: true,
     value: builtins
 });
 defined_specials.forEach(([seq, symbol, type]) => {
@@ -1088,13 +1147,14 @@ defined_specials.forEach(([seq, symbol, type]) => {
    }
 */
 class Lexer {
-    constructor(input, { whitespace = false } = {}) {
+    constructor(input, { whitespace = false, filename = null } = {}) {
         read_only(this, '__input__', input);
+        read_only(this, '__file__', filename);
         var internals = {};
         // hide internals from introspection
         [
             '_i', '_whitespace', '_col', '_newline', '_line',
-            '_state', '_next', '_token', '_prev_char'
+            '_state', '_next', '_token', '_prev_char', '_start'
         ].forEach(name => {
             Object.defineProperty(this, name, {
                 configurable: false,
@@ -1111,6 +1171,11 @@ class Lexer {
         this._i = this._line = this._col = this._newline = 0;
         this._state = this._next = this._token = null;
         this._prev_char = '';
+        this._start = {
+            col: 0,
+            line: 0,
+            offset: 0
+        };
     }
     get(name) {
         return this.__internal[name];
@@ -1133,13 +1198,24 @@ class Lexer {
         }
         return this._token;
     }
+    _augment_exception(e) {
+        read_only(e, '__col__', this._start.col);
+        read_only(e, '__offset__', this._start.offset);
+        read_only(e, '__line__', this._start.line);
+        read_only(e, '__file__', this.__file__);
+        return unify_error_message(e);
+    }
     peek(meta = false) {
         if (this._i >= this.__input__.length) {
             return eof;
         }
         if (this._token) {
-            read_only(this, '__token__', this.token(true));
-            return this.token(meta);
+            const token = this.token(true);
+            read_only(this, '__token__', token);
+            if (meta) {
+                return token;
+            }
+            return token.token;
         }
         var found = this.next_token();
         if (found) {
@@ -1217,7 +1293,8 @@ class Lexer {
     match_rule(rule, { prev_char, char, next_char } = {}) {
         var [ re, prev_re, next_re, state ] = rule;
         if (rule.length !== 5) {
-            throw new Error(`Lexer: Invalid rule of length ${rule.length}`);
+            const e = new Error(`Lexer: Invalid rule of length ${rule.length}`);
+            throw this._augment_exception(e);
         }
         if (is_string(re)) {
             if (re !== char) {
@@ -1237,50 +1314,150 @@ class Lexer {
         }
         return true;
     }
+    _recover_token() {
+        const re = /^([^\s()\[\]]*).*(\n[\s\S]+)?/
+        const offset = this._start.offset;
+        return this.__input__.substring(offset).replace(re, '$1').trim();
+    }
+    _backtrack(stack) {
+        // restore the lexer bookkeeping saved in the most recent choice point
+        // and return where scanning should resume (character + rule index)
+        const cp = stack.pop();
+        this._state = null;
+        this._line = cp.line;
+        this._newline = cp.newline;
+        this._col = cp.col;
+        return { i: cp.i, rule_index: cp.rule_index };
+    }
+    _token_error() {
+        let e;
+        const expr = this._recover_token();
+        if (expr[0] === '#') {
+            e = new Error(`Syntax Error: invalid token ${expr}`);
+        } else {
+            e = new Unterminated(`Syntax Error: Unterminated expression ${expr}`);
+        }
+        throw this._augment_exception(e);
+    }
     next_token() {
         if (this._i >= this.__input__.length) {
             return false;
         }
+        const rules = Lexer.rules;
+        const len = this.__input__.length;
+        // The generic symbol rules are always last; backtracking must not fall
+        // into them (see below), so we remember where they start.
+        const symbol_start = rules.length - Lexer._symbol_rules.length;
+        // The FSM is greedy: at every character it commits to the first matching
+        // rule. When two rules can start the same token (e.g. a regex syntax
+        // extension `#[0-9]+a` and a datum label `#2=` both match `#` + digit)
+        // the greedy choice can walk into a dead-end while the other rule would
+        // have completed the token. To support such conflicting rules we keep a
+        // stack of choice points recorded whenever a specific (non-symbol) rule
+        // can start a token (`state === null`) and backtrack to the next
+        // alternative when the current branch fails to complete a token.
+        const stack = [];
+        // whether a specific (non-symbol) rule ever started a token in this
+        // scan; if so, exhausting the alternatives is a token error rather than
+        // an unmatchable character
+        let attempted = false;
         let start = true;
-        loop:
-        for (let i = this._i, len = this.__input__.length; i < len; ++i) {
+        let i = this._i;
+        // index of the first rule to try at the current character; only ever
+        // non-zero right after a backtrack, so forward scanning stays unchanged
+        let rule_index = 0;
+        // true when we jumped back to `i` via backtracking and the per-character
+        // preprocessing (newline/whitespace bookkeeping) must not run again
+        let resume = false;
+        while (true) {
+            if (i >= len) {
+                // reached the end of the input without completing a token: try
+                // the next alternative start rule before giving up (backtracking
+                // never reaches the symbol rules, so an unterminated string is
+                // still reported as an error rather than becoming a symbol)
+                if (![null, Lexer.comment].includes(this._state) && stack.length) {
+                    ({ i, rule_index } = this._backtrack(stack));
+                    resume = true;
+                    continue;
+                }
+                break;
+            }
             const char = this.__input__[i];
             const prev_char = this.__input__[i - 1] || '';
             const next_char = this.__input__[i + 1] || '';
-            if (char === '\n') {
-                ++this._line;
-                const newline = this._newline;
-                if (this._state === null) {
-                    // keep beginning of the newline to calculate col
-                    // we don't want to check inside the token (e.g. strings)
-                    this._newline = i + 1;
+            if (!resume) {
+                if (start) {
+                    this._start = {
+                        col: this._i - this._newline,
+                        line: this._line,
+                        offset: this._i
+                    };
                 }
-                if (this._whitespace && this._state === null) {
-                    this._next = i + 1;
+                if (char === '\n') {
+                    ++this._line;
+                    const newline = this._newline;
+                    if (this._state === null) {
+                        // keep beginning of the newline to calculate col
+                        // we don't want to check inside the token (e.g. strings)
+                        this._newline = i + 1;
+                    }
                     this._col = this._i - newline;
-                    return true;
-                }
-            }
-            // skip leading spaces
-            if (start && this._state === null && char.match(/\s/)) {
-                if (this._whitespace) {
-                    if (!next_char.match(/\s/)) {
+                    if (this._whitespace && this._state === null) {
                         this._next = i + 1;
-                        this._col = this._i - this._newline;
                         return true;
+                    }
+                }
+                // skip leading spaces
+                if (start && this._state === null && char.match(/\s/)) {
+                    if (this._whitespace) {
+                        if (!next_char.match(/\s/)) {
+                            this._next = i + 1;
+                            this._col = this._i - this._newline;
+                            return true;
+                        } else {
+                            ++i;
+                            continue;
+                        }
                     } else {
+                        this._i = i + 1;
+                        ++i;
                         continue;
                     }
-                } else {
-                    this._i = i + 1;
-                    continue;
                 }
+                start = false;
             }
-            start = false;
-            for (let rule of Lexer.rules) {
+            resume = false;
+            let matched = false;
+            // forward scanning tries every rule; a backtrack retry (rule_index
+            // non-zero) stops before the generic symbol rules so a failed
+            // specific token is reported as an error rather than reinterpreted
+            // as a symbol
+            const retry = rule_index > 0;
+            const limit = retry ? symbol_start : rules.length;
+            for (let r = rule_index; r < limit; ++r) {
+                const rule = rules[r];
                 if (this.match_rule(rule, { prev_char, char, next_char })) {
                     // change state to null if end of the token
-                    var next_state = rule[rule.length - 1];
+                    const next_state = rule[rule.length - 1];
+                    if (next_state === null && retry && !next_char.match(Lexer.boundary)) {
+                        // maximal munch: while backtracking don't accept a rule
+                        // that completes a token before a token boundary, e.g.
+                        // the single character `#` vector special completing `#`
+                        // in the middle of an invalid `#4`
+                        continue;
+                    }
+                    if (this._state === null && next_state !== null && r < symbol_start) {
+                        // a specific token can start here; remember the remaining
+                        // non-symbol rules so we can retry them on a dead-end
+                        attempted = true;
+                        stack.push({
+                            i,
+                            rule_index: r + 1,
+                            line: this._line,
+                            newline: this._newline,
+                            col: this._col
+                        });
+                    }
                     this._state = next_state;
                     if (this._state === null) {
                         this._next = i + 1;
@@ -1288,27 +1465,54 @@ class Lexer {
                         return true;
                     }
                     // token is activated
-                    continue loop;
+                    matched = true;
+                    break;
                 }
             }
-            if (this._state !== null) {
+            // only the first character after a backtrack starts at a non-zero
+            // rule index; capture that before resetting for forward scanning
+            const was_retry = rule_index > 0;
+            rule_index = 0;
+            if (matched) {
+                ++i;
+                continue;
+            }
+            // an open-ended state accumulates a character that no rule matched
+            // (the original greedy behaviour); a state with complete rules ends
+            // the token here so we can backtrack to a conflicting start rule
+            const can_collect = this._state !== null &&
+                Lexer.greedy_states.has(this._state);
+            if (!was_retry && can_collect) {
                 // collect char in token
-                continue loop;
+                ++i;
+                continue;
+            }
+            // no (more) rule matches at this character
+            if (stack.length) {
+                // backtrack to the next alternative start rule
+                ({ i, rule_index } = this._backtrack(stack));
+                resume = true;
+                continue;
+            }
+            if (can_collect) {
+                // no alternatives left, keep collecting (e.g. a long symbol)
+                ++i;
+                continue;
+            }
+            if (attempted) {
+                // a specific token started here but none of the conflicting
+                // rules completed it: report it as an invalid/unterminated token
+                this._token_error();
             }
             // no rule for token
-            const line = this.__input__.split('\n')[this._line];
-            throw new Error(`Invalid Syntax at line ${this._line + 1}\n${line}`);
+            const line = this.__input__.split('\n')[this._start.line];
+            const e = new Error(`Invalid Syntax ${line}`);
+            throw this._augment_exception(e);
         }
         // we need to ignore comments because they can be the last expression in code
         // without extra newline at the end
         if (![null, Lexer.comment].includes(this._state)) {
-            const line_number = this.__input__.substring(0, this._newline).match(/\n/g)?.length ?? 0;
-            const line = this.__input__.substring(this._newline);
-            if (this.__input__[this._i] === '#') {
-                const expr = this.__input__.substring(this._i).replace(/^([^\s()\[\]]+).*/, '$1');
-                throw new Error(`Invalid Syntax at line ${line_number + 1}: invalid token ${expr}`);
-            }
-            throw new Unterminated(`Invalid Syntax at line ${line_number + 1}: Unterminated expression ${line}`);
+            this._token_error();
         }
     }
 }
@@ -1324,12 +1528,21 @@ Lexer.literal_rule = function literal_rule(string, symbol, p_re = null, n_re = n
     if (string.length === 1) {
         return [[string, p_re, n_re, null, null]];
     }
-    var rules = [];
-    for (let i = 0, len = string.length; i < len; ++i) {
+    return Lexer.make_rule(string, symbol, p_re, n_re);
+};
+
+Lexer.make_rule = function make_rule(seq, symbol, p_re = null, n_re = null) {
+    const rules = [];
+    for (let i = 0, len = seq.length; i < len; ++i) {
+        const part = seq[i];
+        // a quantified regex part (e.g. [0-9]+) matches one or more characters,
+        // so the character before it may itself be part of the run: its own
+        // previous-character constraint has to be relaxed to null
+        const quantified = is_regex(part) && /[*+]$/.test(part.source);
         const rule = [];
-        rule.push(string[i]);
-        rule.push(string[i - 1] || p_re);
-        rule.push(string[i + 1] || n_re);
+        rule.push(part);
+        rule.push(quantified ? null : (seq[i - 1] || p_re));
+        rule.push(seq[i + 1] || n_re);
         if (i === 0) {
             rule.push(null);
             rule.push(symbol);
@@ -1341,9 +1554,28 @@ Lexer.literal_rule = function literal_rule(string, symbol, p_re = null, n_re = n
             rule.push(symbol);
         }
         rules.push(rule);
+        // add a self-loop so the additional characters of the quantified part
+        // keep the token active with an explicit rule instead of relying on the
+        // greedy collect fallback
+        if (quantified) {
+            rules.push([part, null, null, symbol, symbol]);
+        }
     }
     return rules;
 };
+
+Lexer.regex_rule = function regex_rule(regex, symbol, p_re = null, n_re = null) {
+    if (regex.source) {
+        const parts = regex.source.match(/(\[[^\]]+\][*+]?|.)/g).map(str => {
+            if (str.length === 1) {
+                return str;
+            }
+            return new RegExp(str);
+        });
+        return Lexer.make_rule(parts, symbol, p_re, n_re);
+    }
+};
+
 // ----------------------------------------------------------------------
 Lexer.string = Symbol.for('string');
 Lexer.string_escape = Symbol.for('string_escape');
@@ -1361,6 +1593,30 @@ Lexer.b_comment = Symbol.for('b_comment');
 Lexer.i_comment = Symbol.for('i_comment');
 Lexer.l_datum = Symbol.for('l_datum');
 Lexer.dot = Symbol.for('dot');
+// ----------------------------------------------------------------------
+// :: States with open-ended content (strings, comments, regex literals,
+// :: symbols, character names) accumulate any character that no rule matches,
+// :: the original greedy behaviour. Every other state (datum labels, syntax
+// :: extensions) has a complete set of rules for the characters it can
+// :: contain, so a character with no matching rule ends the token and lets the
+// :: lexer backtrack to a conflicting rule instead of greedily swallowing the
+// :: rest of the input up to some distant spurious match (e.g. an extension or
+// :: datum rule `#2...` running until a later `#0=`).
+// ----------------------------------------------------------------------
+Lexer.greedy_states = new Set([
+    Lexer.string,
+    Lexer.string_escape,
+    Lexer.symbol,
+    Lexer.comment,
+    Lexer.b_comment,
+    Lexer.i_comment,
+    Lexer.regex,
+    Lexer.regex_init,
+    Lexer.regex_class,
+    Lexer.character,
+    Lexer.b_symbol,
+    Lexer.b_symbol_ex
+]);
 // ----------------------------------------------------------------------
 Lexer.boundary = /^$|[\s()[\]']/;
 // ----------------------------------------------------------------------
@@ -1415,6 +1671,9 @@ Lexer._rules = [
 
     // datum label
     [/#/, null, /[0-9]/, null, Lexer.l_datum],
+    // consume the digits of the label so the state has an explicit rule for
+    // every character it can contain and never falls back to greedy collecting
+    [/[0-9]/, null, null, Lexer.l_datum, Lexer.l_datum],
     [/=/, /[0-9]/, null, Lexer.l_datum, null],
     [/#/, /[0-9]/, null, Lexer.l_datum, null],
 
@@ -1472,9 +1731,16 @@ Object.defineProperty(Lexer, 'rules', {
             return Lexer._cache.rules;
         }
         const parsable = Object.keys(parsable_contants).concat(directives, hash_literals);
-        const tokens = specials.names().concat(parsable).sort((a, b) => {
+        let tokens = specials.names().concat(parsable).sort((a, b) => {
+            if (is_regex(a)) {
+                a = a.source;
+            }
+            if (is_regex(b)) {
+                b = b.source;
+            }
             return b.length - a.length || a.localeCompare(b);
         });
+        const regex = specials.regex();
 
         // syntax-extensions tokens that share the same first character after hash
         // should have same symbol, but because tokens are sorted, the longer
@@ -1498,7 +1764,19 @@ Object.defineProperty(Lexer, 'rules', {
             return acc.concat(rules);
         }, []);
 
-        Lexer._cache.rules = Lexer._rules.concat(
+        const regex_specials = regex.reduce((acc, token) => {
+            const symbol = Symbol.for(token.source);
+            const rules = Lexer.regex_rule(token, symbol, null, Lexer.boundary);
+            return acc.concat(rules);
+        }, []);
+
+        // NOTE: the generic symbol rules must stay last; next_token() never
+        // backtracks into them so that a token that started matching a specific
+        // rule (a syntax extension, a datum label, a string, ...) but failed to
+        // complete reports an error instead of being silently reinterpreted as
+        // a symbol
+        Lexer._cache.rules = regex_specials.concat(
+            Lexer._rules,
             Lexer._brackets,
             special_rules,
             Lexer._symbol_rules
@@ -1510,149 +1788,265 @@ Object.defineProperty(Lexer, 'rules', {
 });
 // ----------------------------------------------------------------------
 function match_or_null(re, char) {
+    if (is_string(re)) {
+        return re === char;
+    }
     return re === null || char.match(re);
+}
+// -------------------------------------------------------------------------
+// Lips Exception used in error function
+// -------------------------------------------------------------------------
+function LipsError(message, args) {
+    this.name = 'LipsError';
+    this.message = message;
+    this.args = args;
+    this.stack = (new Error()).stack;
+}
+LipsError.prototype = new Error();
+LipsError.prototype.constructor = LipsError;
+
+// -------------------------------------------------------------------------
+// :: Fake exception to handle try catch to break the execution
+// :: of body expression #163
+// -------------------------------------------------------------------------
+class IgnoreException extends Error { }
+class Unterminated extends Error { }
+class RuntimeError extends Error { }
+class PromiseRejection extends RuntimeError { }
+
+// -------------------------------------------------------------------------
+function augment_exception(e, code) {
+    if (!is_object(e) || is_native(e)) {
+        return e;
+    }
+    if (code) {
+        // augment runtime errors
+        if (!is_augmented(e) && is_augmented(code)) {
+            read_only(e, '__col__', code.__col__);
+            read_only(e, '__offset__', code.__offset__);
+            read_only(e, '__line__', code.__line__);
+            if (code.__file__) {
+                read_only(e, '__file__', code.__file__);
+            }
+        }
+        // LIPS stack trace
+        if (!(e.__stack__ instanceof Array)) {
+            e.__stack__ = [];
+        }
+        e.__stack__.push(code.toString(true));
+    }
+    unify_error_message(e);
+    return e;
+}
+
+// -------------------------------------------------------------------------
+// :: Error is adding class of the error before the message in stack trace
+// -------------------------------------------------------------------------
+function unify_error_message(e) {
+    if (is_augmented(e)) {
+        if (!e.message.match(/at line/)) {
+            e.message += ` at line ${e.__line__ + 1} and column ${e.__col__}`;
+            if (e.__file__) {
+                e.message += ` in ${e.__file__}`;
+            }
+            if (e.stack) {
+                e.stack = e.message + '\n' + e.stack.replace(/.*\n/, '');
+            }
+        }
+    }
+    return e;
+}
+
+// -------------------------------------------------------------------------
+function is_augmented(object) {
+    return object && Object.hasOwn(object, '__col__');
 }
 // ----------------------------------------------------------------------
 // :: Parser inspired by BiwaScheme
 // :: ref: https://github.com/biwascheme/biwascheme/blob/master/src/system/parser.js
 // ----------------------------------------------------------------------
 class Parser {
-    constructor({ env, meta = false, formatter = multiline_formatter } = {}) {
-        read_only(this, '_formatter', formatter, { hidden: true });
+    constructor({ env, meta = false, filename = null, formatter = null } = {}) {
+        read_only(this, '_formatter', formatter ?? multiline_formatter, {
+            hidden: true
+        });
+        read_only(this, '__file__', filename?.valueOf());
         read_only(this, '__env__', env);
         read_only(this, '_meta', meta, { hidden: true });
         // datum labels
         read_only(this, '_refs', [], { hidden: true });
         read_only(this, '_state', {
+            last_token: null,
             parentheses: 0,
             line: 0,
             fold_case: false
         }, { hidden: true });
+        // keep the arguments of the parser for (load ...)
+        get_internal_env(env).set('__parser_args__', { meta, filename, formatter });
+    }
+    prepare(arg, { filename = null } = {}) {
+        if (arg instanceof LString) {
+            arg = arg.toString();
+        }
+        this._reset_state();
+        if (arg instanceof Lexer) {
+            read_only(this, '__lexer__', arg);
+        } else {
+            if (filename) {
+                filename = filename?.valueOf();
+                read_only(this, '__file__', filename);
+                internal_env.get('__parser_args__').filename = filename;
+            }
+            read_only(this, '__lexer__', new Lexer(arg, {
+                filename: this.__file__
+            }));
+        }
     }
     _with_syntax_scope(fn) {
         // expose parser and change stdin so parser extension can use current-input
         // to read data from the parser stream #150
-        const internal = get_internal(this.__env__);
+        const internal = get_internal_env(this.__env__);
         const stdin = internal.get('stdin');
         global_env.set('lips',  { ...lips, __parser__: this });
         internal.set('stdin', new ParserInputPort(this, this.__env__));
-        const cleanup = () => {
+        const cleanup = (error) => {
             global_env.set('lips', lips);
             internal.set('stdin', stdin);
+            if (error) {
+                // don't swallow errors from async syntax extensions #470
+                throw this._augment_exception(error);
+            }
         }
-        return unpromise(fn(), (result) => {
-            cleanup();
-            return result;
-        }, cleanup);
-    }
-    prepare(arg) {
-        if (arg instanceof LString) {
-            arg = arg.toString();
+        try {
+            return unpromise(fn(), (result) => {
+                cleanup();
+                return result;
+            }, cleanup);
+        } catch (e) {
+            cleanup(e);
         }
-        read_only(this, '__lexer__', new Lexer(arg));
     }
-    resolve(name) {
+    _reset_state() {
+        Object.assign(this._state, {
+            parentheses: 0,
+            last_token: null,
+            line: 0
+        });
+    }
+    _resolve(name) {
         return this.__env__ && this.__env__.get(name, { throwError: false });
     }
+    async _peek() {
+        try {
+            let token;
+            while (true) {
+                token = this.__lexer__.peek(true);
+                if (token === eof) {
+                    return eof;
+                }
+                if (this._is_comment(token.token)) {
+                    this._skip(token);
+                    continue;
+                }
+                if (is_directive(token.token)) {
+                    this._skip(token);
+                    if (token.token === '#!fold-case') {
+                        this._state.fold_case = true;
+                    } else if (token.token === '#!no-fold-case') {
+                        this._state.fold_case = false;
+                    }
+                    continue;
+                }
+                if (token.token === '#;') {
+                    this._skip(token);
+                    if (this.__lexer__.peek() === eof) {
+                        const e = new Error('Lexer: syntax error eof found after comment');
+                        throw this._augment_exception(e);
+                    }
+                    await this._read_object();
+                    continue;
+                }
+                break;
+            }
+            token = this._formatter(token);
+            if (this._state.fold_case) {
+                token.token = foldcase_string(token.token);
+            }
+            return token;
+        } catch (e) {
+            throw this._augment_exception(e);
+        }
+    }
     async peek() {
-        let token;
-        while (true) {
-            token = this.__lexer__.peek(true);
-            if (token === eof) {
-                return eof;
-            }
-            if (this.is_comment(token.token)) {
-                this.skip();
-                continue;
-            }
-            if (is_directive(token.token)) {
-                this.skip();
-                if (token.token === '#!fold-case') {
-                    this._state.fold_case = true;
-                } else if (token.token === '#!no-fold-case') {
-                    this._state.fold_case = false;
-                }
-                continue;
-            }
-            if (token.token === '#;') {
-                this.skip();
-                if (this.__lexer__.peek() === eof) {
-                    throw new Error('Lexer: syntax error eof found after comment');
-                }
-                await this._read_object();
-                continue;
-            }
-            break;
-        }
-        token = this._formatter(token);
-        if (this._state.fold_case) {
-            token.token = foldcase_string(token.token);
-        }
+        const token = this._peek();
+        this._state.last_token = token;
         if (this._meta) {
             return token;
         }
         return token.token;
     }
-    reset() {
-        this._refs.length = 0;
-    }
     skip() {
         this.__lexer__.skip();
+    }
+    _skip(token) {
+        this._state.last_token = token;
+        this.__lexer__.skip();
+    }
+    _reset() {
+        this._refs.length = 0;
+    }
+    async _read() {
+        const token = await this._peek();
+        this._skip(token);
+        return token;
     }
     async read() {
         const token = await this.peek();
         this.skip();
         return token;
     }
-    match_datum_label(token) {
-        if (this._meta) {
-            token = token.token;
-        }
-        var m = token.match(/^#([0-9]+)=$/);
+    _match_datum_label(token) {
+        var m = token.token.match(/^#([0-9]+)=$/);
         return m && m[1];
     }
-    match_datum_ref(token) {
-        if (this._meta) {
-            token = token.token;
-        }
-        var m = token.match(/^#([0-9]+)#$/);
+    _match_datum_ref(token) {
+        var m = token.token.match(/^#([0-9]+)#$/);
         return m && m[1];
     }
-    is_open(token) {
-        if (this._meta) {
-            token = token.token;
-        }
-        return ['(', '['].includes(token);
+    _is_open(token) {
+        return ['(', '['].includes(token.token);
     }
-    is_close(token) {
-        if (this._meta) {
-            token = token.token;
-        }
-        return [')', ']'].includes(token);
+    _is_close(token) {
+        return [')', ']'].includes(token.token);
     }
-    async read_list() {
+    async _read_list() {
         let head = nil, prev = head, dot;
+        let first_token = this._state.last_token;
         while (true) {
-            const token = await this.peek();
+            const token = await this._peek();
             if (token === eof) {
                 break;
             }
-            if (this.is_close(token)) {
+            if (this._is_close(token)) {
                 --this._state.parentheses;
-                this.skip();
+                this._skip(token);
                 break;
             }
-            if (token === '.' && !is_nil(head)) {
-                this.skip();
+            if (token.token === '.' && !is_nil(head)) {
+                this._skip(token);
                 prev.cdr = await this._read_object();
                 dot = true;
             } else if (dot) {
-                throw new Error('Parser: syntax error more than one element after dot');
+                const e = new Error('Syntax Error: more than one element after dot');
+                throw this._augment_exception(e);
             } else {
                 const node = await this._read_object();
                 const cur = new Pair(node, nil);
                 if (is_nil(head)) {
                     head = cur;
+                    if (this._meta) {
+                        head = augment_object(head, first_token, this.__file__);
+                    }
                 } else {
                     prev.cdr = cur;
                 }
@@ -1661,14 +2055,22 @@ class Parser {
         }
         return head;
     }
-    async read_value() {
-        let token = await this.read();
-        if (token === eof || token.token === eof) {
-            throw new Error('Parser: Expected token eof found');
+    async _read_value() {
+        try {
+            let token = await this._read();
+            if (token.token === eof) {
+                throw new Error('Syntax Error: Expected token eof found');
+            }
+            let result = parse_argument(token.token);
+            if (this._meta) {
+                result = augment_object(result, token, this.__file__);
+            }
+            return result;
+        } catch (e) {
+            throw this._augment_exception(e);
         }
-        return parse_argument(token, this._meta);
     }
-    is_comment(token) {
+    _is_comment(token) {
         return token.match(/^;/) || (token.match(/^#\|/) && token.match(/\|#$/));
     }
     evaluate(code) {
@@ -1676,9 +2078,68 @@ class Parser {
             throw e;
         } });
     }
+    async invoke_special(special, object, is_symbol) {
+        if (typeof special.value === 'function') {
+            let args;
+            if (is_literal(special)) {
+                args = [object];
+            } else if (is_pair(object) || is_nil(object)) {
+                args = object.to_array(false);
+            }
+            if (args || is_symbol) {
+                return this._with_syntax_scope(() => {
+                    return call_function(special.value, is_symbol ? [] : args, {
+                        env: this.__env__,
+                        dynamic_env: this.__env__,
+                        use_dynamic: false
+                    });
+                });
+            }
+            const msg = `Invalid syntax extension ${special.seq} expecting ` +
+                  `list got ${type(object)}`;
+            const e = new Error(msg);
+            throw this._augment_exception(e);
+        } else if (special.value instanceof Macro) {
+            let code = object ?? nil;
+            if (is_literal(special)) {
+                code = Pair(code, nil);
+            }
+            if (special.value instanceof Syntax) {
+                code = Pair(
+                    LSymbol('Extension'),
+                    code
+                );
+            }
+            const eval_args = {
+                env: this.__env__,
+                error: (e) => {
+                    const msg = `Error while executing syntax extension ${special.seq} `;
+                    throw this._augment_exception(new Error(msg + e.message));
+                }
+            };
+            const result = await this._with_syntax_scope(() => {
+                if (special.value instanceof Syntax) {
+                    return evaluate_syntax(special.value, code, eval_args);
+                } else if (special.value  instanceof Macro) {
+                    return evaluate_macro(special.value, code, eval_args);
+                }
+            });
+            // We need literal quotes to make that macro's return pairs works
+            // because after the parser returns the value it will be evaluated
+            // again by the interpreter, so we create quoted expressions.
+            if (is_pair(result) || result instanceof LSymbol) {
+                return Pair.from_array([LSymbol('quote'), result]);
+            }
+            return result;
+        } else {
+            const e = new Error('Syntax Error: invalid syntax extension: ' +
+                                type(special.value));
+            throw this._augment_exception(e);
+        }
+    }
     // public API that handle R7RS datum labels
     async read_object() {
-        this.reset();
+        this._reset();
         var object = await this._read_object();
         if (object instanceof DatumReference) {
             object = object.valueOf();
@@ -1697,37 +2158,38 @@ class Parser {
     balanced() {
         return this._state.parentheses === 0;
     }
-    ballancing_error(expr, prev) {
+    _ballancing_error(expr, prev) {
         const count = this._state.parentheses;
         let e;
         if (count < 0) {
-            e = new Error('Parser: unexpected parenthesis');
+            e = new Error('Syntax Error: unexpected parenthesis');
             if (prev) {
-                e.__code__ = [prev.toString() + ')'];
+                e.__stack__ = [prev.toString() + ')'];
             } else {
-                e.__code__ = [')'];
+                e.__stack__ = [')'];
             }
         } else {
-            e = new Error('Parser: expected parenthesis but eof found');
+            e = new Error('Syntax Error: expected parenthesis but eof found');
             const re = new RegExp(`\\){${count}}$`);
-            e.__code__ = [expr.toString().replace(re, '')];
+            e.__stack__ = [expr.toString().replace(re, '')];
         }
-        this._agument_exception(e);
-        throw e;
+        throw this._augment_exception(e);
     }
-    _agument_exception(e) {
-        const token = this.__lexer__.__token__;
-        if ('col' in token) {
-            const { col, offset, line } = token;
-            e.message += ` at line ${line + 1} and column ${col + 1}`;
-            read_only(e, '__col__', col);
-            read_only(e, '__offset__', offset);
-            read_only(e, '__line__', line);
+    _augment_exception(e) {
+        if (!is_augmented(e)) {
+            const token = this._state.last_token;
+            if ('col' in token) {
+                const { col, offset, line } = token;
+                read_only(e, '__col__', col);
+                read_only(e, '__offset__', offset);
+                read_only(e, '__line__', line);
+                read_only(e, '__file__' , this.__lexer__.__file__);
+            }
         }
+        return unify_error_message(e);
     }
     // TODO: Cover This function (array and object branch)
     async _resolve_object(object) {
-
         if (Array.isArray(object)) {
             return object.map(item => this._resolve_object(item));
         }
@@ -1762,12 +2224,13 @@ class Parser {
         return this._state.line;
     }
     async _read_object() {
-        const token = await this.peek();
-        this._state.line = this.__lexer__.__token__.line;
+        const token = await this._peek();
         if (token === eof) {
             return token;
         }
-        if (is_special(token)) {
+        this._state.line = this.__lexer__.__token__.line;
+        const special = specials.get(token.token);
+        if (special) {
             // Built-in parser extensions are mapping short symbols to longer symbols
             // that can be function or macro. Parser doesn't care
             // if it's not built-in and the extension can be macro or function.
@@ -1775,113 +2238,68 @@ class Parser {
             // result is returned by parser as is the macro.
             // MACRO: if macro is used, then it is evaluated in place and the
             // result is returned by parser and it is quoted.
-            const special = specials.get(token);
-            const builtin = is_builtin(token);
-            this.skip();
-            let expr, extension;
-            const is_symbol = is_symbol_extension(token);
-            const was_close_paren = this.is_close(await this.peek());
+            const builtin = is_builtin(token.token);
+            this._skip(token);
+            let expr;
+            const is_symbol = is_symbol_extension(special);
+            const was_close_paren = this._is_close(await this._peek());
+            // expression passed to syntax extension
             const object = is_symbol ? undefined : await this._read_object();
             if (object === eof) {
-                throw new Unterminated('Expecting expression eof found');
+                const e = new Unterminated('Expecting expression eof found');
+                throw this._augment_exception(e);
             }
             if (!builtin) {
-                extension = this.__env__.get(special.symbol);
-                if (typeof extension === 'function') {
-                    let args;
-                    if (is_literal(token)) {
-                        args = [object];
-                    } else if (is_nil(object)) {
-                        args = [];
-                    } else if (is_pair(object)) {
-                        args = object.to_array(false);
-                    }
-                    if (args || is_symbol) {
-                        return this._with_syntax_scope(() => {
-                            return call_function(extension, is_symbol ? [] : args, {
-                                env: this.__env__,
-                                dynamic_env: this.__env__,
-                                use_dynamic: false
-                            });
-                        });
-                    }
-                    const e = new Error('Parse Error: Invalid parser extension ' +
-                                        `invocation ${special.symbol}`);
-                    this._agument_exception(e);
-                    throw e;
-                }
+                return this.invoke_special(special, object, is_symbol);
             }
-            if (is_literal(token)) {
+            // Built-in parser extensions just expand into lists like 'x ==> (quote x)
+            if (is_literal(special)) {
                 if (was_close_paren) {
-                    const e = new Error('Parse Error: expecting datum');
-                    this._agument_exception(e);
-                    throw e
+                    const e = new Error('Syntax Error: expecting datum');
+                    throw this._augment_exception(e);
                 }
-                expr = new Pair(
-                    special.symbol,
+                return new Pair(
+                    special.value,
                     new Pair(
                         object,
                         nil
                     )
                 );
             } else {
-                expr = new Pair(
-                    special.symbol,
+                return new Pair(
+                    special.value,
                     object
                 );
             }
-            // Built-in parser extensions just expand into lists like 'x ==> (quote x)
-            if (builtin) {
-                return expr;
-            }
-            // Evaluate parser extension at parse time
-            if (extension instanceof Macro) {
-                var result = await this._with_syntax_scope(() => {
-                    return this.evaluate(expr);
-                });
-                // We need literal quotes to make that macro's return pairs works
-                // because after the parser returns the value it will be evaluated again
-                // by the interpreter, so we create quoted expressions.
-                if (is_pair(result) || result instanceof LSymbol) {
-                    return Pair.fromArray([LSymbol('quote'), result]);
-                }
-                return result;
-            } else {
-                const e = new Error('Parse Error: invalid parser extension: ' +
-                                    special.symbol);
-                this._agument_exception(e);
-                throw e;
-            }
         }
-        var ref = this.match_datum_ref(token);
+        const ref = this._match_datum_ref(token);
         if (ref !== null) {
-            this.skip();
+            this._skip(token);
             if (this._refs[ref]) {
                 return new DatumReference(ref, this._refs[ref]);
             }
-            const e = new Error(`Parse Error: invalid datum label #${ref}#`);
-            this._agument_exception(e);
-            throw e;
+            const e = new Error(`Syntax Error: invalid datum label #${ref}#`);
+            throw this._augment_exception(e);
         }
-        var ref_label = this.match_datum_label(token);
+        const ref_label = this._match_datum_label(token);
         if (ref_label !== null) {
-            this.skip();
+            this._skip(token);
             this._refs[ref_label] = this._read_object();
             return this._refs[ref_label];
-        } else if (this.is_close(token)) {
+        } else if (this._is_close(token)) {
             --this._state.parentheses;
-            this.skip();
+            this._skip(token);
             // invalid state, we don't need to return anything
-        } else if (this.is_open(token)) {
+        } else if (this._is_open(token)) {
             ++this._state.parentheses;
-            this.skip();
-            return this.read_list();
+            this._skip(token);
+            return this._read_list();
         } else {
-            return this.read_value();
+            return this._read_value();
         }
     }
 }
-class Unterminated extends Error { }
+
 Parser.Unterminated = Unterminated;
 // ----------------------------------------------------------------------
 // :: Parser helper that handles circular list structures
@@ -1903,7 +2321,7 @@ class DatumReference {
 // :: or macro assigned to symbol, this function is async because
 // :: it evaluates the code, from parser extensions, that may return a promise.
 // ----------------------------------------------------------------------
-async function* _parse(arg, env) {
+async function* _parse(arg, { env, ...parser_args } = {}) {
     if (!env) {
         if (global_env) {
             env = global_env.get('**interaction-environment**', {
@@ -1917,14 +2335,14 @@ async function* _parse(arg, env) {
     if (arg instanceof Parser) {
         parser = arg;
     } else {
-        parser = new Parser({ env });
+        parser = new Parser({ env, ...parser_args });
         parser.prepare(arg);
     }
     let prev;
     while (true) {
         const expr = await parser.read_object();
         if (!parser.balanced()) {
-            parser.ballancing_error(expr, prev);
+            parser._ballancing_error(expr, prev);
         }
         if (expr === eof) {
             break;
@@ -1939,7 +2357,7 @@ function unpromise(value, fn = x => x, error = null) {
         var ret = value.then(fn);
         if (error === null) {
             return ret;
-        } else if (ret.catch) {
+        } else if (ret && is_function(ret.catch)) {
             return ret.catch(error);
         }
         return ret;
@@ -1953,10 +2371,32 @@ function unpromise(value, fn = x => x, error = null) {
     return fn(value);
 }
 // ----------------------------------------------------------------------
+const action_cache = new WeakMap();
+
+function cache_action(object, use_cache, fn) {
+    if (use_cache && action_cache.has(object)) {
+        return action_cache.get(object);
+    }
+    const flag = fn(object);
+    if (use_cache) {
+        action_cache.set(object, flag);
+    }
+    return flag;
+}
+
+// ----------------------------------------------------------------------
+function array_has_promise(array, use_cache) {
+    return cache_action(array, use_cache, function(array) {
+        return !!array.find(is_promise);
+    });
+}
+
+// ----------------------------------------------------------------------
 function unpromise_array(array, fn, error) {
-    if (array.find(is_promise)) {
+    const frozen = Object.isFrozen(array);
+    if (array_has_promise(array, frozen)) {
         return unpromise(promise_all(array), (arr) => {
-            if (Object.isFrozen(array)) {
+            if (frozen) {
                 Object.freeze(arr);
             }
             return fn(arr);
@@ -1964,30 +2404,32 @@ function unpromise_array(array, fn, error) {
     }
     return fn(array);
 }
+
 // ----------------------------------------------------------------------
 function unpromise_object(object, fn, error) {
+    const frozen = Object.isFrozen(object);
     const keys = Object.keys(object);
-    const values = [], anyPromise = [];
-    let i = keys.length;
+    const values = [];
+    let i = keys.length, has_promise;
     while (i--) {
         const key = keys[i];
         const value = object[key];
         values[i] = value;
-        if (is_promise(value)) {
-            anyPromise.push(value);
+        if (!has_promise && is_promise(value)) {
+            has_promise = true;
         }
     }
-    if (anyPromise.length) {
+    if (has_promise) {
         return unpromise(promise_all(values), (values) => {
             const result = {};
             values.forEach((value, i) => {
                 const key = keys[i];
                 result[key] = value;
             });
-            if (Object.isFrozen(object)) {
+            if (frozen) {
                 Object.freeze(result);
             }
-            return result;
+            return fn(result);
         }, error);
     }
     return fn(object);
@@ -1996,6 +2438,7 @@ function unpromise_object(object, fn, error) {
 function read_only(object, property, value, { hidden = false } = {}) {
     Object.defineProperty(object, property, {
         value,
+        writable: false,
         configurable: true,
         enumerable: !hidden
     });
@@ -2011,16 +2454,28 @@ async function uniterate_async(object) {
     return result;
 }
 // ----------------------------------------------------------------------
-// :: Function that return matcher function that match string against string
+// :: Function that return matcher function that match any value
+// :: the function is used in find Scheme function to find an item
+// :: in the list
 // ----------------------------------------------------------------------
 function matcher(name, arg) {
     if (arg instanceof RegExp) {
         return x => String(x).match(arg);
     } else if (is_function(arg)) {
-        // it will always be function
         return arg;
+    } else if (arg instanceof LNumber) {
+        return x => LNumber(x).cmp(arg) === 0;
+    } else if (arg instanceof LString) {
+        const string = arg.__string__;
+        return x => LString.is(x, string);
+    } else if (arg instanceof LSymbol) {
+        const name = arg.__name__;
+        return x => LSymbol.is(x, name);
+    } else if (arg instanceof LCharacter) {
+        const char = arg.__char__;
+        return x => LCharacter.is(x, char);
     }
-    throw new Error('Invalid matcher');
+    return x => arg === x;
 }
 // ----------------------------------------------------------------------
 // :: Documentation decorator to LIPS functions if lines starts with :
@@ -2241,9 +2696,7 @@ Formatter.defaults = {
     indent: 2,
     exceptions: {
         specials: [
-            /* eslint-disable max-len */
             /^(?:#:)?(?:define(?:-values|-syntax|-macro|-class|-record-type)?|(?:call-with-(?:input-file|output-file|port))|lambda|let-env|try|catch|when|unless|while|syntax-rules|(let|letrec)(-syntax|\*?-values|\*)?)$/
-            /* eslint-enable */
         ],
         shift: {
             1: ['&', '#']
@@ -2410,12 +2863,11 @@ const identifiers = [p_o, symbols, p_e];
 const let_value = new Pattern([p_o, Symbol.for('symbol'), glob, p_e], '+');
 const syntax_rules = keywords_re('syntax-rules');
 // rules for breaking S-Expressions into lines
-var def_lambda_re = keywords_re('define', 'lambda', 'define-macro', 'syntax-rules');
-/* eslint-disable max-len */
-var non_def = /^(?!.*\b(?:[()[\]]|define(?:-macro)?|let(?:\*|rec|-env|-syntax|)?|lambda|syntax-rules)\b).*$/;
-/* eslint-enable */
-var let_re = /^(?:#:)?(let(?:\*|rec|-env|-syntax)?)$/;
+const def_lambda_re = keywords_re('define', 'lambda', 'define-macro', 'syntax-rules');
+const non_def = /^(?!.*\b(?:[()[\]]|define(?:-macro)?|let(?:\*|rec|-env|-syntax|)?|lambda|syntax-rules)\b).*$/;
+const let_re = /^(?:#:)?(let(?:\*|rec|-env|-syntax)?)$/;
 // match keyword if it's normal token or gensym (prefixed with #:)
+const comment_re = /^;.*/;
 function keywords_re(...args) {
     return new RegExp(`^(?:#:)?(?:${args.join('|')})$`);
 }
@@ -2430,6 +2882,7 @@ Formatter.rules = [
     [[p_o, syntax_rules, not_p, identifiers], 1],
     [[p_o, syntax_rules, not_p, identifiers, sexp], 1, not_close],
     [[p_o, syntax_rules, identifiers], 1],
+    [comment_re, -1],
     [[p_o, syntax_rules, identifiers, sexp], 1, not_close],
     [[p_o, non_def, new Pattern([/[^()[\]]/], '+'), sexp], 1, not_close],
     [[p_o, sexp], 1, not_close],
@@ -2444,7 +2897,7 @@ Formatter.rules = [
 ];
 // ----------------------------------------------------------------------
 Formatter.prototype.break = function() {
-    var code = this.__code__.replace(/\n[ \t]*/g, '\n ').replace(/^\s+/, '');
+    var code = this.__code__.replace(/\n[ \t]*/g, '\n ').trim();
     // function that work when calling tokenize with meta data or not
     const token = t => {
         if (t.token.match(string_re) || t.token.match(re_re)) {
@@ -2480,13 +2933,24 @@ Formatter.prototype.break = function() {
             }
         });
         for (let [pattern, count, ext] of rules) {
+            const debug = pattern === comment_re;
             count = count.valueOf();
             // 0 count mean ignore the previous S-Expression
-            var test_sexp = count > 0 ? sexp[count] : sub;
-            const input = test_sexp.filter(t => t.trim() && !is_special(t));
+            // -1 count mean check a single token
+            const test_sexp = count > 0 ? sexp[count] : sub;
+            let input = test_sexp.filter(t => t.trim() && !is_special(t));
+            if (!input.length) {
+                continue;
+            }
+            if (count === -1) {
+                // NOTE: match work with arrays but since we check for a single token
+                //       we allow to use a single regex and wrap it with an array here
+                pattern = [pattern];
+                input = input.slice(-1);
+            }
             const inc = first_token_index(test_sexp);
-            var m = match(pattern, input);
-            var next = tokens.slice(i).find(t => t.trim() && !is_special(t));
+            const m = match(pattern, input);
+            const next = tokens.slice(i).find(t => t.trim() && !is_special(t));
             if (m && (ext instanceof Ahead && ext.match(next) || !ext)) {
                 const index = i - inc;
                 if (tokens[index] !== '\n') {
@@ -2515,7 +2979,7 @@ Formatter.prototype._spaces = function(i) {
 Formatter.prototype.format = function format(options) {
     // prepare code with single space after newline
     // so we have space token to align
-    var code = this.__code__.replace(/[ \t]*\n[ \t]*/g, '\n ');
+    var code = this.__code__.trim().replace(/[ \t]*\n[ \t]*/g, '\n ');
     var tokens = tokenize(code, true);
     var settings = this._options(options);
     var indent = 0;
@@ -3045,7 +3509,7 @@ function to_array(name, deep) {
 }
 // ----------------------------------------------------------------------
 Pair.prototype.flatten = function() {
-    return Pair.fromArray(flatten(this.to_array()));
+    return Pair.from_array(flatten(this.to_array()));
 };
 // ----------------------------------------------------------------------
 Pair.prototype.length = function() {
@@ -3060,6 +3524,24 @@ Pair.prototype.length = function() {
         node = node.cdr;
     }
     return len;
+};
+// ----------------------------------------------------------------------
+Pair.prototype.freeze = function() {
+    let node = this;
+    while (true) {
+        read_only(node, 'car', node.car);
+        if (is_pair(node.car) && !node.have_cycles('car')) {
+            node.car.freeze();
+        }
+        read_only(node, 'cdr', node.cdr);
+        if (node.have_cycles('cdr')) {
+            break;
+        }
+        node = node.cdr;
+        if (!is_pair(node)) {
+            break;
+        }
+    }
 };
 // ----------------------------------------------------------------------
 Pair.match = function(obj, item) {
@@ -3142,7 +3624,7 @@ Pair.prototype.to_array = function(deep = true) {
 // ----------------------------------------------------------------------
 // :: TODO: change to Pair.from_array
 // ----------------------------------------------------------------------
-Pair.fromArray = function(array, deep = true, quote = false) {
+Pair.from_array = function(array, deep = true, quote = false) {
     if (is_pair(array) || quote && array instanceof Array && array[__data__]) {
         return array;
     }
@@ -3161,7 +3643,7 @@ Pair.fromArray = function(array, deep = true, quote = false) {
     while (i--) {
         let car = array[i];
         if (car instanceof Array) {
-            car = Pair.fromArray(car, deep, quote);
+            car = Pair.from_array(car, deep, quote);
         } else if (typeof car === 'string') {
             car = LString(car);
         } else if (typeof car === 'number' && !Number.isNaN(car)) {
@@ -3293,12 +3775,29 @@ Pair.prototype.map = function(fn) {
     }
 };
 const repr = new Map();
+
 // ----------------------------------------------------------------------
 var props = Object.getOwnPropertyNames(Array.prototype);
 var array_methods = [];
 props.forEach(x => {
     array_methods.push(Array[x], Array.prototype[x]);
 });
+// ----------------------------------------------------------------------
+function is_array_method(x) {
+    x = unbind(x);
+    return array_methods.includes(x);
+}
+// ----------------------------------------------------------------------
+function is_lips_function(x) {
+    if (!is_function(x)) {
+        return false;
+    }
+    if (is_lambda(x) || x.__doc__) {
+        return true;
+    }
+    x = unbind(x);
+    return lips_functions.includes(x);
+}
 // ----------------------------------------------------------------------
 function user_repr(obj) {
     const constructor = obj.constructor || Object;
@@ -3358,6 +3857,10 @@ function symbolize(obj) {
         return result;
     }
     return obj;
+}
+// ----------------------------------------------------------------------
+function basename(path) {
+    return path.split(/[\\/]/).pop();
 }
 // ----------------------------------------------------------------------
 function get_props(obj) {
@@ -3644,7 +4147,6 @@ function mark_cycles(pair) {
 // ----------------------------------------------------------------------
 // Trampoline based recursive pair to string that don't overflow the stack
 // ----------------------------------------------------------------------
-/* eslint-disable no-unused-vars */
 /* c8 ignore next */
 const pair_to_string = (function() {
     const prefix = (pair, nested) => {
@@ -3755,7 +4257,7 @@ Pair.prototype.set = function(prop, value) {
 // ----------------------------------------------------------------------
 Pair.prototype.append = function(arg) {
     if (arg instanceof Array) {
-        return this.append(Pair.fromArray(arg));
+        return this.append(Pair.from_array(arg));
     }
     var p = this;
     if (p.car === undefined) {
@@ -3812,7 +4314,8 @@ function seq_compare(fn, args) {
     var [a, ...rest] = args;
     while (rest.length > 0) {
         var [b] = rest;
-        if (!fn(a, b)) {
+        const result = fn(a, b);
+        if (Number.isNaN(result) || !result) {
             return false;
         }
         [a, ...rest] = rest;
@@ -4054,14 +4557,22 @@ function macro_args_env(params, code, scope) {
 const recur_guard = -10000;
 function macro_expand(single) {
     return async function(code, args) {
-        var env = args['env'] = this;
-        var bindings = [];
-        var let_macros = ['let', 'let*', 'letrec'];
+        const env = args['env'] = this;
+        let bindings = [];
+        const let_names = ['let', 'let*', 'letrec', 'letrec*'];
+        const let_macros = let_names.map(name => {
+            return global_env.get(name);
+        });
         var lambda = global_env.get('lambda');
         var define = global_env.get('define');
-        function is_let_macro(symbol) {
-            var name = symbol.valueOf();
-            return let_macros.includes(name);
+        function is_let_macro(name) {
+            return let_names.includes(name);
+        }
+        function builtin_let(name) {
+            if (!is_let_macro(name)) {
+                return false;
+            }
+            return let_macros.includes(env.get(name));
         }
         function is_procedure(value, node) {
             return value === define && is_pair(node.cdr.car);
@@ -4120,29 +4631,13 @@ function macro_expand(single) {
                 }
                 var name = node.car.valueOf();
                 var value = env.get(node.car, { throwError: false });
-                var is_let = is_let_macro(node.car);
+                var is_let = is_let_macro(name);
 
                 var is_binding = is_let ||
                     is_procedure(value, node) ||
                     is_lambda(value);
 
-                if (is_binding && is_pair(node.cdr.car)) {
-                    var second;
-                    if (is_let) {
-                        bindings = let_binding(node.cdr.car);
-                        second = await expand_let_binding(node.cdr.car, n);
-                    } else {
-                        bindings = proc_bindings(node.cdr.car);
-                        second = node.cdr.car;
-                    }
-                    return new Pair(
-                        node.car,
-                        new Pair(
-                            second,
-                            await traverse(node.cdr.cdr, n, env)
-                        )
-                    );
-                } else if (is_macro(name, value)) {
+                if (is_macro(name, value) && !builtin_let(name)) {
                     var code = value instanceof Syntax ? node : node.cdr;
                     var result = await value.invoke(code, { ...args, env }, true);
                     if (value instanceof Syntax) {
@@ -4173,6 +4668,22 @@ function macro_expand(single) {
                     if (is_atom(result)) {
                         return result;
                     }
+                } else if (is_binding && is_pair(node.cdr.car)) {
+                    var second;
+                    if (is_let) {
+                        bindings = let_binding(node.cdr.car);
+                        second = await expand_let_binding(node.cdr.car, n);
+                    } else {
+                        bindings = proc_bindings(node.cdr.car);
+                        second = node.cdr.car;
+                    }
+                    return new Pair(
+                        node.car,
+                        new Pair(
+                            second,
+                            await traverse(node.cdr.cdr, n, env)
+                        )
+                    );
                 }
             }
             // TODO: CYCLE DETECT
@@ -4297,7 +4808,7 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
     // in loop we add x to the list so we know that this is not
     // duplicated ellipsis symbol
     log(symbols);
-    /* eslint-disable complexity */
+
     function traverse(pattern, code, state = {}) {
         const { ellipsis = false, trailing = false, pattern_names = [] } = state;
         log({
@@ -4329,14 +4840,14 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
                     if (ellipsis) {
                         const count = code.length - 2;
                         const array_head = count > 0 ? code.slice(0, count) : code;
-                        const as_list = Pair.fromArray(array_head, false);
+                        const as_list = Pair.from_array(array_head, false);
                         if (!bindings['...'].symbols[name]) {
                             bindings['...'].symbols[name] = new Pair(as_list, nil);
                         } else {
                             bindings['...'].symbols[name].append(new Pair(as_list, nil));
                         }
                     } else {
-                        bindings['...'].symbols[name] = Pair.fromArray(code, false);
+                        bindings['...'].symbols[name] = Pair.from_array(code, false);
                     }
                 } else if (Array.isArray(pattern[0])) {
                     log('<<< a 3');
@@ -4653,7 +5164,7 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
             return false;
         }
     }
-    /* eslint-enable complexity */
+
     if (traverse(pattern, code)) {
         return bindings;
     }
@@ -4723,7 +5234,7 @@ function transform_syntax(options = {}) {
                 const parts = name.split('.');
                 const first = parts[0];
                 if (first in bindings.symbols) {
-                    return Pair.fromArray([
+                    return Pair.from_array([
                         LSymbol('.'),
                         bindings.symbols[first]
                     ].concat(parts.slice(1).map(x => LString(x))));
@@ -4769,7 +5280,8 @@ function transform_syntax(options = {}) {
                 const [first, ...rest] = name.split('.').filter(Boolean);
                 // save JavaScript dot notation for Env::get
                 if (gensyms[first]) {
-                    hidden_prop(gensym_name, '__object__', [gensyms[first], ...rest]);
+                    const variable = gensyms[first].__name__;
+                    hidden_prop(gensym_name, '__object__', [variable, ...rest]);
                 }
             }
         }
@@ -4848,7 +5360,7 @@ function transform_syntax(options = {}) {
                                 next(name, new Pair(car.cdr, cdr));
                             }
                             // wrap with Value to handle undefined
-                            return new Value(car.car);
+                            return new Value(car.car, 'syntax');
                         } else if (is_nil(cdr)) {
                             return car;
                         } else {
@@ -4863,7 +5375,7 @@ function transform_syntax(options = {}) {
                         log('[t 2 Array ' + nested);
                         if (nested) {
                             next(name, item.slice(1));
-                            return Pair.fromArray(item);
+                            return Pair.from_array(item);
                         } else {
                             const rest = item.slice(1);
                             if (rest.length) {
@@ -4907,7 +5419,7 @@ function transform_syntax(options = {}) {
     function get_names(object) {
         return Object.keys(object).concat(Object.getOwnPropertySymbols(object));
     }
-    /* eslint-disable complexity */
+
     function traverse(expr, { disabled } = {}) {
         log('traverse>> ', expr);
         const is_array = Array.isArray(expr);
@@ -5002,7 +5514,7 @@ function transform_syntax(options = {}) {
                             // undefined can be null caused by null binding
                             // on empty ellipsis
                             if (car !== undefined) {
-                                if (car instanceof Value) {
+                                if (Value.of('syntax', car)) {
                                     car = car.valueOf();
                                 }
                                 if (is_spread) {
@@ -5054,7 +5566,7 @@ function transform_syntax(options = {}) {
                             nested: true
                         });
                         if (car) {
-                            if (car instanceof Value) {
+                            if (Value.of('syntax', car)) {
                                 car = car.valueOf();
                             }
                             return new Pair(
@@ -5095,7 +5607,7 @@ function transform_syntax(options = {}) {
                         );
                         log({ value });
                         if (typeof value !== 'undefined') {
-                            if (value instanceof Value) {
+                            if (Value.of('syntax', value)) {
                                 value = value.valueOf();
                             }
                             if (is_array) {
@@ -5209,6 +5721,14 @@ function is_function(o) {
     return typeof o === 'function' && typeof o.bind === 'function';
 }
 // ----------------------------------------------------------------------------
+function is_regex(x) {
+    return is_object(x) && x instanceof RegExp;
+}
+// ----------------------------------------------------------------------------
+function is_value(obj) {
+    return obj instanceof Value;
+}
+// ----------------------------------------------------------------------------
 function is_directive(token) {
     return directives.includes(token);
 }
@@ -5219,6 +5739,27 @@ function is_false(o) {
 // ----------------------------------------------------------------------------
 function is_string(o) {
     return typeof o === 'string';
+}
+// ----------------------------------------------------------------------
+function is_lambda(obj) {
+    return obj && obj[__lambda__];
+}
+// ----------------------------------------------------------------------
+function is_method(obj) {
+    return obj && obj[__method__];
+}
+// ----------------------------------------------------------------------
+function is_raw_lambda(fn) {
+    return is_lambda(fn) && !fn[__prototype__] &&
+        !is_method(fn) && !is_port_method(fn);
+}
+// ----------------------------------------------------------------------
+function is_native_function(fn) {
+    var native = Symbol.for('__native__');
+    return is_function(fn) &&
+        fn.toString().match(/\{\s*\[native code\]\s*\}/) &&
+        ((fn.name.match(/^bound /) && fn[native] === true) ||
+         (!fn.name.match(/^bound /) && !fn[native]));
 }
 // ----------------------------------------------------------------------------
 function is_prototype(obj) {
@@ -5272,13 +5813,52 @@ function is_macro(o) {
 }
 // ----------------------------------------------------------------------
 function is_promise(o) {
-    if (o instanceof QuotedPromise) {
+    if (o === null || typeof o !== 'object') {
         return false;
     }
     if (o instanceof Promise) {
         return true;
     }
-    return !!o && is_function(o.then);
+    if (o instanceof QuotedPromise) {
+        return false;
+    }
+    return is_function(o.then);
+}
+// ----------------------------------------------------------------------
+function is_object(object) {
+    if (!object) {
+        return false;
+    }
+    return typeof object === 'object';
+}
+// ----------------------------------------------------------------------
+function is_plain_object(object) {
+    return is_object(object) && object.constructor === Object;
+}
+// ----------------------------------------------------------------------
+// Function used to check if function should not get unboxed arguments,
+// so you can call Object.getPrototypeOf for lips data types
+// this is case, see dir function and #73
+// ----------------------------------------------------------------------
+function is_object_bound(obj) {
+    return is_bound(obj) && obj[Symbol.for('__context__')] === Object;
+}
+// ----------------------------------------------------------------------
+function is_bound(obj) {
+    return !!(is_function(obj) && obj[__fn__]);
+}
+// ----------------------------------------------------------------------
+function is_port(obj) {
+    return obj instanceof InputPort || obj instanceof OutputPort;
+}
+// ----------------------------------------------------------------------
+function is_port_method(obj) {
+    if (is_function(obj)) {
+        if (is_port(obj[__context__])) {
+            return true;
+        }
+    }
+    return false;
 }
 // ----------------------------------------------------------------------
 function is_undef(value) {
@@ -5296,10 +5876,7 @@ function is_iterator(obj, symbol) {
 }
 // -------------------------------------------------------------------------
 function is_instance(obj) {
-    if (!obj) {
-        return false;
-    }
-    if (typeof obj !== 'object') {
+    if (!is_object(obj)) {
         return false;
     }
     // __instance__ is read only for instances
@@ -5313,10 +5890,12 @@ function is_instance(obj) {
 function self_evaluated(obj) {
     var type = typeof obj;
     return ['string', 'function'].includes(type) ||
+        is_plain_object(obj) ||
         typeof obj === 'symbol' ||
         obj instanceof QuotedPromise ||
         obj instanceof LSymbol ||
         obj instanceof LNumber ||
+        obj instanceof LCharacter ||
         obj instanceof LString ||
         obj instanceof RegExp;
 }
@@ -5328,11 +5907,7 @@ function is_native(obj) {
 }
 // -------------------------------------------------------------------------
 function has_own_symbol(obj, symbol) {
-    if (obj === null) {
-        return false;
-    }
-    return typeof obj === 'object' &&
-        symbol in Object.getOwnPropertySymbols(obj);
+    return is_object(obj) && symbol in Object.getOwnPropertySymbols(obj);
 }
 // ----------------------------------------------------------------------
 // :: Function utilities
@@ -5367,8 +5942,7 @@ function map_object(object, fn) {
 }
 // ----------------------------------------------------------------------
 function unbox(object) {
-    var lips_type = [LString, LNumber, LCharacter].some(x => object instanceof x);
-    if (lips_type) {
+    if (is_native(object)) {
         return object.valueOf();
     }
     if (object instanceof Array) {
@@ -5440,37 +6014,12 @@ function bind(fn, context) {
     return bound;
 }
 // ----------------------------------------------------------------------
-// Function used to check if function should not get unboxed arguments,
-// so you can call Object.getPrototypeOf for lips data types
-// this is case, see dir function and #73
-// ----------------------------------------------------------------------
-function is_object_bound(obj) {
-    return is_bound(obj) && obj[Symbol.for('__context__')] === Object;
-}
-// ----------------------------------------------------------------------
-function is_bound(obj) {
-    return !!(is_function(obj) && obj[__fn__]);
-}
-// ----------------------------------------------------------------------
 function lips_context(obj) {
     if (is_function(obj)) {
         var context = obj[__context__];
         if (context && (context === lips ||
                         (context.constructor &&
                          context.constructor.__class__))) {
-            return true;
-        }
-    }
-    return false;
-}
-// ----------------------------------------------------------------------
-function is_port(obj) {
-    return obj instanceof InputPort || obj instanceof OutputPort;
-}
-// ----------------------------------------------------------------------
-function is_port_method(obj) {
-    if (is_function(obj)) {
-        if (is_port(obj[__context__])) {
             return true;
         }
     }
@@ -5611,7 +6160,11 @@ function let_macro(name) {
                     env = new_env(env);
                 }
                 const scope = env;
-                scope.set(this.__object__.car.car, state.object);
+                const variable = this.__object__.car.car;
+                if (variable in env.__env__) {
+                  throw new Error(`Duplicated let variable ${variable}`);
+                }
+                scope.set(variable, state.object);
                 const next = this.__object__.cdr;
                 if (is_nil(next)) {
                     delete state.object;
@@ -5775,6 +6328,10 @@ function LCharacter(char) {
         enumerable(this, '__name__', name);
     }
 }
+LCharacter.is = function(character, value) {
+    return character instanceof LCharacter &&
+        character.__char__ === value;
+};
 LCharacter.__names__ = characters;
 LCharacter.__rev_names__ = {};
 Object.keys(LCharacter.__names__).forEach(key => {
@@ -5830,6 +6387,10 @@ LString.prototype[Symbol.iterator] = function*() {
 };
 LString.prototype.serialize = function() {
     return this.valueOf();
+};
+LString.is = function(string, value) {
+    return string instanceof LString &&
+        string.__string__ === value;
 };
 LString.isString = function(x) {
     return x instanceof LString || typeof x === 'string';
@@ -6164,9 +6725,8 @@ LNumber.prototype.isBigNumber = function() {
     LNumber.prototype[fn] = function() {
         if (this.float || LNumber.isFloat(this.__value__)) {
             return LNumber(Math[fn](this.__value__));
-        } else {
-            return LNumber(Math[fn](this.valueOf()));
         }
+        return LNumber(Math[fn](this.valueOf()));
     };
 });
 // -------------------------------------------------------------------------
@@ -6392,8 +6952,8 @@ var pow = function(a, b) {
 // -------------------------------------------------------------------------
 // use native exponential operator if possible (it's way faster)
 // -------------------------------------------------------------------------
-var exp_op = new Function('a,b', 'return a ** b');
 try {
+    var exp_op = new Function('a,b', 'return a ** b');
     if (exp_op(2, 2) === 4) {
         pow = exp_op;
     }
@@ -6448,6 +7008,9 @@ LNumber.prototype.isEven = function() {
 LNumber.prototype.cmp = function(n) {
     const [a, b] = this.coerce(n);
     function cmp(a, b) {
+        if (Number.isNaN(a.__value__) || Number.isNaN(b.__value__)) {
+            return NaN;
+        }
         if (a.__value__ < b.__value__) {
             return -1;
         } else if (a.__value__ === b.__value__) {
@@ -6982,6 +7545,26 @@ LRational.prototype.sqrt = function() {
     return LRational({ num, denom });
 };
 // -------------------------------------------------------------------------
+LRational.prototype.quotient = function() {
+    const num = this.__num__;
+    const denom = this.__denom__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+        if (denom.cmp(0) === 0) {
+            throw new Error("quotient: division by zero");
+        }
+        const div = num / denom;
+        if (LNumber.isBigInteger(div)) {
+            return div;
+        }
+        if (div > 0) {
+            return Math.floor(div);
+        } else {
+            return Math.ceil(div);
+        }
+    }
+    throw new Error('quotient: Invalid argument');
+};
+// -------------------------------------------------------------------------
 LRational.prototype.abs = function() {
     var num = this.__num__;
     var denom = this.__denom__;
@@ -7033,9 +7616,61 @@ LRational.prototype.valueOf = function(exact) {
         return Number.POSITIVE_INFINITY;
     }
     if (exact) {
-        return LNumber._ops['/'](this.__num__.value, this.__denom__.value);
+        const num = this.__num__.__value__;
+        const denom = this.__denom__.__value__;
+        return LNumber(LNumber._ops['/'](num, denom));
     }
     return LFloat(this.__num__.valueOf()).div(this.__denom__.valueOf());
+};
+// -------------------------------------------------------------------------
+LRational.prototype._rem_quot = function() {
+    const num = this.__num__.__value__;
+    const denom = this.__denom__.__value__;
+    const quotient = LNumber._ops['/'](num, denom);
+    const remainder = LNumber._ops['%'](num, denom);
+    return { remainder, quotient };
+};
+// -------------------------------------------------------------------------
+LRational.prototype.floor = function() {
+    const num = this.__num__.__value__;
+    const denom = this.__denom__.__value__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+        const { remainder, quotient } = this._rem_quot();
+        if (quotient < 0 && remainder !== 0) {
+            if (LNumber.isBigInteger(quotient)) {
+                return LNumber(quotient - 1n);
+            }
+            return LNumber(quotient - 1);
+        }
+        return LNumber(quotient);
+    }
+    return LNumber(Math.floor(this.valueOf()));
+};
+// -------------------------------------------------------------------------
+LRational.prototype.round = function() {
+    const num = this.__num__.__value__;
+    const denom = this.__denom__.__value__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+        const { quotient } = this._rem_quot();
+        return LNumber(quotient);
+    }
+    return LNumber(Math.round(this.valueOf()));
+};
+// -------------------------------------------------------------------------
+LRational.prototype.ceil = function() {
+    const num = this.__num__.__value__;
+    const denom = this.__denom__.__value__;
+    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
+        const { remainder, quotient } = this._rem_quot();
+        if (quotient > 0 && remainder !== 0) {
+            if (LNumber.isBigInteger(quotient)) {
+                return LNumber(quotient + 1n);
+            }
+            return LNumber(quotient + 1);
+        }
+        return LNumber(quotient);
+    }
+    return LNumber(Math.ceil(this.valueOf()));
 };
 // -------------------------------------------------------------------------
 LRational.prototype.mul = function(n) {
@@ -7390,7 +8025,7 @@ OutputFilePort.prototype.fs = function() {
     return this._fs;
 };
 OutputFilePort.prototype.internal = function(name) {
-    return user_env.get('**internal-env**').get(name);
+    return internal_env.get(name);
 };
 OutputFilePort.prototype.close = function() {
     return new Promise((resolve, reject) => {
@@ -7665,16 +8300,32 @@ EOF.prototype.toString = function() {
 // -------------------------------------------------------------------------
 // Simpler way to create interpreter with interaction-environment
 // -------------------------------------------------------------------------
-function Interpreter(name, { stderr, stdin, stdout, command_line = null, ...obj } = {}) {
+function Interpreter(name, {
+    stderr,
+    stdin,
+    stdout,
+    meta = false,
+    command_line = null,
+    filename = null,
+    ...obj
+} = {}) {
     if (typeof this !== 'undefined' && !(this instanceof Interpreter) ||
         typeof this === 'undefined') {
-        return new Interpreter(name, { stdin, stdout, stderr, command_line, ...obj });
+        return new Interpreter(name, {
+            stdin,
+            stdout,
+            stderr,
+            meta,
+            command_line,
+            filename,
+            ...obj
+        });
     }
     if (typeof name === 'undefined') {
         name = 'anonymous';
     }
-    this.__env__ = user_env.inherit(name, obj);
-    this.__parser__ = new Parser({  env: this.__env__ });
+    read_only(this, '__env__', user_env.inherit(name, obj));
+    read_only(this, '__parser__', new Parser({ env: this.__env__, filename, meta }));
     this.__env__.set('parent.frame', doc('parent.frame', () => {
         return this.__env__;
     }, global_env.__env__['parent.frame'].__doc__));
@@ -7691,13 +8342,14 @@ function Interpreter(name, { stderr, stdin, stdout, command_line = null, ...obj 
         inter.set('stdout', stdout);
     }
     inter.set('command-line', command_line);
-    set_interaction_env(this.__env__, inter);
+    set_interaction_env(this.__env__, this.__env__, inter);
 }
 // -------------------------------------------------------------------------
-Interpreter.prototype.exec = async function(arg, options = {}) {
+Interpreter.prototype.exec = function(arg, options = {}) {
     let {
         use_dynamic = false,
         dynamic_env,
+        filename = null,
         env
     } = options;
     typecheck('Interpreter::exec', arg, ['string', 'array'], 1);
@@ -7710,20 +8362,16 @@ Interpreter.prototype.exec = async function(arg, options = {}) {
     if (!dynamic_env) {
         dynamic_env = env;
     }
-    global_env.set('**interaction-environment**', this.__env__);
     if (Array.isArray(arg)) {
-        return exec(arg, { env, dynamic_env, use_dynamic });
+        return exec(arg, { env, dynamic_env, use_dynamic, filename });
     } else {
-        try {
-            this.__parser__.prepare(arg);
-            return await exec(this.__parser__, { env, dynamic_env, use_dynamic });
-        } catch(e) {
-            if (!e.message?.includes('at line')) {
-                const location = ` at line ${this.__parser__.get_line() + 1}`;
-                e.message += location;
-            }
-            throw e;
-        }
+        this.__parser__.prepare(arg, { filename });
+        return exec(this.__parser__, {
+            env,
+            dynamic_env,
+            filename,
+            use_dynamic
+        });
     }
 };
 // -------------------------------------------------------------------------
@@ -7767,7 +8415,7 @@ class IgnoreException extends Error { }
 // -------------------------------------------------------------------------
 function Environment(obj, parent, name) {
     if (arguments.length === 1) {
-        if (typeof arguments[0] === 'object') {
+        if (is_object(arguments[0])) {
             obj = arguments[0];
             parent = null;
         } else if (typeof arguments[0] === 'string') {
@@ -7807,13 +8455,7 @@ Environment.prototype.fs = function() {
 };
 // -------------------------------------------------------------------------
 Environment.prototype.unset = function(name) {
-    if (name instanceof LSymbol) {
-        name = name.valueOf();
-    }
-    if (name instanceof LString) {
-        name = name.valueOf();
-    }
-    delete this.__env__[name];
+    delete this.__env__[normalize_name(name)];
 };
 // -------------------------------------------------------------------------
 Environment.prototype.inherit = function(name, obj = {}) {
@@ -7829,12 +8471,7 @@ Environment.prototype.inherit = function(name, obj = {}) {
 // :: Lookup function for variable doc strings
 // -------------------------------------------------------------------------
 Environment.prototype.doc = function(name, value = null, dump = false) {
-    if (name instanceof LSymbol) {
-        name = name.__name__;
-    }
-    if (name instanceof LString) {
-        name = name.valueOf();
-    }
+    name = normalize_name(name);
     if (value) {
         if (!dump) {
             value = trim_lines(value);
@@ -7842,11 +8479,15 @@ Environment.prototype.doc = function(name, value = null, dump = false) {
         this.__docs__.set(name, value);
         return this;
     }
-    if (this.__docs__.has(name)) {
-        return this.__docs__.get(name);
-    }
-    if (this.__parent__) {
-        return this.__parent__.doc(name);
+    const ref = this.ref(name);
+    if (ref) {
+        if (ref.__docs__.has(name)) {
+            return ref.__docs__.get(name);
+        }
+        const value = ref.get(name);
+        if (value?.__doc__) {
+            return value?.__doc__;
+        }
     }
 };
 // -------------------------------------------------------------------------
@@ -7873,18 +8514,12 @@ Environment.prototype.new_frame = function(fn, args) {
     return frame;
 };
 // -------------------------------------------------------------------------
-Environment.prototype._lookup = function(symbol) {
-    if (symbol instanceof LSymbol) {
-        symbol = symbol.__name__;
-    }
-    if (symbol instanceof LString) {
-        symbol = symbol.valueOf();
-    }
-    if (this.__env__.hasOwnProperty(symbol)) {
-        return Value(this.__env__[symbol]);
+Environment.prototype._lookup = function(name) {
+    if (this.__env__.hasOwnProperty(name)) {
+        return Value(this.__env__[name], 'get');
     }
     if (this.__parent__) {
-        return this.__parent__._lookup(symbol);
+        return this.__parent__._lookup(name);
     }
 };
 // -------------------------------------------------------------------------
@@ -7909,20 +8544,25 @@ Environment.prototype.merge = function(env, name = 'merge') {
 // -------------------------------------------------------------------------
 // Value returned in lookup if found value in env and in promise_all
 // -------------------------------------------------------------------------
-function Value(value) {
+function Value(value, source) {
     if (typeof this !== 'undefined' && !(this instanceof Value) ||
         typeof this === 'undefined') {
-        return new Value(value);
+        return new Value(value, source);
     }
-    this.value = value;
+    this._value = value;
+    this._source = source;
 }
 // -------------------------------------------------------------------------
-Value.isUndefined = function(x) {
-    return x instanceof Value && typeof x.value === 'undefined';
+Value.of = function(type, obj) {
+    return is_value(obj) && obj._source === type;
+}
+// -------------------------------------------------------------------------
+Value.is_undefined = function(x) {
+    return is_value(x) && typeof x._value === 'undefined';
 };
 // -------------------------------------------------------------------------
 Value.prototype.valueOf = function() {
-    return this.value;
+    return this._value;
 };
 // -------------------------------------------------------------------------
 // :: Different object than value used as object for (values)
@@ -7952,18 +8592,18 @@ Environment.prototype.get = function(symbol, options = {}) {
     // so print will get user stdout
     typecheck('Environment::get', symbol, ['symbol', 'string']);
     const { throwError = true } = options;
-    var name = symbol;
+    let name = symbol;
     if (name instanceof LSymbol || name instanceof LString) {
         name = name.valueOf();
     }
-    var value = this._lookup(name);
-    if (value instanceof Value) {
-        if (Value.isUndefined(value)) {
+    let value = this._lookup(name);
+    if (Value.of('get', value)) {
+        if (Value.is_undefined(value)) {
             return undefined;
         }
         return patch_value(value.valueOf());
     }
-    var parts;
+    let parts;
     if (symbol instanceof LSymbol && symbol[LSymbol.object]) {
         // dot notation symbols from syntax-rules that are gensyms
         parts = symbol[LSymbol.object];
@@ -7971,11 +8611,11 @@ Environment.prototype.get = function(symbol, options = {}) {
         parts = name.split('.').filter(Boolean);
     }
     if (parts && parts.length > 0) {
-        var [first, ...rest] = parts;
+        const [first, ...rest] = parts;
         value = this._lookup(first);
         if (rest.length) {
             try {
-                if (value instanceof Value) {
+                if (Value.of('get', value)) {
                     value = value.valueOf();
                 } else {
                     value = get(root, first);
@@ -7990,7 +8630,7 @@ Environment.prototype.get = function(symbol, options = {}) {
             } catch (e) {
                 throw e;
             }
-        } else if (value instanceof Value) {
+        } else if (Value.of('get', value)) {
             return patch_value(value.valueOf());
         }
         value = get(root, name);
@@ -8009,7 +8649,7 @@ Environment.prototype.set = function(name, value, doc = null) {
         value = LNumber(value);
     }
     if (name instanceof LSymbol) {
-        name = name.__name__;
+        name = name.valueOf();
     }
     if (name instanceof LString) {
         name = name.valueOf();
@@ -8091,6 +8731,7 @@ Unquote.prototype.toString = function() {
 const native_lambda = _parse(tokenize(`(lambda ()
                                         "[native code]"
                                         (throw "Invalid Invocation"))`))[0];
+
 // -------------------------------------------------------------------------------
 var get = doc('get', function get(object, ...args) {
     var value;
@@ -8141,18 +8782,40 @@ var get = doc('get', function get(object, ...args) {
 // -------------------------------------------------------------------------
 // Function gets internal protected data
 // -------------------------------------------------------------------------
-function get_internal(env) {
-    return interaction(env, '**internal-env**');
+function set_interaction_env(env, interaction, internal) {
+    interaction.constant('**internal-env**', internal);
+    interaction.doc(
+        '**internal-env**',
+        `**internal-env**
+
+         Constant used to hide stdin, stdout and stderr so they don't interfere
+         with variables with the same name. Constants are an internal type
+         of variable that can't be redefined, defining a variable with the same name
+         will throw an error.`
+    );
+    env.set('**interaction-environment**', interaction);
+    env.doc(
+        '**interaction-environment**',
+        `**interaction-environment**
+
+        Internal dynamic, global variable used to find interpreter environment.
+        It's used so the read and write functions can locate **internal-env**
+        that contains the references to stdin, stdout and stderr.`
+    );
 }
 // -------------------------------------------------------------------------
-function internal(env, name) {
-    const internal_env = get_internal(env);
+function get_internal_env(env) {
+    return get_interaction_env(env, '**internal-env**');
+}
+// -------------------------------------------------------------------------
+function get_internal_value(env, name) {
+    const internal_env = get_internal_env(env);
     return internal_env.get(name);
 }
 // -------------------------------------------------------------------------
 // Get variable from interaction environment
 // -------------------------------------------------------------------------
-function interaction(env, name) {
+function get_interaction_env(env, name) {
     var interaction_env = env.get('**interaction-environment**');
     return interaction_env.get(name);
 }
@@ -8182,8 +8845,8 @@ const constants = {
     '#f': false,
     '#true': true,
     '#false': false,
-    '+inf.0': Number.POSITIVE_INFINITY,
-    '-inf.0': Number.NEGATIVE_INFINITY,
+    '+inf.0': LNumber(Number.POSITIVE_INFINITY),
+    '-inf.0': LNumber(Number.NEGATIVE_INFINITY),
     '+nan.0': nan,
     '-nan.0': nan,
     ...parsable_contants
@@ -8195,7 +8858,7 @@ var global_env = new Environment({
     // ---------------------------------------------------------------------
     'peek-char': doc('peek-char', function(port = null) {
         if (port === null) {
-            port = internal(this, 'stdin');
+            port = get_internal_value(this, 'stdin');
         }
         typecheck_text_port('peek-char', port, 'input-port');
         return port.peek_char();
@@ -8207,7 +8870,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'read-line': doc('read-line', function(port = null) {
         if (port === null) {
-            port = internal(this, 'stdin');
+            port = get_internal_value(this, 'stdin');
         }
         typecheck_text_port('read-line', port, 'input-port');
         return port.read_line();
@@ -8218,7 +8881,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'read-char': doc('read-char', function(port = null) {
         if (port === null) {
-            port = internal(this, 'stdin');
+            port = get_internal_value(this, 'stdin');
         }
         typecheck_text_port('read-char', port, 'input-port');
         return port.read_char();
@@ -8231,7 +8894,7 @@ var global_env = new Environment({
         const { env } = this;
         var port;
         if (arg === null) {
-            port = internal(env, 'stdin');
+            port = get_internal_value(env, 'stdin');
         } else {
             port = arg;
         }
@@ -8262,9 +8925,7 @@ var global_env = new Environment({
     print: doc('print', function print(...args) {
         const display = global_env.get('display');
         const newline = global_env.get('newline');
-        const { use_dynamic } = this;
-        const env = global_env;
-        const dynamic_env = global_env;
+        const { env, dynamic_env, use_dynamic } = this;
         args.forEach(arg => {
             call_function(display, [arg], { env, dynamic_env, use_dynamic });
             call_function(newline, [], { env, dynamic_env, use_dynamic });
@@ -8331,9 +8992,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     newline: doc('newline', function newline(port = null) {
         const display = global_env.get('display');
-        const { use_dynamic } = this;
-        const env = global_env;
-        const dynamic_env = global_env;
+        const { use_dynamic, env, dynamic_env } = this;
         call_function(display, ['\n', port], { env, dynamic_env, use_dynamic });
     }, `(newline [port])
 
@@ -8341,7 +9000,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     display: doc('display', function display(arg, port = null) {
         if (port === null) {
-            port = internal(this, 'stdout');
+            port = get_internal_value(this, 'stdout');
         } else {
             typecheck('display', port, 'output-port');
         }
@@ -8349,14 +9008,14 @@ var global_env = new Environment({
         if (!(port instanceof OutputBinaryFilePort)) {
             value = global_env.get('repr')(arg);
         }
-        port.write.call(global_env, value);
+        port.write.call(this, value);
     }, `(display string [port])
 
         This function outputs the string to the standard output or
         the port if given. No newline.`),
     // ------------------------------------------------------------------
     'display-error': doc('display-error', function error(...args) {
-        const port = internal(this, 'stderr');
+        const port = get_internal_value(this, 'stderr');
         const repr = global_env.get('repr');
         const value = args.map(repr).join(' ');
         port.write.call(global_env, value);
@@ -8391,6 +9050,7 @@ var global_env = new Environment({
         if (code.car instanceof LSymbol) {
             symbol = code.car;
         } else if (is_pair(code.car) && code.car.car instanceof LSymbol) {
+            // 'name same as (quote name) according to macro
             symbol = code.car.car;
         } else {
             const env = this;
@@ -8401,25 +9061,10 @@ var global_env = new Environment({
             }
             return;
         }
-        let __doc__;
-        const value = this.get(symbol);
-        __doc__ = value && value.__doc__;
-        if (__doc__) {
-            return __doc__;
-        }
-        const ref = this.ref(symbol);
-        if (ref) {
-            __doc__ = ref.doc(symbol);
-            if (__doc__) {
-                return __doc__;
-            }
-        }
+        return this.doc(symbol);
     }), `(help object)
 
-         This macro returns documentation for a function or macro.
-         You can save the function or macro in a variable and use it
-         here. But getting help for a variable requires passing the
-         variable in a \`quote\`.`),
+         This macro returns documentation for a function, macro, or a variable.`),
     // ------------------------------------------------------------------
     cons: doc('cons', function cons(car, cdr) {
         return new Pair(car, cdr);
@@ -8459,7 +9104,7 @@ var global_env = new Environment({
         const symbol = code.car;
         var ref = this.ref(symbol);
         if (ref) {
-            delete ref.__env__[symbol.__name__];
+            ref.unset(symbol);
         }
     }), `(unset! name)
 
@@ -8520,7 +9165,9 @@ var global_env = new Environment({
         if (!file.match(/.[^.]+$/)) {
             file += '.scm';
         }
+        const filename = basename(file);
         const IS_BIN = file.match(/\.xcb$/);
+        const eval_args = get_internal_value(this, '__parser_args__');
         function run(code) {
             if (IS_BIN) {
                 code = unserialize_bin(code);
@@ -8538,7 +9185,7 @@ var global_env = new Environment({
                     code = unserialize(code);
                 }
             }
-            return exec(code, { env });
+            return exec(code, { env, ...eval_args, filename });
         }
         function fetch(file) {
             return root.fetch(file)
@@ -8558,8 +9205,8 @@ var global_env = new Environment({
             return new Promise(async (resolve, reject) => {
                 try {
                     await node_ready;
-                    const path = nodeRequire('path');
-                    const fs = nodeRequire('fs');
+                    const path = node_require('path');
+                    const fs = node_require('fs');
                     let cwd;
                     const root_dir = get_root_dir();
                     if (has_package) {
@@ -8996,13 +9643,13 @@ var global_env = new Environment({
          with name being first element of the list. This form expands to
          \`(define function-name (lambda args body))\``),
     // ------------------------------------------------------------------
-    'set-obj!': doc('set-obj!', function(obj, key, value, options = null) {
+    'set-object!': doc('set-object!', function(obj, key, value, options = null) {
         var obj_type = typeof obj;
         if (is_null(obj) || (obj_type !== 'object' && obj_type !== 'function')) {
-            var msg = typeErrorMessage('set-obj!', type(obj), ['object', 'function']);
+            var msg = typeErrorMessage('set-object!', type(obj), ['object', 'function']);
             throw new Error(msg);
         }
-        typecheck('set-obj!', key, ['string', 'symbol', 'number']);
+        typecheck('set-object!', key, ['string', 'symbol', 'number']);
         obj = unbind(obj);
         key = key.valueOf();
         if (arguments.length === 2) {
@@ -9019,8 +9666,8 @@ var global_env = new Environment({
             const value = obj[key];
             Object.defineProperty(obj, key, { ...options, value });
         }
-    }, `(set-obj! obj key value)
-        (set-obj! obj key value props)
+    }, `(set-object! obj key value)
+        (set-object! obj key value props)
 
         Function set a property of a JavaScript object. props should be a vector of pairs,
         passed to Object.defineProperty.`),
@@ -9081,6 +9728,36 @@ var global_env = new Environment({
 
         Function that evaluates LIPS Scheme code. If the second argument is provided
         it will be the environment that the code is evaluated in.`),
+    'set-debug!': doc(
+        function set_debug(x = null) {
+            if (x === null) {
+                user_env.set('DEBUG', true);
+            } else {
+                user_env.set('DEBUG', x);
+            }
+        }, `(set-debug!)
+            (set-debug! value)
+
+            Set debug internal value, used internally for debugging. You can use it
+            in LIPS with is-debug function.`),
+    // ------------------------------------------------------------------
+    'inspect': doc(
+        function(object, options = { showHidden: true, depth: null }) {
+            if (inspect) {
+                object = inspect(object, options);
+            }
+            console.log(object);
+        }, `(inspect object)
+
+            logs the arguments without unboxing.`),
+    // ------------------------------------------------------------------
+    'is-debug': doc(
+        is_debug,
+        `(is-debug)
+         (is-debug value)
+
+         Debug function, which checks if internal debug state is set to
+         a given value or true.`),
     // ------------------------------------------------------------------
     lambda: new Macro('lambda', function(source, state) {
         const code = source.cdr;
@@ -9750,7 +10427,7 @@ var global_env = new Environment({
         const names = Object.keys(env.__env__).map(LSymbol);
         let result;
         if (names.length) {
-            result = Pair.fromArray(names);
+            result = Pair.from_array(names);
         } else {
             result = nil;
         }
@@ -9793,27 +10470,29 @@ var global_env = new Environment({
          and specific type of number e.g. complex.`),
     // ------------------------------------------------------------------
     'unset-special!': doc('unset-special!', function(symbol) {
-        typecheck('remove-special!', symbol, 'string');
-        delete specials.remove(symbol.valueOf());
+        typecheck('remove-special!', symbol, ['string', 'regex']);
+        specials.remove(symbol.valueOf());
     }, `(unset-special! name)
 
         Function that removes a special symbol from parser added by \`set-special!\`,
         name must be a string.`),
     // ------------------------------------------------------------------
-    'set-special!': doc('set-special!', function(seq, name, type = specials.LITERAL) {
-        typecheck('set-special!', seq, 'string', 1);
-        typecheck('set-special!', name, 'symbol', 2);
-        specials.append(seq.valueOf(), name, type);
-    }, `(set-special! symbol name [type])
+    'set-special!': doc('set-special!', function(seq, value, type = specials.LITERAL) {
+        typecheck('set-special!', seq, ['string', 'regex'], 1);
+        typecheck('set-special!', value, ['function', 'macro', 'syntax'], 2);
+        specials.append(seq.valueOf(), value, type);
+    }, `(set-special! seq value [type])
 
-        Add a special symbol to the list of transforming operators by the parser.
-        e.g.: \`(add-special! "#" 'x)\` will allow to use \`#(1 2 3)\` and it will be
-        transformed into (x (1 2 3)) so you can write x macro that will process
-        the list. 3rd argument is optional, and it can be one of two values:
-        lips.specials.LITERAL, which is the default behavior, or
-        lips.specials.SPLICE which causes the value to be unpacked into the expression.
-        This can be used for e.g. to make \`#(1 2 3)\` into (x 1 2 3) that is needed
-        by # that defines vectors.`),
+        Add a new syntax extension to the parser. When parser found the new seq string
+        in the input stream it will invoke the function or a macro and return the output
+        at parse time.
+
+        The arguments to the function or macro depends on the type of extension:
+
+        * lips.specials.SYMBOL will not process the next tokens only call the extension
+        * lips.specials.LITERAL will read next expression and pass it as first argument
+        * lips.specials.SPLICE will read next expression which needs to be a list and
+          spread the list into the function arguments.`),
     // ------------------------------------------------------------------
     'get': get,
     '.': get,
@@ -9832,9 +10511,7 @@ var global_env = new Environment({
          Function that returns the type of an object as string.`),
     // ------------------------------------------------------------------
     'debugger': doc('debugger', function() {
-        /* eslint-disable */
         debugger;
-        /* eslint-enable */
     }, `(debugger)
 
         Function that triggers the JavaScript debugger (e.g. the browser devtools)
@@ -10128,10 +10805,9 @@ var global_env = new Environment({
         Throws a new exception.`),
     // ------------------------------------------------------------------
     find: doc('find', function find(arg, list) {
-        typecheck('find', arg, ['regex', 'function']);
         typecheck('find', list, ['pair', 'nil']);
         if (is_null(list)) {
-            return nil;
+            return false;
         }
         var fn = matcher('find', arg);
         return unpromise(fn(list.car), function(value) {
@@ -10142,9 +10818,10 @@ var global_env = new Environment({
         });
     }, `(find fn list)
         (find regex list)
+        (find atom list)
 
         Higher-order function that finds the first value for which fn return true.
-        If called with a regex it will create a matcher function.`),
+        If called with a regex or any atom it will create a matcher function.`),
     // ------------------------------------------------------------------
     'list?': doc('list?', function(obj) {
         var node = obj;
@@ -10240,7 +10917,7 @@ var global_env = new Environment({
                 return loop(++i);
             }
             if (i === array.length) {
-                return Pair.fromArray(result);
+                return Pair.from_array(result);
             }
             var item = array[i];
             return unpromise(fn(item), next);
@@ -10489,7 +11166,7 @@ var global_env = new Environment({
     '==': doc('==', function(...args) {
         typecheck_args('==', args, 'number');
         return seq_compare((a, b) => LNumber(a).cmp(b) === 0, args);
-    }, `(== x1 x2 ...)
+    }, `(== x1 x2 ...)}
 
         Function that compares its numerical arguments and checks if they are
         all equal.`),
@@ -10572,31 +11249,10 @@ var global_env = new Environment({
 }, undefined, 'global');
 var user_env = global_env.inherit('user-env');
 // -------------------------------------------------------------------------
-function set_interaction_env(interaction, internal) {
-    interaction.constant('**internal-env**', internal);
-    interaction.doc(
-        '**internal-env**',
-        `**internal-env**
+set_interaction_env(global_env, user_env, internal_env);
 
-         Constant used to hide stdin, stdout and stderr so they don't interfere
-         with variables with the same name. Constants are an internal type
-         of variable that can't be redefined, defining a variable with the same name
-         will throw an error.`
-    );
-    global_env.set('**interaction-environment**', interaction);
-}
-// -------------------------------------------------------------------------
-set_interaction_env(user_env, internal_env);
-global_env.doc(
-    '**interaction-environment**',
-    `**interaction-environment**
-
-    Internal dynamic, global variable used to find interpreter environment.
-    It's used so the read and write functions can locate **internal-env**
-    that contains the references to stdin, stdout and stderr.`
-);
 function set_fs(fs) {
-    user_env.get('**internal-env**').set('fs', fs);
+    internal_env.set('fs', fs);
 }
 
 // -------------------------------------------------------------------------
@@ -10690,9 +11346,10 @@ function is_node() {
 // -------------------------------------------------------------------------
 const noop = () => {};
 // -------------------------------------------------------------------------
+let inspect;
 async function node_specific() {
     const { createRequire } = await import('mod' + 'ule');
-    nodeRequire = createRequire(import.meta.url);
+    node_require = createRequire(import.meta.url);
     fs = await import('fs');
     path = await import('path');
     global_env.set('global', global);
@@ -10704,11 +11361,12 @@ async function node_specific() {
     const __filename__ = path.basename(moduleURL.pathname);
     global_env.set('__dirname', __dirname__);
     global_env.set('__filename', __filename__);
+    inspect = node_require('util').inspect;
     // ---------------------------------------------------------------------
     global_env.set('require.resolve', doc('require.resolve', function(path) {
         typecheck('require.resolve', path, 'string');
         var name = path.valueOf();
-        return nodeRequire.resolve(name);
+        return node_require.resolve(name);
     }, `(require.resolve path)
 
         Returns the path relative to the current module.
@@ -10722,17 +11380,17 @@ async function node_specific() {
         var value;
         try {
             if (module.match(/^\s*\./)) {
-                value = nodeRequire(path.join(root, module));
+                value = node_require(path.join(root, module));
             } else {
                 var dir = nodeModuleFind(root);
                 if (dir) {
-                    value = nodeRequire(path.join(dir, 'node_modules', module));
+                    value = node_require(path.join(dir, 'node_modules', module));
                 } else {
-                    value = nodeRequire(module);
+                    value = node_require(module);
                 }
             }
         } catch (e) {
-            value = nodeRequire(module);
+            value = node_require(module);
         }
         return patch_value(value, global);
     }, `(require module)
@@ -10747,6 +11405,11 @@ async function node_specific() {
             promise.catch(noop);
         }
     });
+    const originalLog = console.log;
+    console.log = function(...args) {
+        originalLog.apply(console, args);
+        process.stdout.write('');
+    };
 }
 // -------------------------------------------------------------------------
 /* c8 ignore next 15 */
@@ -10877,9 +11540,7 @@ function memoize(fn) {
     };
 }
 // -------------------------------------------------------------------------
-/* eslint-disable no-func-assign */
 type = memoize(type);
-/* eslint-enable no-func-assign */
 // -------------------------------------------------------------------------
 function type(obj) {
     let t = type_constants.get(obj);
@@ -11001,6 +11662,12 @@ function evaluate_args(rest, { use_dynamic, ...options }) {
         }
     })();
 }
+
+// -------------------------------------------------------------------------
+function invoke_macro(macro, code, eval_args) {
+    return resolve_promises(macro.invoke(code, eval_args));
+}
+
 // -------------------------------------------------------------------------
 function evaluate_syntax(macro, code, eval_args) {
     var value = macro.invoke(code, eval_args);
@@ -11024,10 +11691,8 @@ function evaluate_macro(macro, code, state) {
         }
         return quote(result);
     }
-    const value = macro.invoke(code, state);
-    return unpromise(resolve_promises(value), function ret(value) {
-        if (!value || (value && value[__data__]) ||
-            self_evaluated(value) || !is_pair(value)) {
+    return unpromise(invoke_macro(macro, code, eval_args), function ret(value) {
+        if (!value || value && value[__data__] || self_evaluated(value)) {
             return value;
         } else {
             return unpromise(tco_eval(value, state), finalize);
@@ -11039,7 +11704,8 @@ function evaluate_macro(macro, code, state) {
 
 // -------------------------------------------------------------------------
 function prepare_fn_args(fn, args) {
-    if (is_bound(fn) && !is_object_bound(fn) &&
+    const js_function = is_bound(fn) && !is_lips_function(fn);
+    if (js_function && !is_object_bound(fn) &&
         (!lips_context(fn) || is_port_method(fn))) {
         args = args.map(unbox);
     }
@@ -11962,17 +12628,22 @@ function evaluate(code, { env, dynamic_env, use_dynamic, error = noop } = {}) {
         }
         // escape promise feature #54
         var __promise__ = env.get(Symbol.for('__promise__'), { throwError: false });
-        if (__promise__ === true && is_promise(result)) {
-            // fix #139 evaluate the code inside the promise that is not data.
-            // When promise is not quoted it happen automatically, when returning
-            // promise from evaluate.
-            result = result.then(result => {
-                if (is_pair(result) && !value[__data__]) {
-                    return evaluate(result, eval_args);
-                }
-                return result;
+        if (is_promise(result)) {
+            if (__promise__ === true) {
+                // fix #139 evaluate the code inside the promise that is not data.
+                // When promise is not quoted it happen automatically, when returning
+                // promise from evaluate.
+                result = result.then(result => {
+                    if (is_pair(result) && !value[__data__]) {
+                        return evaluate(result, eval_args);
+                    }
+                    return result;
+                });
+                return new QuotedPromise(result);
+            }
+            return result.catch(e => {
+                error && error.call(env, e, code);
             });
-            return new QuotedPromise(result);
         }
         return result;
     } catch (e) {
@@ -11987,12 +12658,23 @@ const compile = exec_collect(function(code) {
 const exec = exec_collect(function(code, value) {
     return value;
 });
+
 // -------------------------------------------------------------------------
-function exec_with_stacktrace(code, { env, dynamic_env, use_dynamic } = {}) {
+// :: used as evaluate in try..catch to get stack trac
+// -------------------------------------------------------------------------
+
+function evaluate_with_stacktrace(code, { error, env, ...rest } = {}) {
+    try {
+        return exec_with_stacktrace(code, { env, ...rest });
+    } catch(e) {
+        error && error.call(env, e);
+    }
+}
+
+// -------------------------------------------------------------------------
+function exec_with_stacktrace(code, args = {}) {
     return tco_eval(code, {
-        env,
-        dynamic_env,
-        use_dynamic,
+        ...args,
         error: (e) => {
             if (e && e.message) {
                 if (e.message.match(/^Error:/)) {
@@ -12009,7 +12691,8 @@ function exec_with_stacktrace(code, { env, dynamic_env, use_dynamic } = {}) {
 }
 // -------------------------------------------------------------------------
 function exec_collect(collect_callback) {
-    return async function exec_lambda(arg, { env, dynamic_env, use_dynamic } = {}) {
+    return async function exec_lambda(arg, options = {}) {
+        let { env, dynamic_env, use_dynamic, ...parser_args } = options;
         if (!is_env(dynamic_env)) {
             dynamic_env = env === true ? user_env : env || user_env;
         }
@@ -12022,7 +12705,7 @@ function exec_collect(collect_callback) {
         if (is_pair(arg)) {
             return [await exec_with_stacktrace(arg, { env, dynamic_env, use_dynamic })];
         }
-        const input = Array.isArray(arg) ? arg : _parse(arg);
+        const input = Array.isArray(arg) ? arg : _parse(arg, parser_args);
         for await (let code of input) {
             const value = await exec_with_stacktrace(code, { env, dynamic_env, use_dynamic });
             results.push(collect_callback(code, value));
@@ -12130,7 +12813,7 @@ function bootstrap(url = '') {
         } else if (is_dev()) {
             url = `https://cdn.jsdelivr.net/gh/jcubic/lips@devel/${std}`;
         } else {
-            url = `https://cdn.jsdelivr.net/npm/@jcubic/lips@${lips.version}/${std}`;
+            url = `https://cdn.jsdelivr.net/npm/lips@${lips.version}/${std}`;
         }
     }
     global_env.set('__dirname', url.replace(/[^/]+$/, ''));
@@ -12657,6 +13340,7 @@ export {
     Parameter,
     rationalize
 };
+
 const lips = {
     version,
     banner,
@@ -12730,5 +13414,6 @@ const lips = {
     Parameter,
     rationalize
 };
+var lips_functions = Object.values(lips);
 export default lips;
 global_env.set('lips', lips);

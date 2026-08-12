@@ -941,6 +941,16 @@
         (t.is (foo (1 2 3) (4 5 6))
               '(((1 2 3) (1 2 3)) ((4 5 6) (4 5 6))))))
 
+
+(test "syntax: revese args"
+      (lambda (t)
+        (define-syntax reverse
+          (syntax-rules ()
+            ((_) ())
+            ((_ x ... y) (cons y (reverse x ...)))))
+
+        (t.is (reverse 1 2 3 4 5) '(5 4 3 2 1))))
+
 (test "syntax: R7RS multiple ellipsis extensions"
       (lambda (t)
 
@@ -969,7 +979,7 @@
                        (vector->list (values.valueOf))))))
 
         (t.is (let*-values (((a b c) (values 1 2 3)))
-                           (+ a b c))
+                (+ a b c))
               6)))
 
 

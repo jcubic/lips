@@ -1,17 +1,17 @@
-(set-special! "<>" 'html lips.specials.SPLICE)
-
 (define-macro (html . args)
   (let ((str (--> (list->array (map symbol->string args)) (join "+"))))
-    `(string-append "<" ,str "/>")))
+     `(string-append "<" ,str "/>")))
+
+(set-special! "<>" html lips.specials.SPLICE)
 
 (define parser/t1 <>(foo bar))
 
 (unset-special! "<>")
 
-(set-special! "--" 'dash lips.specials.LITERAL)
-
 (define-macro (dash x)
   `'(,(car x) . ,(cadr x)))
+
+(set-special! "--" dash lips.specials.LITERAL)
 
 (define parser/t2 --(foo bar baz))
 
@@ -19,23 +19,21 @@
 
 (define parser/t3 (. (lips.parse "(--)" (current-environment)) 0))
 
-(set-special! ":" 'keyword lips.specials.LITERAL)
-
 (define-macro (keyword n)
    `(string->symbol (string-append ":" (symbol->string ',n))))
 
-(define parser/t4 :foo)
+(set-special! ":" keyword lips.specials.LITERAL)
 
-(set-special! ":" 'keyword lips.specials.SPLICE)
+(define parser/t4 :foo)
 
 (define-macro (keyword . n)
    `(string->symbol (string-append ":" (symbol->string ',n))))
 
+(set-special! ":" keyword lips.specials.SPLICE)
+
 (define parser/t5 :foo)
 
 (unset-special! ":")
-
-(set-special! "::" 'cube)
 
 (define (cube x)
   (if (number? x)
@@ -43,19 +41,20 @@
       `(let ((.x ,x))
          (* .x .x .x))))
 
+(set-special! "::" cube)
+
 (define parser/t6 (let ((x 3)) ::x))
 (define parser/t7 (. (lips.parse "(let ((x 3)) ::x)" (current-environment)) 0))
 
 (unset-special! "::")
 
-(set-special! "#nil" 'nil-fn lips.specials.SYMBOL)
 (define (nil-fn) '())
+
+(set-special! "#nil" nil-fn lips.specials.SYMBOL)
 
 (define parser/t8 (list #nil #nil '#nil '#nil #nil))
 
 (unset-special! "#nil")
-
-(set-special! "$" 'raw-string lips.specials.SYMBOL)
 
 (define (raw-string)
   (if (char=? (peek-char) #\")
@@ -67,20 +66,94 @@
               (apply string (vector->list result))
               (loop (vector-append result (vector char)) (peek-char)))))))
 
+(set-special! "$" raw-string lips.specials.SYMBOL)
+
 (define parser/t9 $"foo \ bar")
 
 (unset-special! "$")
-
-(set-special! "#:num" 'line-num lips.specials.SYMBOL)
 
 (define (line-num)
   (let* ((lexer lips.__parser__.__lexer__)
          (token lexer.__token__))
     (+ token.col)))
 
+(set-special! "#:num" line-num lips.specials.SYMBOL)
+
 (define parser/t10 (list #:num #:num #:num #:num))
 
 (unset-special! "#:num")
+
+(define (multply-inline x) `(* ,@x))
+
+(set-special! "*|" multply-inline)
+
+(define parser/t11 '*|(1 2 3)) ;; |
+
+(unset-special! "*|")
+
+(define-syntax gensym-macro
+  (syntax-rules ()
+    ((_ name)
+     (gensym 'name))))
+
+(set-special! "#::" gensym-macro)
+
+(define parser/t12 #::hello)
+
+(unset-special! "#::")
+
+(define-syntax line-num
+  (syntax-rules ()
+    ((_)
+     (let* ((lexer lips.__parser__.__lexer__)
+            (token lexer.__token__))
+       (+ token.col)))))
+
+(set-special! "#:num" line-num lips.specials.SYMBOL)
+
+(define parser/t13 #:num)
+
+(unset-special! "#:num")
+
+(set-special! "$$" (lambda () 10) lips.specials.SPLICE)
+
+(define parser/t14 $$())
+
+(set-hash-syntax! #\+ (lambda (port)
+                        `(quote ,(apply + (read port)))))
+
+(define parser/t15 #+(1 2 3))
+(define parser/t16 '#+(1 2 3))
+
+(set-hash-syntax! 'sum (lambda (port)
+                         `(quote ,(apply + (read port)))))
+
+(define parser/t17 #sum(1 2 3))
+(define parser/t18 '#sum(1 2 3))
+
+(set-hash-syntax! 'sum #f)
+(set-hash-syntax! #\+ #f)
+
+(define-macro (macro)
+  `(begin
+     (Promise.resolve)
+     (+ "x" "y")))
+
+(set-special! "&&" macro)
+
+(define-macro (nested-list x) `(quote ,x))
+
+(set-special! "#2a" nested-list lips.specials.LITERAL)
+
+(define parser/t19 #2a((1 2) (1 2)))
+
+(unset-special! "#2a")
+
+(set-special! #/#[0-9]+a/ nested-list lips.specials.LITERAL)
+
+(define parser/t20 (list #2a((1 2) (1 2)) #3a((1 2) (1 2) (1 2))))
+
+(unset-special! #/#[0-9]+a/)
 
 (test "parser: #!fold-case"
       (lambda (t)
@@ -104,6 +177,7 @@
         (t.is parser/t7 '(let ((x 3)) (let ((.x x)) (* .x .x .x))))
         (t.is parser/t8 '(() () () () ()))
         (t.is parser/t9 "foo \\ bar")
+        (t.is parser/t14 10)
         (t.snapshot parser/t10)))
 
 (test "parser: escape hex literals"
@@ -325,7 +399,7 @@
           (parser.prepare code)
           (t.snapshot (parse parser)))))
 
-(test "parser: lonely cosing paren"
+(test "parser: lonely closing paren"
       (lambda (t)
         (t.snapshot (try (let* ((code "    )")
                                 (env lips.env)
@@ -333,3 +407,85 @@
                            (parser.prepare code)
                            (lips.parse parser))
                          (catch (e) e)))))
+
+(test "parser: regex characters in syntax extension"
+      (lambda (t)
+        (t.is parser/t11 '(* 1 2 3))))
+
+(test "parer: syntax-rule macro as syntax extension"
+      (lambda (t)
+        (t.is (gensym? parser/t12) #t)
+        (t.is parser/t13 19)))
+
+(test "parser: should throw in invalid splice syntax extension"
+      (lambda (t)
+        (t.is (to.throw (lips.parse "$$10")) #t)
+        (t.is (to.throw (lips.parse "&&10")) #t)))
+
+(test "parser: set-hash-syntax!"
+      (lambda (t)
+        (t.is parser/t15 6)
+        (t.is parser/t16 '(quote 6))
+        (t.is parser/t17 6)
+        (t.is parser/t18 '(quote 6))
+        (t.is (to.throw (lips.parse "#+(1 2 3)")) #t)
+        (t.is (to.throw (lips.parse "#sum(1 2 3)")) #t)))
+
+
+(test "parser: datum conflict"
+      (lambda (t)
+        (t.is parser/t19 '((1 2) (1 2)))))
+
+(test "parser: regex syntax extension"
+      (lambda (t)
+        (t.is parser/t20 '(((1 2) (1 2)) ((1 2) (1 2) (1 2))))))
+
+(test "parser: syntax errors"
+      (lambda (t)
+        (let ((code (list "(let ((x #4))"
+                          "(let ((x #e))"
+                          "(let ((x 10))"
+                          "(let ((x 10))
+                                #4)")))
+          (for-each (lambda (code)
+                      (let ((result (try (lips.parse code)
+                                         (catch (e) e))))
+                        (t.is (instanceof Error result) #t)
+                        (t.snapshot result)))
+                    code))))
+
+(test "lexer: unterminated expression"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/lexer-hash-error.scm")))))
+
+(test "lexer: unterminated regex"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/lexer-unterminated-regex.scm")))))
+
+(test "parser: dot error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-invalid-list.scm")))))
+
+(test "parser: unterminted list error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-unterminated-list.scm")))))
+
+(test "parser: unexpected parenthesis error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-unexpected-paren.scm")))))
+
+(test "parser: missing object in syntax extension (eof) error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-syntax-expect-object-eof.scm")))))
+
+(test "parser: missing object in syntax extension inside list error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-syntax-expect-object.scm")))))
+
+(test "parser: invalid datum ref error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-invalid-ref.scm")))))
+
+(test "parser: syntax extension error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-syntax-extension-error.scm")))))

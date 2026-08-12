@@ -1,4 +1,4 @@
-(test "core: it should set!/set-obj! with this and prototype"
+(test "core: it should set!/set-object! with this and prototype"
       (lambda (t)
         (let ()
           (define foo (lambda (x) (set! this.x x)))
@@ -8,10 +8,10 @@
           (t.is (bar.square 10) 100)
           (t.is (bar.sum 5) 15))
         (let ()
-          (define foo (lambda (x) (set-obj! this "x" x)))
+          (define foo (lambda (x) (set-object! this "x" x)))
           (define bar (new foo 10))
-          (set-obj! foo.prototype 'square (lambda (x) (* x x)))
-          (set-obj! foo.prototype 'sum (lambda (x) (+ this.x x)))
+          (set-object! foo.prototype 'square (lambda (x) (* x x)))
+          (set-object! foo.prototype 'sum (lambda (x) (+ this.x x)))
           (t.is (bar.square 10) 100)
           (t.is (bar.sum 5) 15))))
 
@@ -124,9 +124,9 @@
 
 (test "core: timing test"
       (lambda (t)
-        (--> t (is (function? (.. Date.now)) true))
+        (--> t (is (function? Date.now) true))
         (define start (--> Date (now)))
-        (wait 100 (--> t (is (>= (- (--> Date (now)) start) 100) true)))))
+        (wait 100 (--> t (is (>= (- (Date.now) start) 100) true)))))
 
 (test "core: values"
       (lambda (t)
@@ -157,7 +157,7 @@
 (test "core: dot comma"
       (lambda (t)
         ;; found in https://doc.scheme.org/surveys/DotComma/
-        (t.is  (let ((b 312)) `(a .,b)) '(a . 312))))
+        (t.is (let ((b 312)) `(a .,b)) '(a . 312))))
 
 (test "core: quote as delimiter"
       (lambda (t)
@@ -211,7 +211,7 @@
 (test "core: scheme signature"
       (lambda (t)
         ;; we should know about changing of signature
-        (load "./examples/scheme-detect.scm")
+        (load "@lips/examples/scheme-detect.scm")
 
         (t.is (detect:name) 'lips)))
 
@@ -637,11 +637,11 @@
       (lambda (t)
         ;; test shuffle with fixed seed
         (random 1000)
-        (t.is (shuffle '(1 2 3 4)) '(2 4 3 1))
+        (t.is (shuffle '(1 2 3 4)) '(4 2 3 1))
         (t.is (list? (shuffle '(1 2 3))) #t)
         (t.is (shuffle '()) '())
         (random 1000)
-        (t.is (shuffle #(1 2 3 4)) #(2 4 3 1))))
+        (t.is (shuffle #(1 2 3 4)) #(4 2 3 1))))
 
 (test "core: immutable strings"
       (lambda (t)
@@ -897,11 +897,40 @@
                 (define (g p) (parameterize ((x 2)) (force p)))
                 (+ (force p) (g p)))
               2)))
+(test "core: quoted list mutation"
+      (lambda (t)
+        (let ((list '(1 2 3 4)))
+          (set-car! list 10)
+          (t.is list '(10 2 3 4)))))
+
+(test "core: freeze list"
+      (lambda (t)
+        (let ((lst '(1 2 3 4)))
+          (lst.freeze)
+          (let loop ((lst lst))
+            (when (not (null? lst))
+              (let ((item (car lst)))
+                (t.is (vector item (to.throw (set-car! lst 10)))
+                      (vector item true)))
+              (loop (cdr lst)))))))
+
+(test "core: runtime error augmentation"
+      (lambda (t)
+        (let ((file "./tests/files/runtime-error.scm"))
+          (with-meta
+           (t.snapshot (to.throw.error (load file)))))))
+
+
+(test "core: promise rejection augmentation"
+      (lambda (t)
+        (let ((file "./tests/files/runtime-promise-reject.scm"))
+          (with-meta
+           (t.snapshot (to.throw.error (load file)))))))
 
 ;; TODO
 ;; begin*
-;; set-obj! throws with null or boolean
-;; set-obj! to delete the value (2 arguments)
+;; set-object! throws with null or boolean
+;; set-object! to delete the value (2 arguments)
 ;; null-environment
 ;; current-environment inside let
 ;; eval that throw error

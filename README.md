@@ -4,14 +4,13 @@
 </h1>
 
 [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/LIPS_scheme)](https://twitter.com/LIPS_scheme)
-[![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.20-blue.svg)](https://www.npmjs.com/package/@jcubic/lips)
+[![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.21-blue.svg)](https://www.npmjs.com/package/lips)
 ![1.0.0 Complete](https://img.shields.io/github/milestones/progress-percent/jcubic/lips/1?label=1.0.0%20Complete)
-[![Build and test](https://github.com/jcubic/lips/actions/workflows/build.yaml/badge.svg?branch=continuations-2&event=push)](https://github.com/jcubic/lips/actions/workflows/build.yaml)
-[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=continuations-2&adf562e19bb5b4b9756e2667408589c8)](https://coveralls.io/github/jcubic/lips?branch=continuations-2)
+[![Build and test](https://github.com/jcubic/lips/actions/workflows/build.yaml/badge.svg?branch=devel&event=push)](https://github.com/jcubic/lips/actions/workflows/build.yaml)
+[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=devel&7e792d48eaccedfb3ca5dcfa95dec68c)](https://coveralls.io/github/jcubic/lips?branch=devel)
 [![Join Gitter Chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jcubic/lips)
-![NPM Download Count](https://img.shields.io/npm/dm/@jcubic/lips)
-![JSDelivr Download count](https://img.shields.io/jsdelivr/npm/hm/@jcubic/lips)
-<a href="https://codeclimate.com/github/jcubic/lips/maintainability"><img src="https://api.codeclimate.com/v1/badges/876398746c020dd1bb97/maintainability" /></a>
+![NPM Download Count](https://img.shields.io/npm/dm/lips)
+![JSDelivr Download count](https://img.shields.io/jsdelivr/npm/hm/lips)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fjcubic%2Flips.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fjcubic%2Flips?ref=badge_shield)
 
 [![GitHub stars](https://img.shields.io/github/stars/jcubic/lips.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/jcubic/lips/stargazers/)
@@ -33,13 +32,13 @@ The name is a recursive acronym which stands for LIPS Is Pretty Simple.
 
 ## Features
 
-* Literal regular expression.
+* Literal regular expressions.
 * Asynchronous execution (auto resolving of promises).
 * Possibility to add new syntax (similar to vectors and object).
-* Numerical tower and Big Integer support.
+* Full numerical tower and Big Integer support.
 * Powerful introspection.
 * Great integration with JavaScript.
-* Auto formatting lisp of code (pretty print)
+* Code formatting (pretty print).
 * Lisp and hygienic Scheme macros and macroexpand.
 * Builtin help system.
 
@@ -48,27 +47,26 @@ The name is a recursive acronym which stands for LIPS Is Pretty Simple.
 To install you can use npm (or yarn)<br/>
 **NOTE:** The version that is on NPM is heavily outdated, use beta version:
 
-
 ```
-npm install @jcubic/lips@beta
+npm install lips@beta
 ```
 
 or yarn:
 
 ```
-yarn add @jcubic/lips@beta
+yarn add lips@beta
 ```
 
 then include the file in the script tag. You can grab the version from unpkg.com
 
 ```
-https://unpkg.com/@jcubic/lips@beta
+https://unpkg.com/lips@beta
 ```
 
 or from jsDelivr (that's seems a bit faster)
 
 ```
-https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/dist/lips.min.js
+https://cdn.jsdelivr.net/npm/lips@beta/dist/lips.min.js
 ```
 
 ## Bookmarklet REPL
@@ -116,14 +114,14 @@ on first script tag with `text/x-scheme` type. By default, it will use CDN from
 (that will fetch the file using AJAX and evaluate it).
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/dist/lips.min.js" bootstrap></script>
+<script src="https://cdn.jsdelivr.net/npm/lips@beta/dist/lips.min.js" bootstrap></script>
 ```
 
 You can also specify the path where LIPS should search for standard library.
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/dist/lips.min.js"
-        bootstrap="https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/dist/std.xcb">
+<script src="https://cdn.jsdelivr.net/npm/lips@beta/dist/lips.min.js"
+        bootstrap="https://cdn.jsdelivr.net/npm/lips@beta/dist/std.xcb">
 </script>
 ```
 
@@ -134,7 +132,7 @@ because it's already parsed and compiled into binary format.
 ## Running LIPS programmatically
 
 ```javascript
-var {exec} = require('@jcubic/lips'); // node
+var {exec} = require('lips'); // node
 // or
 var {exec} = lips; // browser
 
@@ -157,7 +155,7 @@ Documentation about beta version can be found in
 If you install lips globally with:
 
 ```
-npm install -g @jcubic/lips@beta
+npm install -g lips@beta
 ```
 
 you can run the interpreter from the terminal:
@@ -287,11 +285,12 @@ They should be loaded as R7RS libraries in final 1.0.0 version
 | Procedures and Syntax for Multiple Values | [SRFI-210](https://srfi.schemers.org/srfi-210/) |
 | Evaluating expressions in an unspecified order | [SRFI-236](https://srfi.schemers.org/srfi-236) |
 | Destructuring Lists | [SRFI 239](https://srfi.schemers.org/srfi-239/) |
+| Uninterned Symbols | [SRFI 258](https://srfi.schemers.org/srfi-258/) |
 
 in Web (e.g. in Web REPL) you can also use full URL:
 
 ```scheme
-(load "https://cdn.jsdelivr.net/npm/@jcubic/lips@beta/lib/srfi/<NUMBER>.scm")
+(load "https://cdn.jsdelivr.net/npm/lips@beta/lib/srfi/<NUMBER>.scm")
 ```
 
 ## Links
@@ -307,9 +306,6 @@ in Web (e.g. in Web REPL) you can also use full URL:
 * [JavaScript Weekly](https://javascriptweekly.com/issues/669)
 * [Hacker News](https://news.ycombinator.com/item?id=38819212)
 * [Brian Lovin](https://brianlovin.com/hn/38819212) (HN clone)
-
-## Projects that use LIPS
-* [Conzept](https://conze.pt) - Topic exploration system for the 21st century (see also their [Twitter account](https://twitter.com/conzept__) and [Command API Documentation](https://conze.pt/guide/command_api))
 
 ## Roadmap
 ### 1.0
@@ -327,7 +323,7 @@ in Web (e.g. in Web REPL) you can also use full URL:
 ### Future Plans
 - [ ] Picture language (possibly inspired by P5.js, see [SRFI-203](https://srfi.schemers.org/srfi-203/srfi-203.html)).
 - [ ] Stepper/Debugger.
-- [ ] Allow to use read/port in syntax extensions (similar to CL reader macros).
+- [x] Allow to use read/port in syntax extensions (similar to CL reader macros).
 - [ ] Proper expansion time for both macro systems.
 - [ ] Fully working and tested R7RS hygienic Macros (`syntax-rules`).
 - [ ] All recursive function in JS don't consume stack.
@@ -354,6 +350,7 @@ I would also love to see if you use the library, I may even share the links of p
 
 ## Acknowledgments
 * Font used in logo is [Telegrafico](https://www.dafont.com/telegrafico.font) by [ficod](https://www.deviantart.com/ficod).
+* The cover image for GitHub and Blog Posts use clipart by [Baptiste Gaultier](https://openclipart.org/artist/b.gaultier).
 * Part of the current Parser is inspired by [BiwaScheme](https://www.biwascheme.org/) by Yutaka HARA (yhara).
 * [TCO](https://lips.js.org/docs/scheme-intro/core#tail-call-optimization) and
   [Continuations](https://lips.js.org/docs/scheme-intro/continuations) imeplementation inspired by [js-scheme](https://bluishcoder.co.nz/jsscheme/) by Alex Yakovlev
@@ -362,7 +359,7 @@ I would also love to see if you use the library, I may even share the links of p
 * The rationalize algorithm is based on [Kawa Scheme](https://www.gnu.org/software/kawa/index.html) by Per M.A. Bothner, Alan Bawden and Marc Feeley.
 * `ucs2decode` function taken from [punycode.js](https://github.com/bestiejs/punycode.js) by [Mathias Bynens](https://mathiasbynens.be/).
 * [Rosetta Code](https://rosettacode.org/) was used for:
-  * [gdc](https://rosettacode.org/wiki/Greatest_common_divisor#JavaScript),
+  * [gcd](https://rosettacode.org/wiki/Greatest_common_divisor#JavaScript),
   * [lcm](https://rosettacode.org/wiki/Least_common_multiple#JavaScript),
   * [LFloat::toRational](https://rosettacode.org/wiki/Convert_decimal_number_to_rational).
 * [StackOverlow](https://stackoverflow.com) code was used for functions:
@@ -373,7 +370,9 @@ I would also love to see if you use the library, I may even share the links of p
 * Code formatter is roughly based on [scheme-style](http://community.schemewiki.org/?scheme-style) and GNU Emacs scheme mode.
 * Some helpers in standard library are inspired by same functions from [RamdaJS library](https://ramdajs.com/).
 
-Special thanks to [Lassi Kortela](https://github.com/lassik) for helping with Scheme code.
+Special thanks:
+* [Lassi Kortela](https://github.com/lassik) for helping with Scheme code.
+* [Niels Wijers](https://github.com/nielswijers) for handing over the [lips npm name](https://www.npmjs.com/package/lips).
 
 Thanks for [Algolia DocSearch](https://docsearch.algolia.com/) for providing free search on LIPS website.
 

@@ -77,7 +77,8 @@ type BlogPosts = Parameters<CreateFeedItemsFn>[0]['blogPosts'];
 
 export default async function renderBlogArticles(posts: BlogPosts) {
     const browser = await puppeteer.launch({
-        headless: true
+        headless: true,
+        args: ['--no-sandbox']
     });
     for (const post of posts) {
         const author = post.metadata.authors[0];

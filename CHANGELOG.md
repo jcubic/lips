@@ -1,10 +1,47 @@
+## 1.0.0-beta.22
+### Breaking
+* syntax extensions now expect a reference to a function or a macro
+* replace `set-obj!` with `set-object!` [#439](https://github.com/jcubic/lips/issues/439)
+* REPL -t/--trace will toggle only JavaScript stack, Scheme stack traces are now always on
+* stack trace in exceptions is now `Error::__stack__`
+* remove `..` macro [#500](https://github.com/jcubic/lips/issues/500)
+### Features
+* add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
+* add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
+* `Environment:doc` now returns doc string for functions and macros additional to variables
+* Improve and unify Syntax Errors
+* Meta info from Runtime errors in REPL can be enabled with `-m`/`--meta`
+* implement simple regex based syntax-extension
+### Bugfix
+* fix doc string for `make-rectangular`
+* `-inf.0`/`+inf.0` are now real lips numbers
+* fix boolean operation on `+nan.0` [#472](https://github.com/jcubic/lips/issues/472)
+* fix swallowed errors in async syntax extensions [#470](https://github.com/jcubic/lips/issues/470)
+* fix cleanup after parsing syntax extension throws an error
+* fix unwanted argument unboxing from lips constructors [#483](https://github.com/jcubic/lips/issues/483)
+* fix warning about rejected Promise in try..catch [#482](https://github.com/jcubic/lips/issues/482) [#484](https://github.com/jcubic/lips/issues/484)
+* fix overwriting internal state when using multiple Interpters [#495](https://github.com/jcubic/lips/issues/495)
+* fix syntax extension conflict with datum syntax
+* fix `unset-special!` not removing regex based syntax extensions
+* fix hygiene of named `let`
+
 ## 1.0.0-beta.21
+### Breaking
+* `(range n 0 -1)` don't include 0 like in Python [#442](https://github.com/jcubic/lips/issues/442)
+* `find` now return `false` when item not found
+* REPL history is now in `~/.lips_history` and errors are in `~/.lips_error`
 ### Feature
 * allow to use auto-indent with Node >=18.19.0
 * add metadata to the parser [#414](https://github.com/jcubic/lips/issues/414), [#416](https://github.com/jcubic/lips/issues/416)
 * expose `box` and `unbox` functions
 * add line number to errors [#416](https://github.com/jcubic/lips/issues/416)
 * allow using `define-macro` with `lambda` expression
+* add uninterned symbols SRFI-258
+* allow using find with any atom [#394](https://github.com/jcubic/lips/issues/394)
+* add `freeze-prop!` and `freeze-list!` functions
+* add default export
+* allow to pass instance of Lexer to parser (so you can extend it)
+* improve random number generator
 ### Bugfix
 * fix exception when handling parse error for lonely `)` [#417](https://github.com/jcubic/lips/issues/417)
 * fix unboxing arguments of LIPS created classes [#411](https://github.com/jcubic/lips/issues/411)
@@ -15,7 +52,18 @@
 * unpack `values` only in REPL
 * fix duplicated location in recursive syntax-rules macro error [#429](https://github.com/jcubic/lips/issues/429)
 * fix `angle` and `magnitude` on real values
-* fix hygiene of named `let`
+* fix broken REPL when parser extension throw an error in the middle of expression [#430](https://github.com/jcubic/lips/issues/430)
+* fix parsing syntax extension [#432](https://github.com/jcubic/lips/issues/432), [#433](https://github.com/jcubic/lips/issues/433)
+* fix macroexpand on let macro defined in Scheme
+* fix error when evaluating empty string [#434](https://github.com/jcubic/lips/issues/434)
+* make `(features)` read only [#447](https://github.com/jcubic/lips/issues/447)
+* make `lips.specials.__builtins__` show up in `dir`.
+* fix parsing with meta data [#453](https://github.com/jcubic/lips/issues/453)
+* fix formatting of code with single line comments [#458](https://github.com/jcubic/lips/issues/458)
+* fix rounding on big int rationals
+* fix scope variables in `do` macro [#468](https://github.com/jcubic/lips/issues/468)
+* fix REPL for Node 24 [#466](https://github.com/jcubic/lips/issues/466)
+
 
 ## 1.0.0-beta.20
 ### Feature

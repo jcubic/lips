@@ -113,7 +113,7 @@
          (typecheck ,(symbol->string vector-set!) k "number")
          (if (not (,vector-in-range? vector k))
              (throw (new Error ,(format "~a index out of range" vector-set!)))
-             (set-obj! vector k v)))
+             (set-object! vector k v)))
        ;; -----------------------------------------------------------------------------
        (define (,list->tvector lst)
          (typecheck ,(symbol->string list->tvector) lst "pair")
@@ -123,7 +123,7 @@
          (typecheck ,(symbol->string vector->tvector) vector "array")
          (,TypedArray.from vector))
        ;; -----------------------------------------------------------------------------
-       (set-special! ,repr-str ',type-vector lips.specials.SPLICE)
+       (set-special! ,repr-str ,type-vector lips.specials.SPLICE)
        ;; -----------------------------------------------------------------------------
        (set-repr! ,type
                   (lambda (x _quote)

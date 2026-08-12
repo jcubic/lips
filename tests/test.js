@@ -8,7 +8,7 @@
  */
 
 // without this tests stop before running LIPS files
-import ava  from 'ava';
+import ava from 'ava';
 import lily from '@jcubic/lily';
 import { promisify } from 'util';
 import fs from 'fs';
@@ -38,6 +38,7 @@ get_files().then(filenames => {
         await exec(`
           (let-env lips.env.__parent__
             (load "@lips/dist/std.xcb")
+            (load "@lips/lib/srfi/258.scm")
             (load "@lips/tests/helpers/helpers.scm"))
           (define test (require "ava"))
         `);
@@ -46,5 +47,7 @@ get_files().then(filenames => {
 }).catch(e => {
     console.error(e.message);
     console.error(e.stack);
+    if (e.__code__) {
+        console.log(e.__code__.join('\n'));
+    }
 });
-

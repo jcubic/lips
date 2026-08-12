@@ -48,10 +48,10 @@
          (symbol (cadr spec))
          (args (cddr spec)))
      `(begin
-        (set-special! ,symbol ',name ,(string->symbol
-                                       (concat "lips.specials."
-                                               (symbol->string type))))
-        (define-macro (,name ,@args) ,@rest))))
+        (define-macro (,name ,@args) ,@rest)
+        (set-special! ,symbol ,name ,(string->symbol
+                                      (concat "lips.specials."
+                                              (symbol->string type)))))))
 
 ;; -----------------------------------------------------------------------------
 ;; Vector literals syntax using parser syntax extensions
@@ -136,7 +136,7 @@
               (equal? (cdr a) (cdr b))))
         ((symbol? a)
          (and (symbol? b)
-              (equal? a.__name__ b.__name__)))
+              (eq? a b)))
         ((regex? a)
          (and (regex? b)
               (equal? (. a 'source) (. b 'source))))
@@ -195,7 +195,7 @@
                                  (begin (set! result-ready? #t)
                                         (set! result x)
                                         result)))))))
-        (set-obj! promise (Symbol.for "promise") true)
+        (set-object! promise (Symbol.for "promise") true)
         (set! promise.toString (lambda ()
                                  (string-append "#<promise - "
                                                 (if result-ready?
@@ -300,7 +300,7 @@
    Set obj as value in vector at position i."
   (typecheck "vector-set!" vector "array" 1)
   (typecheck "vector-set!" i "number" 2)
-  (set-obj! vector i obj))
+  (set-object! vector i obj))
 
 ;; -----------------------------------------------------------------------------
 (define (%number-type type x)
@@ -394,7 +394,7 @@
 
 ;; -----------------------------------------------------------------------------
 (define (make-rectangular re im)
-  "(make-rectangular im re)
+  "(make-rectangular re im)
 
    Creates a complex number from imaginary and real part (a+bi form)."
   (let ((value `((re . ,re) (im . ,im))))
@@ -475,7 +475,7 @@
              (op (. Math name))
              (fn (lambda (n) (lips.LNumber (op n)))))
         (--> _this_env (set name fn))
-        (set-obj! fn '__doc__ (concat "(" name " n)\n\nFunction that calculates " name
+        (set-object! fn '__doc__ (concat "(" name " n)\n\nFunction that calculates " name
                                   " math operation (it call JavaScript Math." name
                                   " function)"))
         (loop (cdr fns)))))
@@ -966,24 +966,21 @@
   "(char-whitespace? chr)
 
    Returns true if character is whitespace."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'space-unicode-regex))))
+  (--> (%internal) (get 'space-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (%define-chr-re (char-numeric? chr)
   "(char-numeric? chr)
 
    Returns true if character is number."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'numeral-unicode-regex))))
+  (--> (%internal) (get 'numeral-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (%define-chr-re (char-alphabetic? chr)
   "(char-alphabetic? chr)
 
    Returns true if character is leter of the ASCII alphabet."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'letter-unicode-regex))))
+  (--> (%internal) (get 'letter-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (define (%char-cmp name chr1 chr2)
@@ -1174,7 +1171,7 @@
    Function that sets nth item of the vector to value."
   (typecheck "vector-ref" vec "array" 1)
   (typecheck "vector-ref" n "number" 2)
-  (set-obj! vec n value))
+  (set-object! vec n value))
 
 ;; -----------------------------------------------------------------------------
 (define (vector-fill! vec value)
@@ -1185,7 +1182,7 @@
   (let recur ((n (- (length vec) 1)))
     (if (>= n 0)
         (begin
-          (set-obj! vec n value)
+          (set-object! vec n value)
           (recur (- n 1))))))
 
 ;; -----------------------------------------------------------------------------
@@ -1319,9 +1316,13 @@
 
 ;; -----------------------------------------------------------------------------
 ;; ref: https://stackoverflow.com/a/14675103/387194
+;; the constant are suggested by ChatGPT (he referenced Knuth TAOCP Vol. 2)
 ;; -----------------------------------------------------------------------------
 (define random
-  (let ((a 69069) (c 1) (m (expt 2 32)) (seed 19380110))
+  (let ((a 6364136223846793005)
+        (c 1442695040888963407)
+        (m (expt 2 64))
+        (seed 88172645463325252))
     (lambda new-seed
       "(random)
        (random seed)
@@ -1432,8 +1433,7 @@
    Procedure use port and make it current-input-port then thunk is executed.
    After thunk is executed current-input-port is restored and given port
    is closed."
-  (let* ((env **interaction-environment**)
-         (internal-env (env.get '**internal-env**))
+  (let* ((internal-env (%internal))
          (old-stdin (internal-env.get "stdin")))
     (internal-env.set "stdin" port)
     (try
@@ -1463,8 +1463,7 @@
 ;; -----------------------------------------------------------------------------
 (define (with-output-to-file string thunk)
   (let* ((port (open-output-file string))
-         (env **interaction-environment**)
-         (internal-env (env.get '**internal-env**))
+         (internal-env (%internal))
          (old-stdout (internal-env.get "stdout")))
     (internal-env.set "stdout" port)
     (try
@@ -1476,7 +1475,7 @@
 ;; -----------------------------------------------------------------------------
 (define (file-exists? filename)
   (new Promise (lambda (resolve)
-                 (let ((fs (--> lips.env (get '**internal-env**) (get 'fs))))
+                 (let ((fs (--> (%internal) (get 'fs))))
                    (if (null? fs)
                        (throw (new Error "file-exists?: fs not defined"))
                        (fs.stat filename (lambda (err stat)

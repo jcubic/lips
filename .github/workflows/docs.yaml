@@ -30,12 +30,12 @@ defaults:
 jobs:
   deploy:
     name: Build Docusaurus
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: docs/package-lock.json
 
@@ -50,7 +50,7 @@ jobs:
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.repository == 'jcubic/lips-website' || (github.repository == 'jcubic/lips' && github.ref_name == 'master')}}
+        if: ${{ github.repository == 'jcubic/lips' && github.ref_name == 'master' }}
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs/build

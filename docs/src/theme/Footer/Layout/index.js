@@ -26,9 +26,9 @@ export default function FooterLayout({style, links, logo, copyright}) {
           </div>
         )}
       </div>
-      <script defer src="https://api.feedbhack.com/assets/app.js" website-id="6703059dee359a44f772ff78"></script>
       {baseUrl === currentPath && <MoreIcon />}
-      <script defer src="https://cloud.umami.is/script.js" data-website-id="422bfe77-bcfe-4cf8-a923-d496fba1bcc3" />
+      <script defer src="https://umami.jcubic.pl/script.js"
+              data-website-id="90ef0453-5c94-4152-93e4-374a73f38116" />
     </footer>
   );
 }

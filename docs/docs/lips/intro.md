@@ -572,8 +572,8 @@ You can use Scheme functions as callbacks to JavaScript functions:
 ;; ==> #(1 +nan.0 +nan.0)
 ```
 
-This is classic issue with functions that accept more than one argument. You have samilar issue
-in JavaScript:
+This is a classic issue with functions that accept more than one argument.
+You have similar issue in JavaScript:
 
 ```javascript
 ["1", "2", "3"].map(parseInt)
@@ -955,8 +955,8 @@ quoted object literal `` `&() `` with longhand `object` you will get an error be
 
 :::
 
-You can abstract the use of iteration protocol with a macro, but to have real `yield` keyword like
-syntax you need `call/cc`.
+You can abstract the use of iteration protocol with a macro, but to have a real `yield` keyword like
+syntax, you need `call/cc`.
 
 You can also define generators inside JavaScript using `self.eval` (JavaScript global `eval`):
 
@@ -1087,7 +1087,7 @@ But it will also work with ESM only module that can't be imported with `require`
 With help from `(require.resolve)` you can get the path of the root directory of LIPS Scheme:
 
 ```scheme
-(--> (require.resolve "@jcubic/lips") (replace #/dist\/[^\/]+$/ ""))
+(--> (require.resolve "lips") (replace #/dist\/[^\/]+$/ ""))
 ```
 
 Node.js REPL load lips from Common.jS file and `require.resolve` returns path to file
@@ -1096,10 +1096,10 @@ to the root of the LIPS Scheme.
 
 ## Binary compiler
 
-LIPS Scheme have dumb binary compiler. The compiler is a way to compress the LIPS Scheme code and
-create binary file that is faster to load. Compiler is use to make bootstrapping faster. The binary
-file use [CBOR](https://en.wikipedia.org/wiki/CBOR) serialization format that is then compressed
-with [LZJB](https://en.wikipedia.org/wiki/LZJB) algorithm that is pretty fast. And it can still be
+LIPS Scheme has a dumb binary compiler. The compiler is a way to compress the LIPS Scheme code and
+create binary file that is faster to load. Compiler makes bootstrapping faster. The binary file use
+[CBOR](https://en.wikipedia.org/wiki/CBOR) serialization format that is then compressed with
+[LZJB](https://en.wikipedia.org/wiki/LZJB) algorithm that is pretty fast. And it can still be
 compress further with gzip by the HTTP server.
 
 To compile/compress a file you can use `-c` flag when executing `lips` executable.
@@ -1108,10 +1108,17 @@ To compile/compress a file you can use `-c` flag when executing `lips` executabl
 $ lips -c file.scm
 ```
 
+:::info
+
+Current compiler needs to execute the code to evaluate all syntax extensions. Because
+of this any side effects (print statements) can be visible during compilation.
+
+:::
+
 You can then execute the code with:
 
 ```bash
-$ lips -c file.xcb
+$ lips file.xcb
 ```
 
 Will create `file.xcb` in same directory. For smaller files it make not have a difference when
@@ -1141,6 +1148,6 @@ able to load the proper file.
 
 ## Limitations
 
-LISP Scheme currently don't support [continuations](/docs/scheme-intro/continuations) and [Tail Call
+LISP Scheme currently doesn't support [continuations](/docs/scheme-intro/continuations) and [Tail Call
 Optimization](/docs/scheme-intro/core#tail-call-optimization).  But they are part of the roadmap for
-version 1.0.
+version 1.0. The development is tracked on [GitHub](https://github.com/jcubic/lips/issues/127).

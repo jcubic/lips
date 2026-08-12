@@ -129,6 +129,16 @@ There are 3 types of comments in Scheme:
 2. `#;` quote single S-Expression (list/tree or atoms)
 3. `#|   |#` those are multiline comments that can wrap any text inside
 
+There is a convention to use single semicolon to create a comment after the line of code.
+And double semicolon to create comments that appear on its own in the line.
+
+:::info
+
+Editors may indent the line with single semicolon, but they will not do that when you use two of them.
+
+:::
+
+
 ## Empty list
 
 An empty list is a special object in Scheme that indicates end of the list.

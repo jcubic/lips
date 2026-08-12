@@ -1,5 +1,8 @@
+;; Copygith (c) 2009 Will Donnelly
+;; Released under 0BSD license
+;;
 ;; Source
-;; http://www.willdonnelly.net/blog/runtime-scheme-detection/
+;; https://www.willdonnelly.net/blog/2009-03-14-runtime-scheme-detection/
 
 ;;; DETECT
 ;;; A set of functions to allow an interpreted Scheme
