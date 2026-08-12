@@ -11704,7 +11704,7 @@ function next_pair(state) {
             state.ready = true;
             state.object = args[0];
             state.cc = fn.clone(false);
-        } else if (fn === (__apply__) && is_lambda(args[0])) {
+        } else if (fn === __apply__ && is_lambda(args[0])) {
             const fn = args.shift();
             typecheck('apply', fn, 'function', 1);
             let last = args.pop();
