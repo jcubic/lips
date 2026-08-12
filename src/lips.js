@@ -9146,8 +9146,9 @@ var global_env = new Environment({
          calls (eval) on it. Because of this a macro can manipulate the expression
          (arguments) as lists.`),
     // ------------------------------------------------------------------
-    'syntax-rules': new Macro('syntax-rules', function(macro, options) {
+    'syntax-rules': new Macro('syntax-rules', function(source, options) {
         var { use_dynamic, error } = options;
+        const macro = source.cdr;
         // TODO: find identifiers and freeze the scope when defined #172
         var env = this;
         function get_identifiers(node) {
@@ -11616,7 +11617,11 @@ function* evaluate_code(state) {
                 }
                 if (result !== state) {
                     state.object = result;
-                    state.ready = false;
+                    // A Syntax (syntax-rules) evaluates its expansion in the
+                    // hygienic scope and returns the final value, so it must not
+                    // be evaluated again. A define-macro returns expansion code
+                    // that still has to be evaluated.
+                    state.ready = first instanceof Syntax;
                 }
             } else {
                 state.object = first;
