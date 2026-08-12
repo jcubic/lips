@@ -9263,14 +9263,26 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'quote-promise': doc(new Macro('quote-promise', function(source, state) {
         const code = source.cdr;
+        // Only the OUTERMOST result of the body is quoted - promises used
+        // inside the body (let bindings, arguments, ...) are awaited normally.
+        // evaluate_code detects "outermost result" as a promise reaching this
+        // continuation (marked with quote_promise), and this continuation wraps
+        // whatever the body produced in a QuotedPromise.
         state.cc = new Continuation('quote-promise', null, source, state, function(state) {
             state.cc = this.__continuation__;
             state.env = this.__env__;
+            const result = state.object;
+            if (result instanceof QuotedPromise) {
+                state.object = result;
+            } else if (is_promise(result)) {
+                state.object = new QuotedPromise(result);
+            } else {
+                state.object = new QuotedPromise(Promise.resolve(result));
+            }
             state.ready = true;
-            state.promise_quote = false;
-        });
+        }, { quote_promise: true });
         state.object = code.car;
-        state.promise_quote = true;
+        state.ready = false;
         return state;
     }), `(quote-promise expr) or '>expr
 
@@ -11518,8 +11530,11 @@ function* evaluate_code(state) {
         state.object = state.env.get(state.object);
         state.ready = true;
     } else if (is_promise(code)) {
-        if (state.promise_quote) {
-            state.object = new QuotedPromise(code);
+        // Don't await a promise that is the direct result of a quote-promise
+        // body - pass it through so the quote-promise continuation wraps it.
+        // Every other promise (nested usage) is awaited.
+        if (state.cc && state.cc._state && state.cc._state.quote_promise) {
+            state.object = code;
         } else {
             state.object = box(yield code);
         }
