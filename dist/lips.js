@@ -3580,23 +3580,6 @@
       win[add](pre + 'load', _init, false);
     }
   }
-  // -------------------------------------------------------------------------
-  /* c8 ignore next 13 */
-  function log(x) {
-    for (var _len = arguments.length, args = new Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-      args[_key - 1] = arguments[_key];
-    }
-    if (is_plain_object(x) && is_debug(args[0])) {
-      console.log(map_object(x, function (value) {
-        return to_string(value, true);
-      }));
-    } else if (is_debug()) {
-      var _console;
-      (_console = console).log.apply(_console, [to_string(x, true)].concat(_toConsumableArray(args.map(function (item) {
-        return to_string(item, true);
-      }))));
-    }
-  }
 
   // ----------------------------------------------------------------------
   /* c8 ignore next */
@@ -9899,7 +9882,7 @@
     // multiple matches of ((x ...) ...) against ((1 2 3) (1 2 3))
     // in loop we add x to the list so we know that this is not
     // duplicated ellipsis symbol
-    log(symbols);
+
     function traverse(pattern, code) {
       var state = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {};
       var _state$ellipsis = state.ellipsis,
@@ -9908,10 +9891,6 @@
         trailing = _state$trailing === void 0 ? false : _state$trailing,
         _state$pattern_names = state.pattern_names,
         pattern_names = _state$pattern_names === void 0 ? [] : _state$pattern_names;
-      log({
-        code: code,
-        pattern: pattern
-      });
       if (is_atom(pattern) && !(pattern instanceof LSymbol)) {
         return same_atom(pattern, code);
       }
@@ -9926,14 +9905,12 @@
         }
       }
       if (Array.isArray(pattern) && Array.isArray(code)) {
-        log('<<< a 1');
         if (pattern.length === 0 && code.length === 0) {
           return true;
         }
         if (LSymbol.is(pattern[1], ellipsis_symbol)) {
           if (pattern[0] instanceof LSymbol) {
             var name = pattern[0].valueOf();
-            log('<<< a 2 ' + ellipsis);
             if (ellipsis) {
               var count = code.length - 2;
               var array_head = count > 0 ? code.slice(0, count) : code;
@@ -9947,7 +9924,6 @@
               bindings['...'].symbols[name] = Pair.from_array(code, false);
             }
           } else if (Array.isArray(pattern[0])) {
-            log('<<< a 3');
             var _names = _toConsumableArray(pattern_names);
             var new_state = _objectSpread(_objectSpread({}, state), {}, {
               pattern_names: _names,
@@ -9966,25 +9942,12 @@
           return true;
         }
         var first = traverse(pattern[0], code[0], state);
-        log({
-          first: first,
-          pattern: pattern[0],
-          code: code[0]
-        });
         var rest = traverse(pattern.slice(1), code.slice(1), state);
-        log({
-          first: first,
-          rest: rest
-        });
         return first && rest;
       }
       // pattern (a b (x ...)) and (x ...) match nil
       if (is_pair(pattern) && is_pair(pattern.car) && is_pair(pattern.car.cdr) && LSymbol.is(pattern.car.cdr.car, ellipsis_symbol)) {
-        log('>> 0');
         if (is_nil(code)) {
-          log({
-            pattern: pattern
-          });
           if (pattern.car.car instanceof LSymbol) {
             var _name3 = pattern.car.car.valueOf();
             if (bindings['...'].symbols[_name3]) {
@@ -9995,11 +9958,9 @@
         }
       }
       if (is_pair(pattern) && is_pair(pattern.cdr) && LSymbol.is(pattern.cdr.car, ellipsis_symbol)) {
-        log('>> 1 (a)');
         // pattern (... ???) - SRFI-46
         if (!is_nil(pattern.cdr.cdr)) {
           if (is_pair(pattern.cdr.cdr)) {
-            log('>> 1 (b)');
             // if we have (x ... a b) we need to remove two from the end
             var list_len = pattern.cdr.cdr.length();
             var improper_list = !is_nil(pattern.last_pair().cdr);
@@ -10028,18 +9989,13 @@
           if (bindings['...'].symbols[_name4] && !pattern_names.includes(_name4) && !ellipsis) {
             throw new Error('syntax: named ellipsis can only appear onces');
           }
-          log('>> 1 (next)');
           if (is_nil(code)) {
-            log('>> 2');
             if (ellipsis) {
-              log('NIL');
               bindings['...'].symbols[_name4] = _nil;
             } else {
-              log('NULL');
               bindings['...'].symbols[_name4] = null;
             }
           } else if (is_pair(code) && (is_pair(code.car) || is_nil(code.car))) {
-            log('>> 3 ' + ellipsis);
             if (ellipsis) {
               if (bindings['...'].symbols[_name4]) {
                 var _node = bindings['...'].symbols[_name4];
@@ -10053,16 +10009,12 @@
                 bindings['...'].symbols[_name4] = new Pair(code, _nil);
               }
             } else {
-              log('>> 4');
               bindings['...'].symbols[_name4] = new Pair(code, _nil);
             }
           } else {
-            log('>> 6');
             if (is_pair(code)) {
-              log('>> 7 ' + ellipsis);
               // cons (a . b) => (var ... . x)
               if (!is_pair(code.cdr) && !is_nil(code.cdr)) {
-                log('>> 7 (b)');
                 if (is_nil(pattern.cdr.cdr)) {
                   return false;
                 } else if (!bindings['...'].symbols[_name4]) {
@@ -10072,16 +10024,11 @@
               }
               // code as improper list
               var last_pair = code.last_pair();
-              log({
-                last_pair: last_pair
-              });
               if (!is_nil(last_pair.cdr)) {
-                log('>> 7 (c)');
                 if (is_nil(pattern.cdr.cdr)) {
                   // case (a ...) for (a b . x)
                   return false;
                 } else {
-                  log('>> 7 (d)');
                   // case (a ... . b) for (a b . x)
                   var copy = code.clone();
                   copy.last_pair().cdr = _nil;
@@ -10091,23 +10038,16 @@
               }
               pattern_names.push(_name4);
               if (!bindings['...'].symbols[_name4]) {
-                log('>> 7 (e)');
                 bindings['...'].symbols[_name4] = new Pair(code, _nil);
               } else {
-                log('>> 7 (f)');
                 var _node2 = bindings['...'].symbols[_name4];
                 bindings['...'].symbols[_name4] = _node2.append(new Pair(code, _nil));
               }
-              log({
-                IIIIII: bindings['...'].symbols[_name4]
-              });
             } else if (pattern.car instanceof LSymbol && is_pair(pattern.cdr) && LSymbol.is(pattern.cdr.car, ellipsis_symbol)) {
               // empty ellipsis with rest  (a b ... . d) #290
-              log('>> 8');
               bindings['...'].symbols[_name4] = null;
               return traverse(pattern.cdr.cdr, code, state);
             } else {
-              log('>> 9');
               return false;
               //bindings['...'].symbols[name] = code;
             }
@@ -10116,11 +10056,9 @@
         } else if (is_pair(pattern.car)) {
           var names = _toConsumableArray(pattern_names);
           if (is_nil(code)) {
-            log('>> 10');
             bindings['...'].lists.push(_nil);
             return true;
           }
-          log('>> 11');
           var _node3 = code;
           var _new_state = _objectSpread(_objectSpread({}, state), {}, {
             pattern_names: names,
@@ -10155,14 +10093,12 @@
         if (LSymbol.is(pattern, ellipsis_symbol)) {
           throw new Error('syntax: invalid usage of ellipsis');
         }
-        log('>> 12');
         var _name5 = pattern.__name__;
         if (symbols.includes(_name5)) {
           return true;
         }
         if (ellipsis) {
           var _bindings$$symbols, _bindings$$symbols$_n;
-          log(bindings['...'].symbols[_name5]);
           (_bindings$$symbols$_n = (_bindings$$symbols = bindings['...'].symbols)[_name5]) !== null && _bindings$$symbols$_n !== void 0 ? _bindings$$symbols$_n : _bindings$$symbols[_name5] = [];
           bindings['...'].symbols[_name5].push(code);
         } else {
@@ -10171,15 +10107,8 @@
         return true;
       }
       if (is_pair(pattern) && is_pair(code)) {
-        log('>> 13');
-        log({
-          a: 13,
-          code: code,
-          pattern: pattern
-        });
         var rest_pattern = pattern.car instanceof LSymbol && pattern.cdr instanceof LSymbol;
         if (trailing && rest_pattern) {
-          log('>> 13 (a)');
           // handle (x ... y . z)
           if (!is_nil(code.cdr)) {
             return false;
@@ -10192,7 +10121,6 @@
           //return is_pair(code.cdr) && code.cdr.length() > 1;
         }
         if (is_nil(code.cdr)) {
-          log('>> 13 (b)');
           // last item in in call using in recursive calls on
           // last element of the list
           // case of pattern (p . rest) and code (0)
@@ -10202,7 +10130,6 @@
             if (!traverse(pattern.car, code.car, state)) {
               return false;
             }
-            log('>> 14');
             var _name6 = pattern.cdr.valueOf();
             if (!(_name6 in bindings.symbols)) {
               bindings.symbols[_name6] = _nil;
@@ -10214,42 +10141,20 @@
             return true;
           }
         }
-        log({
-          pattern: pattern,
-          code: code
-        });
         // case (x y) ===> (var0 var1 ... warn) where var1 match nil
         // trailing: true start processing of (var ... x . y)
         if (is_pair(pattern.cdr) && is_pair(pattern.cdr.cdr) && pattern.cdr.car instanceof LSymbol && LSymbol.is(pattern.cdr.cdr.car, ellipsis_symbol) && is_pair(pattern.cdr.cdr.cdr) && !LSymbol.is(pattern.cdr.cdr.cdr.car, ellipsis_symbol) && traverse(pattern.car, code.car, state) && traverse(pattern.cdr.cdr.cdr, code.cdr, _objectSpread(_objectSpread({}, state), {}, {
           trailing: true
         }))) {
           var _name7 = pattern.cdr.car.__name__;
-          log({
-            pattern: pattern,
-            code: code,
-            name: _name7
-          });
           if (symbols.includes(_name7)) {
             return true;
           }
           bindings['...'].symbols[_name7] = null;
           return true;
         }
-        log('recur');
-        log({
-          pattern: pattern,
-          code: code
-        });
         var car = traverse(pattern.car, code.car, state);
         var cdr = traverse(pattern.cdr, code.cdr, state);
-        log({
-          $car_code: code.car,
-          $car_pattern: pattern.car,
-          car: car,
-          $cdr_code: code.cdr,
-          $cdr_pattern: pattern.cdr,
-          cdr: cdr
-        });
         if (car && cdr) {
           return true;
         }
@@ -10394,17 +10299,12 @@
     function transform_ellipsis_expr(expr, bindings, state) {
       var next = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : function () {};
       var nested = state.nested;
-      log({
-        bindings: bindings,
-        expr: expr
-      });
       if (Array.isArray(expr) && !expr.length) {
         return expr;
       }
       if (expr instanceof LSymbol) {
         var name = expr.valueOf();
         if (is_gensym(expr) && !bindings[name]) ;
-        log('[t 1');
         if (bindings[name]) {
           if (is_pair(bindings[name])) {
             var _bindings$name = bindings[name],
@@ -10435,24 +10335,17 @@
         var second = is_array ? expr[1] : is_pair(expr.cdr) && expr.cdr.car;
         if (first instanceof LSymbol && LSymbol.is(second, ellipsis_symbol)) {
           is_array ? expr.slice(2) : expr.cdr.cdr;
-          log('[t 2');
           var _name8 = first.valueOf();
           var item = bindings[_name8];
           if (item === null) {
             return;
           } else if (_name8 in bindings) {
-            log({
-              name: _name8,
-              binding: bindings[_name8]
-            });
             if (is_pair(item)) {
-              log('[t 2 Pair ' + nested);
               var _car2 = item.car,
                 _cdr2 = item.cdr;
               var _rest_expr = is_array ? expr.slice(2) : expr.cdr.cdr;
               if (nested) {
                 if (!is_nil(_cdr2)) {
-                  log('|| next 1');
                   next(_name8, _cdr2);
                 }
                 if (is_array && _rest_expr.length || !is_nil(_rest_expr) && !is_array) {
@@ -10461,14 +10354,11 @@
                     return _car2.concat(_rest7);
                   } else if (is_pair(_car2)) {
                     return _car2.append(_rest7);
-                  } else {
-                    log('UNKNOWN');
-                  }
+                  } else ;
                 }
                 return _car2;
               } else if (is_pair(_car2)) {
                 if (!is_nil(_car2.cdr)) {
-                  log('|| next 2');
                   next(_name8, new Pair(_car2.cdr, _cdr2));
                 }
                 // wrap with Value to handle undefined
@@ -10478,13 +10368,11 @@
               } else {
                 var last_pair = expr.last_pair();
                 if (last_pair.cdr instanceof LSymbol) {
-                  log('|| next 3');
                   next(_name8, item.last_pair());
                   return _car2;
                 }
               }
             } else if (item instanceof Array) {
-              log('[t 2 Array ' + nested);
               if (nested) {
                 next(_name8, item.slice(1));
                 return Pair.from_array(item);
@@ -10500,14 +10388,9 @@
             }
           }
         }
-        log('[t 3 recur ', expr);
         var rest_expr = is_array ? expr.slice(1) : expr.cdr;
         var head = transform_ellipsis_expr(first, bindings, state, next);
         var rest = transform_ellipsis_expr(rest_expr, bindings, state, next);
-        log({
-          head: head,
-          rest: rest
-        });
         if (is_array) {
           return [head].concat(rest);
         }
@@ -10536,13 +10419,11 @@
     function traverse(expr) {
       var _ref24 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
         disabled = _ref24.disabled;
-      log('traverse>> ', expr);
       var is_array = Array.isArray(expr);
       if (is_array && expr.length === 0) {
         return expr;
       }
       if (is_pair(expr) || is_array) {
-        log('>> 0');
         var first = is_array ? expr[0] : expr.car;
         var second, rest_second;
         if (is_array) {
@@ -10552,17 +10433,11 @@
           second = expr.cdr.car;
           rest_second = expr.cdr.cdr;
         }
-        log({
-          first: first,
-          second: second,
-          rest_second: rest_second
-        });
         // escape ellispsis from R7RS e.g. (... ...)
         if (!disabled && is_pair(first) && LSymbol.is(first.car, ellipsis_symbol)) {
           return new Pair(first.cdr.car, traverse(expr.cdr));
         }
         if (second && LSymbol.is(second, ellipsis_symbol) && !disabled) {
-          log('>> 1');
           var _symbols2 = bindings['...'].symbols;
           // skip expand list of pattern was (x y ... z)
           // and code was (x z) so y == null
@@ -10570,7 +10445,6 @@
           if (values.length && values.every(function (x) {
             return x === null;
           })) {
-            log('>>> 1 (a)');
             return traverse(rest_second, {
               disabled: disabled
             });
@@ -10584,7 +10458,6 @@
           // in case of usage outside of ellipsis list e.g.: (x y)
           var is_spread = first instanceof LSymbol && LSymbol.is(rest_second.car, ellipsis_symbol);
           if (is_pair(first) || is_spread) {
-            log('>>> 1 (b)');
             // lists is free ellipsis on pairs ((???) ...)
             // TODO: will this work in every case? Do we need to handle
             // nesting here?
@@ -10594,24 +10467,18 @@
                   disabled: disabled
                 });
               }
-              log(rest_second);
               return _nil;
             }
             var new_expr = first;
             if (is_spread) {
-              log('>>> 1 (c)'); // TODO: array
+              // TODO: array
               new_expr = new Pair(first, new Pair(second, _nil));
             }
-            log('>> 2');
             var result;
             if (keys.length) {
-              log('>> 2 (a)');
               var _bind = _objectSpread({}, _symbols2);
               result = is_array ? [] : _nil;
               var _loop = function _loop() {
-                log({
-                  bind: _bind
-                });
                 if (!have_binding(_bind)) {
                   return 1; // break
                 }
@@ -10635,8 +10502,6 @@
                       if (Array.isArray(car)) {
                         var _result2;
                         (_result2 = result).push.apply(_result2, _toConsumableArray(car));
-                      } else {
-                        log('ZONK {1}');
                       }
                     } else {
                       if (is_nil(result)) {
@@ -10662,10 +10527,6 @@
               // case of (list) ... (rest code)
               if (is_array) {
                 if (rest_second) {
-                  log({
-                    rest_second: rest_second,
-                    expr: expr
-                  });
                   var _rest9 = traverse(rest_second, {
                     disabled: disabled
                   });
@@ -10681,7 +10542,6 @@
               }
               return result;
             } else {
-              log('>> 3');
               var car = transform_ellipsis_expr(first, _symbols2, {
                 nested: true
               });
@@ -10694,26 +10554,14 @@
               return _nil;
             }
           } else if (first instanceof LSymbol) {
-            log('>> 4');
-            if (LSymbol.is(rest_second.car, ellipsis_symbol)) {
-              // case (x ... ...)
-              log('>> 4 (a)');
-            } else {
-              log('>> 4 (b)');
-            }
+            if (LSymbol.is(rest_second.car, ellipsis_symbol)) ;
             // case: (x ...)
             var name = first.__name__;
             var _bind2 = _defineProperty({}, name, _symbols2[name]);
-            log({
-              bind: _bind2
-            });
             var _is_null = _symbols2[name] === null;
             var _result3 = is_array ? [] : _nil;
             var _loop2 = function _loop2() {
               if (!have_binding(_bind2, true)) {
-                log({
-                  bind: _bind2
-                });
                 return 1; // break
               }
               var new_bind = {};
@@ -10723,9 +10571,6 @@
               var value = transform_ellipsis_expr(expr, _bind2, {
                 nested: false
               }, next);
-              log({
-                value: value
-              });
               if (typeof value !== 'undefined') {
                 if (Value.of('syntax', value)) {
                   value = value.valueOf();
@@ -10752,9 +10597,6 @@
                 var node = traverse(expr.cdr.cdr, {
                   disabled: disabled
                 });
-                log({
-                  node: node
-                });
                 if (_is_null) {
                   return node;
                 }
@@ -10763,16 +10605,8 @@
                 } else {
                   _result3.append(node);
                 }
-                log({
-                  result: _result3,
-                  node: node
-                });
               }
             }
-            log('<<<< 2');
-            log({
-              result: _result3
-            });
             return _result3;
           }
         }
@@ -10799,19 +10633,11 @@
               disabled: disabled
             }));
           }
-          log('REST >>>> ', rest);
         } else {
           rest = traverse(expr.cdr, {
             disabled: disabled
           });
         }
-        log({
-          a: true,
-          car: to_string(expr.car),
-          cdr: to_string(expr.cdr),
-          head: to_string(head),
-          rest: to_string(rest)
-        });
         return new Pair(head, rest);
       }
       if (expr instanceof LSymbol) {
@@ -15365,9 +15191,6 @@
       }
       var syntax = new Syntax(function (code, _ref38) {
         var macro_expand = _ref38.macro_expand;
-        log('>> SYNTAX');
-        log(code);
-        log(macro);
         var scope = env.inherit('syntax');
         var dynamic_env = scope;
         var var_scope = this;
@@ -15400,8 +15223,6 @@
           while (!is_nil(rules)) {
             var rule = rules.car.car;
             var expr = rules.car.cdr.car;
-            log('[[[ RULE');
-            log(rule);
             var bindings = extract_patterns(rule, code, symbols, ellipsis, {
               expansion: this,
               define: env
@@ -15424,7 +15245,6 @@
                 names: names,
                 ellipsis: ellipsis
               });
-              log('OUPUT>>> ', new_expr);
               // TODO: if expression is undefined throw an error
               if (new_expr) {
                 expr = new_expr;
@@ -15992,9 +15812,7 @@
     // ------------------------------------------------------------------
     type: doc(type, "(type object)\n\n         Function that returns the type of an object as string."),
     // ------------------------------------------------------------------
-    'debugger': doc('debugger', function () {
-      debugger;
-    }, "(debugger)\n\n        Function that triggers the JavaScript debugger (e.g. the browser devtools)\n        using the \"debugger;\" statement. If a debugger is not running this\n        function does nothing."),
+    'debugger': doc('debugger', function () {}, "(debugger)\n\n        Function that triggers the JavaScript debugger (e.g. the browser devtools)\n        using the \"debugger;\" statement. If a debugger is not running this\n        function does nothing."),
     // ------------------------------------------------------------------
     'in': doc('in', function (a, b) {
       if (a instanceof LSymbol || a instanceof LString || a instanceof LNumber) {

@@ -1,6 +1,8 @@
 import commonjs from "@rollup/plugin-commonjs";
 import nodeResolve from "@rollup/plugin-node-resolve";
 import babel from "@rollup/plugin-babel";
+import strip from '@rollup/plugin-strip';
+
 import fs from 'node:fs';
 
 const banner = fs.readFileSync('./dist/banner.js', 'utf8');
@@ -15,6 +17,9 @@ const base = {
     next(warning);
   },
   plugins: [
+    strip({
+      functions: ['log'],
+    }),
     babel({
       babelrc: false,
       babelHelpers: 'runtime',
