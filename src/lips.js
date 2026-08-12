@@ -1939,7 +1939,7 @@ function unpromise(value, fn = x => x, error = null) {
         var ret = value.then(fn);
         if (error === null) {
             return ret;
-        } else {
+        } else if (ret.catch) {
             return ret.catch(error);
         }
     }
