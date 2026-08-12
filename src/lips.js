@@ -9919,7 +9919,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'array->list': doc('array->list', function(array) {
         typecheck('array->list', array, 'array');
-        return Pair.fromArray(array);
+        return Pair.fromArray(array, false);
     }, `(array->list array)
 
         Function that converts a JavaScript array to a LIPS cons list.`),
