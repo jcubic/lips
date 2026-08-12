@@ -4256,6 +4256,9 @@ class SyntaxParameter {
         read_only(this, '_syntax', syntax, { hidden: true });
         read_only(this._syntax, '_param', true, { hidden: true });
     }
+    invoke(code, state) {
+        this._syntax.invoke(code, state);
+    }
 }
 Syntax.Parameter = SyntaxParameter;
 // ----------------------------------------------------------------------
