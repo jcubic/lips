@@ -8638,6 +8638,19 @@ var global_env = new Environment({
         const loop = gensym('loop');
         const names = ['let', 'if', 'begin'];
         const result = is_nil(code.cdr.car.cdr) ? undefined : code.cdr.car.cdr.car;
+        const body = Pair(
+            Pair(
+                loop,
+                code.car.map(list => {
+                    if (!is_pair(list.cdr.cdr)) {
+                        return list.car;
+                    }
+                    return list.cdr.cdr.car;
+                })
+            ),
+            nil
+        );
+        const rest = is_nil(code.cdr.cdr) ? nil : code.cdr.cdr.clone();
         state.object = hygiene([state.env], names, function(_let, _if, _begin) {
             return Pair.fromArray([
                 _let,
@@ -8657,20 +8670,9 @@ var global_env = new Environment({
                     result,
                     Pair(
                         _begin,
-                        code.cdr.cdr.clone().append(
-                            Pair(
-                                Pair(
-                                    loop,
-                                    code.car.map(list => {
-                                        if (!is_pair(list.cdr.cdr)) {
-                                            return list.car;
-                                        }
-                                        return list.cdr.cdr.car;
-                                    })
-                                ),
-                                nil
-                            )
-                        )
+                        is_nil(code.cdr.cdr)
+                            ? body
+                            : code.cdr.cdr.clone().append(body)
                     )
                 ]
             ]);
