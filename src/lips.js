@@ -4257,7 +4257,7 @@ class SyntaxParameter {
         read_only(this._syntax, '_param', true, { hidden: true });
     }
     invoke(code, state) {
-        this._syntax.invoke(code, state);
+        return this._syntax.invoke(code, state);
     }
 }
 Syntax.Parameter = SyntaxParameter;
@@ -8893,7 +8893,9 @@ var global_env = new Environment({
         if (!(name instanceof LSymbol)) {
             throw new Error(`define-syntax-parameter: invalid syntax expecting symbol got ${type(name)}`);
         }
-        const syntax = tco_eval(code.cdr.car, { env, ...eval_args });
+        // cc: top_cc isolates this nested eval - without it the outer
+        // continuation leaks in and the result comes back as a promise
+        const syntax = tco_eval(code.cdr.car, { env, ...eval_args, cc: top_cc });
         typecheck('define-syntax-parameter', syntax, 'syntax', 2);
         syntax.__name__ = name.valueOf();
         if (syntax.__name__ instanceof LString) {
@@ -8922,7 +8924,7 @@ var global_env = new Environment({
                 const msg = `invalid syntax for syntax-parameterize: ${repr(code, true)}`;
                 throw new Error(`syntax-parameterize: ${msg}`);
             }
-            let syntax = tco_eval(pair.cdr.car, { ...eval_args, env: this });
+            let syntax = tco_eval(pair.cdr.car, { ...eval_args, env: this, cc: top_cc });
             const name = pair.car;
             typecheck('syntax-parameterize', syntax, ['syntax']);
             typecheck('syntax-parameterize', name, 'symbol');
@@ -8945,7 +8947,13 @@ var global_env = new Environment({
         const expr = hygienic_begin([
             env, eval_args.dynamic_env
         ], code.cdr);
-        return tco_eval(expr, { ...eval_args, env });
+        // evaluate the body in the enclosing continuation (in `env` with the
+        // parameterized syntax) instead of a nested tco_eval - avoids leaking
+        // the outer continuation and re-evaluating the result.
+        eval_args.env = env;
+        eval_args.object = expr;
+        eval_args.ready = false;
+        return eval_args;
     }), `(syntax-parameterize (bindings) body)
 
          Macro work similar to let-syntax but the the bindnds will be exposed to the user.
@@ -11619,11 +11627,13 @@ function* evaluate_code(state) {
                 }
                 if (result !== state) {
                     state.object = result;
-                    // A Syntax (syntax-rules) evaluates its expansion in the
-                    // hygienic scope and returns the final value, so it must not
-                    // be evaluated again. A define-macro returns expansion code
-                    // that still has to be evaluated.
-                    state.ready = first instanceof Syntax;
+                    // A Syntax (syntax-rules) - or a SyntaxParameter that wraps
+                    // one - evaluates its expansion in the hygienic scope and
+                    // returns the final value, so it must not be evaluated
+                    // again. A define-macro returns expansion code that still
+                    // has to be evaluated.
+                    state.ready = first instanceof Syntax ||
+                        first instanceof SyntaxParameter;
                 }
             } else {
                 state.object = first;
