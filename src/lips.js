@@ -8833,48 +8833,64 @@ var global_env = new Environment({
          like a procedure that can be called to jump back into the place where
          continuation was captured.`),
     // ------------------------------------------------------------------
-    parameterize: doc(new Macro('parameterize', function(source, options) {
+    parameterize: doc(new Macro('parameterize', function(source, state) {
         const code = source.cdr;
-        const { dynamic_env } = options;
-        const env = dynamic_env.inherit('parameterize').new_frame(null, {});
-        const eval_args = { ...options, env: this };
+        const outer_dynamic = state.dynamic_env;
+        const env = outer_dynamic.inherit('parameterize').new_frame(null, {});
         let params = code.car;
         if (!is_pair(params)) {
             const t = type(params);
             throw new Error(`Invalid syntax for parameterize expecting pair got ${t}`);
         }
-        function next() {
-            const body = new Pair(new LSymbol('begin',), code.cdr);
-            return tco_eval(body, { ...eval_args, dynamic_env: env });
-        }
-        return (function loop() {
-            const pair = params.car;
+        // evaluate the binding values and install the inherited parameters into
+        // a fresh dynamic frame. Values are evaluated in isolation (cc:top_cc);
+        // the BODY, however, is evaluated in the SAME tco loop (below) so that a
+        // continuation captured inside - or an escape out of - the body works.
+        let p = params;
+        while (is_pair(p)) {
+            const pair = p.car;
             const name = pair.car.valueOf();
-            return unpromise(tco_eval(pair.cdr.car, eval_args), function(value) {
-                const param = dynamic_env.get(name, { throwError: false });
-                if (!is_parameter(param)) {
-                    throw new Error(`Unknown parameter ${name}`);
-                }
-                env.set(name, param.inherit(value));
-                if (!is_null(params.cdr)) {
-                    params = params.cdr;
-                    return loop();
-                } else {
-                    return next();
-                }
-            });
-        })();
+            const value = tco_eval(pair.cdr.car, { ...state, cc: top_cc });
+            // the parameter object is an ordinary binding - resolve it in the
+            // lexical environment; only its dynamic binding lives in `env`.
+            const param = state.env.get(name, { throwError: false });
+            if (!is_parameter(param)) {
+                throw new Error(`Unknown parameter ${name}`);
+            }
+            env.set(name, param.inherit(value));
+            p = p.cdr;
+        }
+        // continue in the current loop: evaluate (begin . body) with the new
+        // dynamic environment, then restore the outer one via next_parameterize.
+        const body = new Pair(new LSymbol('begin'), code.cdr);
+        state.cc = new Continuation(
+            'parameterize',
+            null,
+            source,
+            state,
+            next_parameterize,
+            {
+                dynamic_env: outer_dynamic
+            }
+        );
+        state.dynamic_env = env;
+        state.object = body;
+        state.ready = false;
+        return state;
     }), `(parameterize ((name value) ...)
 
          Macro that change the dynamic variable created by make-parameter.`),
     // ------------------------------------------------------------------
     'make-parameter': doc(new Macro('make-parameter', function(source, eval_args) {
         const code = source.cdr;
-        const dynamic_env = eval_args.dynamic_env;
-        const init = tco_eval(code.car, eval_args);
+        // isolate the nested tco_eval from the outer continuation (cc), the
+        // same way the lambda wrapper does - otherwise `eval_args.cc` leaks and
+        // the evaluated value comes back as void/promise instead of the datum.
+        const args = { ...eval_args, cc: top_cc };
+        const init = tco_eval(code.car, args);
         let fn;
         if (is_pair(code.cdr.car)) {
-            fn = tco_eval(code.cdr.car, eval_args);
+            fn = tco_eval(code.cdr.car, args);
         }
         return new Parameter(init, fn);
     }), `(make-parameter init converter)
@@ -11404,9 +11420,20 @@ function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand 
 }
 
 // -------------------------------------------------------------------------
-function lambda_scope(self, fn, code, args, { use_dynamic, error, cc }) {
+function lambda_scope(self, fn, code, args, { use_dynamic, error, cc, dynamic_env: call_dynamic_env }) {
     // lambda got scopes as context in apply
-    let { dynamic_env } = is_context(this) ? this : { dynamic_env: self };
+    let dynamic_env;
+    if (is_context(this)) {
+        // called as a JS function (apply/map/callback) - the LambdaContext
+        // carries the caller's dynamic environment.
+        ({ dynamic_env } = this);
+    } else if (is_continuation(this) && call_dynamic_env) {
+        // tco fast path (evaluate_lambda): inherit the dynamic environment from
+        // the call site so dynamic bindings (parameterize) stay visible.
+        dynamic_env = call_dynamic_env;
+    } else {
+        dynamic_env = self;
+    }
     const env = self.inherit('lambda');
     dynamic_env = dynamic_env.inherit('lambda');
     if (this && !is_context(this) && !is_continuation(this)) {
@@ -11605,18 +11632,14 @@ function* evaluate_code(state) {
                         doc = cdr.cdr.car.cdr.cdr.car.valueOf();
                     }
                     const value = state.object = cdr.cdr.car;
-                    let fn_name;
-                    if (is_pair(value) &&
-                        ((is_function(value) && is_lambda(value)) ||
-                         (value instanceof Syntax) || is_parameter(value))) {
-                        fn_name = car.valueOf();
-                        if (fn_name instanceof LString) {
-                            fn_name = fn_name.valueOf();
-                        }
-                    }
+                    // the value has not been evaluated yet, so decide whether it
+                    // may need a name (lambda/syntax/parameter) from the SOURCE
+                    // being a compound expression, and apply the name in
+                    // next_define once the real value is known.
+                    const new_expr = is_pair(value);
                     state.cc = new Continuation('define', cdr.car, code, state, next_define, {
                         doc,
-                        fn_name
+                        new_expr
                     });
                     state.ready = false;
                 }
@@ -11676,6 +11699,17 @@ function next_begin(state) {
 }
 
 // -------------------------------------------------------------------------
+// the parameterize body finished - state.object holds its value. Restore the
+// dynamic environment that was active before parameterize and hand the value to
+// the enclosing continuation (see the `parameterize` macro).
+function next_parameterize(state) {
+    state.dynamic_env = this._state.dynamic_env;
+    state.env = this.__env__;
+    state.cc = this.__continuation__;
+    state.ready = true;
+}
+
+// -------------------------------------------------------------------------
 function next_set(state) {
     const env = state.env = this.__env__;
     state.cc = this.__continuation__;
@@ -11711,8 +11745,13 @@ function next_define(state) {
         env = env.__parent__;
     }
     const value = state.object;
-    const fn_name = this._state.fn_name;
-    if (fn_name) {
+    if (this._state.new_expr &&
+        ((is_function(value) && is_lambda(value)) ||
+         (value instanceof Syntax) || is_parameter(value))) {
+        let fn_name = this.__object__.valueOf();
+        if (fn_name instanceof LString) {
+            fn_name = fn_name.valueOf();
+        }
         value.__name__ = fn_name;
     }
     env.set(this.__object__, value, this._state.doc, true);
@@ -11736,7 +11775,8 @@ function evaluate_lambda(fn, args, state, cc) {
     const define_env = fn._env;
     const scope = lambda_scope.call(cc, define_env, fn, fn._code, args, {
         error: state.error,
-        use_dynamic: state.use_dynamic
+        use_dynamic: state.use_dynamic,
+        dynamic_env: state.dynamic_env
     });
     const { env, dynamic_env } = scope;
     const body = hygienic_begin([env, dynamic_env], fn._body);
@@ -11771,6 +11811,19 @@ function next_pair(state) {
             typecheck('apply', last, ['pair', 'nil'], args.length + 2);
             last = global_env.get('list->array').call(global_env, last);
             evaluate_lambda(fn, args.concat(last), state, this);
+        } else if (is_parameter(fn)) {
+            // a dynamic variable created by make-parameter. Look up the
+            // effective binding in the dynamic environment (parameterize
+            // installs a shadowing Parameter there) before reading/setting it.
+            state.cc = this.__continuation__;
+            const param = search_param(state.dynamic_env, fn);
+            if (args.length === 0) {
+                state.object = box(param.invoke());
+            } else {
+                param.__value__ = args[0];
+                state.object = undefined;
+            }
+            state.ready = !is_promise(state.object);
         } else if (is_function(fn)) {
             state.cc = this.__continuation__;
             state.object = box(call_function(fn, prepare_fn_args(fn, args), state));
