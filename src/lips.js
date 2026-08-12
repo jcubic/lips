@@ -9218,7 +9218,7 @@ var global_env = new Environment({
                         if (macro_expand) {
                             return { expr, scope: new_env };
                         }
-                        var result = evaluate(expr, { ...eval_args, env: new_env });
+                        var result = tco_eval(expr, { ...eval_args, env: new_env });
                         // Hack: update the result if there are generated
                         //       gensyms that should be literal symbols
                         // TODO: maybe not the part move when literal elisps may

@@ -1,6 +1,22 @@
 (load "./lib.scm")
 
 
+(define-syntax syntax-rules-test
+  (syntax-rules ()
+    ((_ name ...)
+     (call/cc (lambda (name)
+                ...)))))
+
+(define sr-eject #f)
+
+(define sr-result (syntax-rules-test eject
+                           (for-each (lambda (x)
+                                       (eject x)
+                                       (set! sr-eject #t))
+                                     '(1 2 3 4))))
+(assert sr-result 1)
+(assert sr-eject #f)
+
 (define (syntax-test x)
   (call/cc (lambda (return)
              (for-each (lambda (item)
