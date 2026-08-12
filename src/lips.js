@@ -9496,12 +9496,16 @@ var global_env = new Environment({
         return Macro.defmacro('quasiquote', function(source, state) {
             const arg = source.cdr;
             let result;
+            log('>> QUASIQUOTE');
+            log(arg.car);
             if (plain_quasiquote(arg.car)) {
                 // fully literal quasiquote behaves like quote (shared constant)
                 result = quote(arg.car);
             } else {
                 result = qq_expand(arg.car, 1);
             }
+            log('<< QUASIQUOTE OUTPUT');
+            log(result);
             // returning something other than `state` makes evaluate_code set
             // it as the object to evaluate next, so the generated builder code
             // runs through the normal tco_eval loop.
