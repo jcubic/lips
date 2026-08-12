@@ -11505,7 +11505,7 @@ function* evaluate_code(state) {
         if (state.promise_quote) {
             state.object = new QuotedPromise(code);
         } else {
-            state.object = yield code;
+            state.object = box(yield code);
         }
         state.ready = true;
     } else if (is_pair(code)) {
