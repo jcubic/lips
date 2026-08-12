@@ -114,6 +114,13 @@
                     result)))))
 
 ;; -----------------------------------------------------------------------------
+(define (%empty-lists lists)
+  "(%empty-lists lists)
+
+  helper function that checks if lists of lists is empty"
+  (or (null? lists) (%some? null? lists)))
+
+;; -----------------------------------------------------------------------------
 (define (map function . lists)
   "(map fn list1 list2 ...)
 
@@ -123,23 +130,26 @@
    with that many argument as number of list arguments. The return
    values of the fn calls are accumulated in a result list and
    returned by map."
-  (let loop ((lists lists) (result '()))
-    (if (%some? null? lists)
-      (reverse result)
-      (loop (%map1 cdr lists)
-            (cons (apply function (%map1 car lists))
-                  result)))))
+  (let loop ((lists lists) (k (lambda (x) x)))
+    (if (%empty-lists lists)
+        (k '())
+        (loop (%map1 cdr lists)
+              (lambda (rest)
+                (k (cons (apply function (%map1 car lists)) rest)))))))
 
 ;; -----------------------------------------------------------------------------
-(define (for-each . args)
+(define (for-each function . lists)
   "(for-each fn list1 list2 ...)
 
    Higher-order function that calls function `fn` on each
    value of the argument. If you provide more than one list
    it will take each value from each list and call `fn` function
    with that many arguments as number of list arguments."
-  (apply map args)
-  #void)
+  (let loop ((lists lists))
+    (if (not (%empty-lists lists))
+        (begin
+          (apply function (%map1 car lists))
+          (loop (%map1 cdr lists))))))
 
 ;; -----------------------------------------------------------------------------
 (define (quoted-symbol? x)
