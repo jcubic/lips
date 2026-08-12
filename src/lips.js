@@ -11040,16 +11040,14 @@ function prepare_fn_args(fn, args) {
 // -------------------------------------------------------------------------
 function call_function(fn, args, { env, dynamic_env, use_dynamic } = {}) {
     if (!fn._context) {
-        const scope = env?.new_frame(fn, args);
-        const dynamic_scope = dynamic_env?.new_frame(fn, args);
-        read_only(fn, '_context', new LambdaContext({
-            env: scope,
-            use_dynamic,
-            dynamic_env: dynamic_scope
-        }), { hidden: true });
-    } else if (use_dynamic) {
-        fn._context.dynamic_env = dynamic_env?.new_frame(fn, args);
+        read_only(fn, '_context', new LambdaContext({}), { hidden: true });
     }
+    // refresh the context each call so functions that read `this.env`
+    // (env, current-environment, parent.frame, ...) see the CURRENT scope
+    // and `arguments` reflect this call - not the first call's (perf #127).
+    fn._context.env = env?.new_frame(fn, args);
+    fn._context.dynamic_env = dynamic_env?.new_frame(fn, args);
+    fn._context.use_dynamic = use_dynamic;
     return resolve_promises(fn.apply(fn._context, args));
 }
 
