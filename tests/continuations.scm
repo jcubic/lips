@@ -15,11 +15,11 @@
 (cc/counter 0)
 (cc/counter 0)
 
-(test "contanation: procedure"
+(test "continuations: procedure"
       (lambda (t)
         (t.is (procedure? (call/cc identity)) #t)))
 
-(test.failing "continuations: base"
+(test "continuations: base"
       (lambda (t)
         (define cont 0)
         (define result #f)
@@ -31,7 +31,7 @@
         (cont 4)
         (t.is result 6)))
 
-(test.failing "continuations: double call/cc"
+(test "continuations: double call/cc"
               (lambda (t)
                 (define (repeat-string n item)
                   (apply string-append
@@ -50,7 +50,7 @@
                 (t.is (repeat-string 5 "x") "xxxxx")
                 (t.is (repeat-string 2 "1") "11")))
 
-(test.failing "continuations: don't call after call continuation"
+(test "continuations: don't call after call continuation"
       (lambda (t)
         (let ((x #f))
           (let ((val (call/cc (lambda (cont)
@@ -59,7 +59,7 @@
             (t.is val 5)
             (t.is x #f)))))
 
-(test.failing "continuations: calling continuation"
+(test "continuations: calling continuation"
       (lambda (t)
         (t.plan 1)
         (let ((x #f))
@@ -69,7 +69,7 @@
                 (t.is value #t))))))
 
 
-(test.failing "continuations: make-range"
+(test "continuations: make-range"
               (lambda (t)
                 (define (make-range from to)
                   (call/cc
@@ -88,7 +88,7 @@
                 (t.is (make-range 0 10) '(0 1 2 3 4 5 6 7 8 9))
                 (t.is (make-range 10 20) '(10 11 12 13 14 15 16 17 18 19))))
 
-(test.failing "continuations: return"
+(test "continuations: return"
       (lambda (t)
         (let ((called #f))
 
@@ -103,7 +103,7 @@
           (t.is (foo) 10)
           (t.is called #f))))
 
-(test.failing "continuations: calling"
+(test "continuations: calling"
       (lambda (t)
         (let ((called))
           (t.is (let ((my-val (call/cc (lambda (c) c))))
@@ -117,7 +117,7 @@
 
 ;; example that found a bug in BiwaScheme
 ;; https://github.com/biwascheme/biwascheme/issues/257
-(test.failing "continuations: saving/restoring environment"
+(test "continuations: saving/restoring environment"
       (lambda (t)
         (let ((result (call/cc (lambda (return)
                                  (let ((n 5)
@@ -134,12 +134,12 @@
 
           (t.is result '("Hello <0>")))))
 
-(test.failing "continuations: scope mutation"
+(test "continuations: scope mutation"
       (lambda (t)
         (t.is cc/result (list 3 2 1))))
 
 
-(test.failing "continuations: coroutine generator"
+(test "continuations: coroutine generator"
       (lambda (t)
         (define (make-coroutine-generator proc)
           (define return #f)
@@ -173,11 +173,11 @@
               '(0 1 2))))
 
 ;; https://docs.scheme.org/surveys/petrofsky-catastrophe/
-(test.failing "continuations: Petrofsky catastrophe"
+(test "continuations: Petrofsky catastrophe"
       (lambda (t)
         (t.is (call/cc (lambda (c) (0 (c 1)))) 1)))
 
-(test.failing "continuations: should execute twice"
+(test "continuations: should execute twice"
       (lambda (t)
         (t.plan 2)
         (let ((i 0) (k #f))
@@ -187,7 +187,7 @@
           (if (<= i 2)
               (k (* i 10))))))
 
-(test.failing "continuations: should work with quasiquote list"
+(test "continuations: should work with quasiquote list"
       (lambda (t)
         (t.plan 3)
         (let ((k #f) (i 0))
@@ -197,7 +197,7 @@
           (if (< i 3)
               (k (* i 10))))))
 
-(test.failing "continuations: list fliping"
+(test "continuations: list fliping"
       (lambda (t)
         (define result (let ((count 0) (flip #t) (x #f) (y #f) (result '()))
                          (set! result (cons (list (call/cc (lambda (cc) (set! x cc) count))
@@ -213,3 +213,74 @@
                                    (y count))))))
         (t.is result
               '((0 0) (1 1) (1 2) (3 3) (3 4) (5 5) (5 6) (7 7) (7 8) (9 9) (9 10)))))
+
+(test "continuations: continuation escapes the try body (no throw)"
+      (lambda (t)
+        ;; invoking a continuation captured outside the try jumps straight out;
+        ;; the catch clause never runs because nothing was thrown
+        (t.is (call/cc (lambda (k) (try (k 'escaped) (catch (e) 'caught))))
+              'escaped)
+        ;; a continuation used inside the body returns normally as the try value
+        (t.is (try (call/cc (lambda (k) (+ 1 (k 41)))) (catch (e) 'no)) 41)))
+
+(test "continuations: continuation escapes from the catch clause"
+      (lambda (t)
+        (t.is (call/cc (lambda (k)
+                         (try (throw "x") (catch (e) (k 'from-catch)))))
+              'from-catch)))
+
+(test "continuations: escaping a try removes its handler (no stale leak)"
+      (lambda (t)
+        ;; the inner try is escaped via k *without* throwing, so its handler
+        ;; must NOT catch the later (throw "x") - only the outer try may
+        (t.is (let ((log '()))
+                (try (begin
+                       (call/cc (lambda (k)
+                                  (try (k 1)
+                                       (catch (e) (set! log (cons 'inner log))))))
+                       (throw "x"))
+                     (catch (e) (set! log (cons 'outer log))))
+                (reverse log))
+              '(outer))
+        ;; two escaped trys must not leave handlers that swallow a later throw
+        (t.is (let ((log '()))
+                (call/cc (lambda (k1) (try (k1 1) (catch (e) (set! log (cons 'A log))))))
+                (call/cc (lambda (k2) (try (k2 2) (catch (e) (set! log (cons 'B log))))))
+                (try (throw "z") (catch (e) (set! log (cons 'C log))))
+                (reverse log))
+              '(C))))
+
+(test "continuations: re-entering a try re-arms its handler (retry)"
+      (lambda (t)
+        ;; k is captured inside the body; the catch re-invokes it, re-entering
+        ;; the body - the handler must be active again so the next throw is caught
+        (t.is (let ((k #f) (i 0) (log '()))
+                (try (begin
+                       (call/cc (lambda (c) (set! k c)))
+                       (set! i (+ i 1))
+                       (set! log (cons i log))
+                       (if (< i 3) (throw "retry")))
+                     (catch (e) (if k (k #f))))
+                (reverse log))
+              '(1 2 3))
+        ;; the value passed to the re-invoked continuation flows back in
+        (t.is (let ((k #f) (n 0) (out '()))
+                (try (begin
+                       (set! out (cons (call/cc (lambda (c) (set! k c) n)) out))
+                       (set! n (+ n 1))
+                       (if (< n 3) (throw "again")))
+                     (catch (e) (k n)))
+                (reverse out))
+              '(0 1 2))))
+
+(test "continuations: exceptions cross lambda/continuation boundaries"
+      (lambda (t)
+        ;; throw inside a called lambda is caught by an enclosing try
+        (t.is (let ()
+                (define (boom) (throw "kaboom"))
+                (try (begin (boom) 'no) (catch (e) e.message)))
+              "kaboom")
+        ;; nested try + rethrow from inner catch is caught by outer
+        (t.is (try (try (throw "inner") (catch (e) (throw "rethrown")))
+                   (catch (e) e.message))
+              "rethrown")))
