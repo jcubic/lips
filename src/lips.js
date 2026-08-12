@@ -4010,11 +4010,7 @@ function define_macro(name, args, body, source, __doc__, state) {
         const env = macro_args_env(args, code, define_env);
         if (is_pair(body)) {
             // using continuation to evaluate the result of the macro
-            state.cc = new Continuation(`macro[${name}]`, null, source, state, function(state) {
-                state.cc = this.__continuation__;
-                state.env = this.__env__;
-                state.ready = false;
-            });
+            state.cc = new Continuation(`macro[${name}]`, null, source, state, next_defmaro);
             state.env = env;
             state.object = hygienic_begin([env], body);
             return state;
@@ -8863,16 +8859,9 @@ var global_env = new Environment({
         // continue in the current loop: evaluate (begin . body) with the new
         // dynamic environment, then restore the outer one via next_parameterize.
         const body = new Pair(new LSymbol('begin'), code.cdr);
-        state.cc = new Continuation(
-            'parameterize',
-            null,
-            source,
-            state,
-            next_parameterize,
-            {
-                dynamic_env: outer_dynamic
-            }
-        );
+        state.cc = new Continuation('parameterize', null, source, state, next_parameterize, {
+            dynamic_env: outer_dynamic
+        });
         state.dynamic_env = env;
         state.object = body;
         state.ready = false;
@@ -11392,8 +11381,8 @@ function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand 
                     state.dynamic_env = handler.dynamic_env;
                     state.use_dynamic = handler.use_dynamic;
                     // after the catch clause: run finally, continue with value
-                    state.cc = new Continuation('catch', null, handler.source,
-                                                state, function(st) {
+                    const code = handler.source;
+                    state.cc = new Continuation('catch', null, code, state, function(st) {
                         finish_try(st, handler, 'return', st.object);
                     });
                     state.object = new Pair(new LSymbol('begin'), handler.catch_body);
@@ -11517,8 +11506,6 @@ function is_internal_macro(macro) {
 function* evaluate_code(state) {
     const code = state.object;
     /*
-    if (is_debug('expander')) {
-    }
     if (state.macro_expand) {
         if (is_pair(code)) {
             const { car, cdr } = code;
@@ -11558,7 +11545,8 @@ function* evaluate_code(state) {
         } else {
             state.ready = true;
         }
-    } else if (code instanceof State) {
+        return;
+    }
     */
     if (code instanceof State) {
         throw new Error('Internal: expecting LIPS expression got State');
@@ -11707,6 +11695,13 @@ function next_parameterize(state) {
     state.env = this.__env__;
     state.cc = this.__continuation__;
     state.ready = true;
+}
+
+// -------------------------------------------------------------------------
+function next_defmaro(state) {
+    state.cc = this.__continuation__;
+    state.env = this.__env__;
+    state.ready = false;
 }
 
 // -------------------------------------------------------------------------
