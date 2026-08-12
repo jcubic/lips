@@ -1,6 +1,5 @@
 (load "./lib.scm")
 
-
 (define-syntax syntax-rules-test
   (syntax-rules ()
     ((_ name ...)
@@ -16,6 +15,11 @@
                                      '(1 2 3 4))))
 (assert sr-result 1)
 (assert sr-eject #f)
+
+(define fs (require "fs/promises"))
+
+(let ((file (fs.readFile "./asserts.scm" "utf8")))
+  (assert (instanceof lips.LString file) #t))
 
 (define (syntax-test x)
   (call/cc (lambda (return)
