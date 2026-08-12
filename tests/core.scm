@@ -758,6 +758,57 @@
         (t.is (try (eval '(+ x x)) (catch (e) e.message))
               "Unbound variable `x'")))
 
+(test "core: auto bind/unbind"
+      (lambda (t)
+        (define obj (let ((o (Object)))
+                      (set-obj! o "value" 42)
+                      (set-obj! o "getValue" (lambda () this.value))
+                      o))
+        (t.is (obj.getValue) 42)              ; direct: method auto-bound to obj
+
+        (define getter obj.getValue)
+        (t.is (getter) 42)                    ; survives being stored in a var
+
+        (define (fetch o) o.getValue)
+        (t.is ((fetch obj)) 42)               ; survives being a function RESULT
+
+        (define arr (vector 3 1 2))
+        (define joiner arr.join)
+        (t.is (joiner "-") "3-1-2")           ; native this-dependent method
+
+        (define sorter arr.sort)
+        (sorter (lambda (a b) (- a b)))       ; LIPS lambda crossing into native
+        (t.is arr #(1 2 3))
+        (t.is (arr.map (lambda (x) (* x x))) #(1 4 9))
+
+        (t.is (eq? arr.push.valueOf Function.prototype.valueOf) #t)))  ; auto-unbind
+
+(test "core: bind/unbind"
+      (lambda (t)
+        (define arr (vector 1 2 3))
+        (define push arr.push)
+
+        (push 4)
+        (t.is arr #(1 2 3 4))
+
+        (t.is (eq? (unbind push) Array.prototype.push) #t)
+
+        (t.is (eq? (push.valueOf) (unbind push)) #t)
+
+        (define other (vector))
+        (t.is (eq? (unbind arr.push) (unbind other.push)) #t)
+
+        (t.is (eq? push (unbind push)) #t)
+
+        (define plain (lambda (x) (* x x)))
+        (t.is (eq? (unbind plain) plain) #t)
+        (t.is (eq? (unbind (unbind push)) (unbind push)) #t)
+
+        (define raw (unbind push))
+        (define hard (raw.bind arr))
+        (t.is (eq? (unbind hard) raw) #f)   ; unbind can't undo a hard bind
+        (t.is (eq? hard raw) #f)))          ; and it is opaque to eq?
+
 ;; TODO
 ;; begin*
 ;; set-obj! throws with null or boolean
