@@ -9157,7 +9157,7 @@ var global_env = new Environment({
         const has_package = file.startsWith(package_name);
         // TODO: move **module-path** to internal env
         const PATH = '**module-path**';
-        var module_path = global_env.get(PATH, { throwError: false });
+        let module_path = global_env.get(PATH, { throwError: false });
         file = file.valueOf();
         if (!file.match(/.[^.]+$/)) {
             file += '.scm';
@@ -9226,18 +9226,18 @@ var global_env = new Environment({
                         }
                     }
                     global_env.set(PATH, path.dirname(file));
-                    fs.readFile(file, function(err, data) {
+                    fs.readFile(file, async function(err, data) {
                         if (err) {
-                            reject(err);
                             global_env.set(PATH, module_path);
+                            reject(err);
                         } else {
                             try {
-                                run(data).then(() => {
-                                    resolve();
-                                    global_env.set(PATH, module_path);
-                                }).catch(reject);
+                                await run(data)
+                                resolve();
                             } catch (e) {
                                 reject(e);
+                            } finally {
+                                global_env.set(PATH, module_path);
                             }
                         }
                     });
