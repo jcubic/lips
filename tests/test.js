@@ -12,6 +12,7 @@ import ava from 'ava';
 import lily from '@jcubic/lily';
 import fs from 'fs/promises';
 import { glob } from 'glob';
+import { basename } from 'path';
 
 import { exec } from '../src/lips.js';
 
@@ -23,10 +24,10 @@ async function get_files() {
     if (options.f) {
         return [...await glob(options.f)];
     }
-    var files = await fs.readdir('./tests/');
+    var files = await fs.readdir('./tests');
     return files.filter(function(file) {
-        return file.match(/.scm$/) && !file.match(/^\.#|^_/);
-    });
+        return file.match(/.scm$/) && !file.match(/^\.#|^_|~$/);
+    }).map(name => `./tests/${name}`);
 }
 
 get_files().then(filenames => {
