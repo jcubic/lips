@@ -32,6 +32,57 @@
           (t.is (bar.square 10) 100)
           (t.is (bar.sum 5) 15))))
 
+(test "core: implicit begin in lambda body is hygienic"
+      (lambda (t)
+        ;; a multi-expression lambda body is wrapped in an implicit `begin`.
+        ;; that wrapper is cached per-lambda and must not be affected by the
+        ;; user rebinding `begin` in scope.
+        (let ()
+          (define begin 42)
+          (define (f x)
+            (define y (* x 2))
+            (+ x y))
+          (t.is begin 42)
+          (t.is (f 10) 30))
+        ;; distinct closures created from the same lambda expression keep
+        ;; independent cached bodies
+        (let ()
+          (define (make k)
+            (lambda (x)
+              (define t (+ x k))
+              t))
+          (define g1 (make 100))
+          (define g2 (make 200))
+          (t.is (list (g1 1) (g2 1) (g1 2) (g2 2))
+                (list 101 201 102 202)))))
+
+(test "core: help returns docs for the requested symbol"
+      (lambda (t)
+        ;; (help <name>) must return the documentation of <name>, never of
+        ;; `help` itself. Regression: a help wrapper that forwarded the whole
+        ;; `(help x)` form (instead of the argument list) made every query
+        ;; resolve `help`, so (help lambda) returned help's own documentation.
+        (t.is (string=? (help car)
+                        "(car pair)
+
+This function returns the car (item 1) of the list.")
+              #t)
+        (t.is (string=? (substring (help lambda) 0 19) "(lambda (a b) body)")
+              #t)
+        ;; the doc of a queried symbol must differ from help's own doc - proves
+        ;; we didn't fall back to documenting `help`
+        (t.is (string=? (help lambda) (help help)) #f)))
+
+(test "core: help resolves docstrings stored in __docs__ at runtime"
+      (lambda (t)
+        ;; a user function's docstring lives in the environment's __docs__ map
+        ;; (created lazily); help must read it back at runtime
+        (define (documented-fn x)
+          "documented-fn squares its argument"
+          (* x x))
+        (t.is (string=? (help documented-fn) "documented-fn squares its argument")
+              #t)))
+
 (test "core: let/letrect/let*"
       (lambda (t)
         ;; tests based on book Sketchy Scheme by Nils M Holm
