@@ -12193,7 +12193,13 @@ function lambda_scope(self, fn, code, args, { use_dynamic, error, cc, dynamic_en
         dynamic_env = self;
     }
     const env = self.inherit('lambda');
-    dynamic_env = dynamic_env.inherit('lambda');
+    // only extend the dynamic environment (and bind params into it, below) in
+    // dynamic-scope mode. Lexical calls never read the per-lambda dynamic frame
+    // (parameterize makes its own), so this saves an Environment allocation per
+    // call and avoids the O(n) dynamic_env chain in tail recursion.
+    if (use_dynamic) {
+        dynamic_env = dynamic_env.inherit('lambda');
+    }
     if (this && !is_context(this) && !is_continuation(this)) {
         if (this && !this.__instance__) {
             Object.defineProperty(this, '__instance__', {
@@ -12219,7 +12225,9 @@ function lambda_scope(self, fn, code, args, { use_dynamic, error, cc, dynamic_en
     }
     function set(name, value) {
         env.__env__[name.__name__] = value;
-        dynamic_env.__env__[name.__name__] = value;
+        if (use_dynamic) {
+            dynamic_env.__env__[name.__name__] = value;
+        }
     }
     let name = code.car;
     let i = 0;
