@@ -595,9 +595,6 @@ function run_repl(err, rl) {
     // we use promise loop to fix issue when copy paste list of S-Expression
     const is_emacs = process.env.EMACS || process.env.INSIDE_EMACS;
     let prev_eval = Promise.resolve();
-    if (process.stdin.isTTY || is_emacs) {
-        rl.prompt();
-    }
     let prev_line;
     function is_brackets_mode() {
         return !!cmd.match(brackets_re);
@@ -708,6 +705,9 @@ function run_repl(err, rl) {
         }, 0);
     });
     bootstrap(interpreter).then(function() {
+        if (process.stdin.isTTY || is_emacs) {
+            rl.prompt();
+        }
         if (SUPPORTS_PASTE_BRACKETS) {
             // this make sure that the paste brackets ANSI escape
             // is added to cmd so they can be processed in 'line' event
