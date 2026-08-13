@@ -8247,7 +8247,11 @@ Interpreter.prototype.exec = function(arg, options = {}) {
     typecheck('Interpreter::exec', arg, ['string', 'array'], 1);
     typecheck('Interpreter::exec', use_dynamic, 'boolean', 2);
     // simple solution to overwrite this variable in each interpreter
-    // before evaluation of user code
+    // before evaluation of user code. It's set on global_env (not this.__env__)
+    // so stdlib closures - which are lexically scoped to global_env, e.g.
+    // command-line reading **internal-env** - resolve to THIS interpreter's
+    // environment (and its per-interpreter internal env) during exec.
+    global_env.set('**interaction-environment**', this.__env__);
     if (!env) {
         env = this.__env__;
     }
