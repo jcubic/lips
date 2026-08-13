@@ -1615,7 +1615,7 @@
                    (begin
                      body ...))))))
 
-        (t.snapshot (macroexpand (when (assoc 'bar alist) #void)))))
+        (t.snapshot (macroexpand '(when (assoc 'bar alist) #void)))))
 
 (test "syntax: let and syntax-parameterize hygiene #356"
       (lambda (t)
