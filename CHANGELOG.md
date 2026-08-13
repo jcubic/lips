@@ -5,6 +5,7 @@
 * REPL -t/--trace will toggle only JavaScript stack, Scheme stack traces are now always on
 * stack trace in exceptions is now `Error::__stack__`
 * remove `..` macro [#500](https://github.com/jcubic/lips/issues/500)
+* `macroexpand` is now a function (like in Common Lisp) instead of a macro
 ### Features
 * add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
