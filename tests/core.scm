@@ -1,3 +1,20 @@
+(trace #t)
+
+(define core/stack (let ((x 10))
+                     (let ((y 20))
+                       (stack-trace (call/cc (lambda (cc) cc))))))
+(trace #f)
+
+(test "core: trace"
+      (lambda (t)
+        (t.is stack
+              "[0]: (define stack (let ((x 10)) (let ((y 20)) (stack-trace (call/cc (lambda (cc) cc))))))
+               [1]: (let ((x 10)) (let ((y 20)) (stack-trace (call/cc (lambda (cc) cc)))))
+               [2]: (let ((y 20)) (stack-trace (call/cc (lambda (cc) cc))))
+               [3]: (stack-trace (call/cc (lambda (cc) cc)))
+               [4]: (call/cc (lambda (cc) cc))
+               [5]: (lambda (cc) cc)")))
+
 (test "core: it should set!/set-object! with this and prototype"
       (lambda (t)
         (let ()
