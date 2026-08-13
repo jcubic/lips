@@ -10,9 +10,10 @@
 * add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
 * `Environment:doc` now returns doc string for functions and macros additional to variables
-* Improve and unify Syntax Errors
-* Meta info from Runtime errors in REPL can be enabled with `-m`/`--meta`
+* improve and unify Syntax Errors
+* meta info from Runtime errors in REPL can be enabled with `-m`/`--meta`
 * implement simple regex based syntax-extension
+* performance improvements
 ### Bugfix
 * fix doc string for `make-rectangular`
 * `-inf.0`/`+inf.0` are now real lips numbers
@@ -25,6 +26,7 @@
 * fix syntax extension conflict with datum syntax
 * fix `unset-special!` not removing regex based syntax extensions
 * fix hygiene of named `let`
+* fix module path when load throw exception
 
 ## 1.0.0-beta.21
 ### Breaking
