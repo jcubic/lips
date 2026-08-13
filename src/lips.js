@@ -136,6 +136,11 @@ function log(x, ...args) {
 // mirrors whether DEBUG is set to a truthy value (updated by Environment.set)
 // so the common (debug-off) case is a single boolean test.
 let _debug_enabled = false;
+// opt-in gate for stack-frame collection (state.stack). Off by default: pushing
+// every continuation seen during evaluation costs time and, in a long tail loop,
+// unbounded memory. Enable with (trace) when you need stack-trace / full error
+// stacks.
+let _collect_stack = false;
 function is_debug(n = null) {
     if (!_debug_enabled) {
         return false;
@@ -8944,6 +8949,16 @@ var global_env = new Environment({
         console but it can be defined in user code). This function
         calls \`(newline)\` after printing each input.`),
     // ------------------------------------------------------------------
+    'trace': doc(function(enable = true) {
+        _collect_stack = !is_false(enable);
+        return _collect_stack;
+    }, `(trace)
+        (trace enabled)
+
+        Enable (or disable with (trace #f)) collection of stack frames so that
+        stack-trace and full error stack traces work. Collecting has a runtime
+        and memory cost, so it is disabled by default.`),
+    // ------------------------------------------------------------------
     'stack-trace': doc(function(cc) {
         typecheck('stack-trace', cc, 'continuation');
         return cc.trace((cc, i) => {
@@ -8951,7 +8966,8 @@ var global_env = new Environment({
         }).join('\n');
     }, `(stack-trace <continuation>)
 
-        Function return stack trace if given continuation as a string`),
+        Function return stack trace if given continuation as a string.
+        You first need to enable collecting stack frames using (trace).`),
     // ------------------------------------------------------------------
     format: doc('format', function format(str, ...args) {
         typecheck('format', str, 'string');
@@ -11978,7 +11994,7 @@ class State {
         // record the current continuation for the stack trace (TCO removes tail
         // frames from the cc chain, so we accumulate them here as they're seen)
         const cc = this.cc;
-        if (!this._stack_set.has(cc) && !cc.hidden()) {
+        if (_collect_stack && !this._stack_set.has(cc) && !cc.hidden()) {
             this._stack_set.add(cc);
             this.stack.push(cc);
         }
