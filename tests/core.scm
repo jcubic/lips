@@ -761,8 +761,8 @@
 (test "core: auto bind/unbind"
       (lambda (t)
         (define obj (let ((o (Object)))
-                      (set-obj! o "value" 42)
-                      (set-obj! o "getValue" (lambda () this.value))
+                      (set-object! o "value" 42)
+                      (set-object! o "getValue" (lambda () this.value))
                       o))
         (t.is (obj.getValue) 42)              ; direct: method auto-bound to obj
 

@@ -356,7 +356,7 @@
                 (reverse acc))
               '((x 0 z) (x 100 z) (x 200 z)))))
 
-(test "continuations: list fliping"
+(test "continuations: list flipping"
       (lambda (t)
         (define result (let ((count 0) (flip #t) (x #f) (y #f) (result '()))
                          (set! result (cons (list (call/cc (lambda (cc) (set! x cc) count))
@@ -401,7 +401,7 @@
                      (catch (e) (set! log (cons 'outer log))))
                 (reverse log))
               '(outer))
-        ;; two escaped trys must not leave handlers that swallow a later throw
+        ;; two escaped tries must not leave handlers that swallow a later throw
         (t.is (let ((log '()))
                 (call/cc (lambda (k1) (try (k1 1) (catch (e) (set! log (cons 'A log))))))
                 (call/cc (lambda (k2) (try (k2 2) (catch (e) (set! log (cons 'B log))))))

@@ -95,7 +95,7 @@
 (define (%some? function list)
   "(%some? function lst)
 
-   Help function that check if function predicate return true for every elemet
+   Help function that check if function predicate return true for every element
    of the list. If argument is not a list it returns #f."
   (and (pair? list)
        (or (function (car list))

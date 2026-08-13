@@ -132,7 +132,7 @@ function log(x, ...args) {
 // ----------------------------------------------------------------------
 /* c8 ignore next */
 function is_debug(n = null) {
-    const debug = user_env?.get('DEBUG', { throwError: false });
+    let debug = user_env?.get('DEBUG', { throwError: false });
     if (n === null) {
         return debug === true;
     }
@@ -786,7 +786,10 @@ LSymbol.is = function(symbol, name) {
     return symbol instanceof LSymbol &&
         ((name instanceof LSymbol && symbol.__name__ === name.__name__) ||
          (typeof name === 'string' && symbol.__name__ === name) ||
-         (name instanceof RegExp && name.test(symbol.__name__)));
+         // a gensym has a JS Symbol as __name__ which can't be coerced to a
+         // string - it can never match a textual pattern, so skip the test
+         (name instanceof RegExp && typeof symbol.__name__ === 'string' &&
+          name.test(symbol.__name__)));
 };
 // ----------------------------------------------------------------------
 LSymbol.prototype.toString = function(quote) {
@@ -2109,6 +2112,13 @@ class Parser {
                     LSymbol('Extension'),
                     code
                 );
+            } else if (!is_literal(special)) {
+                // a define-macro's function strips the head with source.cdr, so
+                // give it one (mirrors a normal `(name . args)` macro call)
+                code = Pair(
+                    LSymbol('Extension'),
+                    code
+                );
             }
             const eval_args = {
                 env: this.__env__,
@@ -2118,11 +2128,9 @@ class Parser {
                 }
             };
             const result = await this._with_syntax_scope(() => {
-                if (special.value instanceof Syntax) {
-                    return evaluate_syntax(special.value, code, eval_args);
-                } else if (special.value  instanceof Macro) {
-                    return evaluate_macro(special.value, code, eval_args);
-                }
+                // Syntax and Macro share the public invoke(), which drives the
+                // macro to a value (never leaking an internal State).
+                return special.value.invoke(code, eval_args);
             });
             // We need literal quotes to make that macro's return pairs works
             // because after the parser returns the value it will be evaluated
@@ -3783,22 +3791,6 @@ props.forEach(x => {
     array_methods.push(Array[x], Array.prototype[x]);
 });
 // ----------------------------------------------------------------------
-function is_array_method(x) {
-    x = unbind(x);
-    return array_methods.includes(x);
-}
-// ----------------------------------------------------------------------
-function is_lips_function(x) {
-    if (!is_function(x)) {
-        return false;
-    }
-    if (is_lambda(x) || x.__doc__) {
-        return true;
-    }
-    x = unbind(x);
-    return lips_functions.includes(x);
-}
-// ----------------------------------------------------------------------
 function user_repr(obj) {
     const constructor = obj.constructor || Object;
     const plain_object = is_plain_object(obj);
@@ -4474,8 +4466,33 @@ Macro.defmacro = function(name, fn, doc, dump) {
     return macro;
 };
 // ----------------------------------------------------------------------
-Macro.prototype.invoke = function(code, state) {
-    return this.__fn__.call(state.env, code, state, this.__name__);
+// in-loop primitive: run the macro function. Scheme macros mutate `state` and
+// return it so their body runs in the enclosing tco loop; builtins may return
+// code/value/SyntaxExpansion directly. Used by evaluate_code (which continues
+// in its own loop) - it must NOT drive a nested loop.
+Macro.prototype._invoke_state = function(code, state, macro_expand) {
+    return this.__fn__.call(state.env, code, state, this.__name__, macro_expand);
+};
+// public API: fully evaluate the macro and return the resulting code/value
+// (never an internal State). When called outside a tco loop (the parser's
+// syntax extensions, or the legacy evaluate()) `options` is a plain
+// {env, dynamic_env, error} bag - we build a fresh State delimited by top_cc and
+// drive it to completion with tco_resolve.
+Macro.prototype.invoke = function(code, options = {}) {
+    const state = options instanceof State ? options : new State(code, top_cc, {
+        env: options.env || global_env,
+        dynamic_env: options.dynamic_env || options.env || global_env,
+        use_dynamic: options.use_dynamic,
+        error: options.error
+    });
+    return unpromise(this._invoke_state(code, state), function(result) {
+        return unpromise(macro_result_value(result, state), function(value) {
+            if (is_pair(value)) {
+                value.mark_cycles();
+            }
+            return quote(value);
+        });
+    });
 };
 // ----------------------------------------------------------------------
 Macro.prototype.toString = function() {
@@ -4639,7 +4656,7 @@ function macro_expand(single) {
 
                 if (is_macro(name, value) && !builtin_let(name)) {
                     var code = value instanceof Syntax ? node : node.cdr;
-                    var result = await value.invoke(code, { ...args, env }, true);
+                    var result = await value._invoke_state(code, { ...args, env }, true);
                     if (value instanceof Syntax) {
                         const { expr, scope } = result;
                         if (is_pair(expr)) {
@@ -4738,7 +4755,7 @@ function Syntax(fn, env) {
 Syntax.__merge_env__ = Symbol.for('merge');
 // ----------------------------------------------------------------------
 Syntax.prototype = Object.create(Macro.prototype);
-Syntax.prototype.invoke = function(code, { error, env, use_dynamic }, macro_expand) {
+Syntax.prototype._invoke_state = function(code, { error, env, use_dynamic }, macro_expand) {
     var args = {
         error,
         env,
@@ -4784,8 +4801,11 @@ class SyntaxParameter {
         read_only(this, '_syntax', syntax, { hidden: true });
         read_only(this._syntax, '_param', true, { hidden: true });
     }
-    invoke(code, state) {
-        return this._syntax.invoke(code, state);
+    _invoke_state(code, state, macro_expand) {
+        return this._syntax._invoke_state(code, state, macro_expand);
+    }
+    invoke(code, options) {
+        return this._syntax.invoke(code, options);
     }
 }
 Syntax.Parameter = SyntaxParameter;
@@ -5783,17 +5803,20 @@ function is_parameter(o) {
     return o instanceof Parameter;
 }
 // ----------------------------------------------------------------------
-function is_plain_object(object) {
-    return object && typeof object === 'object' && object.constructor === Object;
-}
-// ----------------------------------------------------------------------
 function is_array_method(x) {
     x = unbind(x);
     return array_methods.includes(x);
 }
 // ----------------------------------------------------------------------
 function is_lips_function(x) {
-    return is_function(x) && (is_lambda(x) || x.__doc__);
+    if (!is_function(x)) {
+        return false;
+    }
+    if (is_lambda(x) || x.__doc__) {
+        return true;
+    }
+    x = unbind(x);
+    return lips_functions.includes(x);
 }
 // ----------------------------------------------------------------------
 function is_pair(o) {
@@ -6082,27 +6105,6 @@ function set_fn_length(fn, length) {
     }
 }
 // ----------------------------------------------------------------------
-function is_lambda(obj) {
-    return obj && obj[__lambda__] && obj._body;
-}
-// ----------------------------------------------------------------------
-function is_method(obj) {
-    return obj && obj[__method__];
-}
-// ----------------------------------------------------------------------
-function is_raw_lambda(fn) {
-    return is_lambda(fn) && !fn[__prototype__] &&
-        !is_method(fn) && !is_port_method(fn);
-}
-// ----------------------------------------------------------------------
-function is_native_function(fn) {
-    var native = Symbol.for('__native__');
-    return is_function(fn) &&
-        fn.toString().match(/\{\s*\[native code\]\s*\}/) &&
-        ((fn.name.match(/^bound /) && fn[native] === true) ||
-         (!fn.name.match(/^bound /) && !fn[native]));
-}
-// ----------------------------------------------------------------------
 // :: function that return macro for let, let* and letrec
 // ----------------------------------------------------------------------
 function let_macro(name) {
@@ -6123,7 +6125,7 @@ function let_macro(name) {
             const env = state.env = state.env.inherit('let');
             state.object = hygiene([env], ['letrec', 'lambda'], function(letrec, lambda) {
                 return Pair(
-                    Pair.fromArray([
+                    Pair.from_array([
                         letrec,
                         [[code.car, Pair(
                             lambda,
@@ -6147,6 +6149,20 @@ function let_macro(name) {
         const vars = code.car;
         let value = nil;
         const body = code.cdr;
+        // reject duplicate binding names statically. This must NOT be done while
+        // binding in the continuation below: a re-entrant continuation re-runs
+        // the bindings and the (shared) env already holds them, which would
+        // false-positive as a duplicate.
+        const seen = new Set();
+        for (let node = vars; is_pair(node); node = node.cdr) {
+            if (is_pair(node.car)) {
+                const vname = node.car.car.valueOf();
+                if (seen.has(vname)) {
+                    throw new Error(`Duplicated let variable ${node.car.car}`);
+                }
+                seen.add(vname);
+            }
+        }
         if (is_pair(vars) && is_pair(vars.car)) {
             value = vars.car.cdr.car;
         }
@@ -6161,9 +6177,6 @@ function let_macro(name) {
                 }
                 const scope = env;
                 const variable = this.__object__.car.car;
-                if (variable in env.__env__) {
-                  throw new Error(`Duplicated let variable ${variable}`);
-                }
                 scope.set(variable, state.object);
                 const next = this.__object__.cdr;
                 if (is_nil(next)) {
@@ -8393,22 +8406,6 @@ Interpreter.prototype.set = function(name, value) {
 Interpreter.prototype.constant = function(name, value) {
     return this.__env__.constant(name, value);
 };
-// -------------------------------------------------------------------------
-// Lips Exception used in error function
-// -------------------------------------------------------------------------
-function LipsError(message, args) {
-    this.name = 'LipsError';
-    this.message = message;
-    this.args = args;
-    this.stack = (new Error()).stack;
-}
-LipsError.prototype = new Error();
-LipsError.prototype.constructor = LipsError;
-// -------------------------------------------------------------------------
-// :: Fake exception to handle try catch to break the execution
-// :: of body expression #163
-// -------------------------------------------------------------------------
-class IgnoreException extends Error { }
 
 // -------------------------------------------------------------------------
 // :: Environment constructor (parent and name arguments are optional)
@@ -9280,7 +9277,7 @@ var global_env = new Environment({
         const env = state.env.inherit('while');
         state.env = env;
         state.object = hygiene([env], ['if', 'begin', 'let'], function(_if, _begin, _let) {
-            return Pair.fromArray([
+            return Pair.from_array([
                 _let,
                 loop,
                 [],
@@ -9328,7 +9325,7 @@ var global_env = new Environment({
         );
         const rest = is_nil(code.cdr.cdr) ? nil : code.cdr.cdr.clone();
         state.object = hygiene([state.env], names, function(_let, _if, _begin) {
-            return Pair.fromArray([
+            return Pair.from_array([
                 _let,
                 loop,
                 code.car.map(list => {
@@ -9783,7 +9780,7 @@ var global_env = new Environment({
         lambda.__code__ = source;
         lambda[__lambda__] = true;
         if (is_pair(code.car)) {
-            // lambda have list of argumnets
+            // lambda have list of arguments
             lambda = set_fn_length(lambda, length);
         }
         lambda = doc(lambda, __doc__, true);
@@ -10071,7 +10068,7 @@ var global_env = new Environment({
             return op_cache[name];
         }
         function make_list(...items) {
-            return Pair.fromArray(items, false);
+            return Pair.from_array(items, false);
         }
         function quote(x) {
             return make_list(symbol('quote'), x);
@@ -10099,7 +10096,7 @@ var global_env = new Environment({
             return make_list(op('append'), a, b);
         }
         function vector_to_list(vector) {
-            return Pair.fromArray(vector, false);
+            return Pair.from_array(vector, false);
         }
         // expand code in "value" position - result is code producing the value.
         // A passive unquote/unquote-splicing (depth > 1) is rebuilt with `cons`
@@ -10181,11 +10178,12 @@ var global_env = new Environment({
             return quote(make_list(x));
         }
         // objects (&(...)) have no splicing; expand into code that builds a
-        // fresh object and assigns each value with set-obj! (so that list/pair
-        // values are stored verbatim rather than recursively converted):
+        // fresh object and assigns each value with set-object! (so that
+        // list/pair values are stored verbatim rather than recursively
+        // converted):
         //
         //   (let ((obj (Object.fromEntries (Array))))
-        //     (set-obj! obj "key" <value>)
+        //     (set-object! obj "key" <value>)
         //     ...
         //     obj)
         function qq_expand_object(object, depth) {
@@ -10195,14 +10193,14 @@ var global_env = new Environment({
                 if (is_pair(value) && LSymbol.is(value.car, 'unquote-splicing')) {
                     throw new Error("You can't call `unquote-splicing` inside an object");
                 }
-                return make_list(op('set-obj!'), obj, LString(key),
+                return make_list(op('set-object!'), obj, LString(key),
                                  qq_expand(value, depth));
             });
             const bindings = make_list(
                 make_list(obj, make_list(symbol('Object.fromEntries'),
                                          make_list(symbol('Array'))))
             );
-            return Pair.fromArray([symbol('let'), bindings, ...setters, obj], false);
+            return Pair.from_array([symbol('let'), bindings, ...setters, obj], false);
         }
         return Macro.defmacro('quasiquote', function(source, state) {
             const arg = source.cdr;
@@ -10665,7 +10663,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'array->list': doc('array->list', function(array) {
         typecheck('array->list', array, 'array');
-        return Pair.fromArray(array, false);
+        return Pair.from_array(array, false);
     }, `(array->list array)
 
         Function that converts a JavaScript array to a LIPS cons list.`),
@@ -11664,45 +11662,6 @@ function evaluate_args(rest, { use_dynamic, ...options }) {
 }
 
 // -------------------------------------------------------------------------
-function invoke_macro(macro, code, eval_args) {
-    return resolve_promises(macro.invoke(code, eval_args));
-}
-
-// -------------------------------------------------------------------------
-function evaluate_syntax(macro, code, eval_args) {
-    var value = macro.invoke(code, eval_args);
-    if (value instanceof SyntaxExpansion) {
-        value = value.eval(eval_args);
-    }
-    return unpromise(resolve_promises(value), function(value) {
-        if (is_pair(value)) {
-            value.mark_cycles();
-        }
-        return quote(value);
-    });
-}
-// -------------------------------------------------------------------------
-// TODO: delete me
-// -------------------------------------------------------------------------
-function evaluate_macro(macro, code, state) {
-    function finalize(result) {
-        if (is_pair(result)) {
-            result.mark_cycles();
-        }
-        return quote(result);
-    }
-    return unpromise(invoke_macro(macro, code, eval_args), function ret(value) {
-        if (!value || value && value[__data__] || self_evaluated(value)) {
-            return value;
-        } else {
-            return unpromise(tco_eval(value, state), finalize);
-        }
-    }, error => {
-        throw error;
-    });
-}
-
-// -------------------------------------------------------------------------
 function prepare_fn_args(fn, args) {
     const js_function = is_bound(fn) && !is_lips_function(fn);
     if (js_function && !is_object_bound(fn) &&
@@ -11955,7 +11914,7 @@ class State {
                 console.log('              ' + to_string(this.cc.__object__));
             }
         }
-        // we use uniterate becuase ignore need to be generator but all other
+        // we use uniterate because ignore need to be generator but all other
         // callbacks are normal functions, so yield* will not work
         return uniterate(this.cc.__next__(this));
     }
@@ -12028,7 +11987,6 @@ function finish_try(state, handler, kind, payload) {
     }
 }
 
-// -------------------------------------------------------------------------
 function tco_eval(...args) {
     return uniterate(tco_generator(...args));
 }
@@ -12056,46 +12014,91 @@ function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand 
                 yield state.cont();
             }
         } catch(e) {
-            if (e instanceof State) {
-                return e.object;
-            }
-            // an active `try` in this loop? redirect to its catch/finally.
-            // state.handlers is per-loop, so a handler survives an `await`
-            // suspension and is never wiped by another eval loop.
-            if (!(e instanceof IgnoreException) && state.handlers.length) {
-                const handler = state.handlers.pop();
-                if (handler.catch_body) {
-                    const catch_env = handler.env.inherit('catch');
-                    catch_env.set(handler.catch_var, e);
-                    state.env = catch_env;
-                    state.dynamic_env = handler.dynamic_env;
-                    state.use_dynamic = handler.use_dynamic;
-                    // after the catch clause: run finally, continue with value
-                    const code = handler.source;
-                    state.cc = new Continuation('catch', null, code, state, function(st) {
-                        finish_try(st, handler, 'return', st.object);
-                    });
-                    state.object = new Pair(new LSymbol('begin'), handler.catch_body);
-                    state.ready = false;
-                } else {
-                    // finally-only: run finally then re-throw the exception
-                    finish_try(state, handler, 'raise', e);
-                }
+            const ret = tco_error_handler(e, state, code);
+            if (ret === __continue__) {
                 continue;
             }
-            // exception unwinds past this loop (an IgnoreException, or an error
-            // with no matching handler here) - let it propagate.
-            e.__code__ = state.cc.trace(cc => {
-                return to_string(cc.__code__, true);
-            });
-            // save the code if no continuation trace
-            if (!e.__code__.length) {
-                e.__code__ = [to_string(code, true)];
-            }
-            state.error && state.error(e);
-            throw e;
+            return ret;
         }
     }
+}
+
+const __continue__ = Symbol.for('__continue__');
+
+// -------------------------------------------------------------------------
+function tco_error_handler(e, state, code) {
+    if (e instanceof State) {
+        return e.object;
+    }
+    // an active `try` in this loop? redirect to its catch/finally.
+    // state.handlers is per-loop, so a handler survives an `await`
+    // suspension and is never wiped by another eval loop.
+    if (!(e instanceof IgnoreException) && state?.handlers?.length) {
+        const handler = state.handlers.pop();
+        if (handler.catch_body) {
+            const catch_env = handler.env.inherit('catch');
+            catch_env.set(handler.catch_var, e);
+            state.env = catch_env;
+            state.dynamic_env = handler.dynamic_env;
+            state.use_dynamic = handler.use_dynamic;
+            // after the catch clause: run finally, continue with value
+            const code = handler.source;
+            state.cc = new Continuation('catch', null, code, state, function(st) {
+                finish_try(st, handler, 'return', st.object);
+            });
+            state.object = new Pair(new LSymbol('begin'), handler.catch_body);
+            state.ready = false;
+        } else {
+            // finally-only: run finally then re-throw the exception
+            finish_try(state, handler, 'raise', e);
+        }
+        return __continue__;
+    }
+    // exception unwinds past this loop (an IgnoreException, or an error
+    // with no matching handler here) - let it propagate.
+    e.__code__ = state.cc.trace(cc => {
+        return to_string(cc.__code__, true);
+    });
+    // save the code if no continuation trace
+    if (!e.__code__.length && code) {
+        e.__code__ = [to_string(code, true)];
+    }
+    state.error && state.error(e);
+    throw e;
+}
+
+// -------------------------------------------------------------------------
+function* tco_resolve(state) {
+    // handlers registered by an enclosing eval don't belong to this loop - only
+    // dispatch to handlers pushed while running this generator.
+    while (true) {
+        try {
+            if (yield* state.eval()) {
+                state.ready = false;
+                yield state.cont();
+            }
+        } catch(e) {
+            const ret = tco_error_handler(e, state);
+            if (ret === __continue__) {
+                continue;
+            }
+            return ret;
+        }
+    }
+}
+
+// -------------------------------------------------------------------------
+// extract the final value from what a macro's _invoke_state returned: a
+// SyntaxExpansion is evaluated, a State (the macro set it up to run in the loop)
+// is driven to completion, anything else is already a value/code.
+function macro_result_value(result, state) {
+    if (result instanceof SyntaxExpansion) {
+        return result.eval(state);
+    }
+    if (result === state || result instanceof State) {
+        return resolve_promises(uniterate(tco_resolve(state)));
+    }
+    return result;
 }
 
 // -------------------------------------------------------------------------
@@ -12149,7 +12152,7 @@ function lambda_scope(self, fn, code, args, { use_dynamic, error, cc, dynamic_en
             if (!is_nil(name.car)) {
                 if (name instanceof LSymbol) {
                     // rest argument,  can also be first argument
-                    const value = Pair.fromArray(args.slice(i), false);
+                    const value = Pair.from_array(args.slice(i), false);
                     set(name, value);
                     break;
                 } else if (is_pair(name)) {
@@ -12322,7 +12325,7 @@ function* evaluate_code(state) {
                     state.ready = false;
                 }
             } else if (is_macro(first)) {
-                let result = first.invoke(code, state);
+                let result = first._invoke_state(code, state);
                 if (is_promise(result)) {
                     result = yield result;
                 }
@@ -12433,7 +12436,7 @@ function next_set(state) {
             const name = parts.join('.');
             const object = env.get(name, { throwError: false });
             if (object) {
-                env.get('set-obj!').call(env, object, key, value);
+                env.get('set-object!').call(env, object, key, value);
                 // set! return value is unspecified/void
                 delete state.object;
                 state.ready = true;
@@ -12601,14 +12604,12 @@ function evaluate(code, { env, dynamic_env, use_dynamic, error = noop } = {}) {
             value = first;
         }
         let result;
-        if (value instanceof Syntax) {
-            result = evaluate_syntax(value, code, eval_args);
-        } else if (value instanceof Macro) {
-            result = evaluate_macro(value, rest, eval_args);
+        if (value instanceof Syntax || value instanceof Macro ||
+            value instanceof SyntaxParameter) {
+            // macros get the full form; their fn does source.cdr internally
+            result = value.invoke(code, eval_args);
         } else if (is_function(value)) {
             result = apply(value, rest, eval_args);
-        } else if (value instanceof SyntaxParameter) {
-            result = evaluate_syntax(value._syntax, code, eval_args);
         } else if (is_parameter(value)) {
             const param = search_param(dynamic_env, value);
             if (is_null(code.cdr)) {
