@@ -286,14 +286,6 @@ const interpreter = Interpreter('repl', {
     command_line,
     meta: use_meta,
     // -------------------------------------------------------------------------
-    'stack-trace': doc(function() {
-        if (strace) {
-            console.log(strace);
-        }
-    }, `(stack-trace)
-
-        Function display stack trace of last error`),
-    // -------------------------------------------------------------------------
     exit: doc(function(code) {
         process.exit(code);
     }, `(exit)

@@ -1818,25 +1818,22 @@ class RuntimeError extends Error { }
 class PromiseRejection extends RuntimeError { }
 
 // -------------------------------------------------------------------------
-function augment_exception(e, code) {
+function augment_exception(e, object) {
     if (!is_object(e) || is_native(e)) {
         return e;
     }
-    if (code) {
-        // augment runtime errors
-        if (!is_augmented(e) && is_augmented(code)) {
-            read_only(e, '__col__', code.__col__);
-            read_only(e, '__offset__', code.__offset__);
-            read_only(e, '__line__', code.__line__);
-            if (code.__file__) {
-                read_only(e, '__file__', code.__file__);
-            }
+    // set the error location from the source form (only the innermost form to
+    // see the error wins). The LIPS stack trace (e.__stack__) is built
+    // separately from state.stack in tco_error_handler: with a single tco loop
+    // there is no per-level unwinding to push one frame at a time, and pushing
+    // here would duplicate the innermost frame that state.stack already holds.
+    if (object && !is_augmented(e) && is_augmented(object)) {
+        read_only(e, '__col__', object.__col__);
+        read_only(e, '__offset__', object.__offset__);
+        read_only(e, '__line__', object.__line__);
+        if (object.__file__) {
+            read_only(e, '__file__', object.__file__);
         }
-        // LIPS stack trace
-        if (!(e.__stack__ instanceof Array)) {
-            e.__stack__ = [];
-        }
-        e.__stack__.push(code.toString(true));
     }
     unify_error_message(e);
     return e;
@@ -8928,11 +8925,9 @@ var global_env = new Environment({
         calls \`(newline)\` after printing each input.`),
     // ------------------------------------------------------------------
     'stack-trace': doc(function(cc) {
-        const stack = [];
         typecheck('stack-trace', cc, 'continuation');
         return cc.trace((cc, i) => {
-            const code = to_string(cc.__code__);
-            return `[${i}]: ${code}`;
+            return `[${i}]: ${to_string(cc.__code__)}`;
         }).join('\n');
     }, `(stack-trace <continuation>)
 
@@ -11846,6 +11841,9 @@ class Continuation {
         return this._state.name === 'top' || this.__code__._ignore;
     }
     trace(callback) {
+        // the state records every (non-hidden) continuation seen during
+        // evaluation, outermost first - this is the call stack (the cc chain
+        // alone loses tail frames to TCO).
         const state = this._state.state;
         if (!state.stack) {
             return [];
@@ -11897,6 +11895,12 @@ class State {
         // state (not global) so they survive async suspension at an `await`
         // and can't be clobbered by other interleaving eval loops.
         this.handlers = [];
+        // ordered list of continuations seen during evaluation (outermost
+        // first). Records the call stack for stack-trace/error augmentation -
+        // needed because TCO drops tail frames from the continuation chain.
+        // `_stack_set` gives O(1) dedup (Array.includes per step is O(n^2)).
+        this.stack = [];
+        this._stack_set = new Set();
     }
     cont() {
         if (is_debug('continuations')) {
@@ -11917,6 +11921,13 @@ class State {
         }
         if (this.object === undefined) {
             this.ready = true;
+        }
+        // record the current continuation for the stack trace (TCO removes tail
+        // frames from the cc chain, so we accumulate them here as they're seen)
+        const cc = this.cc;
+        if (!this._stack_set.has(cc) && !cc.hidden()) {
+            this._stack_set.add(cc);
+            this.stack.push(cc);
         }
         if (!this.ready) {
             if (is_debug(['eval', 'macro'])) {
@@ -12047,17 +12058,36 @@ function tco_error_handler(e, state, code) {
         }
         return __continue__;
     }
-    // exception unwinds past this loop (an IgnoreException, or an error
-    // with no matching handler here) - let it propagate.
-    e.__code__ = state.cc.trace(cc => {
-        return to_string(cc.__code__, true);
-    });
-    // save the code if no continuation trace
-    if (!e.__code__.length && code) {
-        e.__code__ = [to_string(code, true)];
+    // exception unwinds past this loop - let it propagate. Use THIS loop's own
+    // stack (state.cc is now the outer `top`, whose _state.state is a different
+    // loop). Recorded outermost-first, reported innermost-first. We APPEND to
+    // e.__stack__ (deduped) rather than overwrite so that as the error unwinds
+    // through nested loops (e.g. `load`) each loop contributes its frames,
+    // innermost first.
+    const frames = state.stack.slice().reverse();
+    // the failing (innermost) expression drives the error's location metadata
+    const inner = frames.length ? frames[0].__code__ : code;
+    if (!(e.__stack__ instanceof Array)) {
+        e.__stack__ = [];
     }
+    const seen = new Set(e.__stack__);
+    for (const cc of frames) {
+        const str = to_string(cc.__code__, true);
+        if (!seen.has(str)) {
+            seen.add(str);
+            e.__stack__.push(str);
+        }
+    }
+    if (!e.__stack__.length && code) {
+        e.__stack__.push(to_string(code, true));
+    }
+    // location metadata from the innermost frame (only the first, innermost
+    // loop to see the error sets it)
+    augment_exception(e, inner);
     state.error && state.error(e);
-    throw e;
+    if (!(e instanceof IgnoreException)) {
+        throw e;
+    }
 }
 
 // -------------------------------------------------------------------------
@@ -12654,36 +12684,6 @@ const exec = exec_collect(function(code, value) {
 });
 
 // -------------------------------------------------------------------------
-// :: used as evaluate in try..catch to get stack trac
-// -------------------------------------------------------------------------
-
-function evaluate_with_stacktrace(code, { error, env, ...rest } = {}) {
-    try {
-        return exec_with_stacktrace(code, { env, ...rest });
-    } catch(e) {
-        error && error.call(env, e);
-    }
-}
-
-// -------------------------------------------------------------------------
-function exec_with_stacktrace(code, args = {}) {
-    return tco_eval(code, {
-        ...args,
-        error: (e) => {
-            if (e && e.message) {
-                if (e.message.match(/^Error:/)) {
-                    var re = /^(Error:)\s*([^:]+:\s*)/;
-                    // clean duplicated Error: added by JS
-                    e.message = e.message.replace(re, '$1 $2');
-                }
-            }
-            if (!(e instanceof IgnoreException)) {
-                throw e;
-            }
-        }
-    });
-}
-// -------------------------------------------------------------------------
 function exec_collect(collect_callback) {
     return async function exec_lambda(arg, options = {}) {
         let { env, dynamic_env, use_dynamic, ...parser_args } = options;
@@ -12697,11 +12697,11 @@ function exec_collect(collect_callback) {
         }
         const results = [];
         if (is_pair(arg)) {
-            return [await exec_with_stacktrace(arg, { env, dynamic_env, use_dynamic })];
+            return [await tco_eval(arg, { env, dynamic_env, use_dynamic })];
         }
         const input = Array.isArray(arg) ? arg : _parse(arg, parser_args);
         for await (let code of input) {
-            const value = await exec_with_stacktrace(code, { env, dynamic_env, use_dynamic });
+            const value = await tco_eval(code, { env, dynamic_env, use_dynamic });
             results.push(collect_callback(code, value));
         }
         return results;
