@@ -6166,6 +6166,11 @@ function let_macro(name) {
             if (is_nil(this.__object__)) {
                 state.cc = this.__continuation__;
                 state.env = env;
+                // dynamic scope: the bindings must be visible to functions
+                // called from the body, so keep the dynamic env in sync
+                if (state.use_dynamic) {
+                    state.dynamic_env = env;
+                }
                 state.object = hygienic_begin([state.env], code.cdr);
             } else {
                 if (name === 'let*') {
@@ -12056,7 +12061,7 @@ function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand 
     } else {
         env = env || user_env;
     }
-    const state = new State(code, cc || top_cc, { env, cc, dynamic_env, macro_expand });
+    const state = new State(code, cc || top_cc, { env, cc, dynamic_env, use_dynamic, macro_expand });
     // handlers registered by an enclosing eval don't belong to this loop - only
     // dispatch to handlers pushed while running this generator.
     while (true) {
@@ -12563,7 +12568,9 @@ function evaluate_lambda(fn, args, state, cc) {
     });
     const { env, dynamic_env } = scope;
     const body = hygienic_begin([env, dynamic_env], fn._body);
-    state.env = env;
+    // in dynamic-scope mode free variables resolve through the dynamic
+    // environment (the call stack), so the body evaluates with it as its scope
+    state.env = state.use_dynamic ? dynamic_env : env;
     state.dynamic_env = dynamic_env;
     state.object = body;
     state.ready = false;
@@ -13390,7 +13397,7 @@ const lips = {
     exec,
     parse,
     tokenize,
-    evaluate,
+    evaluate: tco_eval,
     compile,
     type,
 
