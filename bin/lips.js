@@ -303,7 +303,10 @@ const interpreter = Interpreter('repl', {
     }, env.get('pprint').__doc__),
     // -------------------------------------------------------------------------
     help: doc(new Macro('help', function(code, { error }) {
-        var new_code = new Pair(new LSymbol('__help'), code);
+        // a macro receives the whole form `(help <arg>)`, so forward the
+        // argument list (code.cdr) to __help - forwarding the whole form would
+        // make __help resolve `help` itself instead of <arg>.
+        var new_code = new Pair(new LSymbol('__help'), code.cdr);
         var doc = evaluate(new_code, { env: this, error });
         if (doc) {
             console.log(doc.toString());
