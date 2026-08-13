@@ -6,6 +6,7 @@
 * stack trace in exceptions is now `Error::__stack__`
 * remove `..` macro [#500](https://github.com/jcubic/lips/issues/500)
 * `macroexpand` is now a function (like in Common Lisp) instead of a macro
+* remove `parent.frame` and `parent.frames`
 ### Features
 * add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
@@ -14,6 +15,7 @@
 * meta info from Runtime errors in REPL can be enabled with `-m`/`--meta`
 * implement simple regex based syntax-extension
 * performance improvements
+* new interpreter with TCO and Continuations inspired by js-scheme [#127](https://github.com/jcubic/lips/issues/127)
 ### Bugfix
 * fix doc string for `make-rectangular`
 * `-inf.0`/`+inf.0` are now real lips numbers

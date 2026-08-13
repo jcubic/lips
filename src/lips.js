@@ -8199,9 +8199,6 @@ function Interpreter(name, {
     }
     read_only(this, '__env__', user_env.inherit(name, obj));
     read_only(this, '__parser__', new Parser({ env: this.__env__, filename, meta }));
-    this.__env__.set('parent.frame', doc('parent.frame', () => {
-        return this.__env__;
-    }, global_env.__env__['parent.frame'].__doc__));
     const defaults_name = '**interaction-environment-defaults**';
     this.set(defaults_name, get_props(obj).concat(defaults_name));
     var inter = internal_env.inherit(`internal-${name}`);
@@ -8364,18 +8361,6 @@ Environment.prototype.doc = function(name, value = null, dump = false) {
 // -------------------------------------------------------------------------
 Environment.prototype.new_frame = function(fn, args) {
     var frame = this.inherit('__frame__');
-    frame.set('parent.frame', doc('parent.frame', function(n = 1) {
-        n = n.valueOf();
-        var scope = frame.__parent__;
-        if (!is_env(scope)) {
-            return nil;
-        }
-        if (n <= 0) {
-            return scope;
-        }
-        var parent_frame = scope.get('parent.frame');
-        return parent_frame(n - 1);
-    }, global_env.__env__['parent.frame'].__doc__));
     args.callee = fn;
     frame.set('arguments', args);
     return frame;
@@ -9593,13 +9578,6 @@ var global_env = new Environment({
     }, `(current-environment)
 
         Function that returns the current environment (they're first-class objects!)`),
-    // ------------------------------------------------------------------
-    'parent.frame': doc('parent.frame', function() {
-        return user_env;
-    }, `(parent.frame)
-
-        Returns the parent environment if called from inside a function.
-        If no parent frame can be found it returns nil.`),
     // ------------------------------------------------------------------
     'eval': doc('eval', function(code, env) {
         env = env || this.get('interaction-environment').call(this);
@@ -11607,7 +11585,7 @@ function call_function(fn, args, { env, dynamic_env, use_dynamic } = {}) {
         read_only(fn, '_context', new LambdaContext({}), { hidden: true });
     }
     // refresh the context each call so functions that read `this.env`
-    // (env, current-environment, parent.frame, ...) see the CURRENT scope
+    // (env, current-environment, ...) see the CURRENT scope
     // and `arguments` reflect this call - not the first call's (perf #127).
     // Store the raw scope + args; the per-call env frames (new_frame) are built
     // LAZILY on first access to this.env / this.dynamic_env. Native builtins
@@ -11728,23 +11706,17 @@ class LambdaContext {
 }
 // -------------------------------------------------------------------------
 function search_param(env, param) {
-    let candidate = env.get(param.__name__, { throwError: false });
-    if (is_parameter(candidate) && candidate !== param) {
-        return candidate;
-    }
-    let is_first_env = true;
+    // Walk the dynamic environment chain looking for a shadowing parameter
+    // installed by `parameterize` (a binding of the same name whose value is a
+    // different parameter object). env.get resolves through the whole chain, so
+    // stepping via __parent__ finds the nearest shadow.
     const top_env = user_env.get('**interaction-environment**');
-    while (true) {
-        const parent = env.get('parent.frame', { throwError: false });
-        env = parent(0);
-        if (env === top_env) {
-            break;
-        }
-        is_first_env = false;
-        candidate = env.get(param.__name__, { throwError: false });
+    while (is_env(env) && env !== top_env) {
+        const candidate = env.get(param.__name__, { throwError: false });
         if (is_parameter(candidate) && candidate !== param) {
             return candidate;
         }
+        env = env.__parent__;
     }
     return param;
 }
@@ -12109,7 +12081,6 @@ function lambda_scope(self, fn, code, args, { use_dynamic, error, cc, dynamic_en
     if (this instanceof LambdaContext) {
         const options = { throwError: false };
         env.set('arguments', this.env.get('arguments', options));
-        env.set('parent.frame', this.env.get('parent.frame', options));
     } else {
         // this case is for lambda as callback function in JS; e.g. setTimeout
         var _args = args.slice();

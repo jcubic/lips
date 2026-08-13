@@ -336,21 +336,6 @@
                             (apply cons (vector->list arr)))))))
 
 ;; -----------------------------------------------------------------------------
-(define (parent.frames)
-  "(parent.frames)
-
-   Returns the list of environments from parent frames (lambda function calls)"
-  (let iter ((result '()) (frame (parent.frame 1)))
-    (if (eq? frame (interaction-environment))
-        (cons frame result)
-        (if (null? frame)
-            result
-            (let ((parent.frame (--> frame (get 'parent.frame (object :throwError false)))))
-              (if (function? parent.frame)
-                  (iter (cons frame result) (parent.frame 0))
-                  result))))))
-
-;; -----------------------------------------------------------------------------
 (define (pair-map fn seq-list)
   "(pair-map fn list)
 
