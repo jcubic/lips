@@ -12487,9 +12487,35 @@ function* evaluate_code(state) {
                 state.ready = false;
             }
         } else {
-            state.object = car;
-            state.cc = new Continuation('pair[b]', cdr, code, state, next_pair);
-            state.ready = false;
+            // car is a compound expression in operator position. If it is a
+            // syntax-rules macro use, expand it and re-dispatch the WHOLE form,
+            // so an operator that expands to a special form or another macro -
+            // e.g. ((undswap 3 if) ...) -> (if ...)
+            let expanded = false;
+            if (is_pair(car) && car.car instanceof LSymbol) {
+                const op = state.env.get(car.car, { throwError: false });
+                if (op instanceof Syntax) {
+                    let result = op._invoke_state(car, state);
+                    if (is_promise(result)) {
+                        result = yield result;
+                    }
+                    if (result instanceof SyntaxExpansion) {
+                        if (result.names.length) {
+                            state.cc = new Continuation('syntax', null, code, state,
+                                                        next_syntax, { names: result.names });
+                        }
+                        state.env = result.env;
+                        state.object = new Pair(result.expr, cdr);
+                        state.ready = false;
+                        expanded = true;
+                    }
+                }
+            }
+            if (!expanded) {
+                state.object = car;
+                state.cc = new Continuation('pair[b]', cdr, code, state, next_pair);
+                state.ready = false;
+            }
         }
     } else {
         state.ready = true;
