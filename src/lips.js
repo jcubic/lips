@@ -11710,10 +11710,19 @@ function call_function(fn, args, { env, dynamic_env, use_dynamic } = {}) {
     // refresh the context each call so functions that read `this.env`
     // (env, current-environment, parent.frame, ...) see the CURRENT scope
     // and `arguments` reflect this call - not the first call's (perf #127).
-    fn._context.env = env?.new_frame(fn, args);
-    fn._context.dynamic_env = dynamic_env?.new_frame(fn, args);
-    fn._context.use_dynamic = use_dynamic;
-    return resolve_promises(fn.apply(fn._context, args));
+    // Store the raw scope + args; the per-call env frames (new_frame) are built
+    // LAZILY on first access to this.env / this.dynamic_env. Native builtins
+    // (arithmetic, predicates, ...) never read them, so they allocate nothing -
+    // this was ~2 Environments per builtin call in hot arithmetic code.
+    const ctx = fn._context;
+    ctx._raw_env = env;
+    ctx._raw_dyn = dynamic_env;
+    ctx._fn = fn;
+    ctx._args = args;
+    ctx._env_computed = false;
+    ctx._dyn_computed = false;
+    ctx.use_dynamic = use_dynamic;
+    return resolve_promises(fn.apply(ctx, args));
 }
 
 // -------------------------------------------------------------------------
@@ -11778,11 +11787,35 @@ class Parameter {
 }
 // -------------------------------------------------------------------------
 class LambdaContext {
-    env;
-    dynamic_env;
     use_dynamic;
     constructor(payload) {
         Object.assign(this, payload);
+    }
+    // env / dynamic_env frames are created lazily (see call_function): a native
+    // builtin that never reads them pays no allocation.
+    get env() {
+        if (!this._env_computed) {
+            this._env_frame = this._raw_env
+                ? this._raw_env.new_frame(this._fn, this._args) : this._raw_env;
+            this._env_computed = true;
+        }
+        return this._env_frame;
+    }
+    set env(v) {
+        this._env_frame = v;
+        this._env_computed = true;
+    }
+    get dynamic_env() {
+        if (!this._dyn_computed) {
+            this._dyn_frame = this._raw_dyn
+                ? this._raw_dyn.new_frame(this._fn, this._args) : this._raw_dyn;
+            this._dyn_computed = true;
+        }
+        return this._dyn_frame;
+    }
+    set dynamic_env(v) {
+        this._dyn_frame = v;
+        this._dyn_computed = true;
     }
     get __name__() {
         return this.env.__name__;
