@@ -131,7 +131,15 @@ function log(x, ...args) {
 
 // ----------------------------------------------------------------------
 /* c8 ignore next */
+// fast global gate: is_debug() runs in hot paths (every eval step, macros) and
+// its user_env.get('DEBUG') is a full env-chain walk. Keep a module flag that
+// mirrors whether DEBUG is set to a truthy value (updated by Environment.set)
+// so the common (debug-off) case is a single boolean test.
+let _debug_enabled = false;
 function is_debug(n = null) {
+    if (!_debug_enabled) {
+        return false;
+    }
     let debug = user_env?.get('DEBUG', { throwError: false });
     if (n === null) {
         return debug === true;
@@ -8575,7 +8583,12 @@ Values.prototype.valueOf = function() {
 Environment.prototype.get = function(symbol, options = {}) {
     // we keep original environment as context for bind
     // so print will get user stdout
-    typecheck('Environment::get', symbol, ['symbol', 'string']);
+    // fast inline type check - this is a hot path and the generic typecheck()
+    // calls type(arg).toLowerCase() on every lookup
+    if (!(symbol instanceof LSymbol || symbol instanceof LString ||
+          typeof symbol === 'string')) {
+        typecheck('Environment::get', symbol, ['symbol', 'string']);
+    }
     const { throwError = true } = options;
     let name = symbol;
     if (name instanceof LSymbol || name instanceof LString) {
@@ -8640,6 +8653,10 @@ Environment.prototype.set = function(name, value, doc = null) {
         name = name.valueOf();
     }
     this.__env__[name] = value;
+    if (name === 'DEBUG') {
+        // keep the is_debug() fast-path gate in sync
+        _debug_enabled = !(value === false || value === undefined || is_nil(value));
+    }
     if (doc) {
         this.doc(name, doc, true);
     }
