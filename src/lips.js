@@ -129,18 +129,19 @@ function log(x, ...args) {
     }
 }
 
-// ----------------------------------------------------------------------
-/* c8 ignore next */
-// fast global gate: is_debug() runs in hot paths (every eval step, macros) and
-// its user_env.get('DEBUG') is a full env-chain walk. Keep a module flag that
-// mirrors whether DEBUG is set to a truthy value (updated by Environment.set)
-// so the common (debug-off) case is a single boolean test.
-let _debug_enabled = false;
+
 // opt-in gate for stack-frame collection (state.stack). Off by default: pushing
 // every continuation seen during evaluation costs time and, in a long tail loop,
 // unbounded memory. Enable with (trace) when you need stack-trace / full error
 // stacks.
 let _collect_stack = false;
+// ----------------------------------------------------------------------
+// fast global gate: is_debug() runs in hot paths (every eval step, macros) and
+// its user_env.get('DEBUG') is a full env-chain walk. Keep a module flag that
+// mirrors whether DEBUG is set to a truthy value (updated by Environment.set)
+// so the common (debug-off) case is a single boolean test.
+let _debug_enabled = false;
+/* c8 ignore next */
 function is_debug(n = null) {
     if (!_debug_enabled) {
         return false;
@@ -3784,6 +3785,7 @@ Pair.prototype.map = function(fn) {
         return nil;
     }
 };
+
 const repr = new Map();
 
 // ----------------------------------------------------------------------
@@ -3898,59 +3900,6 @@ function function_to_string(fn) {
     }
 }
 // ----------------------------------------------------------------------
-function object_to_string(obj) {
-    var constructor = obj.constructor;
-    if (!constructor) {
-        // This is case of fs.constants in Node.js that is null constructor object.
-        // This object can be handled like normal objects that have properties
-        constructor = Object;
-    }
-    var name;
-    if (typeof constructor.__class__ === 'string') {
-        name = constructor.__class__;
-    } else {
-        var fn = user_repr(obj);
-        if (fn) {
-            if (is_function(fn)) {
-                return fn(obj, quote);
-            } else {
-                throw new Error('toString: Invalid repr value');
-            }
-        }
-        name = constructor.name;
-    }
-    // user defined representation
-    if (is_function(obj.toString) && obj.hasOwnProperty('toString')) {
-        return obj.toString().valueOf();
-    }
-    if (type(obj) === 'instance') {
-        if (is_lambda(constructor) && constructor.__name__) {
-            name = constructor.__name__.valueOf();
-            if (typeof name === 'symbol') {
-                name = name.toString().replace(/^Symbol\((?:#:)?([^\)]+)\)$/, '$1');
-            }
-        } else if (!is_native_function(constructor)) {
-            name = 'instance';
-        }
-    }
-    if (is_iterator(obj, Symbol.iterator)) {
-        if (name) {
-            return `#<iterator(${name})>`;
-        }
-        return '#<iterator>';
-    }
-    if (is_iterator(obj, Symbol.asyncIterator)) {
-        if (name) {
-            return `#<asyncIterator(${name})>`;
-        }
-        return '#<asyncIterator>';
-    }
-    if (name !== '') {
-        return '#<' + name + '>';
-    }
-    return '#<Object>';
-}
-// ----------------------------------------------------------------------
 // Instances extracted to make cyclomatic complexity of toString smaller
 const instances = new Map();
 // ----------------------------------------------------------------------
@@ -4037,8 +3986,57 @@ function to_string(obj, quote, skip_cycles, ...pair_args) {
         }
         return function_to_string(obj);
     }
-    if (typeof obj === 'object' && !Array.isArray(obj)) {
-        return object_to_string(obj);
+    if (typeof obj === 'object') {
+        var constructor = obj.constructor;
+        if (!constructor) {
+            // This is case of fs.constants in Node.js that is null constructor object.
+            // This object can be handled like normal objects that have properties
+            constructor = Object;
+        }
+        var name;
+        if (typeof constructor.__class__ === 'string') {
+            name = constructor.__class__;
+        } else {
+            var fn = user_repr(obj);
+            if (fn) {
+                if (is_function(fn)) {
+                    return fn(obj, quote);
+                } else {
+                    throw new Error('toString: Invalid repr value');
+                }
+            }
+            name = constructor.name;
+        }
+        // user defined representation
+        if (is_function(obj.toString) && obj.hasOwnProperty('toString')) {
+            return obj.toString().valueOf();
+        }
+        if (type(obj) === 'instance') {
+            if (is_lambda(constructor) && constructor.__name__) {
+                name = constructor.__name__.valueOf();
+                if (typeof name === 'symbol') {
+                    name = name.toString().replace(/^Symbol\((?:#:)?([^\)]+)\)$/, '$1');
+                }
+            } else if (!is_native_function(constructor)) {
+                name = 'instance';
+            }
+        }
+        if (is_iterator(obj, Symbol.iterator)) {
+            if (name) {
+                return `#<iterator(${name})>`;
+            }
+            return '#<iterator>';
+        }
+        if (is_iterator(obj, Symbol.asyncIterator)) {
+            if (name) {
+                return `#<asyncIterator(${name})>`;
+            }
+            return '#<asyncIterator>';
+        }
+        if (name !== '') {
+            return '#<' + name + '>';
+        }
+        return '#<Object>';
     }
     if (typeof obj !== 'string') {
         return obj.toString();
@@ -8230,7 +8228,11 @@ Interpreter.prototype.exec = function(arg, options = {}) {
     typecheck('Interpreter::exec', arg, ['string', 'array'], 1);
     typecheck('Interpreter::exec', use_dynamic, 'boolean', 2);
     // simple solution to overwrite this variable in each interpreter
-    // before evaluation of user code
+    // before evaluation of user code. It's set on global_env (not this.__env__)
+    // so stdlib closures - which are lexically scoped to global_env, e.g.
+    // command-line reading **internal-env** - resolve to THIS interpreter's
+    // environment (and its per-interpreter internal env) during exec.
+    global_env.set('**interaction-environment**', this.__env__);
     if (!env) {
         env = this.__env__;
     }
