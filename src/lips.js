@@ -2451,6 +2451,7 @@ function read_only(object, property, value, { hidden = false } = {}) {
         configurable: true,
         enumerable: !hidden
     });
+    return value;
 }
 // ----------------------------------------------------------------------
 // :: Function similar to Array.from that work on async iterators
@@ -8427,7 +8428,10 @@ function Environment(obj, parent, name) {
             name = arguments[0];
         }
     }
-    this.__docs__ = new Map();
+    // __docs__ is created lazily (only when a doc string is actually set) —
+    // lambda frames created on every call never carry docs, so this keeps their
+    // retained size smaller during tight tail-recursive loops.
+    this.__docs__ = null;
     this.__env__ = obj;
     this.__parent__ = parent;
     this.__name__ = name || 'anonymous';
@@ -8479,12 +8483,15 @@ Environment.prototype.doc = function(name, value = null, dump = false) {
         if (!dump) {
             value = trim_lines(value);
         }
+        if (this.__docs__ === null) {
+            this.__docs__ = new Map();
+        }
         this.__docs__.set(name, value);
         return this;
     }
     const ref = this.ref(name);
     if (ref) {
-        if (ref.__docs__.has(name)) {
+        if (ref.__docs__ !== null && ref.__docs__.has(name)) {
             return ref.__docs__.get(name);
         }
         const value = ref.get(name);
@@ -12591,7 +12598,24 @@ function evaluate_lambda(fn, args, state, cc) {
         dynamic_env: state.dynamic_env
     });
     const { env, dynamic_env } = scope;
-    const body = hygienic_begin([env, dynamic_env], fn._body);
+    // hygienic implicit `begin` around the body. The wrapped body is identical
+    // on every call, so cache it on the lambda and bind the (stable) gensym once
+    // in the definition environment. `env` inherits from `define_env`, so the
+    // gensym resolves through the lexical chain — this avoids minting a gensym
+    // and allocating a Pair on every single call (hot in tail-recursive loops).
+    let body = fn._hygienic_body;
+    if (is_undef(body)) {
+        const g = gensym('begin');
+        fn._begin_gensym = g;
+        body = read_only(fn, '_hygienic_body', new Pair(g, fn._body), { hidden: true });
+        define_env.set(g, global_env.get('begin'));
+    }
+    // dynamic-scope mode evaluates the body with `dynamic_env` as its scope, and
+    // that environment does not chain to `define_env`, so the gensym has to be
+    // (re)bound there per call. This path is opt-in and rare.
+    if (state.use_dynamic) {
+        dynamic_env.set(fn._begin_gensym, global_env.get('begin'));
+    }
     // in dynamic-scope mode free variables resolve through the dynamic
     // environment (the call stack), so the body evaluates with it as its scope
     state.env = state.use_dynamic ? dynamic_env : env;
