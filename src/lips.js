@@ -4531,6 +4531,16 @@ function define_macro(name, args, body, source, __doc__, state) {
         const code = source.cdr;
         const env = macro_args_env(args, code, define_env);
         if (is_pair(body)) {
+            if (state.macro_expand) {
+                // expansion-only (macroexpand): evaluate the macro body in
+                // normal mode to obtain the expansion code, but do NOT evaluate
+                // the expansion itself - the caller re-expands it. May be a
+                // promise (macro bodies can produce code asynchronously).
+                return tco_eval(hygienic_begin([env], body), {
+                    env,
+                    error: state.error
+                });
+            }
             // using continuation to evaluate the result of the macro
             state.cc = new Continuation(`macro[${name}]`, null, source, state, next_defmaro);
             state.env = env;
@@ -4571,161 +4581,6 @@ function macro_args_env(params, code, scope) {
         params = params.cdr;
     }
     return env;
-}
-// ----------------------------------------------------------------------
-const recur_guard = -10000;
-function macro_expand(single) {
-    return async function(code, args) {
-        const env = args['env'] = this;
-        let bindings = [];
-        const let_names = ['let', 'let*', 'letrec', 'letrec*'];
-        const let_macros = let_names.map(name => {
-            return global_env.get(name);
-        });
-        var lambda = global_env.get('lambda');
-        var define = global_env.get('define');
-        function is_let_macro(name) {
-            return let_names.includes(name);
-        }
-        function builtin_let(name) {
-            if (!is_let_macro(name)) {
-                return false;
-            }
-            return let_macros.includes(env.get(name));
-        }
-        function is_procedure(value, node) {
-            return value === define && is_pair(node.cdr.car);
-        }
-        function is_lambda(value) {
-            return value === lambda;
-        }
-        function proc_bindings(node) {
-            var names = [];
-            while (true) {
-                if (!is_nil(node)) {
-                    if (node instanceof LSymbol) {
-                        names.push(node.valueOf());
-                        break;
-                    }
-                    names.push(node.car.valueOf());
-                    node = node.cdr;
-                } else {
-                    break;
-                }
-            }
-            return [...bindings, ...names];
-        }
-        function let_binding(node) {
-            return [...bindings, ...node.to_array(false).map(function(node) {
-                if (is_pair(node)) {
-                    return node.car.valueOf();
-                }
-                const t = type(node);
-                const msg = `macroexpand: Invalid let binding expectig pair got ${t}`;
-                throw new Error(msg);
-            })];
-        }
-        function is_macro(name, value) {
-            return value instanceof Macro &&
-                value.__defmacro__ &&
-                !bindings.includes(name);
-        }
-        async function expand_let_binding(node, n) {
-            if (is_nil(node)) {
-                return nil;
-            }
-            var pair = node.car;
-            return new Pair(
-                new Pair(
-                    pair.car,
-                    await traverse(pair.cdr, n, env)
-                ),
-                await expand_let_binding(node.cdr)
-            );
-        }
-        async function traverse(node, n, env) {
-            if (is_pair(node) && node.car instanceof LSymbol) {
-                if (node[__data__]) {
-                    return node;
-                }
-                var name = node.car.valueOf();
-                var value = env.get(node.car, { throwError: false });
-                var is_let = is_let_macro(name);
-
-                var is_binding = is_let ||
-                    is_procedure(value, node) ||
-                    is_lambda(value);
-
-                if (is_macro(name, value) && !builtin_let(name)) {
-                    var code = value instanceof Syntax ? node : node.cdr;
-                    var result = await value._invoke_state(code, { ...args, env }, true);
-                    if (value instanceof Syntax) {
-                        const { expr, scope } = result;
-                        if (is_pair(expr)) {
-                            if (n !== -1 && n <= 1 || n < recur_guard) {
-                                return expr;
-                            }
-                            if (n !== -1) {
-                                n = n - 1;
-                            }
-                            return traverse(expr, n, scope);
-                        }
-                        result = expr;
-                    }
-                    if (result instanceof LSymbol) {
-                        return quote(result);
-                    }
-                    if (is_pair(result)) {
-                        if (n !== -1 && n <= 1 || n < recur_guard) {
-                            return result;
-                        }
-                        if (n !== -1) {
-                            n = n - 1;
-                        }
-                        return traverse(result, n, env);
-                    }
-                    if (is_atom(result)) {
-                        return result;
-                    }
-                } else if (is_binding && is_pair(node.cdr.car)) {
-                    var second;
-                    if (is_let) {
-                        bindings = let_binding(node.cdr.car);
-                        second = await expand_let_binding(node.cdr.car, n);
-                    } else {
-                        bindings = proc_bindings(node.cdr.car);
-                        second = node.cdr.car;
-                    }
-                    return new Pair(
-                        node.car,
-                        new Pair(
-                            second,
-                            await traverse(node.cdr.cdr, n, env)
-                        )
-                    );
-                }
-            }
-            // TODO: CYCLE DETECT
-            var car = node.car;
-            if (is_pair(car)) {
-                car = await traverse(car, n, env);
-            }
-            var cdr = node.cdr;
-            if (is_pair(cdr)) {
-                cdr = await traverse(cdr, n, env);
-            }
-            var pair = new Pair(car, cdr);
-            return pair;
-        }
-        //var this.__code__ = code;
-        if (is_pair(code.cdr) && LNumber.isNumber(code.cdr.car)) {
-            return quote((await traverse(code, code.cdr.car.valueOf(), env)).car);
-        }
-        if (single) {
-            return quote((await traverse(code, 1, env)).car);
-        }
-        return quote((await traverse(code, -1, env)).car);
-    };
 }
 // ----------------------------------------------------------------------
 // :: Quasiquote helpers
@@ -9831,11 +9686,13 @@ var global_env = new Environment({
         the body is a string and there is more elements the string is used as the
         documentation string, that can be read using (help fn).`),
     // ------------------------------------------------------------------
-    macroexpand: doc(async function(code, level = true) {
-        level = level.valueOf();
-        let expansion;
-        return await tco_eval(code, {
-            macro_expand: level,
+    macroexpand: doc(async function(code) {
+        // macroexpand is a function (like Common Lisp), NOT a macro, so its
+        // argument is already evaluated - quote the code you want expanded:
+        // (macroexpand '(when test body)). The expansion is produced in the tco
+        // loop in macro_expand mode (see evaluate_code and macroexpand_code).
+        return tco_eval(code, {
+            macro_expand: true,
             env: this.env,
             error: (e) => {
                 throw e;
@@ -9843,14 +9700,26 @@ var global_env = new Environment({
         });
     }, `(macroexpand expr)
 
-        Macro that expand all macros inside and return single expression as output.`),
+        Function that expands all macros in the quoted expression and returns
+        the expanded code. Being a function, its argument is evaluated, so pass
+        quoted code: (macroexpand '(when x y)).`),
     // ------------------------------------------------------------------
-    'macroexpand-1': doc(
-        new Macro('macroexpand-1', macro_expand(true)),
-        `(macroexpand-1 expr)
+    'macroexpand-1': doc(async function(code) {
+        // like macroexpand but expands only the outermost macro use one step
+        // (does not recurse into the result or subforms). Also a function, so
+        // pass quoted code: (macroexpand-1 '(when x y)).
+        if (is_pair(code) && code.car instanceof LSymbol) {
+            const value = this.env.get(code.car, { throwError: false });
+            if (value && is_macro(value) && !is_internal_macro(value)) {
+                return macroexpand_once(value, code, this.env);
+            }
+        }
+        return code;
+    }, `(macroexpand-1 expr)
 
-         Macro similar to macroexpand but it expand macros only one level
-         and return single expression as output.`),
+         Function similar to macroexpand but it expands the outermost macro only
+         one level and returns the resulting code. Being a function, its argument
+         is evaluated, so pass quoted code: (macroexpand-1 '(when x y)).`),
     // ------------------------------------------------------------------
     'define-macro': doc(new Macro(macro, function(source, state) {
         const macro = source.cdr;
@@ -12303,51 +12172,206 @@ function is_internal_macro(macro) {
     return iternal_macros.includes(macro);
 }
 // -------------------------------------------------------------------------
+// :: macro expansion (macroexpand). Walks code like the evaluator but never
+// :: calls functions and never evaluates macro output - the fully expanded
+// :: code is returned as data. Binding forms (lambda/let/letrec/define) shadow
+// :: their bound names in the relevant scope, so a macro name that is rebound
+// :: by the user is left untouched. Macros may return a promise of the code so
+// :: this walk is async throughout.
+// -------------------------------------------------------------------------
+function macroexpand_special_forms() {
+    // resolved lazily - let*/letrec/quasiquote come from the stdlib which is
+    // loaded after this module. throwError:false so a missing form is undefined.
+    const get = name => global_env.get(name, { throwError: false });
+    return {
+        lambda: get('lambda'),
+        let: get('let'),
+        let_star: get('let*'),
+        letrec: get('letrec'),
+        letrec_star: get('letrec*'),
+        quasiquote: get('quasiquote')
+    };
+}
+// -------------------------------------------------------------------------
+function macroexpand_names(params) {
+    // collect the bound symbols from a lambda parameter list, a dotted list, or
+    // a single rest symbol
+    const names = [];
+    let node = params;
+    while (is_pair(node)) {
+        if (node.car instanceof LSymbol) {
+            names.push(node.car);
+        }
+        node = node.cdr;
+    }
+    if (node instanceof LSymbol) {
+        names.push(node);
+    }
+    return names;
+}
+// -------------------------------------------------------------------------
+function macroexpand_binding_names(bindings) {
+    // names from ((name value) ...) let bindings
+    const names = [];
+    let node = bindings;
+    while (is_pair(node)) {
+        const binding = node.car;
+        if (is_pair(binding) && binding.car instanceof LSymbol) {
+            names.push(binding.car);
+        } else if (binding instanceof LSymbol) {
+            names.push(binding);
+        }
+        node = node.cdr;
+    }
+    return names;
+}
+// -------------------------------------------------------------------------
+function macroexpand_shadow(env, names) {
+    if (!names.length) {
+        return env;
+    }
+    const scope = env.inherit('macroexpand');
+    names.forEach(name => scope.set(name, true));
+    return scope;
+}
+// -------------------------------------------------------------------------
+async function macroexpand_list(code, env) {
+    // expand every element of a (possibly improper) list, preserving structure
+    const items = [];
+    let node = code;
+    while (is_pair(node)) {
+        items.push(await macroexpand_code(node.car, env));
+        node = node.cdr;
+    }
+    let result = node; // improper tail or nil, left untouched
+    for (let i = items.length - 1; i >= 0; i--) {
+        result = new Pair(items[i], result);
+    }
+    return result;
+}
+// -------------------------------------------------------------------------
+async function macroexpand_bindings(bindings, env) {
+    // ((name value) ...) - keep names, expand values
+    const items = [];
+    let node = bindings;
+    while (is_pair(node)) {
+        const binding = node.car;
+        if (is_pair(binding) && is_pair(binding.cdr)) {
+            const value = await macroexpand_code(binding.cdr.car, env);
+            items.push(new Pair(binding.car, new Pair(value, binding.cdr.cdr)));
+        } else {
+            items.push(binding);
+        }
+        node = node.cdr;
+    }
+    let result = node;
+    for (let i = items.length - 1; i >= 0; i--) {
+        result = new Pair(items[i], result);
+    }
+    return result;
+}
+// -------------------------------------------------------------------------
+async function macroexpand_once(macro, code, env) {
+    // one-step expansion of a macro use into its output code (never evaluated)
+    const state = { env, error: e => { throw e; }, macro_expand: true };
+    let result = macro._invoke_state(code, state, true);
+    if (is_promise(result)) {
+        result = await result;
+    }
+    if (result instanceof SyntaxExpansion) {
+        return result.expr;
+    }
+    // syntax-rules in macro_expand mode returns a plain { expr, scope } bag
+    if (result && typeof result === 'object' && !is_pair(result) && 'expr' in result) {
+        return result.expr;
+    }
+    return result;
+}
+// -------------------------------------------------------------------------
+async function macroexpand_code(code, env) {
+    // atoms (symbols, numbers, strings, ...) are returned unchanged - crucially
+    // symbols are NOT looked up, they stay as symbols in the expanded code
+    if (!is_pair(code)) {
+        return code;
+    }
+    const { car } = code;
+    if (car instanceof LSymbol) {
+        const value = env.get(car, { throwError: false });
+        if (value) {
+            const sf = macroexpand_special_forms();
+            // quote/quasiquote: keep the form, do not expand inside
+            if (value === __quote__ || value === sf.quasiquote) {
+                return code;
+            }
+            // (lambda params . body): keep params, expand body with params bound
+            if (value === sf.lambda) {
+                const params = code.cdr.car;
+                const scope = macroexpand_shadow(env, macroexpand_names(params));
+                const body = await macroexpand_list(code.cdr.cdr, scope);
+                return new Pair(car, new Pair(params, body));
+            }
+            // (let/let* bindings . body): expand values in the outer scope,
+            // expand body with the bound names shadowing macros
+            if (value === sf.let || value === sf.let_star) {
+                let rest = code.cdr;
+                let name = null;
+                if (rest.car instanceof LSymbol) { // named let
+                    name = rest.car;
+                    rest = rest.cdr;
+                }
+                const bindings = rest.car;
+                const names = macroexpand_binding_names(bindings);
+                const new_bindings = await macroexpand_bindings(bindings, env);
+                const body_names = name ? [name, ...names] : names;
+                const body = await macroexpand_list(rest.cdr, macroexpand_shadow(env, body_names));
+                let tail = new Pair(new_bindings, body);
+                if (name) {
+                    tail = new Pair(name, tail);
+                }
+                return new Pair(car, tail);
+            }
+            // (letrec bindings . body): bound names are visible in values too
+            if (value === sf.letrec || value === sf.letrec_star) {
+                const bindings = code.cdr.car;
+                const scope = macroexpand_shadow(env, macroexpand_binding_names(bindings));
+                const new_bindings = await macroexpand_bindings(bindings, scope);
+                const body = await macroexpand_list(code.cdr.cdr, scope);
+                return new Pair(car, new Pair(new_bindings, body));
+            }
+            // (define name value) or (define (name . args) . body)
+            if (value === __define__) {
+                const target = code.cdr.car;
+                if (is_pair(target)) {
+                    const names = [target.car, ...macroexpand_names(target.cdr)];
+                    const body = await macroexpand_list(code.cdr.cdr, macroexpand_shadow(env, names));
+                    return new Pair(car, new Pair(target, body));
+                }
+                const scope = macroexpand_shadow(env, [target]);
+                const rest = await macroexpand_list(code.cdr.cdr, scope);
+                return new Pair(car, new Pair(target, rest));
+            }
+            // a real macro (syntax-rules or define-macro) that isn't shadowed:
+            // expand one step then re-expand the result (fixpoint)
+            if (is_macro(value) && !is_internal_macro(value)) {
+                const expansion = await macroexpand_once(value, code, env);
+                return macroexpand_code(expansion, env);
+            }
+        }
+    }
+    // application / if / begin / set! / compound operator: expand each element
+    return macroexpand_list(code, env);
+}
+// -------------------------------------------------------------------------
 function* evaluate_code(state) {
     const code = state.object;
-    /*
     if (state.macro_expand) {
-        if (is_pair(code)) {
-            const { car, cdr } = code;
-            if (car instanceof LSymbol) {
-                const first = state.env.get(car, { throwError: false });
-                if (is_macro(first) && !is_internal_macro(first)) {
-                    if (first === __quote__) {
-                        state.object = cdr.car;
-                        state.ready = true;
-                        return;
-                    }
-                    const result = yield first.invoke(code, state);
-                    if (!(result instanceof State)) {
-                        state.object = result;
-                        state.ready = true;
-                    }
-                    return;
-                }
-            }
-            state.object = car;
-            state.cc = new Continuation('expand(pair)', cdr, code, state, function(state) {
-                this._state.args[this._state.i++] = state.object;
-                if (is_nil(this.__object__)) {
-                    state.object = global_env.get('array->list')(this._state.args);
-                    state.ready = true;
-                    state.env = this.__env__;
-                    state.cc = this.__continuation__;
-                } else {
-                    state.object = this.__object__.car;
-                    state.env = this.__env__;
-                    state.cc = this;
-                    read_only(this, '__object__', this.__object__.cdr);
-                    state.ready = false;
-                }
-            });
-            state.ready = false;
-        } else {
-            state.ready = true;
-        }
+        // expansion mode: walk the code and expand macros without evaluating.
+        // macroexpand_code is async (macros may return promises of code), so we
+        // yield the promise - the tco driver resolves it before continuing.
+        state.object = yield macroexpand_code(code, state.env);
+        state.ready = true;
         return;
     }
-    */
     if (code instanceof State) {
         throw new Error('Internal: expecting LIPS expression got State');
     } else if (code instanceof LNumber) {
