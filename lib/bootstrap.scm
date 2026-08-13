@@ -735,7 +735,7 @@
   (let ((args (--> (%internal) (get 'command-line))))
     (if (or (null? args) (== (length args) 0))
         '("")
-        (lips.Pair.fromArray args))))
+        (lips.Pair.from_array args))))
 
 ;; -----------------------------------------------------------------------------
 (define (flush-output . rest)
