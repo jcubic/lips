@@ -1520,8 +1520,6 @@ class Lexer {
     }
 }
 // ----------------------------------------------------------------------
-// TODO: cache the rules creation or whole list
-// ----------------------------------------------------------------------
 // State rule for literal symbol
 // ----------------------------------------------------------------------
 Lexer.literal_rule = function literal_rule(string, symbol, p_re = null, n_re = null) {
