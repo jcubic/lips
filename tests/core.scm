@@ -8,7 +8,7 @@
 (test "core: trace"
       (lambda (t)
         (t.is core/stack
-              "[0]: (define stack (let ((x 10)) (let ((y 20)) (stack-trace (call/cc (lambda (cc) cc))))))
+              "[0]: (define core/stack (let ((x 10)) (let ((y 20)) (stack-trace (call/cc (lambda (cc) cc))))))
                [1]: (let ((x 10)) (let ((y 20)) (stack-trace (call/cc (lambda (cc) cc)))))
                [2]: (let ((y 20)) (stack-trace (call/cc (lambda (cc) cc))))
                [3]: (stack-trace (call/cc (lambda (cc) cc)))
