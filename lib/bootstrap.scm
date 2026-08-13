@@ -133,9 +133,10 @@
   (let loop ((lists lists) (k (lambda (x) x)))
     (if (%empty-lists lists)
         (k '())
-        (loop (%map1 cdr lists)
-              (lambda (rest)
-                (k (cons (apply function (%map1 car lists)) rest)))))))
+        (let ((value (apply function (%map1 car lists))))
+          (loop (%map1 cdr lists)
+                (lambda (rest)
+                  (k (cons value rest))))))))
 
 ;; -----------------------------------------------------------------------------
 (define (for-each function . lists)
