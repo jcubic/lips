@@ -2107,19 +2107,12 @@ class Parser {
             if (is_literal(special)) {
                 code = Pair(code, nil);
             }
-            if (special.value instanceof Syntax) {
-                code = Pair(
-                    LSymbol('Extension'),
-                    code
-                );
-            } else if (!is_literal(special)) {
-                // a define-macro's function strips the head with source.cdr, so
-                // give it one (mirrors a normal `(name . args)` macro call)
-                code = Pair(
-                    LSymbol('Extension'),
-                    code
-                );
-            }
+            // macros needs full source code with function call
+            // we recreate the call with fake symbol
+            code = Pair(
+                LSymbol('Extension'),
+                code
+            );
             const eval_args = {
                 env: this.__env__,
                 error: (e) => {
