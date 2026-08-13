@@ -12542,7 +12542,7 @@ function next_pair(state) {
             state.ready = !is_promise(state.object);
         } else {
             const op = this.__code__ ? this.__code__.car : fn;
-            throw new Error(`${type(op)} ${op && op.toString()} is not a function`);
+            throw new Error(`${type(fn)} ${op && op.toString()} is not a function`);
         }
     } else {
         state.object = this.__object__.car;
