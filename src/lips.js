@@ -4079,7 +4079,52 @@ function is_cycle(pair) {
 }
 
 // ----------------------------------------------------------------------------
+// Fast O(n) acyclicity check used to short-circuit mark_cycles. mark_cycles is
+// called on essentially every pair value that flows through the interpreter
+// (Environment.get, macro output, printing, ...) and its label-assigning DFS
+// copies the ancestor path on every step (parents.slice()) - O(n^2) - and
+// allocates a Thunk per node. The overwhelming majority of structures are
+// acyclic, so we first run a cheap 3-colour DFS (gray = on the current path,
+// black = fully processed); if it finds no back-edge we are done and skip the
+// expensive labelling pass entirely. The cdr spine (the deep direction for
+// lists) is walked iteratively so long lists don't overflow the stack - cars
+// are recursed exactly like the original algorithm. It also clears any stale
+// __ref__/__cycles__ marks so a structure whose cycle was later broken by
+// mutation prints correctly.
+function has_cycle(root) {
+    const gray = new Set();
+    const black = new Set();
+    function visit(node) {
+        const spine = [];
+        let cycle = false;
+        while (is_pair(node)) {
+            if (gray.has(node)) { cycle = true; break; }
+            if (black.has(node)) { break; }
+            gray.add(node);
+            spine.push(node);
+            if (node[__ref__] !== undefined) { delete node[__ref__]; }
+            if (node[__cycles__] !== undefined) { delete node[__cycles__]; }
+            if (is_pair(node.car) && visit(node.car)) { cycle = true; break; }
+            node = node.cdr;
+        }
+        // the spine is fully explored (or we bailed on a cycle): retire its
+        // pairs from the current path so sibling branches see them as shared
+        // (black), not as ancestors (gray)
+        for (let i = 0; i < spine.length; i++) {
+            gray.delete(spine[i]);
+            black.add(spine[i]);
+        }
+        return cycle;
+    }
+    return visit(root);
+}
+// ----------------------------------------------------------------------------
 function mark_cycles(pair) {
+    // acyclic fast path: nothing to label (has_cycle already cleared any stale
+    // marks). Only real cycles need the O(n^2) labelling DFS below.
+    if (!has_cycle(pair)) {
+        return;
+    }
     var seen_pairs = [];
     var cycles = [];
     var refs = [];
