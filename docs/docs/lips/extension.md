@@ -209,7 +209,7 @@ This will define constant `#nil`. It's different from `nil` variable:
 ;; ==> #t
 ```
 
-You can define a [macro](#macro) that will define a constant:
+You can define a [macro](#macros) that will define a constant:
 
 ```scheme
 (define-macro (define-constant name value)
