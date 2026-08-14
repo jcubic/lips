@@ -1462,6 +1462,61 @@
     (array->list result)))
 
 ;; -----------------------------------------------------------------------------
+;; function inspired by make-coroutine-generator from SRFI-121 AND SRFI-158
+;; -----------------------------------------------------------------------------
+(define (generator proc)
+  "(generator function)
+
+   Higher order function that accepts a function with a single argument (usually yield).
+   Function returns JavaScript async generator that produce values for each call
+   to yield."
+  (define void (if #f #f))
+  (define return #f)
+  (define resume #f)
+  (define (yield v)
+    (call/cc (lambda (r)
+               (set! resume r)
+               (return v))))
+  (define (next)
+    (let ((value (call/cc
+                  (lambda (cc)
+                    (set! return cc)
+                    (if resume
+                        (resume void)
+                        (begin
+                          (proc yield)
+                          (set! resume
+                                (lambda (v)
+                                  (return (eof-object))))
+                          (return (eof-object))))))))
+      `&(:value ,value :done ,(eof-object? value))))
+
+  (let* ((iterator `((next . ,next)
+                     (,Symbol.asyncIterator . ,(lambda () this)))))
+    (alist->object iterator)))
+
+;; -----------------------------------------------------------------------------
+;; source https://github.com/scheme-requests-for-implementation/srfi-158
+;; -----------------------------------------------------------------------------
+(define (make-coroutine-generator proc)
+  (define void (if #f #f))
+  (define return #f)
+  (define resume #f)
+  (define yield (lambda (v)
+                  (call/cc (lambda (r)
+                             (set! resume r)
+                             (return v)))))
+  (lambda ()
+    (call/cc (lambda (cc)
+               (set! return cc)
+               (if resume
+                   (resume void)  ; void? or yield again?
+                   (begin
+                     (proc yield)
+                     (set! resume (lambda (v) (return (eof-object))))
+                     (return (eof-object))))))))
+
+;; -----------------------------------------------------------------------------
 (define-macro (do-iterator spec cond . body)
   "(do-iterator (var expr) (test result) body ...)
 
@@ -1488,20 +1543,20 @@
             (,iterator)
             (,next (lambda ()
                      ((. ,iterator "next")))))
-          (if (or (procedure? ,sync) (procedure? ,async))
-              (begin
-                 (set! ,iterator (if (procedure? ,sync) (,sync) (,async)))
-                 (let* ((,item (,next))
-                        (,stop #f)
-                        (,name (. ,item "value")))
-                   (while (not (or (eq? (. ,item "done") #t) ,stop))
-                     (if ,test
-                         (set! ,stop #t)
-                         (begin
-                           ,@body))
-                      (set! ,item (,next))
-                      (set! ,name (. ,item "value"))))
-                   ,result)))))
+       (if (or (procedure? ,sync) (procedure? ,async))
+           (begin
+             (set! ,iterator (if (procedure? ,sync) (,sync) (,async)))
+             (let* ((,item (,next))
+                    (,stop #f)
+                    (,name (. ,item "value")))
+               (while (not (or (eq? (. ,item "done") #t) ,stop))
+                 (if ,test
+                     (set! ,stop #t)
+                     (begin
+                       ,@body))
+                 (set! ,item (,next))
+                 (set! ,name (. ,item "value"))))
+             ,result)))))
 
 ;; -----------------------------------------------------------------------------
 (define (iterator->array object)
@@ -1517,8 +1572,12 @@
      (set! i (+ i 1)))))
 
 ;; -----------------------------------------------------------------------------
+;; map is recognized as #<iterator(Map)> we are adding repr for all classes
+;; -----------------------------------------------------------------------------
 (set-repr! Set (lambda () "#<Set>"))
 (set-repr! Map (lambda () "#<Map>"))
+(set-repr! WeakMap (lambda () "#<WeakMap>"))
+(set-repr! WeakSet (lambda () "#<WeakSet>"))
 
 ;; -----------------------------------------------------------------------------
 (define (native-symbol? x)

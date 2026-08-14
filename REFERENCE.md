@@ -79,6 +79,13 @@ is passed it will calculate (/ 1 n).
 Function that calculates the bitwise and operation.
 ```
 
+## ^
+```
+(^ a b)
+
+Function that calculates the bitwise xor (exclusive or) operation.
+```
+
 ## +
 ```
 (+ . numbers)
@@ -208,7 +215,7 @@ the given constant when called.
 
 ## and
 ```
-(and . expressions)
+(and expr1 expr2 ...)
 
 Macro that evaluates each expression in sequence and if any value returns false
 it will stop and return false. If each value returns true it will return the
@@ -648,10 +655,12 @@ Function that calculates (car (cdr arg))
 ## call-with-current-continuation
 ```
 (call/cc proc)
+(call-with-current-continuation proc)
 
-Call-with-current-continuation.
-
-NOT SUPPORTED BY LIPS RIGHT NOW
+Function capture current continuation and call a procedure with
+that continuation passed as the only argument. The continuation act
+like a procedure that can be called to jump back into the place where
+continuation was captured.
 ```
 
 ## call-with-input-file
@@ -692,10 +701,12 @@ the values are unpacked and the consumer is called with multiple arguments.
 ## call/cc
 ```
 (call/cc proc)
+(call-with-current-continuation proc)
 
-Call-with-current-continuation.
-
-NOT SUPPORTED BY LIPS RIGHT NOW
+Function capture current continuation and call a procedure with
+that continuation passed as the only argument. The continuation act
+like a procedure that can be called to jump back into the place where
+continuation was captured.
 ```
 
 ## car
@@ -1834,16 +1845,6 @@ for: (fold fn 'foo '(a b c) '(x y z))
 
 ## fold-left
 ```
-(fold fn init . lists)
-
-Function fold is left-to-right reversal of reduce. It call `fn`
-on each pair of elements of the list and returns a single value.
-e.g. it computes (fn 'a 'x (fn 'b 'y (fn 'c 'z 'foo)))
-for: (fold fn 'foo '(a b c) '(x y z))
-```
-
-## fold-right
-```
 (reduce fn init list . lists)
 
 Higher-order function that takes each element of the list and calls
@@ -1854,9 +1855,19 @@ e.g. it computes (fn 'c 'z (fn 'b 'y (fn 'a 'x 'foo)))
 for: (reduce fn 'foo '(a b c) '(x y z))
 ```
 
+## fold-right
+```
+(fold fn init . lists)
+
+Function fold is left-to-right reversal of reduce. It call `fn`
+on each pair of elements of the list and returns a single value.
+e.g. it computes (fn 'a 'x (fn 'b 'y (fn 'c 'z 'foo)))
+for: (fold fn 'foo '(a b c) '(x y z))
+```
+
 ## for-each
 ```
-(for-each fn . lists)
+(for-each fn list1 list2 ...)
 
 Higher-order function that calls function `fn` on each
 value of the argument. If you provide more than one list
@@ -1913,6 +1924,15 @@ Predicate that tests if value is a callable function.
 (gcd n1 n2 ...)
 
 Function that returns the greatest common divisor of the arguments.
+```
+
+## generator
+```
+(generator function)
+
+Higher order function that accepts a function with a single argument (usually yield).
+Function returns JavaScript async generator that produce values for each call
+to yield.
 ```
 
 ## gensym
@@ -2039,7 +2059,11 @@ false-expression.
 Macro that will evaluate the expression and swallow any promises that may
 be created. It will discard any value that may be returned by the last body
 expression. The code should have side effects and/or when it's promise
-it should resolve to undefined.
+it should resolve to undefined. Macro ignore don't capture any continuations,
+so it work like top level expression.
+
+You can use call/cc inside ignore, but capturing continuations and
+using it outside of ignore can give unspecified results.
 ```
 
 ## imag-part
@@ -2420,15 +2444,18 @@ Predicate that tests if value is a macro.
 ```
 (macroexpand expr)
 
-Macro that expand all macros inside and return single expression as output.
+Function that expands all macros in the quoted expression and returns
+the expanded code. Being a function, its argument is evaluated, so pass
+quoted code: (macroexpand '(when x y)).
 ```
 
 ## macroexpand-1
 ```
 (macroexpand-1 expr)
 
-Macro similar to macroexpand but it expand macros only one level
-and return single expression as output.
+Function similar to macroexpand but it expands the outermost macro only
+one level and returns the resulting code. Being a function, its argument
+is evaluated, so pass quoted code: (macroexpand-1 '(when x y)).
 ```
 
 ## magnitude
@@ -2568,7 +2595,7 @@ all elements of the vector to that value.
 
 ## map
 ```
-(map fn . lists)
+(map fn list1 list2 ...)
 
 Higher-order function that calls function `fn` with each
 value of the list. If you provide more then one list as argument
@@ -2584,6 +2611,13 @@ returned by map.
 
 Function that returns a match object from JavaScript as a list or #f if
 no match.
+```
+
+## matcher
+```
+(matcher object)
+
+Higher order function return function that compares argument to object
 ```
 
 ## max
@@ -2845,7 +2879,7 @@ and after finish get the whole string using `get-output-string`.
 
 ## or
 ```
-(or . expressions)
+(or expr1 expr2 ...)
 
 Macro that executes the values one by one and returns the first that is
 a truthy value. If there are no expressions that evaluate to true it
@@ -2887,21 +2921,6 @@ Predicate that tests if value is a pair or list structure.
 (parameterize ((name value) ...)
 
 Macro that change the dynamic variable created by make-parameter.
-```
-
-## parent.frame
-```
-(parent.frame)
-
-Returns the parent environment if called from inside a function.
-If no parent frame can be found it returns nil.
-```
-
-## parent.frames
-```
-(parent.frames)
-
-Returns the list of environments from parent frames (lambda function calls)
 ```
 
 ## peek-char
@@ -2991,9 +3010,9 @@ calls `(newline)` after printing each input.
 
 ## procedure?
 ```
-(procedure? expression)
+(procedure? obj)
 
-Predicate that tests if value is a callable function or continuation.
+Checks if object is callable function or continuation.
 ```
 
 ## promise
@@ -3044,10 +3063,11 @@ Sorts the list using the quick sort algorithm according to predicate.
 ```
 (quasiquote list)
 
-Similar macro to `quote` but inside it you can use special expressions (unquote
-x) abbreviated to ,x that will evaluate x and insert its value verbatim or
-(unquote-splicing x) abbreviated to ,@x that will evaluate x and splice the value
-into the result. Best used with macros but it can be used outside.
+Similar macro to `quote` but inside it you can use special expressions
+(unquote x) abbreviated to ,x that will evaluate x and insert its value
+verbatim or (unquote-splicing x) abbreviated to ,@x that will evaluate x
+and splice the value into the result. Best used with macros but it
+can be used outside.
 ```
 
 ## quote
@@ -3635,6 +3655,14 @@ Function that returns the square root of the number.
 Returns the square of z. This is equivalent to (* z z).
 ```
 
+## stack-trace
+```
+(stack-trace <continuation>)
+
+Function return stack trace if given continuation as a string.
+You first need to enable collecting stack frames using (trace).
+```
+
 ## string
 ```
 (string chr1 chr2 ...)
@@ -3964,6 +3992,16 @@ Throws a new exception.
 
 Evaluates body after delay, it returns the timer ID from setTimeout.
 To clear the timer you can use native JS clearTimeout function.
+```
+
+## trace
+```
+(trace)
+(trace enabled)
+
+Enable (or disable with (trace #f)) collection of stack frames so that
+stack-trace and full error stack traces work. Collecting has a runtime
+and memory cost, so it is disabled by default.
 ```
 
 ## tree->array
