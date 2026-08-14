@@ -106,13 +106,13 @@ publish:
 	$(CD) npm && $(NPM) publish --access=public
 	$(RM) -rf npm
 
-test: dist/lips.js dist/std.xcb
+test: src/lips.js dist/std.xcb
 	@$(NPM) run test
 
-test-file: dist/lips.js dist/std.xcb
+test-file: src/lips.js dist/std.xcb
 	@$(NPM) run test-file -- -- -f $(FILE)
 
-test-update: dist/lips.js dist/std.scm
+test-update: src/lips.js dist/std.scm
 	@$(NPM) run test-update
 
 fold:
