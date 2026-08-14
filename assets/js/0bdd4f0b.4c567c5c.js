@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunknew_docs||=[]).push([[2029],{3487(l){l.exports=JSON.parse('{"tag":{"label":"lexer","permalink":"/blog/tags/lexer","allTagsPath":"/blog/tags","count":1,"unlisted":false},"listMetadata":{"permalink":"/blog/tags/lexer","page":1,"postsPerPage":10,"totalPages":1,"totalCount":1,"blogDescription":"Blog","blogTitle":"Blog"}}')}}]);
