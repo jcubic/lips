@@ -204,6 +204,25 @@
               (%map1 cdr lists)))))
 
 ;; -----------------------------------------------------------------------------
+(define (filter object list)
+  "(filter fn list)
+   (filter regex list)
+
+   Higher-order function that calls `fn` for each element of the list
+   and return a new list for only those elements for which fn returns
+   a truthy value. If called with a regex it will create a matcher function."
+  (typecheck "filter" object #("function" "regex"))
+  (let ((fn (matcher object)))
+    (let loop ((result '()) (list list))
+      (if (null? list)
+          (reverse result)
+          (let ((item (car list)))
+            (loop (if (fn item)
+                      (cons item result)
+                      result)
+                  (cdr list)))))))
+
+;; -----------------------------------------------------------------------------
 (define (quoted-symbol? x)
    "(quoted-symbol? code)
 

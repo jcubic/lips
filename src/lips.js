@@ -10706,32 +10706,6 @@ var global_env = new Environment({
         If called with more then one string the returned function will
         create a new object by copying all properties from the given object.`),
     // ------------------------------------------------------------------
-    filter: doc('filter', function filter(arg, list) {
-        typecheck('filter', arg, ['regex', 'function']);
-        typecheck('filter', list, ['pair', 'nil']);
-        var array = global_env.get('list->array')(list);
-        var result = [];
-        var fn = matcher(arg);
-        return (function loop(i) {
-            function next(value) {
-                if (value && !is_nil(value)) {
-                    result.push(item);
-                }
-                return loop(++i);
-            }
-            if (i === array.length) {
-                return Pair.from_array(result);
-            }
-            var item = array[i];
-            return unpromise(fn(item), next);
-        })(0);
-    }, `(filter fn list)
-        (filter regex list)
-
-        Higher-order function that calls \`fn\` for each element of the list
-        and return a new list for only those elements for which fn returns
-        a truthy value. If called with a regex it will create a matcher function.`),
-    // ------------------------------------------------------------------
     compose: doc(
         compose,
         `(compose . fns)

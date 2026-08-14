@@ -374,3 +374,11 @@
         (t.is (let ((alist '((a . 10) (b . 20) (c . 30))))
                 (cond ((assoc 'b alist) => cdr) (else #f)))
               20)))
+
+(test "std: filter"
+      (lambda (t)
+        (t.is (filter #/foo/ '(bar foo baz foo)) '(foo foo))
+        (t.is (filter #/xxx/ '(bar foo baz foo)) '())
+        (t.is (filter #/foo/ '("bar" "foo" "baz" "foo")) '("foo" "foo"))
+        (t.is (filter odd? '(1 2 3 4)) '(1 3))
+        (t.is (filter odd? '(0 0 0 0)) '())))
