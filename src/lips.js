@@ -2469,7 +2469,7 @@ async function uniterate_async(object) {
 // :: the function is used in find Scheme function to find an item
 // :: in the list
 // ----------------------------------------------------------------------
-function matcher(name, arg) {
+function matcher(arg) {
     if (arg instanceof RegExp) {
         return x => String(x).match(arg);
     } else if (is_function(arg)) {
@@ -10675,12 +10675,19 @@ var global_env = new Environment({
 
         Throws a new exception.`),
     // ------------------------------------------------------------------
+    matcher: doc(
+        'matcher',
+        matcher,
+        `(matcher object)
+
+         Higher order function return function that compares argument to object`),
+    // ------------------------------------------------------------------
     find: doc('find', function find(arg, list) {
         typecheck('find', list, ['pair', 'nil']);
         if (is_null(list)) {
             return false;
         }
-        var fn = matcher('find', arg);
+        var fn = matcher(arg);
         return unpromise(fn(list.car), function(value) {
             if (value && !is_nil(value)) {
                 return list.car;
@@ -10779,7 +10786,7 @@ var global_env = new Environment({
         typecheck('filter', list, ['pair', 'nil']);
         var array = global_env.get('list->array')(list);
         var result = [];
-        var fn = matcher('filter', arg);
+        var fn = matcher(arg);
         return (function loop(i) {
             function next(value) {
                 if (value && !is_nil(value)) {
