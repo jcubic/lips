@@ -31,31 +31,8 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 14 Aug 2026 19:56:03 +0000
+ * build: Fri, 14 Aug 2026 22:04:45 +0000
  */
-
-function _isNativeReflectConstruct$1() {
-  try {
-    var t = !Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {}));
-  } catch (t) {}
-  return (_isNativeReflectConstruct$1 = function _isNativeReflectConstruct() {
-    return !!t;
-  })();
-}
-
-function _setPrototypeOf(t, e) {
-  return _setPrototypeOf = Object.setPrototypeOf ? Object.setPrototypeOf.bind() : function (t, e) {
-    return t.__proto__ = e, t;
-  }, _setPrototypeOf(t, e);
-}
-
-function _construct(t, e, r) {
-  if (_isNativeReflectConstruct$1()) return Reflect.construct.apply(null, arguments);
-  var o = [null];
-  o.push.apply(o, e);
-  var p = new (t.bind.apply(t, o))();
-  return r && _setPrototypeOf(p, r.prototype), p;
-}
 
 function _arrayWithHoles(r) {
   if (Array.isArray(r)) return r;
@@ -71,7 +48,7 @@ function _arrayLikeToArray$1(r, a) {
   return n;
 }
 
-function _unsupportedIterableToArray$1(r, a) {
+function _unsupportedIterableToArray(r, a) {
   if (r) {
     if ("string" == typeof r) return _arrayLikeToArray$1(r, a);
     var t = {}.toString.call(r).slice(8, -1);
@@ -84,7 +61,7 @@ function _nonIterableRest() {
 }
 
 function _toArray(r) {
-  return _arrayWithHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray$1(r) || _nonIterableRest();
+  return _arrayWithHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableRest();
 }
 
 function asyncGeneratorStep(n, t, e, r, o, a, c) {
@@ -113,87 +90,22 @@ function _asyncToGenerator(n) {
   };
 }
 
-function _typeof$1(o) {
+function _typeof(o) {
   "@babel/helpers - typeof";
 
-  return _typeof$1 = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) {
+  return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) {
     return typeof o;
   } : function (o) {
     return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o;
-  }, _typeof$1(o);
-}
-
-function _assertThisInitialized(e) {
-  if (void 0 === e) throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-  return e;
-}
-
-function _possibleConstructorReturn(t, e) {
-  if (e && ("object" == _typeof$1(e) || "function" == typeof e)) return e;
-  if (void 0 !== e) throw new TypeError("Derived constructors may only return object or undefined");
-  return _assertThisInitialized(t);
-}
-
-function _getPrototypeOf(t) {
-  return _getPrototypeOf = Object.setPrototypeOf ? Object.getPrototypeOf.bind() : function (t) {
-    return t.__proto__ || Object.getPrototypeOf(t);
-  }, _getPrototypeOf(t);
-}
-
-function _inherits(t, e) {
-  if ("function" != typeof e && null !== e) throw new TypeError("Super expression must either be null or a function");
-  t.prototype = Object.create(e && e.prototype, {
-    constructor: {
-      value: t,
-      writable: true,
-      configurable: true
-    }
-  }), Object.defineProperty(t, "prototype", {
-    writable: false
-  }), e && _setPrototypeOf(t, e);
-}
-
-function _isNativeFunction(t) {
-  try {
-    return -1 !== Function.toString.call(t).indexOf("[native code]");
-  } catch (n) {
-    return "function" == typeof t;
-  }
-}
-
-function _wrapNativeSuper(t) {
-  var r = "function" == typeof Map ? new Map() : void 0;
-  return _wrapNativeSuper = function _wrapNativeSuper(t) {
-    if (null === t || !_isNativeFunction(t)) return t;
-    if ("function" != typeof t) throw new TypeError("Super expression must either be null or a function");
-    if (void 0 !== r) {
-      if (r.has(t)) return r.get(t);
-      r.set(t, Wrapper);
-    }
-    function Wrapper() {
-      return _construct(t, arguments, _getPrototypeOf(this).constructor);
-    }
-    return Wrapper.prototype = Object.create(t.prototype, {
-      constructor: {
-        value: Wrapper,
-        enumerable: false,
-        writable: true,
-        configurable: true
-      }
-    }), _setPrototypeOf(Wrapper, t);
-  }, _wrapNativeSuper(t);
-}
-
-function _classCallCheck(a, n) {
-  if (!(a instanceof n)) throw new TypeError("Cannot call a class as a function");
+  }, _typeof(o);
 }
 
 function toPrimitive(t, r) {
-  if ("object" != _typeof$1(t) || !t) return t;
+  if ("object" != _typeof(t) || !t) return t;
   var e = t[Symbol.toPrimitive];
   if (void 0 !== e) {
     var i = e.call(t, r);
-    if ("object" != _typeof$1(i)) return i;
+    if ("object" != _typeof(i)) return i;
     throw new TypeError("@@toPrimitive must return a primitive value.");
   }
   return ("string" === r ? String : Number)(t);
@@ -201,19 +113,7 @@ function toPrimitive(t, r) {
 
 function toPropertyKey(t) {
   var i = toPrimitive(t, "string");
-  return "symbol" == _typeof$1(i) ? i : i + "";
-}
-
-function _defineProperties(e, r) {
-  for (var t = 0; t < r.length; t++) {
-    var o = r[t];
-    o.enumerable = o.enumerable || false, o.configurable = true, "value" in o && (o.writable = true), Object.defineProperty(e, toPropertyKey(o.key), o);
-  }
-}
-function _createClass(e, r, t) {
-  return r && _defineProperties(e.prototype, r), Object.defineProperty(e, "prototype", {
-    writable: false
-  }), e;
+  return "symbol" == _typeof(i) ? i : i + "";
 }
 
 function _defineProperty(e, r, t) {
@@ -276,19 +176,7 @@ function _iterableToArrayLimit(r, l) {
 }
 
 function _slicedToArray(r, e) {
-  return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray$1(r, e) || _nonIterableRest();
-}
-
-function _arrayWithoutHoles(r) {
-  if (Array.isArray(r)) return _arrayLikeToArray$1(r);
-}
-
-function _nonIterableSpread() {
-  throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
-}
-
-function _toConsumableArray(r) {
-  return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray$1(r) || _nonIterableSpread();
+  return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest();
 }
 
 function _OverloadYield(e, d) {
@@ -305,55 +193,42 @@ function _wrapAsyncGenerator(e) {
   };
 }
 function AsyncGenerator(e) {
-  var r, t;
-  function resume(r, t) {
+  var t, n;
+  function resume(t, n) {
     try {
-      var n = e[r](t),
-        o = n.value,
+      var r = e[t](n),
+        o = r.value,
         u = o instanceof _OverloadYield;
-      Promise.resolve(u ? o.v : o).then(function (t) {
+      Promise.resolve(u ? o.v : o).then(function (n) {
         if (u) {
-          var i = "return" === r ? "return" : "next";
-          if (!o.k || t.done) return resume(i, t);
-          t = e[i](t).value;
+          var i = "return" === t && o.k ? t : "next";
+          if (!o.k || n.done) return resume(i, n);
+          n = e[i](n).value;
         }
-        settle(n.done ? "return" : "normal", t);
+        settle(!!r.done, n);
       }, function (e) {
         resume("throw", e);
       });
     } catch (e) {
-      settle("throw", e);
+      settle(2, e);
     }
   }
-  function settle(e, n) {
-    switch (e) {
-      case "return":
-        r.resolve({
-          value: n,
-          done: true
-        });
-        break;
-      case "throw":
-        r.reject(n);
-        break;
-      default:
-        r.resolve({
-          value: n,
-          done: false
-        });
-    }
-    (r = r.next) ? resume(r.key, r.arg) : t = null;
+  function settle(e, r) {
+    2 === e ? t.reject(r) : t.resolve({
+      value: r,
+      done: e
+    }), (t = t.next) ? resume(t.key, t.arg) : n = null;
   }
-  this._invoke = function (e, n) {
+  this._invoke = function (e, r) {
     return new Promise(function (o, u) {
       var i = {
         key: e,
-        arg: n,
+        arg: r,
         resolve: o,
         reject: u,
         next: null
       };
-      t ? t = t.next = i : (r = t = i, resume(e, n));
+      n ? n = n.next = i : (t = n = i, resume(e, r));
     });
   }, "function" != typeof e["return"] && (this["return"] = void 0);
 }
@@ -366,434 +241,6 @@ AsyncGenerator.prototype["function" == typeof Symbol && Symbol.asyncIterator || 
 }, AsyncGenerator.prototype["return"] = function (e) {
   return this._invoke("return", e);
 };
-
-function getDefaultExportFromCjs (x) {
-	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
-}
-
-var regeneratorRuntime$1 = {exports: {}};
-
-var OverloadYield = {exports: {}};
-
-var hasRequiredOverloadYield;
-
-function requireOverloadYield () {
-	if (hasRequiredOverloadYield) return OverloadYield.exports;
-	hasRequiredOverloadYield = 1;
-	(function (module) {
-		function _OverloadYield(e, d) {
-		  this.v = e, this.k = d;
-		}
-		module.exports = _OverloadYield, module.exports.__esModule = true, module.exports["default"] = module.exports; 
-	} (OverloadYield));
-	return OverloadYield.exports;
-}
-
-var regenerator$1 = {exports: {}};
-
-var regeneratorDefine = {exports: {}};
-
-var hasRequiredRegeneratorDefine;
-
-function requireRegeneratorDefine () {
-	if (hasRequiredRegeneratorDefine) return regeneratorDefine.exports;
-	hasRequiredRegeneratorDefine = 1;
-	(function (module) {
-		function _regeneratorDefine(e, r, n, t) {
-		  var i = Object.defineProperty;
-		  try {
-		    i({}, "", {});
-		  } catch (e) {
-		    i = 0;
-		  }
-		  module.exports = _regeneratorDefine = function regeneratorDefine(e, r, n, t) {
-		    function o(r, n) {
-		      _regeneratorDefine(e, r, function (e) {
-		        return this._invoke(r, n, e);
-		      });
-		    }
-		    r ? i ? i(e, r, {
-		      value: n,
-		      enumerable: !t,
-		      configurable: !t,
-		      writable: !t
-		    }) : e[r] = n : (o("next", 0), o("throw", 1), o("return", 2));
-		  }, module.exports.__esModule = true, module.exports["default"] = module.exports, _regeneratorDefine(e, r, n, t);
-		}
-		module.exports = _regeneratorDefine, module.exports.__esModule = true, module.exports["default"] = module.exports; 
-	} (regeneratorDefine));
-	return regeneratorDefine.exports;
-}
-
-var hasRequiredRegenerator$1;
-
-function requireRegenerator$1 () {
-	if (hasRequiredRegenerator$1) return regenerator$1.exports;
-	hasRequiredRegenerator$1 = 1;
-	(function (module) {
-		var regeneratorDefine = requireRegeneratorDefine();
-		function _regenerator() {
-		  /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/babel/babel/blob/main/packages/babel-helpers/LICENSE */
-		  var e,
-		    t,
-		    r = "function" == typeof Symbol ? Symbol : {},
-		    n = r.iterator || "@@iterator",
-		    o = r.toStringTag || "@@toStringTag";
-		  function i(r, n, o, i) {
-		    var c = n && n.prototype instanceof Generator ? n : Generator,
-		      u = Object.create(c.prototype);
-		    return regeneratorDefine(u, "_invoke", function (r, n, o) {
-		      var i,
-		        c,
-		        u,
-		        f = 0,
-		        p = o || [],
-		        y = false,
-		        G = {
-		          p: 0,
-		          n: 0,
-		          v: e,
-		          a: d,
-		          f: d.bind(e, 4),
-		          d: function d(t, r) {
-		            return i = t, c = 0, u = e, G.n = r, a;
-		          }
-		        };
-		      function d(r, n) {
-		        for (c = r, u = n, t = 0; !y && f && !o && t < p.length; t++) {
-		          var o,
-		            i = p[t],
-		            d = G.p,
-		            l = i[2];
-		          r > 3 ? (o = l === n) && (u = i[(c = i[4]) ? 5 : (c = 3, 3)], i[4] = i[5] = e) : i[0] <= d && ((o = r < 2 && d < i[1]) ? (c = 0, G.v = n, G.n = i[1]) : d < l && (o = r < 3 || i[0] > n || n > l) && (i[4] = r, i[5] = n, G.n = l, c = 0));
-		        }
-		        if (o || r > 1) return a;
-		        throw y = true, n;
-		      }
-		      return function (o, p, l) {
-		        if (f > 1) throw TypeError("Generator is already running");
-		        for (y && 1 === p && d(p, l), c = p, u = l; (t = c < 2 ? e : u) || !y;) {
-		          i || (c ? c < 3 ? (c > 1 && (G.n = -1), d(c, u)) : G.n = u : G.v = u);
-		          try {
-		            if (f = 2, i) {
-		              if (c || (o = "next"), t = i[o]) {
-		                if (!(t = t.call(i, u))) throw TypeError("iterator result is not an object");
-		                if (!t.done) return t;
-		                u = t.value, c < 2 && (c = 0);
-		              } else 1 === c && (t = i["return"]) && t.call(i), c < 2 && (u = TypeError("The iterator does not provide a '" + o + "' method"), c = 1);
-		              i = e;
-		            } else if ((t = (y = G.n < 0) ? u : r.call(n, G)) !== a) break;
-		          } catch (t) {
-		            i = e, c = 1, u = t;
-		          } finally {
-		            f = 1;
-		          }
-		        }
-		        return {
-		          value: t,
-		          done: y
-		        };
-		      };
-		    }(r, o, i), true), u;
-		  }
-		  var a = {};
-		  function Generator() {}
-		  function GeneratorFunction() {}
-		  function GeneratorFunctionPrototype() {}
-		  t = Object.getPrototypeOf;
-		  var c = [][n] ? t(t([][n]())) : (regeneratorDefine(t = {}, n, function () {
-		      return this;
-		    }), t),
-		    u = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(c);
-		  function f(e) {
-		    return Object.setPrototypeOf ? Object.setPrototypeOf(e, GeneratorFunctionPrototype) : (e.__proto__ = GeneratorFunctionPrototype, regeneratorDefine(e, o, "GeneratorFunction")), e.prototype = Object.create(u), e;
-		  }
-		  return GeneratorFunction.prototype = GeneratorFunctionPrototype, regeneratorDefine(u, "constructor", GeneratorFunctionPrototype), regeneratorDefine(GeneratorFunctionPrototype, "constructor", GeneratorFunction), GeneratorFunction.displayName = "GeneratorFunction", regeneratorDefine(GeneratorFunctionPrototype, o, "GeneratorFunction"), regeneratorDefine(u), regeneratorDefine(u, o, "Generator"), regeneratorDefine(u, n, function () {
-		    return this;
-		  }), regeneratorDefine(u, "toString", function () {
-		    return "[object Generator]";
-		  }), (module.exports = _regenerator = function _regenerator() {
-		    return {
-		      w: i,
-		      m: f
-		    };
-		  }, module.exports.__esModule = true, module.exports["default"] = module.exports)();
-		}
-		module.exports = _regenerator, module.exports.__esModule = true, module.exports["default"] = module.exports; 
-	} (regenerator$1));
-	return regenerator$1.exports;
-}
-
-var regeneratorAsync = {exports: {}};
-
-var regeneratorAsyncGen = {exports: {}};
-
-var regeneratorAsyncIterator = {exports: {}};
-
-var hasRequiredRegeneratorAsyncIterator;
-
-function requireRegeneratorAsyncIterator () {
-	if (hasRequiredRegeneratorAsyncIterator) return regeneratorAsyncIterator.exports;
-	hasRequiredRegeneratorAsyncIterator = 1;
-	(function (module) {
-		var OverloadYield = requireOverloadYield();
-		var regeneratorDefine = requireRegeneratorDefine();
-		function AsyncIterator(t, e) {
-		  function n(r, o, i, f) {
-		    try {
-		      var c = t[r](o),
-		        u = c.value;
-		      return u instanceof OverloadYield ? e.resolve(u.v).then(function (t) {
-		        n("next", t, i, f);
-		      }, function (t) {
-		        n("throw", t, i, f);
-		      }) : e.resolve(u).then(function (t) {
-		        c.value = t, i(c);
-		      }, function (t) {
-		        return n("throw", t, i, f);
-		      });
-		    } catch (t) {
-		      f(t);
-		    }
-		  }
-		  var r;
-		  this.next || (regeneratorDefine(AsyncIterator.prototype), regeneratorDefine(AsyncIterator.prototype, "function" == typeof Symbol && Symbol.asyncIterator || "@asyncIterator", function () {
-		    return this;
-		  })), regeneratorDefine(this, "_invoke", function (t, o, i) {
-		    function f() {
-		      return new e(function (e, r) {
-		        n(t, i, e, r);
-		      });
-		    }
-		    return r = r ? r.then(f, f) : f();
-		  }, true);
-		}
-		module.exports = AsyncIterator, module.exports.__esModule = true, module.exports["default"] = module.exports; 
-	} (regeneratorAsyncIterator));
-	return regeneratorAsyncIterator.exports;
-}
-
-var hasRequiredRegeneratorAsyncGen;
-
-function requireRegeneratorAsyncGen () {
-	if (hasRequiredRegeneratorAsyncGen) return regeneratorAsyncGen.exports;
-	hasRequiredRegeneratorAsyncGen = 1;
-	(function (module) {
-		var regenerator = requireRegenerator$1();
-		var regeneratorAsyncIterator = requireRegeneratorAsyncIterator();
-		function _regeneratorAsyncGen(r, e, t, o, n) {
-		  return new regeneratorAsyncIterator(regenerator().w(r, e, t, o), n || Promise);
-		}
-		module.exports = _regeneratorAsyncGen, module.exports.__esModule = true, module.exports["default"] = module.exports; 
-	} (regeneratorAsyncGen));
-	return regeneratorAsyncGen.exports;
-}
-
-var hasRequiredRegeneratorAsync;
-
-function requireRegeneratorAsync () {
-	if (hasRequiredRegeneratorAsync) return regeneratorAsync.exports;
-	hasRequiredRegeneratorAsync = 1;
-	(function (module) {
-		var regeneratorAsyncGen = requireRegeneratorAsyncGen();
-		function _regeneratorAsync(n, e, r, t, o) {
-		  var a = regeneratorAsyncGen(n, e, r, t, o);
-		  return a.next().then(function (n) {
-		    return n.done ? n.value : a.next();
-		  });
-		}
-		module.exports = _regeneratorAsync, module.exports.__esModule = true, module.exports["default"] = module.exports; 
-	} (regeneratorAsync));
-	return regeneratorAsync.exports;
-}
-
-var regeneratorKeys = {exports: {}};
-
-var hasRequiredRegeneratorKeys;
-
-function requireRegeneratorKeys () {
-	if (hasRequiredRegeneratorKeys) return regeneratorKeys.exports;
-	hasRequiredRegeneratorKeys = 1;
-	(function (module) {
-		function _regeneratorKeys(e) {
-		  var n = Object(e),
-		    r = [];
-		  for (var t in n) r.unshift(t);
-		  return function e() {
-		    for (; r.length;) if ((t = r.pop()) in n) return e.value = t, e.done = false, e;
-		    return e.done = true, e;
-		  };
-		}
-		module.exports = _regeneratorKeys, module.exports.__esModule = true, module.exports["default"] = module.exports; 
-	} (regeneratorKeys));
-	return regeneratorKeys.exports;
-}
-
-var regeneratorValues = {exports: {}};
-
-var _typeof = {exports: {}};
-
-var hasRequired_typeof;
-
-function require_typeof () {
-	if (hasRequired_typeof) return _typeof.exports;
-	hasRequired_typeof = 1;
-	(function (module) {
-		function _typeof(o) {
-		  "@babel/helpers - typeof";
-
-		  return module.exports = _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) {
-		    return typeof o;
-		  } : function (o) {
-		    return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o;
-		  }, module.exports.__esModule = true, module.exports["default"] = module.exports, _typeof(o);
-		}
-		module.exports = _typeof, module.exports.__esModule = true, module.exports["default"] = module.exports; 
-	} (_typeof));
-	return _typeof.exports;
-}
-
-var hasRequiredRegeneratorValues;
-
-function requireRegeneratorValues () {
-	if (hasRequiredRegeneratorValues) return regeneratorValues.exports;
-	hasRequiredRegeneratorValues = 1;
-	(function (module) {
-		var _typeof = require_typeof()["default"];
-		function _regeneratorValues(e) {
-		  if (null != e) {
-		    var t = e["function" == typeof Symbol && Symbol.iterator || "@@iterator"],
-		      r = 0;
-		    if (t) return t.call(e);
-		    if ("function" == typeof e.next) return e;
-		    if (!isNaN(e.length)) return {
-		      next: function next() {
-		        return e && r >= e.length && (e = void 0), {
-		          value: e && e[r++],
-		          done: !e
-		        };
-		      }
-		    };
-		  }
-		  throw new TypeError(_typeof(e) + " is not iterable");
-		}
-		module.exports = _regeneratorValues, module.exports.__esModule = true, module.exports["default"] = module.exports; 
-	} (regeneratorValues));
-	return regeneratorValues.exports;
-}
-
-var hasRequiredRegeneratorRuntime;
-
-function requireRegeneratorRuntime () {
-	if (hasRequiredRegeneratorRuntime) return regeneratorRuntime$1.exports;
-	hasRequiredRegeneratorRuntime = 1;
-	(function (module) {
-		var OverloadYield = requireOverloadYield();
-		var regenerator = requireRegenerator$1();
-		var regeneratorAsync = requireRegeneratorAsync();
-		var regeneratorAsyncGen = requireRegeneratorAsyncGen();
-		var regeneratorAsyncIterator = requireRegeneratorAsyncIterator();
-		var regeneratorKeys = requireRegeneratorKeys();
-		var regeneratorValues = requireRegeneratorValues();
-		function _regeneratorRuntime() {
-
-		  var r = regenerator(),
-		    e = r.m(_regeneratorRuntime),
-		    t = (Object.getPrototypeOf ? Object.getPrototypeOf(e) : e.__proto__).constructor;
-		  function n(r) {
-		    var e = "function" == typeof r && r.constructor;
-		    return !!e && (e === t || "GeneratorFunction" === (e.displayName || e.name));
-		  }
-		  var o = {
-		    "throw": 1,
-		    "return": 2,
-		    "break": 3,
-		    "continue": 3
-		  };
-		  function a(r) {
-		    var e, t;
-		    return function (n) {
-		      e || (e = {
-		        stop: function stop() {
-		          return t(n.a, 2);
-		        },
-		        "catch": function _catch() {
-		          return n.v;
-		        },
-		        abrupt: function abrupt(r, e) {
-		          return t(n.a, o[r], e);
-		        },
-		        delegateYield: function delegateYield(r, o, a) {
-		          return e.resultName = o, t(n.d, regeneratorValues(r), a);
-		        },
-		        finish: function finish(r) {
-		          return t(n.f, r);
-		        }
-		      }, t = function t(r, _t, o) {
-		        n.p = e.prev, n.n = e.next;
-		        try {
-		          return r(_t, o);
-		        } finally {
-		          e.next = n.n;
-		        }
-		      }), e.resultName && (e[e.resultName] = n.v, e.resultName = void 0), e.sent = n.v, e.next = n.n;
-		      try {
-		        return r.call(this, e);
-		      } finally {
-		        n.p = e.prev, n.n = e.next;
-		      }
-		    };
-		  }
-		  return (module.exports = _regeneratorRuntime = function _regeneratorRuntime() {
-		    return {
-		      wrap: function wrap(e, t, n, o) {
-		        return r.w(a(e), t, n, o && o.reverse());
-		      },
-		      isGeneratorFunction: n,
-		      mark: r.m,
-		      awrap: function awrap(r, e) {
-		        return new OverloadYield(r, e);
-		      },
-		      AsyncIterator: regeneratorAsyncIterator,
-		      async: function async(r, e, t, o, u) {
-		        return (n(e) ? regeneratorAsyncGen : regeneratorAsync)(a(r), e, t, o, u);
-		      },
-		      keys: regeneratorKeys,
-		      values: regeneratorValues
-		    };
-		  }, module.exports.__esModule = true, module.exports["default"] = module.exports)();
-		}
-		module.exports = _regeneratorRuntime, module.exports.__esModule = true, module.exports["default"] = module.exports; 
-	} (regeneratorRuntime$1));
-	return regeneratorRuntime$1.exports;
-}
-
-var regenerator;
-var hasRequiredRegenerator;
-
-function requireRegenerator () {
-	if (hasRequiredRegenerator) return regenerator;
-	hasRequiredRegenerator = 1;
-	// TODO(Babel 8): Remove this file.
-
-	var runtime = requireRegeneratorRuntime()();
-	regenerator = runtime;
-
-	// Copied from https://github.com/facebook/regenerator/blob/main/packages/runtime/runtime.js#L736=
-	try {
-	  regeneratorRuntime = runtime;
-	} catch (accidentalStrictMode) {
-	  if (typeof globalThis === "object") {
-	    globalThis.regeneratorRuntime = runtime;
-	  } else {
-	    Function("r", "regeneratorRuntime = r")(runtime);
-	  }
-	}
-	return regenerator;
-}
-
-var regeneratorExports = requireRegenerator();
-var _regeneratorRuntime = /*@__PURE__*/getDefaultExportFromCjs(regeneratorExports);
 
 let decoder;
 try {
@@ -3484,22 +2931,16 @@ var _excluded = ["token"],
   _excluded2 = ["env"],
   _excluded3 = ["stderr", "stdin", "stdout", "meta", "command_line", "filename"],
   _excluded5 = ["env", "dynamic_env", "use_dynamic"];
-var _marked = /*#__PURE__*/_regeneratorRuntime.mark(tco_resolve),
-  _marked2 = /*#__PURE__*/_regeneratorRuntime.mark(evaluate_code);
 function _classPrivateFieldInitSpec(e, t, a) { _checkPrivateRedeclaration(e, t), t.set(e, a); }
 function _checkPrivateRedeclaration(e, t) { if (t.has(e)) throw new TypeError("Cannot initialize the same private elements twice on an object"); }
 function _classPrivateFieldGet(s, a) { return s.get(_assertClassBrand(s, a)); }
 function _classPrivateFieldSet(s, a, r) { return s.set(_assertClassBrand(s, a), r), r; }
 function _assertClassBrand(e, t, n) { if ("function" == typeof e ? e === t : e.has(t)) return arguments.length < 3 ? t : n; throw new TypeError("Private element is not present on this object"); }
-function _callSuper(t, o, e) { return o = _getPrototypeOf(o), _possibleConstructorReturn(t, _isNativeReflectConstruct() ? Reflect.construct(o, e || [], _getPrototypeOf(t).constructor) : o.apply(t, e)); }
-function _isNativeReflectConstruct() { try { var t = !Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function () {})); } catch (t) {} return (_isNativeReflectConstruct = function _isNativeReflectConstruct() { return !!t; })(); }
-function _createForOfIteratorHelper(r, e) { var t = "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (!t) { if (Array.isArray(r) || (t = _unsupportedIterableToArray(r)) || e) { t && (r = t); var _n3 = 0, F = function F() {}; return { s: F, n: function n() { return _n3 >= r.length ? { done: true } : { done: false, value: r[_n3++] }; }, e: function e(r) { throw r; }, f: F }; } throw new TypeError("Invalid attempt to iterate non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); } var o, a = true, u = false; return { s: function s() { t = t.call(r); }, n: function n() { var r = t.next(); return a = r.done, r; }, e: function e(r) { u = true, o = r; }, f: function f() { try { a || null == t["return"] || t["return"](); } finally { if (u) throw o; } } }; }
-function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
 function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
 function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
 function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), true).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
 function _asyncIterator(r) { var n, t, o, e = 2; for ("undefined" != typeof Symbol && (t = Symbol.asyncIterator, o = Symbol.iterator); e--;) { if (t && null != (n = r[t])) return n.call(r); if (o && null != (n = r[o])) return new AsyncFromSyncIterator(n.call(r)); t = "@@asyncIterator", o = "@@iterator"; } throw new TypeError("Object is not async iterable"); }
-function AsyncFromSyncIterator(r) { function AsyncFromSyncIteratorContinuation(r) { if (Object(r) !== r) return Promise.reject(new TypeError(r + " is not an object.")); var n = r.done; return Promise.resolve(r.value).then(function (r) { return { value: r, done: n }; }); } return AsyncFromSyncIterator = function AsyncFromSyncIterator(r) { this.s = r, this.n = r.next; }, AsyncFromSyncIterator.prototype = { s: null, n: null, next: function next() { return AsyncFromSyncIteratorContinuation(this.n.apply(this.s, arguments)); }, "return": function _return(r) { var n = this.s["return"]; return void 0 === n ? Promise.resolve({ value: r, done: true }) : AsyncFromSyncIteratorContinuation(n.apply(this.s, arguments)); }, "throw": function _throw(r) { var n = this.s["return"]; return void 0 === n ? Promise.reject(r) : AsyncFromSyncIteratorContinuation(n.apply(this.s, arguments)); } }, new AsyncFromSyncIterator(r); }
+function AsyncFromSyncIterator(r) { function AsyncFromSyncIteratorContinuation(r) { if (Object(r) !== r) return Promise.reject(new TypeError(r + " is not an object.")); var n = r.done; return Promise.resolve(r.value).then(function (r) { return { value: r, done: n }; }); } return AsyncFromSyncIterator = function AsyncFromSyncIterator(r) { this.s = r, this.n = r.next; }, AsyncFromSyncIterator.prototype = { s: null, n: null, next: function next() { return AsyncFromSyncIteratorContinuation(this.n.apply(this.s, arguments)); }, return: function _return(r) { var n = this.s.return; return void 0 === n ? Promise.resolve({ value: r, done: true }) : AsyncFromSyncIteratorContinuation(n.apply(this.s, arguments)); }, throw: function _throw(r) { var n = this.s.return; return void 0 === n ? Promise.reject(r) : AsyncFromSyncIteratorContinuation(n.apply(this.s, arguments)); } }, new AsyncFromSyncIterator(r); }
 var root = typeof global !== 'undefined' ? global : self;
 
 /* c8 ignore next 3 */
@@ -3636,7 +3077,7 @@ function make_complex_match_re(mnemonic, range) {
 }
 var complex_list_re = function () {
   var result = {};
-  [[10, '', '[0-9]'], [16, 'x', '[0-9a-fA-F]'], [8, 'o', '[0-7]'], [2, 'b', '[01]']].forEach(function (_ref) {
+  [[10, '', '[0-9]'], [16, 'x', '[0-9a-fA-F]'], [8, 'o', '[0-7]'], [2, 'b', '[01]']].forEach(_ref => {
     var _ref2 = _slicedToArray(_ref, 3),
       radix = _ref2[0],
       mnemonic = _ref2[1],
@@ -3724,7 +3165,7 @@ var char_re = new RegExp("^".concat(char_sre_re, "$"), 'i');
 function make_num_stre(fn) {
   var ranges = [['o', '[0-7]'], ['x', '[0-9a-fA-F]'], ['b', '[01]'], ['d', '[0-9]'], ['', '[0-9]']];
   // float exception that don't accept mnemonics
-  var result = ranges.map(function (_ref3) {
+  var result = ranges.map(_ref3 => {
     var _ref4 = _slicedToArray(_ref3, 2),
       m = _ref4[0],
       range = _ref4[1];
@@ -3799,18 +3240,18 @@ function parse_integer(arg) {
 // ----------------------------------------------------------------------
 function parse_character(arg) {
   var m = arg.match(/#\\x([0-9a-f]+)$/i);
-  var _char;
+  var char;
   if (m) {
     var ord = parseInt(m[1], 16);
-    _char = String.fromCodePoint(ord);
+    char = String.fromCodePoint(ord);
   } else {
     m = arg.match(/#\\([\s\S]+)$/);
     if (m) {
-      _char = m[1];
+      char = m[1];
     }
   }
-  if (_char) {
-    return LCharacter(_char);
+  if (char) {
+    return LCharacter(char);
   }
   throw new Error('Parse: invalid character');
 }
@@ -3832,11 +3273,11 @@ function parse_complex(arg) {
         denom: LNumber([parts[1], radix])
       });
     } else if (n.match(float_re)) {
-      var _float = parse_float(n);
+      var float = parse_float(n);
       if (parse.exact) {
-        return _float.toRational();
+        return float.toRational();
       }
-      return _float;
+      return float;
     } else if (n.match(/nan.0$/)) {
       return LNumber(NaN);
     } else if (n.match(/inf.0$/)) {
@@ -3874,8 +3315,8 @@ function parse_complex(arg) {
     return re;
   }
   return LComplex({
-    im: im,
-    re: re
+    im,
+    re
   });
 }
 // ----------------------------------------------------------------------
@@ -3898,8 +3339,8 @@ function parse_big_int(str) {
     }
   }
   return {
-    exponent: exponent,
-    mantisa: mantisa
+    exponent,
+    mantisa
   };
 }
 
@@ -3983,7 +3424,7 @@ function parse_symbol(arg) {
   var re = /(^|.)\|/g;
   if (arg.match(re)) {
     // handle escaped bar and escaped slash
-    arg = arg.split('|').filter(Boolean).reduce(function (acc, str) {
+    arg = arg.split('|').filter(Boolean).reduce((acc, str) => {
       var result = '';
       if (str.match(/^\\+$/)) {
         if (str.length > 1) {
@@ -4132,12 +3573,12 @@ function multiline_formatter(meta) {
     token = token.replace(re, '');
   }
   return _objectSpread({
-    token: token
+    token
   }, rest);
 }
 // ----------------------------------------------------------------------
 function Thunk(fn) {
-  var cont = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : function () {};
+  var cont = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : () => {};
   this.fn = fn;
   this.cont = cont;
 }
@@ -4217,10 +3658,10 @@ function strip_s_comments(tokens) {
   }
   tokens = tokens.slice();
   remove_list.reverse();
-  for (var _i = 0, _remove_list = remove_list; _i < _remove_list.length; _i++) {
-    var _remove_list$_i = _slicedToArray(_remove_list[_i], 2),
-      begin = _remove_list$_i[0],
-      end = _remove_list$_i[1];
+  for (var _ref7 of remove_list) {
+    var _ref6 = _slicedToArray(_ref7, 2);
+    var begin = _ref6[0];
+    var end = _ref6[1];
     tokens.splice(begin, end - begin);
   }
   return tokens;
@@ -4229,7 +3670,7 @@ function strip_s_comments(tokens) {
 // Detect if object is ES6 Symbol that work with polyfills
 // ----------------------------------------------------------------------
 function is_symbol(x) {
-  return _typeof$1(x) === 'symbol' || _typeof$1(x) === 'object' && Object.prototype.toString.call(x) === '[object Symbol]';
+  return typeof x === 'symbol' || typeof x === 'object' && Object.prototype.toString.call(x) === '[object Symbol]';
 }
 // ----------------------------------------------------------------------
 // :: LSymbol constructor
@@ -4251,8 +3692,8 @@ function LSymbol(name) {
   }
 }
 LSymbol.list = {};
-LSymbol.literal = Symbol["for"]('__literal__');
-LSymbol.object = Symbol["for"]('__object__');
+LSymbol.literal = Symbol.for('__literal__');
+LSymbol.object = Symbol.for('__object__');
 // ----------------------------------------------------------------------
 LSymbol.prototype.is_interned = function () {
   return LSymbol.list[this.__name__] == this;
@@ -4314,7 +3755,7 @@ function normalize_name(name) {
 
 // -------------------------------------------------------------------------
 function is_gensym(symbol) {
-  if (_typeof$1(symbol) === 'symbol') {
+  if (typeof symbol === 'symbol') {
     return !!symbol.toString().match(/^Symbol\(#:/);
   }
   return false;
@@ -4359,7 +3800,7 @@ function hygienic_begin(envs, expr) {
 function hygienic_expression(envs, name, expr) {
   var value = global_env.get(name);
   var g_value = gensym(name);
-  envs.forEach(function (env) {
+  envs.forEach(env => {
     env.set(g_value, value);
   });
   return new Pair(g_value, expr);
@@ -4370,19 +3811,18 @@ function hygienic_expression(envs, name, expr) {
 // ----------------------------------------------------------------------
 function hygiene(envs, names, callback) {
   var args = names.map(gensym);
-  envs.forEach(function (env) {
-    args.forEach(function (gensym, i) {
+  envs.forEach(env => {
+    args.forEach((gensym, i) => {
       env.set(gensym, global_env.get(names[i]));
     });
   });
-  return callback.apply(void 0, _toConsumableArray(args));
+  return callback(...args);
 }
 
 // ----------------------------------------------------------------------
 // Class used to escape promises: feature #54
 // ----------------------------------------------------------------------
 function QuotedPromise(promise) {
-  var _this = this;
   var internal = {
     pending: true,
     rejected: false,
@@ -4392,7 +3832,7 @@ function QuotedPromise(promise) {
   };
   // then added to __promise__ is needed otherwise rejection
   // will give UnhandledPromiseRejectionWarning in Node.js
-  promise = promise.then(function (v) {
+  promise = promise.then(v => {
     internal.type = type(v);
     internal.fulfilled = true;
     internal.pending = false;
@@ -4403,21 +3843,19 @@ function QuotedPromise(promise) {
   read_only(this, '_promise', promise, {
     hidden: true
   });
-  if (is_function(promise["catch"])) {
+  if (is_function(promise.catch)) {
     // prevent exception on unhandled rejecting when using
     // '>(Promise.reject (new Error "zonk")) in REPL
-    promise = promise["catch"](function (err) {
+    promise = promise.catch(err => {
       internal.rejected = true;
       internal.pending = false;
       internal.reason = err;
     });
   }
-  Object.keys(internal).forEach(function (name) {
-    Object.defineProperty(_this, "__".concat(name, "__"), {
+  Object.keys(internal).forEach(name => {
+    Object.defineProperty(this, "__".concat(name, "__"), {
       enumerable: true,
-      get: function get() {
-        return internal[name];
-      }
+      get: () => internal[name]
     });
   });
   read_only(this, '__promise__', promise);
@@ -4429,8 +3867,8 @@ QuotedPromise.prototype.then = function (fn) {
   return new QuotedPromise(this.valueOf().then(fn));
 };
 // ----------------------------------------------------------------------
-QuotedPromise.prototype["catch"] = function (fn) {
-  return new QuotedPromise(this.valueOf()["catch"](fn));
+QuotedPromise.prototype.catch = function (fn) {
+  return new QuotedPromise(this.valueOf().catch(fn));
 };
 // ----------------------------------------------------------------------
 QuotedPromise.prototype.valueOf = function () {
@@ -4493,9 +3931,9 @@ function unescape_quoted_promises(array) {
 // :: Parser macros transformers
 // ----------------------------------------------------------------------
 var specials = {
-  LITERAL: Symbol["for"]('literal'),
-  SPLICE: Symbol["for"]('splice'),
-  SYMBOL: Symbol["for"]('symbol'),
+  LITERAL: Symbol.for('literal'),
+  SPLICE: Symbol.for('splice'),
+  SYMBOL: Symbol.for('symbol'),
   names: function names() {
     return Array.from(this.__list__.keys());
   },
@@ -4510,47 +3948,30 @@ var specials = {
     }
   },
   get: function get(name) {
-    var regex = _toConsumableArray(this.__regex__.keys());
+    var regex = [...this.__regex__.keys()];
     if (regex.length) {
-      var _iterator3 = _createForOfIteratorHelper(regex),
-        _step3;
-      try {
-        for (_iterator3.s(); !(_step3 = _iterator3.n()).done;) {
-          var re = _step3.value;
-          if (name.match(re)) {
-            return this.__regex__.get(re);
-          }
+      for (var re of regex) {
+        if (name.match(re)) {
+          return this.__regex__.get(re);
         }
-      } catch (err) {
-        _iterator3.e(err);
-      } finally {
-        _iterator3.f();
       }
     }
     return this.__list__.get(name);
   },
   // events are used in Lexer dynamic rules
   off: function off(name) {
-    var _this2 = this;
     var fn = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
     if (Array.isArray(name)) {
-      name.forEach(function (name) {
-        return _this2.off(name, fn);
-      });
+      name.forEach(name => this.off(name, fn));
     } else if (fn === null) {
       delete this.__events__[name];
     } else {
-      this.__events__ = this.__events__.filter(function (test) {
-        return test !== fn;
-      });
+      this.__events__ = this.__events__.filter(test => test !== fn);
     }
   },
   on: function on(name, fn) {
-    var _this3 = this;
     if (Array.isArray(name)) {
-      name.forEach(function (name) {
-        return _this3.on(name, fn);
-      });
+      name.forEach(name => this.on(name, fn));
     } else if (!this.__events__[name]) {
       this.__events__[name] = [fn];
     } else {
@@ -4562,9 +3983,7 @@ var specials = {
       args[_key3 - 1] = arguments[_key3];
     }
     if (this.__events__[name]) {
-      this.__events__[name].forEach(function (fn) {
-        return fn.apply(void 0, args);
-      });
+      this.__events__[name].forEach(fn => fn(...args));
     }
   },
   remove: function remove(name) {
@@ -4573,30 +3992,21 @@ var specials = {
       // regex specials are keyed by RegExp objects, which Map compares by
       // identity; a freshly constructed regex never matches, so look the
       // entry up by its string representation (source + flags) instead
-      var _iterator4 = _createForOfIteratorHelper(list.keys()),
-        _step4;
-      try {
-        for (_iterator4.s(); !(_step4 = _iterator4.n()).done;) {
-          var key = _step4.value;
-          if (String(key) === String(name)) {
-            list["delete"](key);
-          }
+      for (var key of list.keys()) {
+        if (String(key) === String(name)) {
+          list.delete(key);
         }
-      } catch (err) {
-        _iterator4.e(err);
-      } finally {
-        _iterator4.f();
       }
     } else {
-      list["delete"](name);
+      list.delete(name);
     }
     this.trigger('remove');
   },
   append: function append(name, value, type) {
     this.get_list(name).set(name, {
       seq: name,
-      value: value,
-      type: type
+      value,
+      type
     });
     this.trigger('append');
   },
@@ -4615,7 +4025,7 @@ function is_special(token) {
   var names = specials.names();
   var regex = specials.regex();
   if (regex.length) {
-    return regex.some(function (re) {
+    return regex.some(re => {
       return token.match(re);
     });
   }
@@ -4632,20 +4042,18 @@ function is_symbol_extension(special) {
 }
 // ----------------------------------------------------------------------
 var defined_specials = [["'", new LSymbol('quote'), specials.LITERAL], ['`', new LSymbol('quasiquote'), specials.LITERAL], [',@', new LSymbol('unquote-splicing'), specials.LITERAL], [',', new LSymbol('unquote'), specials.LITERAL], ["'>", new LSymbol('quote-promise'), specials.LITERAL]];
-var builtins = defined_specials.map(function (arr) {
-  return arr[0];
-});
+var builtins = defined_specials.map(arr => arr[0]);
 Object.freeze(builtins);
 Object.defineProperty(specials, '__builtins__', {
   writable: false,
   enumerable: true,
   value: builtins
 });
-defined_specials.forEach(function (_ref5) {
-  var _ref6 = _slicedToArray(_ref5, 3),
-    seq = _ref6[0],
-    symbol = _ref6[1],
-    type = _ref6[2];
+defined_specials.forEach(_ref8 => {
+  var _ref9 = _slicedToArray(_ref8, 3),
+    seq = _ref9[0],
+    symbol = _ref9[1],
+    type = _ref9[2];
   specials.append(seq, symbol, type);
 });
 // ----------------------------------------------------------------------
@@ -4659,27 +4067,25 @@ defined_specials.forEach(function (_ref5) {
    }
    }
 */
-var Lexer = /*#__PURE__*/function () {
-  function Lexer(input) {
-    var _this4 = this;
-    var _ref7 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-      _ref7$whitespace = _ref7.whitespace,
-      whitespace = _ref7$whitespace === void 0 ? false : _ref7$whitespace,
-      _ref7$filename = _ref7.filename,
-      filename = _ref7$filename === void 0 ? null : _ref7$filename;
-    _classCallCheck(this, Lexer);
+class Lexer {
+  constructor(input) {
+    var _ref0 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+      _ref0$whitespace = _ref0.whitespace,
+      whitespace = _ref0$whitespace === void 0 ? false : _ref0$whitespace,
+      _ref0$filename = _ref0.filename,
+      filename = _ref0$filename === void 0 ? null : _ref0$filename;
     read_only(this, '__input__', input);
     read_only(this, '__file__', filename);
     var internals = {};
     // hide internals from introspection
-    ['_i', '_whitespace', '_col', '_newline', '_line', '_state', '_next', '_token', '_prev_char', '_start'].forEach(function (name) {
-      Object.defineProperty(_this4, name, {
+    ['_i', '_whitespace', '_col', '_newline', '_line', '_state', '_next', '_token', '_prev_char', '_start'].forEach(name => {
+      Object.defineProperty(this, name, {
         configurable: false,
         enumerable: false,
-        get: function get() {
+        get() {
           return internals[name];
         },
-        set: function set(value) {
+        set(value) {
           internals[name] = value;
         }
       });
@@ -4694,400 +4100,366 @@ var Lexer = /*#__PURE__*/function () {
       offset: 0
     };
   }
-  return _createClass(Lexer, [{
-    key: "get",
-    value: function get(name) {
-      return this.__internal[name];
-    }
-  }, {
-    key: "set",
-    value: function set(name, value) {
-      this.__internal[name] = value;
-    }
-  }, {
-    key: "token",
-    value: function token() {
-      var meta = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
-      if (meta) {
-        var line = this._line;
-        if (this._whitespace && this._token === '\n') {
-          --line;
-        }
-        return {
-          token: this._token,
-          col: this._col,
-          offset: this._i,
-          line: line
-        };
+  get(name) {
+    return this.__internal[name];
+  }
+  set(name, value) {
+    this.__internal[name] = value;
+  }
+  token() {
+    var meta = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+    if (meta) {
+      var line = this._line;
+      if (this._whitespace && this._token === '\n') {
+        --line;
       }
-      return this._token;
-    }
-  }, {
-    key: "_augment_exception",
-    value: function _augment_exception(e) {
-      read_only(e, '__col__', this._start.col);
-      read_only(e, '__offset__', this._start.offset);
-      read_only(e, '__line__', this._start.line);
-      read_only(e, '__file__', this.__file__);
-      return unify_error_message(e);
-    }
-  }, {
-    key: "peek",
-    value: function peek() {
-      var meta = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
-      if (this._i >= this.__input__.length) {
-        return eof;
-      }
-      if (this._token) {
-        var token = this.token(true);
-        read_only(this, '__token__', token);
-        if (meta) {
-          return token;
-        }
-        return token.token;
-      }
-      var found = this.next_token();
-      if (found) {
-        this._token = this.__input__.substring(this._i, this._next);
-        if (!this.__token__) {
-          // handle case when accessing __token__ from the syntax extension
-          // (e.g. string interpolation) as the first expression in a REPL
-          read_only(this, '__token__', this.token(true));
-        }
-        return this.token(meta);
-      }
-      return eof;
-    }
-  }, {
-    key: "skip",
-    value: function skip() {
-      if (this._next !== null) {
-        this._token = null;
-        this._i = this._next;
-      }
-    }
-  }, {
-    key: "read_line",
-    value: function read_line() {
-      var len = this.__input__.length;
-      if (this._i >= len) {
-        return eof;
-      }
-      for (var i = this._i; i < len; ++i) {
-        var _char2 = this.__input__[i];
-        if (_char2 === '\n') {
-          var line = this.__input__.substring(this._i, i);
-          this._i = i + 1;
-          ++this._line;
-          return line;
-        }
-      }
-      return this.read_rest();
-    }
-  }, {
-    key: "read_rest",
-    value: function read_rest() {
-      var i = this._i;
-      this._i = this.__input__.length;
-      return this.__input__.substring(i);
-    }
-  }, {
-    key: "read_string",
-    value: function read_string(num) {
-      var len = this.__input__.length;
-      if (this._i >= len) {
-        return eof;
-      }
-      if (num + this._i >= len) {
-        return this.read_rest();
-      }
-      var end = this._i + num;
-      var result = this.__input__.substring(this._i, end);
-      var found = result.match(/\n/g);
-      if (found) {
-        this._line += found.length;
-      }
-      this._i = end;
-      return result;
-    }
-  }, {
-    key: "peek_char",
-    value: function peek_char() {
-      if (this._i >= this.__input__.length) {
-        return eof;
-      }
-      return LCharacter(this.__input__[this._i]);
-    }
-  }, {
-    key: "read_char",
-    value: function read_char() {
-      var _char3 = this.peek_char();
-      this.skip_char();
-      return _char3;
-    }
-  }, {
-    key: "skip_char",
-    value: function skip_char() {
-      if (this._i < this.__input__.length) {
-        ++this._i;
-        this._token = null;
-      }
-    }
-  }, {
-    key: "match_rule",
-    value: function match_rule(rule) {
-      var _ref8 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-        prev_char = _ref8.prev_char,
-        _char4 = _ref8["char"],
-        next_char = _ref8.next_char;
-      var _rule = _slicedToArray(rule, 4),
-        re = _rule[0],
-        prev_re = _rule[1],
-        next_re = _rule[2],
-        state = _rule[3];
-      if (rule.length !== 5) {
-        var e = new Error("Lexer: Invalid rule of length ".concat(rule.length));
-        throw this._augment_exception(e);
-      }
-      if (is_string(re)) {
-        if (re !== _char4) {
-          return false;
-        }
-      } else if (!_char4.match(re)) {
-        return false;
-      }
-      if (!match_or_null(prev_re, prev_char)) {
-        return false;
-      }
-      if (!match_or_null(next_re, next_char)) {
-        return false;
-      }
-      if (state !== this._state) {
-        return false;
-      }
-      return true;
-    }
-  }, {
-    key: "_recover_token",
-    value: function _recover_token() {
-      var re = /^([^\s()\[\]]*).*(\n[\s\S]+)?/;
-      var offset = this._start.offset;
-      return this.__input__.substring(offset).replace(re, '$1').trim();
-    }
-  }, {
-    key: "_backtrack",
-    value: function _backtrack(stack) {
-      // restore the lexer bookkeeping saved in the most recent choice point
-      // and return where scanning should resume (character + rule index)
-      var cp = stack.pop();
-      this._state = null;
-      this._line = cp.line;
-      this._newline = cp.newline;
-      this._col = cp.col;
       return {
-        i: cp.i,
-        rule_index: cp.rule_index
+        token: this._token,
+        col: this._col,
+        offset: this._i,
+        line
       };
     }
-  }, {
-    key: "_token_error",
-    value: function _token_error() {
-      var e;
-      var expr = this._recover_token();
-      if (expr[0] === '#') {
-        e = new Error("Syntax Error: invalid token ".concat(expr));
-      } else {
-        e = new Unterminated("Syntax Error: Unterminated expression ".concat(expr));
+    return this._token;
+  }
+  _augment_exception(e) {
+    read_only(e, '__col__', this._start.col);
+    read_only(e, '__offset__', this._start.offset);
+    read_only(e, '__line__', this._start.line);
+    read_only(e, '__file__', this.__file__);
+    return unify_error_message(e);
+  }
+  peek() {
+    var meta = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : false;
+    if (this._i >= this.__input__.length) {
+      return eof;
+    }
+    if (this._token) {
+      var token = this.token(true);
+      read_only(this, '__token__', token);
+      if (meta) {
+        return token;
       }
+      return token.token;
+    }
+    var found = this.next_token();
+    if (found) {
+      this._token = this.__input__.substring(this._i, this._next);
+      if (!this.__token__) {
+        // handle case when accessing __token__ from the syntax extension
+        // (e.g. string interpolation) as the first expression in a REPL
+        read_only(this, '__token__', this.token(true));
+      }
+      return this.token(meta);
+    }
+    return eof;
+  }
+  skip() {
+    if (this._next !== null) {
+      this._token = null;
+      this._i = this._next;
+    }
+  }
+  read_line() {
+    var len = this.__input__.length;
+    if (this._i >= len) {
+      return eof;
+    }
+    for (var i = this._i; i < len; ++i) {
+      var char = this.__input__[i];
+      if (char === '\n') {
+        var line = this.__input__.substring(this._i, i);
+        this._i = i + 1;
+        ++this._line;
+        return line;
+      }
+    }
+    return this.read_rest();
+  }
+  read_rest() {
+    var i = this._i;
+    this._i = this.__input__.length;
+    return this.__input__.substring(i);
+  }
+  read_string(num) {
+    var len = this.__input__.length;
+    if (this._i >= len) {
+      return eof;
+    }
+    if (num + this._i >= len) {
+      return this.read_rest();
+    }
+    var end = this._i + num;
+    var result = this.__input__.substring(this._i, end);
+    var found = result.match(/\n/g);
+    if (found) {
+      this._line += found.length;
+    }
+    this._i = end;
+    return result;
+  }
+  peek_char() {
+    if (this._i >= this.__input__.length) {
+      return eof;
+    }
+    return LCharacter(this.__input__[this._i]);
+  }
+  read_char() {
+    var char = this.peek_char();
+    this.skip_char();
+    return char;
+  }
+  skip_char() {
+    if (this._i < this.__input__.length) {
+      ++this._i;
+      this._token = null;
+    }
+  }
+  match_rule(rule) {
+    var _ref1 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+      prev_char = _ref1.prev_char,
+      char = _ref1.char,
+      next_char = _ref1.next_char;
+    var _rule = _slicedToArray(rule, 4),
+      re = _rule[0],
+      prev_re = _rule[1],
+      next_re = _rule[2],
+      state = _rule[3];
+    if (rule.length !== 5) {
+      var e = new Error("Lexer: Invalid rule of length ".concat(rule.length));
       throw this._augment_exception(e);
     }
-  }, {
-    key: "next_token",
-    value: function next_token() {
-      if (this._i >= this.__input__.length) {
+    if (is_string(re)) {
+      if (re !== char) {
         return false;
       }
-      var rules = Lexer.rules;
-      var len = this.__input__.length;
-      // The generic symbol rules are always last; backtracking must not fall
-      // into them (see below), so we remember where they start.
-      var symbol_start = rules.length - Lexer._symbol_rules.length;
-      // The FSM is greedy: at every character it commits to the first matching
-      // rule. When two rules can start the same token (e.g. a regex syntax
-      // extension `#[0-9]+a` and a datum label `#2=` both match `#` + digit)
-      // the greedy choice can walk into a dead-end while the other rule would
-      // have completed the token. To support such conflicting rules we keep a
-      // stack of choice points recorded whenever a specific (non-symbol) rule
-      // can start a token (`state === null`) and backtrack to the next
-      // alternative when the current branch fails to complete a token.
-      var stack = [];
-      // whether a specific (non-symbol) rule ever started a token in this
-      // scan; if so, exhausting the alternatives is a token error rather than
-      // an unmatchable character
-      var attempted = false;
-      var start = true;
-      var i = this._i;
-      // index of the first rule to try at the current character; only ever
-      // non-zero right after a backtrack, so forward scanning stays unchanged
-      var rule_index = 0;
-      // true when we jumped back to `i` via backtracking and the per-character
-      // preprocessing (newline/whitespace bookkeeping) must not run again
-      var resume = false;
-      while (true) {
-        if (i >= len) {
-          // reached the end of the input without completing a token: try
-          // the next alternative start rule before giving up (backtracking
-          // never reaches the symbol rules, so an unterminated string is
-          // still reported as an error rather than becoming a symbol)
-          if (![null, Lexer.comment].includes(this._state) && stack.length) {
-            var _this$_backtrack = this._backtrack(stack);
-            i = _this$_backtrack.i;
-            rule_index = _this$_backtrack.rule_index;
-            resume = true;
-            continue;
-          }
-          break;
-        }
-        var _char5 = this.__input__[i];
-        var prev_char = this.__input__[i - 1] || '';
-        var next_char = this.__input__[i + 1] || '';
-        if (!resume) {
-          if (start) {
-            this._start = {
-              col: this._i - this._newline,
-              line: this._line,
-              offset: this._i
-            };
-          }
-          if (_char5 === '\n') {
-            ++this._line;
-            var newline = this._newline;
-            if (this._state === null) {
-              // keep beginning of the newline to calculate col
-              // we don't want to check inside the token (e.g. strings)
-              this._newline = i + 1;
-            }
-            this._col = this._i - newline;
-            if (this._whitespace && this._state === null) {
-              this._next = i + 1;
-              return true;
-            }
-          }
-          // skip leading spaces
-          if (start && this._state === null && _char5.match(/\s/)) {
-            if (this._whitespace) {
-              if (!next_char.match(/\s/)) {
-                this._next = i + 1;
-                this._col = this._i - this._newline;
-                return true;
-              } else {
-                ++i;
-                continue;
-              }
-            } else {
-              this._i = i + 1;
-              ++i;
-              continue;
-            }
-          }
-          start = false;
-        }
-        resume = false;
-        var matched = false;
-        // forward scanning tries every rule; a backtrack retry (rule_index
-        // non-zero) stops before the generic symbol rules so a failed
-        // specific token is reported as an error rather than reinterpreted
-        // as a symbol
-        var retry = rule_index > 0;
-        var _limit = retry ? symbol_start : rules.length;
-        for (var r = rule_index; r < _limit; ++r) {
-          var rule = rules[r];
-          if (this.match_rule(rule, {
-            prev_char: prev_char,
-            "char": _char5,
-            next_char: next_char
-          })) {
-            // change state to null if end of the token
-            var next_state = rule[rule.length - 1];
-            if (next_state === null && retry && !next_char.match(Lexer.boundary)) {
-              // maximal munch: while backtracking don't accept a rule
-              // that completes a token before a token boundary, e.g.
-              // the single character `#` vector special completing `#`
-              // in the middle of an invalid `#4`
-              continue;
-            }
-            if (this._state === null && next_state !== null && r < symbol_start) {
-              // a specific token can start here; remember the remaining
-              // non-symbol rules so we can retry them on a dead-end
-              attempted = true;
-              stack.push({
-                i: i,
-                rule_index: r + 1,
-                line: this._line,
-                newline: this._newline,
-                col: this._col
-              });
-            }
-            this._state = next_state;
-            if (this._state === null) {
-              this._next = i + 1;
-              this._col = this._i - this._newline;
-              return true;
-            }
-            // token is activated
-            matched = true;
-            break;
-          }
-        }
-        // only the first character after a backtrack starts at a non-zero
-        // rule index; capture that before resetting for forward scanning
-        var was_retry = rule_index > 0;
-        rule_index = 0;
-        if (matched) {
-          ++i;
-          continue;
-        }
-        // an open-ended state accumulates a character that no rule matched
-        // (the original greedy behaviour); a state with complete rules ends
-        // the token here so we can backtrack to a conflicting start rule
-        var can_collect = this._state !== null && Lexer.greedy_states.has(this._state);
-        if (!was_retry && can_collect) {
-          // collect char in token
-          ++i;
-          continue;
-        }
-        // no (more) rule matches at this character
-        if (stack.length) {
-          // backtrack to the next alternative start rule
-          var _this$_backtrack2 = this._backtrack(stack);
-          i = _this$_backtrack2.i;
-          rule_index = _this$_backtrack2.rule_index;
+    } else if (!char.match(re)) {
+      return false;
+    }
+    if (!match_or_null(prev_re, prev_char)) {
+      return false;
+    }
+    if (!match_or_null(next_re, next_char)) {
+      return false;
+    }
+    if (state !== this._state) {
+      return false;
+    }
+    return true;
+  }
+  _recover_token() {
+    var re = /^([^\s()\[\]]*).*(\n[\s\S]+)?/;
+    var offset = this._start.offset;
+    return this.__input__.substring(offset).replace(re, '$1').trim();
+  }
+  _backtrack(stack) {
+    // restore the lexer bookkeeping saved in the most recent choice point
+    // and return where scanning should resume (character + rule index)
+    var cp = stack.pop();
+    this._state = null;
+    this._line = cp.line;
+    this._newline = cp.newline;
+    this._col = cp.col;
+    return {
+      i: cp.i,
+      rule_index: cp.rule_index
+    };
+  }
+  _token_error() {
+    var e;
+    var expr = this._recover_token();
+    if (expr[0] === '#') {
+      e = new Error("Syntax Error: invalid token ".concat(expr));
+    } else {
+      e = new Unterminated("Syntax Error: Unterminated expression ".concat(expr));
+    }
+    throw this._augment_exception(e);
+  }
+  next_token() {
+    if (this._i >= this.__input__.length) {
+      return false;
+    }
+    var rules = Lexer.rules;
+    var len = this.__input__.length;
+    // The generic symbol rules are always last; backtracking must not fall
+    // into them (see below), so we remember where they start.
+    var symbol_start = rules.length - Lexer._symbol_rules.length;
+    // The FSM is greedy: at every character it commits to the first matching
+    // rule. When two rules can start the same token (e.g. a regex syntax
+    // extension `#[0-9]+a` and a datum label `#2=` both match `#` + digit)
+    // the greedy choice can walk into a dead-end while the other rule would
+    // have completed the token. To support such conflicting rules we keep a
+    // stack of choice points recorded whenever a specific (non-symbol) rule
+    // can start a token (`state === null`) and backtrack to the next
+    // alternative when the current branch fails to complete a token.
+    var stack = [];
+    // whether a specific (non-symbol) rule ever started a token in this
+    // scan; if so, exhausting the alternatives is a token error rather than
+    // an unmatchable character
+    var attempted = false;
+    var start = true;
+    var i = this._i;
+    // index of the first rule to try at the current character; only ever
+    // non-zero right after a backtrack, so forward scanning stays unchanged
+    var rule_index = 0;
+    // true when we jumped back to `i` via backtracking and the per-character
+    // preprocessing (newline/whitespace bookkeeping) must not run again
+    var resume = false;
+    while (true) {
+      if (i >= len) {
+        // reached the end of the input without completing a token: try
+        // the next alternative start rule before giving up (backtracking
+        // never reaches the symbol rules, so an unterminated string is
+        // still reported as an error rather than becoming a symbol)
+        if (![null, Lexer.comment].includes(this._state) && stack.length) {
+          var _this$_backtrack = this._backtrack(stack);
+          i = _this$_backtrack.i;
+          rule_index = _this$_backtrack.rule_index;
           resume = true;
           continue;
         }
-        if (can_collect) {
-          // no alternatives left, keep collecting (e.g. a long symbol)
-          ++i;
-          continue;
-        }
-        if (attempted) {
-          // a specific token started here but none of the conflicting
-          // rules completed it: report it as an invalid/unterminated token
-          this._token_error();
-        }
-        // no rule for token
-        var line = this.__input__.split('\n')[this._start.line];
-        var e = new Error("Invalid Syntax ".concat(line));
-        throw this._augment_exception(e);
+        break;
       }
-      // we need to ignore comments because they can be the last expression in code
-      // without extra newline at the end
-      if (![null, Lexer.comment].includes(this._state)) {
+      var char = this.__input__[i];
+      var prev_char = this.__input__[i - 1] || '';
+      var next_char = this.__input__[i + 1] || '';
+      if (!resume) {
+        if (start) {
+          this._start = {
+            col: this._i - this._newline,
+            line: this._line,
+            offset: this._i
+          };
+        }
+        if (char === '\n') {
+          ++this._line;
+          var newline = this._newline;
+          if (this._state === null) {
+            // keep beginning of the newline to calculate col
+            // we don't want to check inside the token (e.g. strings)
+            this._newline = i + 1;
+          }
+          this._col = this._i - newline;
+          if (this._whitespace && this._state === null) {
+            this._next = i + 1;
+            return true;
+          }
+        }
+        // skip leading spaces
+        if (start && this._state === null && char.match(/\s/)) {
+          if (this._whitespace) {
+            if (!next_char.match(/\s/)) {
+              this._next = i + 1;
+              this._col = this._i - this._newline;
+              return true;
+            } else {
+              ++i;
+              continue;
+            }
+          } else {
+            this._i = i + 1;
+            ++i;
+            continue;
+          }
+        }
+        start = false;
+      }
+      resume = false;
+      var matched = false;
+      // forward scanning tries every rule; a backtrack retry (rule_index
+      // non-zero) stops before the generic symbol rules so a failed
+      // specific token is reported as an error rather than reinterpreted
+      // as a symbol
+      var retry = rule_index > 0;
+      var _limit = retry ? symbol_start : rules.length;
+      for (var r = rule_index; r < _limit; ++r) {
+        var rule = rules[r];
+        if (this.match_rule(rule, {
+          prev_char,
+          char,
+          next_char
+        })) {
+          // change state to null if end of the token
+          var next_state = rule[rule.length - 1];
+          if (next_state === null && retry && !next_char.match(Lexer.boundary)) {
+            // maximal munch: while backtracking don't accept a rule
+            // that completes a token before a token boundary, e.g.
+            // the single character `#` vector special completing `#`
+            // in the middle of an invalid `#4`
+            continue;
+          }
+          if (this._state === null && next_state !== null && r < symbol_start) {
+            // a specific token can start here; remember the remaining
+            // non-symbol rules so we can retry them on a dead-end
+            attempted = true;
+            stack.push({
+              i,
+              rule_index: r + 1,
+              line: this._line,
+              newline: this._newline,
+              col: this._col
+            });
+          }
+          this._state = next_state;
+          if (this._state === null) {
+            this._next = i + 1;
+            this._col = this._i - this._newline;
+            return true;
+          }
+          // token is activated
+          matched = true;
+          break;
+        }
+      }
+      // only the first character after a backtrack starts at a non-zero
+      // rule index; capture that before resetting for forward scanning
+      var was_retry = rule_index > 0;
+      rule_index = 0;
+      if (matched) {
+        ++i;
+        continue;
+      }
+      // an open-ended state accumulates a character that no rule matched
+      // (the original greedy behaviour); a state with complete rules ends
+      // the token here so we can backtrack to a conflicting start rule
+      var can_collect = this._state !== null && Lexer.greedy_states.has(this._state);
+      if (!was_retry && can_collect) {
+        // collect char in token
+        ++i;
+        continue;
+      }
+      // no (more) rule matches at this character
+      if (stack.length) {
+        // backtrack to the next alternative start rule
+        var _this$_backtrack2 = this._backtrack(stack);
+        i = _this$_backtrack2.i;
+        rule_index = _this$_backtrack2.rule_index;
+        resume = true;
+        continue;
+      }
+      if (can_collect) {
+        // no alternatives left, keep collecting (e.g. a long symbol)
+        ++i;
+        continue;
+      }
+      if (attempted) {
+        // a specific token started here but none of the conflicting
+        // rules completed it: report it as an invalid/unterminated token
         this._token_error();
       }
+      // no rule for token
+      var line = this.__input__.split('\n')[this._start.line];
+      var e = new Error("Invalid Syntax ".concat(line));
+      throw this._augment_exception(e);
     }
-  }]);
-}(); // ----------------------------------------------------------------------
+    // we need to ignore comments because they can be the last expression in code
+    // without extra newline at the end
+    if (![null, Lexer.comment].includes(this._state)) {
+      this._token_error();
+    }
+  }
+}
+// ----------------------------------------------------------------------
 // State rule for literal symbol
 // ----------------------------------------------------------------------
 Lexer.literal_rule = function literal_rule(string, symbol) {
@@ -5139,7 +4511,7 @@ Lexer.regex_rule = function regex_rule(regex, symbol) {
   var p_re = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
   var n_re = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
   if (regex.source) {
-    var parts = regex.source.match(/(\[[^\]]+\][*+]?|.)/g).map(function (str) {
+    var parts = regex.source.match(/(\[[^\]]+\][*+]?|.)/g).map(str => {
       if (str.length === 1) {
         return str;
       }
@@ -5150,21 +4522,21 @@ Lexer.regex_rule = function regex_rule(regex, symbol) {
 };
 
 // ----------------------------------------------------------------------
-Lexer.string = Symbol["for"]('string');
-Lexer.string_escape = Symbol["for"]('string_escape');
-Lexer.symbol = Symbol["for"]('symbol');
-Lexer.comment = Symbol["for"]('comment');
-Lexer.regex = Symbol["for"]('regex');
-Lexer.regex_init = Symbol["for"]('regex_init');
-Lexer.regex_class = Symbol["for"]('regex_class');
-Lexer.character = Symbol["for"]('character');
-Lexer.bracket = Symbol["for"]('bracket');
-Lexer.b_symbol = Symbol["for"]('b_symbol');
-Lexer.b_symbol_ex = Symbol["for"]('b_symbol_ex');
-Lexer.b_comment = Symbol["for"]('b_comment');
-Lexer.i_comment = Symbol["for"]('i_comment');
-Lexer.l_datum = Symbol["for"]('l_datum');
-Lexer.dot = Symbol["for"]('dot');
+Lexer.string = Symbol.for('string');
+Lexer.string_escape = Symbol.for('string_escape');
+Lexer.symbol = Symbol.for('symbol');
+Lexer.comment = Symbol.for('comment');
+Lexer.regex = Symbol.for('regex');
+Lexer.regex_init = Symbol.for('regex_init');
+Lexer.regex_class = Symbol.for('regex_class');
+Lexer.character = Symbol.for('character');
+Lexer.bracket = Symbol.for('bracket');
+Lexer.b_symbol = Symbol.for('b_symbol');
+Lexer.b_symbol_ex = Symbol.for('b_symbol_ex');
+Lexer.b_comment = Symbol.for('b_comment');
+Lexer.i_comment = Symbol.for('i_comment');
+Lexer.l_datum = Symbol.for('l_datum');
+Lexer.dot = Symbol.for('dot');
 // ----------------------------------------------------------------------
 // :: States with open-ended content (strings, comments, regex literals,
 // :: symbols, character names) accumulate any character that no rule matches,
@@ -5234,12 +4606,12 @@ var directives = ['#!fold-case', '#!no-fold-case'];
 var hash_literals = ['#t', '#f'];
 // ----------------------------------------------------------------------
 Object.defineProperty(Lexer, 'rules', {
-  get: function get() {
+  get() {
     if (Lexer._cache.valid) {
       return Lexer._cache.rules;
     }
     var parsable = Object.keys(parsable_contants).concat(directives, hash_literals);
-    var tokens = specials.names().concat(parsable).sort(function (a, b) {
+    var tokens = specials.names().concat(parsable).sort((a, b) => {
       if (is_regex(a)) {
         a = a.source;
       }
@@ -5253,26 +4625,26 @@ Object.defineProperty(Lexer, 'rules', {
     // syntax-extensions tokens that share the same first character after hash
     // should have same symbol, but because tokens are sorted, the longer
     // tokens are always process first.
-    var special_rules = tokens.reduce(function (acc, token) {
+    var special_rules = tokens.reduce((acc, token) => {
       var symbol;
       var after = null;
       if (token[0] === '#') {
         if (token.length === 1) {
-          symbol = Symbol["for"](token);
+          symbol = Symbol.for(token);
         } else {
           if (hash_literals.includes(token)) {
             after = Lexer.boundary;
           }
-          symbol = Symbol["for"](token[1]);
+          symbol = Symbol.for(token[1]);
         }
       } else {
-        symbol = Symbol["for"](token);
+        symbol = Symbol.for(token);
       }
       var rules = Lexer.literal_rule(token, symbol, null, after);
       return acc.concat(rules);
     }, []);
-    var regex_specials = regex.reduce(function (acc, token) {
-      var symbol = Symbol["for"](token.source);
+    var regex_specials = regex.reduce((acc, token) => {
+      var symbol = Symbol.for(token.source);
       var rules = Lexer.regex_rule(token, symbol, null, Lexer.boundary);
       return acc.concat(rules);
     }, []);
@@ -5288,11 +4660,11 @@ Object.defineProperty(Lexer, 'rules', {
   }
 });
 // ----------------------------------------------------------------------
-function match_or_null(re, _char6) {
+function match_or_null(re, char) {
   if (is_string(re)) {
-    return re === _char6;
+    return re === char;
   }
-  return re === null || _char6.match(re);
+  return re === null || char.match(re);
 }
 // -------------------------------------------------------------------------
 // Lips Exception used in error function
@@ -5310,22 +4682,10 @@ LipsError.prototype.constructor = LipsError;
 // :: Fake exception to handle try catch to break the execution
 // :: of body expression #163
 // -------------------------------------------------------------------------
-var IgnoreException = /*#__PURE__*/function (_Error) {
-  function IgnoreException() {
-    _classCallCheck(this, IgnoreException);
-    return _callSuper(this, IgnoreException, arguments);
-  }
-  _inherits(IgnoreException, _Error);
-  return _createClass(IgnoreException);
-}(/*#__PURE__*/_wrapNativeSuper(Error));
-var Unterminated = /*#__PURE__*/function (_Error2) {
-  function Unterminated() {
-    _classCallCheck(this, Unterminated);
-    return _callSuper(this, Unterminated, arguments);
-  }
-  _inherits(Unterminated, _Error2);
-  return _createClass(Unterminated);
-}(/*#__PURE__*/_wrapNativeSuper(Error));
+class IgnoreException extends Error {}
+class Unterminated extends Error {}
+
+// -------------------------------------------------------------------------
 function augment_exception(e, object) {
   if (!is_object(e) || is_native(e)) {
     return e;
@@ -5373,17 +4733,16 @@ function is_augmented(object) {
 // :: Parser inspired by BiwaScheme
 // :: ref: https://github.com/biwascheme/biwascheme/blob/master/src/system/parser.js
 // ----------------------------------------------------------------------
-var Parser = /*#__PURE__*/function () {
-  function Parser() {
-    var _ref9 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
-      env = _ref9.env,
-      _ref9$meta = _ref9.meta,
-      meta = _ref9$meta === void 0 ? false : _ref9$meta,
-      _ref9$filename = _ref9.filename,
-      filename = _ref9$filename === void 0 ? null : _ref9$filename,
-      _ref9$formatter = _ref9.formatter,
-      formatter = _ref9$formatter === void 0 ? null : _ref9$formatter;
-    _classCallCheck(this, Parser);
+class Parser {
+  constructor() {
+    var _ref10 = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {},
+      env = _ref10.env,
+      _ref10$meta = _ref10.meta,
+      meta = _ref10$meta === void 0 ? false : _ref10$meta,
+      _ref10$filename = _ref10.filename,
+      filename = _ref10$filename === void 0 ? null : _ref10$filename,
+      _ref10$formatter = _ref10.formatter,
+      formatter = _ref10$formatter === void 0 ? null : _ref10$formatter;
     read_only(this, '_formatter', formatter !== null && formatter !== void 0 ? formatter : multiline_formatter, {
       hidden: true
     });
@@ -5406,821 +4765,472 @@ var Parser = /*#__PURE__*/function () {
     });
     // keep the arguments of the parser for (load ...)
     get_internal_env(env).set('__parser_args__', {
-      meta: meta,
-      filename: filename,
-      formatter: formatter
+      meta,
+      filename,
+      formatter
     });
   }
-  return _createClass(Parser, [{
-    key: "prepare",
-    value: function prepare(arg) {
-      var _ref0 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-        _ref0$filename = _ref0.filename,
-        filename = _ref0$filename === void 0 ? null : _ref0$filename;
-      if (arg instanceof LString) {
-        arg = arg.toString();
-      }
-      this._reset_state();
-      if (arg instanceof Lexer) {
-        read_only(this, '__lexer__', arg);
-      } else {
-        if (filename) {
-          var _filename;
-          filename = (_filename = filename) === null || _filename === void 0 ? void 0 : _filename.valueOf();
-          read_only(this, '__file__', filename);
-          internal_env.get('__parser_args__').filename = filename;
-        }
-        read_only(this, '__lexer__', new Lexer(arg, {
-          filename: this.__file__
-        }));
-      }
+  prepare(arg) {
+    var _ref11 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+      _ref11$filename = _ref11.filename,
+      filename = _ref11$filename === void 0 ? null : _ref11$filename;
+    if (arg instanceof LString) {
+      arg = arg.toString();
     }
-  }, {
-    key: "_with_syntax_scope",
-    value: function _with_syntax_scope(fn) {
-      var _this5 = this;
-      // expose parser and change stdin so parser extension can use current-input
-      // to read data from the parser stream #150
-      var internal = get_internal_env(this.__env__);
-      var stdin = internal.get('stdin');
-      global_env.set('lips', _objectSpread(_objectSpread({}, lips), {}, {
-        __parser__: this
+    this._reset_state();
+    if (arg instanceof Lexer) {
+      read_only(this, '__lexer__', arg);
+    } else {
+      if (filename) {
+        var _filename;
+        filename = (_filename = filename) === null || _filename === void 0 ? void 0 : _filename.valueOf();
+        read_only(this, '__file__', filename);
+        internal_env.get('__parser_args__').filename = filename;
+      }
+      read_only(this, '__lexer__', new Lexer(arg, {
+        filename: this.__file__
       }));
-      internal.set('stdin', new ParserInputPort(this, this.__env__));
-      var cleanup = function cleanup(error) {
-        global_env.set('lips', lips);
-        internal.set('stdin', stdin);
-        if (error) {
-          // don't swallow errors from async syntax extensions #470
-          throw _this5._augment_exception(error);
-        }
-      };
+    }
+  }
+  _with_syntax_scope(fn) {
+    // expose parser and change stdin so parser extension can use current-input
+    // to read data from the parser stream #150
+    var internal = get_internal_env(this.__env__);
+    var stdin = internal.get('stdin');
+    global_env.set('lips', _objectSpread(_objectSpread({}, lips), {}, {
+      __parser__: this
+    }));
+    internal.set('stdin', new ParserInputPort(this, this.__env__));
+    var cleanup = error => {
+      global_env.set('lips', lips);
+      internal.set('stdin', stdin);
+      if (error) {
+        // don't swallow errors from async syntax extensions #470
+        throw this._augment_exception(error);
+      }
+    };
+    try {
+      return unpromise(fn(), result => {
+        cleanup();
+        return result;
+      }, cleanup);
+    } catch (e) {
+      cleanup(e);
+    }
+  }
+  _reset_state() {
+    Object.assign(this._state, {
+      parentheses: 0,
+      last_token: null,
+      line: 0
+    });
+  }
+  _resolve(name) {
+    return this.__env__ && this.__env__.get(name, {
+      throwError: false
+    });
+  }
+  _peek() {
+    var _this = this;
+    return _asyncToGenerator(function* () {
       try {
-        return unpromise(fn(), function (result) {
-          cleanup();
-          return result;
-        }, cleanup);
+        var token;
+        while (true) {
+          token = _this.__lexer__.peek(true);
+          if (token === eof) {
+            return eof;
+          }
+          if (_this._is_comment(token.token)) {
+            _this._skip(token);
+            continue;
+          }
+          if (is_directive(token.token)) {
+            _this._skip(token);
+            if (token.token === '#!fold-case') {
+              _this._state.fold_case = true;
+            } else if (token.token === '#!no-fold-case') {
+              _this._state.fold_case = false;
+            }
+            continue;
+          }
+          if (token.token === '#;') {
+            _this._skip(token);
+            if (_this.__lexer__.peek() === eof) {
+              var e = new Error('Lexer: syntax error eof found after comment');
+              throw _this._augment_exception(e);
+            }
+            yield _this._read_object();
+            continue;
+          }
+          break;
+        }
+        token = _this._formatter(token);
+        if (_this._state.fold_case) {
+          token.token = foldcase_string(token.token);
+        }
+        return token;
       } catch (e) {
-        cleanup(e);
+        throw _this._augment_exception(e);
       }
-    }
-  }, {
-    key: "_reset_state",
-    value: function _reset_state() {
-      Object.assign(this._state, {
-        parentheses: 0,
-        last_token: null,
-        line: 0
-      });
-    }
-  }, {
-    key: "_resolve",
-    value: function _resolve(name) {
-      return this.__env__ && this.__env__.get(name, {
-        throwError: false
-      });
-    }
-  }, {
-    key: "_peek",
-    value: function () {
-      var _peek2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee() {
-        var token, e, _t;
-        return _regeneratorRuntime.wrap(function (_context) {
-          while (1) switch (_context.prev = _context.next) {
-            case 0:
-              _context.prev = 0;
-            case 1:
-              token = this.__lexer__.peek(true);
-              if (!(token === eof)) {
-                _context.next = 2;
-                break;
-              }
-              return _context.abrupt("return", eof);
-            case 2:
-              if (!this._is_comment(token.token)) {
-                _context.next = 3;
-                break;
-              }
-              this._skip(token);
-              return _context.abrupt("continue", 1);
-            case 3:
-              if (!is_directive(token.token)) {
-                _context.next = 4;
-                break;
-              }
-              this._skip(token);
-              if (token.token === '#!fold-case') {
-                this._state.fold_case = true;
-              } else if (token.token === '#!no-fold-case') {
-                this._state.fold_case = false;
-              }
-              return _context.abrupt("continue", 1);
-            case 4:
-              if (!(token.token === '#;')) {
-                _context.next = 7;
-                break;
-              }
-              this._skip(token);
-              if (!(this.__lexer__.peek() === eof)) {
-                _context.next = 5;
-                break;
-              }
-              e = new Error('Lexer: syntax error eof found after comment');
-              throw this._augment_exception(e);
-            case 5:
-              _context.next = 6;
-              return this._read_object();
-            case 6:
-              return _context.abrupt("continue", 1);
-            case 7:
-              return _context.abrupt("continue", 8);
-            case 8:
-              token = this._formatter(token);
-              if (this._state.fold_case) {
-                token.token = foldcase_string(token.token);
-              }
-              return _context.abrupt("return", token);
-            case 9:
-              _context.prev = 9;
-              _t = _context["catch"](0);
-              throw this._augment_exception(_t);
-            case 10:
-            case "end":
-              return _context.stop();
-          }
-        }, _callee, this, [[0, 9]]);
-      }));
-      function _peek() {
-        return _peek2.apply(this, arguments);
+    })();
+  }
+  peek() {
+    var _this2 = this;
+    return _asyncToGenerator(function* () {
+      var token = _this2._peek();
+      _this2._state.last_token = token;
+      if (_this2._meta) {
+        return token;
       }
-      return _peek;
-    }()
-  }, {
-    key: "peek",
-    value: function () {
-      var _peek3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee2() {
-        var token;
-        return _regeneratorRuntime.wrap(function (_context2) {
-          while (1) switch (_context2.prev = _context2.next) {
-            case 0:
-              token = this._peek();
-              this._state.last_token = token;
-              if (!this._meta) {
-                _context2.next = 1;
-                break;
-              }
-              return _context2.abrupt("return", token);
-            case 1:
-              return _context2.abrupt("return", token.token);
-            case 2:
-            case "end":
-              return _context2.stop();
-          }
-        }, _callee2, this);
-      }));
-      function peek() {
-        return _peek3.apply(this, arguments);
-      }
-      return peek;
-    }()
-  }, {
-    key: "skip",
-    value: function skip() {
-      this.__lexer__.skip();
-    }
-  }, {
-    key: "_skip",
-    value: function _skip(token) {
-      this._state.last_token = token;
-      this.__lexer__.skip();
-    }
-  }, {
-    key: "_reset",
-    value: function _reset() {
-      this._refs.length = 0;
-    }
-  }, {
-    key: "_read",
-    value: function () {
-      var _read2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee3() {
-        var token;
-        return _regeneratorRuntime.wrap(function (_context3) {
-          while (1) switch (_context3.prev = _context3.next) {
-            case 0:
-              _context3.next = 1;
-              return this._peek();
-            case 1:
-              token = _context3.sent;
-              this._skip(token);
-              return _context3.abrupt("return", token);
-            case 2:
-            case "end":
-              return _context3.stop();
-          }
-        }, _callee3, this);
-      }));
-      function _read() {
-        return _read2.apply(this, arguments);
-      }
-      return _read;
-    }()
-  }, {
-    key: "read",
-    value: function () {
-      var _read3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee4() {
-        var token;
-        return _regeneratorRuntime.wrap(function (_context4) {
-          while (1) switch (_context4.prev = _context4.next) {
-            case 0:
-              _context4.next = 1;
-              return this.peek();
-            case 1:
-              token = _context4.sent;
-              this.skip();
-              return _context4.abrupt("return", token);
-            case 2:
-            case "end":
-              return _context4.stop();
-          }
-        }, _callee4, this);
-      }));
-      function read() {
-        return _read3.apply(this, arguments);
-      }
-      return read;
-    }()
-  }, {
-    key: "_match_datum_label",
-    value: function _match_datum_label(token) {
-      var m = token.token.match(/^#([0-9]+)=$/);
-      return m && m[1];
-    }
-  }, {
-    key: "_match_datum_ref",
-    value: function _match_datum_ref(token) {
-      var m = token.token.match(/^#([0-9]+)#$/);
-      return m && m[1];
-    }
-  }, {
-    key: "_is_open",
-    value: function _is_open(token) {
-      return ['(', '['].includes(token.token);
-    }
-  }, {
-    key: "_is_close",
-    value: function _is_close(token) {
-      return [')', ']'].includes(token.token);
-    }
-  }, {
-    key: "_read_list",
-    value: function () {
-      var _read_list2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee5() {
-        var head, prev, dot, first_token, token, e, node, cur;
-        return _regeneratorRuntime.wrap(function (_context5) {
-          while (1) switch (_context5.prev = _context5.next) {
-            case 0:
-              head = _nil, prev = head;
-              first_token = this._state.last_token;
-            case 1:
-              _context5.next = 2;
-              return this._peek();
-            case 2:
-              token = _context5.sent;
-              if (!(token === eof)) {
-                _context5.next = 3;
-                break;
-              }
-              return _context5.abrupt("continue", 10);
-            case 3:
-              if (!this._is_close(token)) {
-                _context5.next = 4;
-                break;
-              }
-              --this._state.parentheses;
-              this._skip(token);
-              return _context5.abrupt("continue", 10);
-            case 4:
-              if (!(token.token === '.' && !is_nil(head))) {
-                _context5.next = 6;
-                break;
-              }
-              this._skip(token);
-              _context5.next = 5;
-              return this._read_object();
-            case 5:
-              prev.cdr = _context5.sent;
-              dot = true;
-              _context5.next = 9;
-              break;
-            case 6:
-              if (!dot) {
-                _context5.next = 7;
-                break;
-              }
-              e = new Error('Syntax Error: more than one element after dot');
-              throw this._augment_exception(e);
-            case 7:
-              _context5.next = 8;
-              return this._read_object();
-            case 8:
-              node = _context5.sent;
-              cur = new Pair(node, _nil);
-              if (is_nil(head)) {
-                head = cur;
-                if (this._meta) {
-                  head = augment_object(head, first_token, this.__file__);
-                }
-              } else {
-                prev.cdr = cur;
-              }
-              prev = cur;
-            case 9:
-              _context5.next = 1;
-              break;
-            case 10:
-              return _context5.abrupt("return", head);
-            case 11:
-            case "end":
-              return _context5.stop();
-          }
-        }, _callee5, this);
-      }));
-      function _read_list() {
-        return _read_list2.apply(this, arguments);
-      }
-      return _read_list;
-    }()
-  }, {
-    key: "_read_value",
-    value: function () {
-      var _read_value2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee6() {
-        var token, result, _t2;
-        return _regeneratorRuntime.wrap(function (_context6) {
-          while (1) switch (_context6.prev = _context6.next) {
-            case 0:
-              _context6.prev = 0;
-              _context6.next = 1;
-              return this._read();
-            case 1:
-              token = _context6.sent;
-              if (!(token.token === eof)) {
-                _context6.next = 2;
-                break;
-              }
-              throw new Error('Syntax Error: Expected token eof found');
-            case 2:
-              result = parse_argument(token.token);
-              if (this._meta) {
-                result = augment_object(result, token, this.__file__);
-              }
-              return _context6.abrupt("return", result);
-            case 3:
-              _context6.prev = 3;
-              _t2 = _context6["catch"](0);
-              throw this._augment_exception(_t2);
-            case 4:
-            case "end":
-              return _context6.stop();
-          }
-        }, _callee6, this, [[0, 3]]);
-      }));
-      function _read_value() {
-        return _read_value2.apply(this, arguments);
-      }
-      return _read_value;
-    }()
-  }, {
-    key: "_is_comment",
-    value: function _is_comment(token) {
-      return token.match(/^;/) || token.match(/^#\|/) && token.match(/\|#$/);
-    }
-  }, {
-    key: "evaluate",
-    value: function evaluate(code) {
-      return _evaluate(code, {
-        env: this.__env__,
-        error: function error(e) {
-          throw e;
+      return token.token;
+    })();
+  }
+  skip() {
+    this.__lexer__.skip();
+  }
+  _skip(token) {
+    this._state.last_token = token;
+    this.__lexer__.skip();
+  }
+  _reset() {
+    this._refs.length = 0;
+  }
+  _read() {
+    var _this3 = this;
+    return _asyncToGenerator(function* () {
+      var token = yield _this3._peek();
+      _this3._skip(token);
+      return token;
+    })();
+  }
+  read() {
+    var _this4 = this;
+    return _asyncToGenerator(function* () {
+      var token = yield _this4.peek();
+      _this4.skip();
+      return token;
+    })();
+  }
+  _match_datum_label(token) {
+    var m = token.token.match(/^#([0-9]+)=$/);
+    return m && m[1];
+  }
+  _match_datum_ref(token) {
+    var m = token.token.match(/^#([0-9]+)#$/);
+    return m && m[1];
+  }
+  _is_open(token) {
+    return ['(', '['].includes(token.token);
+  }
+  _is_close(token) {
+    return [')', ']'].includes(token.token);
+  }
+  _read_list() {
+    var _this5 = this;
+    return _asyncToGenerator(function* () {
+      var head = _nil,
+        prev = head,
+        dot;
+      var first_token = _this5._state.last_token;
+      while (true) {
+        var token = yield _this5._peek();
+        if (token === eof) {
+          break;
         }
-      });
-    }
-  }, {
-    key: "invoke_special",
-    value: function () {
-      var _invoke_special = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee7(special, object, is_symbol) {
-        var _this6 = this;
-        var args, msg, e, code, eval_args, result, _e;
-        return _regeneratorRuntime.wrap(function (_context7) {
-          while (1) switch (_context7.prev = _context7.next) {
-            case 0:
-              if (!(typeof special.value === 'function')) {
-                _context7.next = 2;
-                break;
-              }
-              if (is_literal(special)) {
-                args = [object];
-              } else if (is_pair(object) || is_nil(object)) {
-                args = object.to_array(false);
-              }
-              if (!(args || is_symbol)) {
-                _context7.next = 1;
-                break;
-              }
-              return _context7.abrupt("return", this._with_syntax_scope(function () {
-                return call_function(special.value, is_symbol ? [] : args, {
-                  env: _this6.__env__,
-                  dynamic_env: _this6.__env__,
-                  use_dynamic: false
-                });
-              }));
-            case 1:
-              msg = "Invalid syntax extension ".concat(special.seq, " expecting ") + "list got ".concat(type(object));
-              e = new Error(msg);
-              throw this._augment_exception(e);
-            case 2:
-              if (!(special.value instanceof Macro)) {
-                _context7.next = 5;
-                break;
-              }
-              code = object !== null && object !== void 0 ? object : _nil;
-              if (is_literal(special)) {
-                code = Pair(code, _nil);
-              }
-              // macros needs full source code with function call
-              // we recreate the call with fake symbol
-              code = Pair(LSymbol('Extension'), code);
-              eval_args = {
-                env: this.__env__,
-                error: function error(e) {
-                  var msg = "Error while executing syntax extension ".concat(special.seq, " ");
-                  throw _this6._augment_exception(new Error(msg + e.message));
-                }
-              };
-              _context7.next = 3;
-              return this._with_syntax_scope(function () {
-                // Syntax and Macro share the public invoke(), which drives the
-                // macro to a value (never leaking an internal State).
-                return special.value.invoke(code, eval_args);
-              });
-            case 3:
-              result = _context7.sent;
-              if (!(is_pair(result) || result instanceof LSymbol)) {
-                _context7.next = 4;
-                break;
-              }
-              return _context7.abrupt("return", Pair.from_array([LSymbol('quote'), result]));
-            case 4:
-              return _context7.abrupt("return", result);
-            case 5:
-              _e = new Error('Syntax Error: invalid syntax extension: ' + type(special.value));
-              throw this._augment_exception(_e);
-            case 6:
-            case "end":
-              return _context7.stop();
-          }
-        }, _callee7, this);
-      }));
-      function invoke_special(_x2, _x3, _x4) {
-        return _invoke_special.apply(this, arguments);
-      }
-      return invoke_special;
-    }() // public API that handle R7RS datum labels
-  }, {
-    key: "read_object",
-    value: function () {
-      var _read_object2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee8() {
-        var object;
-        return _regeneratorRuntime.wrap(function (_context8) {
-          while (1) switch (_context8.prev = _context8.next) {
-            case 0:
-              this._reset();
-              _context8.next = 1;
-              return this._read_object();
-            case 1:
-              object = _context8.sent;
-              if (object instanceof DatumReference) {
-                object = object.valueOf();
-              }
-              if (!this._refs.length) {
-                _context8.next = 2;
-                break;
-              }
-              return _context8.abrupt("return", unpromise(this._resolve_object(object), function (object) {
-                if (is_pair(object)) {
-                  // mark cycles on parser level
-                  object.mark_cycles();
-                }
-                return object;
-              }));
-            case 2:
-              return _context8.abrupt("return", object);
-            case 3:
-            case "end":
-              return _context8.stop();
-          }
-        }, _callee8, this);
-      }));
-      function read_object() {
-        return _read_object2.apply(this, arguments);
-      }
-      return read_object;
-    }()
-  }, {
-    key: "balanced",
-    value: function balanced() {
-      return this._state.parentheses === 0;
-    }
-  }, {
-    key: "_ballancing_error",
-    value: function _ballancing_error(expr, prev) {
-      var count = this._state.parentheses;
-      var e;
-      if (count < 0) {
-        e = new Error('Syntax Error: unexpected parenthesis');
-        if (prev) {
-          e.__stack__ = [prev.toString() + ')'];
+        if (_this5._is_close(token)) {
+          --_this5._state.parentheses;
+          _this5._skip(token);
+          break;
+        }
+        if (token.token === '.' && !is_nil(head)) {
+          _this5._skip(token);
+          prev.cdr = yield _this5._read_object();
+          dot = true;
+        } else if (dot) {
+          var e = new Error('Syntax Error: more than one element after dot');
+          throw _this5._augment_exception(e);
         } else {
-          e.__stack__ = [')'];
+          var node = yield _this5._read_object();
+          var cur = new Pair(node, _nil);
+          if (is_nil(head)) {
+            head = cur;
+            if (_this5._meta) {
+              head = augment_object(head, first_token, _this5.__file__);
+            }
+          } else {
+            prev.cdr = cur;
+          }
+          prev = cur;
         }
+      }
+      return head;
+    })();
+  }
+  _read_value() {
+    var _this6 = this;
+    return _asyncToGenerator(function* () {
+      try {
+        var token = yield _this6._read();
+        if (token.token === eof) {
+          throw new Error('Syntax Error: Expected token eof found');
+        }
+        var result = parse_argument(token.token);
+        if (_this6._meta) {
+          result = augment_object(result, token, _this6.__file__);
+        }
+        return result;
+      } catch (e) {
+        throw _this6._augment_exception(e);
+      }
+    })();
+  }
+  _is_comment(token) {
+    return token.match(/^;/) || token.match(/^#\|/) && token.match(/\|#$/);
+  }
+  evaluate(code) {
+    return evaluate(code, {
+      env: this.__env__,
+      error: e => {
+        throw e;
+      }
+    });
+  }
+  invoke_special(special, object, is_symbol) {
+    var _this7 = this;
+    return _asyncToGenerator(function* () {
+      if (typeof special.value === 'function') {
+        var args;
+        if (is_literal(special)) {
+          args = [object];
+        } else if (is_pair(object) || is_nil(object)) {
+          args = object.to_array(false);
+        }
+        if (args || is_symbol) {
+          return _this7._with_syntax_scope(() => {
+            return call_function(special.value, is_symbol ? [] : args, {
+              env: _this7.__env__,
+              dynamic_env: _this7.__env__,
+              use_dynamic: false
+            });
+          });
+        }
+        var msg = "Invalid syntax extension ".concat(special.seq, " expecting ") + "list got ".concat(type(object));
+        var e = new Error(msg);
+        throw _this7._augment_exception(e);
+      } else if (special.value instanceof Macro) {
+        var code = object !== null && object !== void 0 ? object : _nil;
+        if (is_literal(special)) {
+          code = Pair(code, _nil);
+        }
+        // macros needs full source code with function call
+        // we recreate the call with fake symbol
+        code = Pair(LSymbol('Extension'), code);
+        var eval_args = {
+          env: _this7.__env__,
+          error: e => {
+            var msg = "Error while executing syntax extension ".concat(special.seq, " ");
+            throw _this7._augment_exception(new Error(msg + e.message));
+          }
+        };
+        var result = yield _this7._with_syntax_scope(() => {
+          // Syntax and Macro share the public invoke(), which drives the
+          // macro to a value (never leaking an internal State).
+          return special.value.invoke(code, eval_args);
+        });
+        // We need literal quotes to make that macro's return pairs works
+        // because after the parser returns the value it will be evaluated
+        // again by the interpreter, so we create quoted expressions.
+        if (is_pair(result) || result instanceof LSymbol) {
+          return Pair.from_array([LSymbol('quote'), result]);
+        }
+        return result;
       } else {
-        e = new Error('Syntax Error: expected parenthesis but eof found');
-        var re = new RegExp("\\){".concat(count, "}$"));
-        e.__stack__ = [expr.toString().replace(re, '')];
+        var _e = new Error('Syntax Error: invalid syntax extension: ' + type(special.value));
+        throw _this7._augment_exception(_e);
       }
-      throw this._augment_exception(e);
+    })();
+  }
+  // public API that handle R7RS datum labels
+  read_object() {
+    var _this8 = this;
+    return _asyncToGenerator(function* () {
+      _this8._reset();
+      var object = yield _this8._read_object();
+      if (object instanceof DatumReference) {
+        object = object.valueOf();
+      }
+      if (_this8._refs.length) {
+        return unpromise(_this8._resolve_object(object), object => {
+          if (is_pair(object)) {
+            // mark cycles on parser level
+            object.mark_cycles();
+          }
+          return object;
+        });
+      }
+      return object;
+    })();
+  }
+  balanced() {
+    return this._state.parentheses === 0;
+  }
+  _ballancing_error(expr, prev) {
+    var count = this._state.parentheses;
+    var e;
+    if (count < 0) {
+      e = new Error('Syntax Error: unexpected parenthesis');
+      if (prev) {
+        e.__stack__ = [prev.toString() + ')'];
+      } else {
+        e.__stack__ = [')'];
+      }
+    } else {
+      e = new Error('Syntax Error: expected parenthesis but eof found');
+      var re = new RegExp("\\){".concat(count, "}$"));
+      e.__stack__ = [expr.toString().replace(re, '')];
     }
-  }, {
-    key: "_augment_exception",
-    value: function _augment_exception(e) {
-      if (!is_augmented(e)) {
-        var token = this._state.last_token;
-        if ('col' in token) {
-          var col = token.col,
-            offset = token.offset,
-            line = token.line;
-          read_only(e, '__col__', col);
-          read_only(e, '__offset__', offset);
-          read_only(e, '__line__', line);
-          read_only(e, '__file__', this.__lexer__.__file__);
+    throw this._augment_exception(e);
+  }
+  _augment_exception(e) {
+    if (!is_augmented(e)) {
+      var token = this._state.last_token;
+      if ('col' in token) {
+        var col = token.col,
+          offset = token.offset,
+          line = token.line;
+        read_only(e, '__col__', col);
+        read_only(e, '__offset__', offset);
+        read_only(e, '__line__', line);
+        read_only(e, '__file__', this.__lexer__.__file__);
+      }
+    }
+    return unify_error_message(e);
+  }
+  // TODO: Cover This function (array and object branch)
+  _resolve_object(object) {
+    var _this9 = this;
+    return _asyncToGenerator(function* () {
+      if (Array.isArray(object)) {
+        return object.map(item => _this9._resolve_object(item));
+      }
+      if (is_plain_object(object)) {
+        var result = {};
+        Object.keys(object).forEach(key => {
+          result[key] = _this9._resolve_object(object[key]);
+        });
+        return result;
+      }
+      if (is_pair(object)) {
+        return _this9._resolve_pair(object);
+      }
+      return object;
+    })();
+  }
+  _resolve_pair(pair) {
+    var _this0 = this;
+    return _asyncToGenerator(function* () {
+      if (is_pair(pair)) {
+        if (pair.car instanceof DatumReference) {
+          pair.car = yield pair.car.valueOf();
+        } else {
+          _this0._resolve_pair(pair.car);
+        }
+        if (pair.cdr instanceof DatumReference) {
+          pair.cdr = yield pair.cdr.valueOf();
+        } else {
+          _this0._resolve_pair(pair.cdr);
         }
       }
-      return unify_error_message(e);
-    }
-    // TODO: Cover This function (array and object branch)
-  }, {
-    key: "_resolve_object",
-    value: function () {
-      var _resolve_object2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee9(object) {
-        var _this7 = this;
-        var result;
-        return _regeneratorRuntime.wrap(function (_context9) {
-          while (1) switch (_context9.prev = _context9.next) {
-            case 0:
-              if (!Array.isArray(object)) {
-                _context9.next = 1;
-                break;
-              }
-              return _context9.abrupt("return", object.map(function (item) {
-                return _this7._resolve_object(item);
-              }));
-            case 1:
-              if (!is_plain_object(object)) {
-                _context9.next = 2;
-                break;
-              }
-              result = {};
-              Object.keys(object).forEach(function (key) {
-                result[key] = _this7._resolve_object(object[key]);
-              });
-              return _context9.abrupt("return", result);
-            case 2:
-              if (!is_pair(object)) {
-                _context9.next = 3;
-                break;
-              }
-              return _context9.abrupt("return", this._resolve_pair(object));
-            case 3:
-              return _context9.abrupt("return", object);
-            case 4:
-            case "end":
-              return _context9.stop();
-          }
-        }, _callee9, this);
-      }));
-      function _resolve_object(_x5) {
-        return _resolve_object2.apply(this, arguments);
+      return pair;
+    })();
+  }
+  get_line() {
+    return this._state.line;
+  }
+  _read_object() {
+    var _this1 = this;
+    return _asyncToGenerator(function* () {
+      var token = yield _this1._peek();
+      if (token === eof) {
+        return token;
       }
-      return _resolve_object;
-    }()
-  }, {
-    key: "_resolve_pair",
-    value: function () {
-      var _resolve_pair2 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee0(pair) {
-        return _regeneratorRuntime.wrap(function (_context0) {
-          while (1) switch (_context0.prev = _context0.next) {
-            case 0:
-              if (!is_pair(pair)) {
-                _context0.next = 6;
-                break;
-              }
-              if (!(pair.car instanceof DatumReference)) {
-                _context0.next = 2;
-                break;
-              }
-              _context0.next = 1;
-              return pair.car.valueOf();
-            case 1:
-              pair.car = _context0.sent;
-              _context0.next = 3;
-              break;
-            case 2:
-              this._resolve_pair(pair.car);
-            case 3:
-              if (!(pair.cdr instanceof DatumReference)) {
-                _context0.next = 5;
-                break;
-              }
-              _context0.next = 4;
-              return pair.cdr.valueOf();
-            case 4:
-              pair.cdr = _context0.sent;
-              _context0.next = 6;
-              break;
-            case 5:
-              this._resolve_pair(pair.cdr);
-            case 6:
-              return _context0.abrupt("return", pair);
-            case 7:
-            case "end":
-              return _context0.stop();
+      _this1._state.line = _this1.__lexer__.__token__.line;
+      var special = specials.get(token.token);
+      if (special) {
+        // Built-in parser extensions are mapping short symbols to longer symbols
+        // that can be function or macro. Parser doesn't care
+        // if it's not built-in and the extension can be macro or function.
+        // FUNCTION: when it's used, it gets arguments like FEXPR and the
+        // result is returned by parser as is the macro.
+        // MACRO: if macro is used, then it is evaluated in place and the
+        // result is returned by parser and it is quoted.
+        var builtin = is_builtin(token.token);
+        _this1._skip(token);
+        var _is_symbol = is_symbol_extension(special);
+        var was_close_paren = _this1._is_close(yield _this1._peek());
+        // expression passed to syntax extension
+        var object = _is_symbol ? undefined : yield _this1._read_object();
+        if (object === eof) {
+          var e = new Unterminated('Expecting expression eof found');
+          throw _this1._augment_exception(e);
+        }
+        if (!builtin) {
+          return _this1.invoke_special(special, object, _is_symbol);
+        }
+        // Built-in parser extensions just expand into lists like 'x ==> (quote x)
+        if (is_literal(special)) {
+          if (was_close_paren) {
+            var _e2 = new Error('Syntax Error: expecting datum');
+            throw _this1._augment_exception(_e2);
           }
-        }, _callee0, this);
-      }));
-      function _resolve_pair(_x6) {
-        return _resolve_pair2.apply(this, arguments);
+          return new Pair(special.value, new Pair(object, _nil));
+        } else {
+          return new Pair(special.value, object);
+        }
       }
-      return _resolve_pair;
-    }()
-  }, {
-    key: "get_line",
-    value: function get_line() {
-      return this._state.line;
-    }
-  }, {
-    key: "_read_object",
-    value: function () {
-      var _read_object3 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee1() {
-        var token, special, builtin, _is_symbol, was_close_paren, object, e, _e2, ref, _e3, ref_label, _t3, _t4;
-        return _regeneratorRuntime.wrap(function (_context1) {
-          while (1) switch (_context1.prev = _context1.next) {
-            case 0:
-              _context1.next = 1;
-              return this._peek();
-            case 1:
-              token = _context1.sent;
-              if (!(token === eof)) {
-                _context1.next = 2;
-                break;
-              }
-              return _context1.abrupt("return", token);
-            case 2:
-              this._state.line = this.__lexer__.__token__.line;
-              special = specials.get(token.token);
-              if (!special) {
-                _context1.next = 11;
-                break;
-              }
-              // Built-in parser extensions are mapping short symbols to longer symbols
-              // that can be function or macro. Parser doesn't care
-              // if it's not built-in and the extension can be macro or function.
-              // FUNCTION: when it's used, it gets arguments like FEXPR and the
-              // result is returned by parser as is the macro.
-              // MACRO: if macro is used, then it is evaluated in place and the
-              // result is returned by parser and it is quoted.
-              builtin = is_builtin(token.token);
-              this._skip(token);
-              _is_symbol = is_symbol_extension(special);
-              _t3 = this;
-              _context1.next = 3;
-              return this._peek();
-            case 3:
-              was_close_paren = _t3._is_close.call(_t3, _context1.sent);
-              if (!_is_symbol) {
-                _context1.next = 4;
-                break;
-              }
-              _t4 = undefined;
-              _context1.next = 6;
-              break;
-            case 4:
-              _context1.next = 5;
-              return this._read_object();
-            case 5:
-              _t4 = _context1.sent;
-            case 6:
-              object = _t4;
-              if (!(object === eof)) {
-                _context1.next = 7;
-                break;
-              }
-              e = new Unterminated('Expecting expression eof found');
-              throw this._augment_exception(e);
-            case 7:
-              if (builtin) {
-                _context1.next = 8;
-                break;
-              }
-              return _context1.abrupt("return", this.invoke_special(special, object, _is_symbol));
-            case 8:
-              if (!is_literal(special)) {
-                _context1.next = 10;
-                break;
-              }
-              if (!was_close_paren) {
-                _context1.next = 9;
-                break;
-              }
-              _e2 = new Error('Syntax Error: expecting datum');
-              throw this._augment_exception(_e2);
-            case 9:
-              return _context1.abrupt("return", new Pair(special.value, new Pair(object, _nil)));
-            case 10:
-              return _context1.abrupt("return", new Pair(special.value, object));
-            case 11:
-              ref = this._match_datum_ref(token);
-              if (!(ref !== null)) {
-                _context1.next = 13;
-                break;
-              }
-              this._skip(token);
-              if (!this._refs[ref]) {
-                _context1.next = 12;
-                break;
-              }
-              return _context1.abrupt("return", new DatumReference(ref, this._refs[ref]));
-            case 12:
-              _e3 = new Error("Syntax Error: invalid datum label #".concat(ref, "#"));
-              throw this._augment_exception(_e3);
-            case 13:
-              ref_label = this._match_datum_label(token);
-              if (!(ref_label !== null)) {
-                _context1.next = 14;
-                break;
-              }
-              this._skip(token);
-              this._refs[ref_label] = this._read_object();
-              return _context1.abrupt("return", this._refs[ref_label]);
-            case 14:
-              if (!this._is_close(token)) {
-                _context1.next = 15;
-                break;
-              }
-              --this._state.parentheses;
-              this._skip(token);
-              // invalid state, we don't need to return anything
-              _context1.next = 17;
-              break;
-            case 15:
-              if (!this._is_open(token)) {
-                _context1.next = 16;
-                break;
-              }
-              ++this._state.parentheses;
-              this._skip(token);
-              return _context1.abrupt("return", this._read_list());
-            case 16:
-              return _context1.abrupt("return", this._read_value());
-            case 17:
-            case "end":
-              return _context1.stop();
-          }
-        }, _callee1, this);
-      }));
-      function _read_object() {
-        return _read_object3.apply(this, arguments);
+      var ref = _this1._match_datum_ref(token);
+      if (ref !== null) {
+        _this1._skip(token);
+        if (_this1._refs[ref]) {
+          return new DatumReference(ref, _this1._refs[ref]);
+        }
+        var _e3 = new Error("Syntax Error: invalid datum label #".concat(ref, "#"));
+        throw _this1._augment_exception(_e3);
       }
-      return _read_object;
-    }()
-  }]);
-}();
+      var ref_label = _this1._match_datum_label(token);
+      if (ref_label !== null) {
+        _this1._skip(token);
+        _this1._refs[ref_label] = _this1._read_object();
+        return _this1._refs[ref_label];
+      } else if (_this1._is_close(token)) {
+        --_this1._state.parentheses;
+        _this1._skip(token);
+        // invalid state, we don't need to return anything
+      } else if (_this1._is_open(token)) {
+        ++_this1._state.parentheses;
+        _this1._skip(token);
+        return _this1._read_list();
+      } else {
+        return _this1._read_value();
+      }
+    })();
+  }
+}
 Parser.Unterminated = Unterminated;
 // ----------------------------------------------------------------------
 // :: Parser helper that handles circular list structures
 // :: using datum labels
 // ----------------------------------------------------------------------
-var DatumReference = /*#__PURE__*/function () {
-  function DatumReference(name, data) {
-    _classCallCheck(this, DatumReference);
+class DatumReference {
+  constructor(name, data) {
     this.name = name;
     this.data = data;
   }
-  return _createClass(DatumReference, [{
-    key: "valueOf",
-    value: function valueOf() {
-      return this.data;
-    }
-  }]);
-}(); // ----------------------------------------------------------------------
+  valueOf() {
+    return this.data;
+  }
+}
+// ----------------------------------------------------------------------
 // :: Tokens are the array of strings from tokenizer
 // :: the return value is an array of lips code created out of Pair class.
 // :: env is needed for parser extensions that will invoke the function
@@ -6232,71 +5242,53 @@ function _parse(_x) {
 } // ----------------------------------------------------------------------
 function _parse2() {
   _parse2 = _wrapAsyncGenerator(function (arg) {
-    var _ref1 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-      env = _ref1.env,
-      parser_args = _objectWithoutProperties(_ref1, _excluded2);
-    return /*#__PURE__*/_regeneratorRuntime.mark(function _callee10() {
-      var parser, prev, expr;
-      return _regeneratorRuntime.wrap(function (_context10) {
-        while (1) switch (_context10.prev = _context10.next) {
-          case 0:
-            if (!env) {
-              if (global_env) {
-                env = global_env.get('**interaction-environment**', {
-                  throwError: false
-                });
-              } else {
-                env = user_env;
-              }
-            }
-            if (arg instanceof Parser) {
-              parser = arg;
-            } else {
-              parser = new Parser(_objectSpread({
-                env: env
-              }, parser_args));
-              parser.prepare(arg);
-            }
-          case 1:
-            _context10.next = 2;
-            return _awaitAsyncGenerator(parser.read_object());
-          case 2:
-            expr = _context10.sent;
-            if (!parser.balanced()) {
-              parser._ballancing_error(expr, prev);
-            }
-            if (!(expr === eof)) {
-              _context10.next = 3;
-              break;
-            }
-            return _context10.abrupt("continue", 5);
-          case 3:
-            prev = expr;
-            _context10.next = 4;
-            return expr;
-          case 4:
-            _context10.next = 1;
-            break;
-          case 5:
-          case "end":
-            return _context10.stop();
+    var _ref12 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+      env = _ref12.env,
+      parser_args = _objectWithoutProperties(_ref12, _excluded2);
+    return function* () {
+      if (!env) {
+        if (global_env) {
+          env = global_env.get('**interaction-environment**', {
+            throwError: false
+          });
+        } else {
+          env = user_env;
         }
-      }, _callee10);
-    })();
+      }
+      var parser;
+      if (arg instanceof Parser) {
+        parser = arg;
+      } else {
+        parser = new Parser(_objectSpread({
+          env
+        }, parser_args));
+        parser.prepare(arg);
+      }
+      var prev;
+      while (true) {
+        var expr = yield _awaitAsyncGenerator(parser.read_object());
+        if (!parser.balanced()) {
+          parser._ballancing_error(expr, prev);
+        }
+        if (expr === eof) {
+          break;
+        }
+        prev = expr;
+        yield expr;
+      }
+    }();
   });
   return _parse2.apply(this, arguments);
 }
 function unpromise(value) {
-  var fn = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : function (x) {
-    return x;
-  };
+  var fn = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : x => x;
   var error = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
   if (is_promise(value)) {
     var ret = value.then(fn);
     if (error === null) {
       return ret;
-    } else if (ret && is_function(ret["catch"])) {
-      return ret["catch"](error);
+    } else if (ret && is_function(ret.catch)) {
+      return ret.catch(error);
     }
     return ret;
   }
@@ -6332,7 +5324,7 @@ function array_has_promise(array, use_cache) {
 function unpromise_array(array, fn, error) {
   var frozen = Object.isFrozen(array);
   if (array_has_promise(array, frozen)) {
-    return unpromise(promise_all(array), function (arr) {
+    return unpromise(promise_all(array), arr => {
       if (frozen) {
         Object.freeze(arr);
       }
@@ -6358,9 +5350,9 @@ function unpromise_object(object, fn, error) {
     }
   }
   if (has_promise) {
-    return unpromise(promise_all(values), function (values) {
+    return unpromise(promise_all(values), values => {
       var result = {};
-      values.forEach(function (value, i) {
+      values.forEach((value, i) => {
         var key = keys[i];
         result[key] = value;
       });
@@ -6374,11 +5366,11 @@ function unpromise_object(object, fn, error) {
 }
 // ----------------------------------------------------------------------
 function read_only(object, property, value) {
-  var _ref10 = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : {},
-    _ref10$hidden = _ref10.hidden,
-    hidden = _ref10$hidden === void 0 ? false : _ref10$hidden;
+  var _ref13 = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : {},
+    _ref13$hidden = _ref13.hidden,
+    hidden = _ref13$hidden === void 0 ? false : _ref13$hidden;
   Object.defineProperty(object, property, {
-    value: value,
+    value,
     writable: false,
     configurable: true,
     enumerable: !hidden
@@ -6388,7 +5380,7 @@ function read_only(object, property, value) {
 // ----------------------------------------------------------------------
 // :: Function similar to Array.from that work on async iterators
 // ----------------------------------------------------------------------
-function uniterate_async(_x7) {
+function uniterate_async(_x2) {
   return _uniterate_async.apply(this, arguments);
 } // ----------------------------------------------------------------------
 // :: Function that return matcher function that match any value
@@ -6396,98 +5388,54 @@ function uniterate_async(_x7) {
 // :: in the list
 // ----------------------------------------------------------------------
 function _uniterate_async() {
-  _uniterate_async = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee23(object) {
-    var result, _iteratorAbruptCompletion, _didIteratorError, _iteratorError, _iterator, _step, item, _t15;
-    return _regeneratorRuntime.wrap(function (_context26) {
-      while (1) switch (_context26.prev = _context26.next) {
-        case 0:
-          result = [];
-          _iteratorAbruptCompletion = false;
-          _didIteratorError = false;
-          _context26.prev = 1;
-          _iterator = _asyncIterator(object);
-        case 2:
-          _context26.next = 3;
-          return _iterator.next();
-        case 3:
-          if (!(_iteratorAbruptCompletion = !(_step = _context26.sent).done)) {
-            _context26.next = 5;
-            break;
-          }
-          item = _step.value;
+  _uniterate_async = _asyncToGenerator(function* (object) {
+    var result = [];
+    var _iteratorAbruptCompletion = false;
+    var _didIteratorError = false;
+    var _iteratorError;
+    try {
+      for (var _iterator = _asyncIterator(object), _step; _iteratorAbruptCompletion = !(_step = yield _iterator.next()).done; _iteratorAbruptCompletion = false) {
+        var item = _step.value;
+        {
           result.push(item);
-        case 4:
-          _iteratorAbruptCompletion = false;
-          _context26.next = 2;
-          break;
-        case 5:
-          _context26.next = 7;
-          break;
-        case 6:
-          _context26.prev = 6;
-          _t15 = _context26["catch"](1);
-          _didIteratorError = true;
-          _iteratorError = _t15;
-        case 7:
-          _context26.prev = 7;
-          _context26.prev = 8;
-          if (!(_iteratorAbruptCompletion && _iterator["return"] != null)) {
-            _context26.next = 9;
-            break;
-          }
-          _context26.next = 9;
-          return _iterator["return"]();
-        case 9:
-          _context26.prev = 9;
-          if (!_didIteratorError) {
-            _context26.next = 10;
-            break;
-          }
-          throw _iteratorError;
-        case 10:
-          return _context26.finish(9);
-        case 11:
-          return _context26.finish(7);
-        case 12:
-          return _context26.abrupt("return", result);
-        case 13:
-        case "end":
-          return _context26.stop();
+        }
       }
-    }, _callee23, null, [[1, 6, 7, 12], [8,, 9, 11]]);
-  }));
+    } catch (err) {
+      _didIteratorError = true;
+      _iteratorError = err;
+    } finally {
+      try {
+        if (_iteratorAbruptCompletion && _iterator.return != null) {
+          yield _iterator.return();
+        }
+      } finally {
+        if (_didIteratorError) {
+          throw _iteratorError;
+        }
+      }
+    }
+    return result;
+  });
   return _uniterate_async.apply(this, arguments);
 }
 function matcher(arg) {
   if (arg instanceof RegExp) {
-    return function (x) {
-      return String(x).match(arg);
-    };
+    return x => String(x).match(arg);
   } else if (is_function(arg)) {
     return arg;
   } else if (arg instanceof LNumber) {
-    return function (x) {
-      return LNumber(x).cmp(arg) === 0;
-    };
+    return x => LNumber(x).cmp(arg) === 0;
   } else if (arg instanceof LString) {
     var string = arg.__string__;
-    return function (x) {
-      return LString.is(x, string);
-    };
+    return x => LString.is(x, string);
   } else if (arg instanceof LSymbol) {
     var name = arg.__name__;
-    return function (x) {
-      return LSymbol.is(x, name);
-    };
+    return x => LSymbol.is(x, name);
   } else if (arg instanceof LCharacter) {
-    var _char7 = arg.__char__;
-    return function (x) {
-      return LCharacter.is(x, _char7);
-    };
+    var char = arg.__char__;
+    return x => LCharacter.is(x, char);
   }
-  return function (x) {
-    return arg === x;
-  };
+  return x => arg === x;
 }
 // ----------------------------------------------------------------------
 // :: Documentation decorator to LIPS functions if lines starts with :
@@ -6517,7 +5465,7 @@ function doc(name, fn, doc, dump) {
 }
 // ----------------------------------------------------------------------
 function trim_lines(string) {
-  return string.split('\n').map(function (line) {
+  return string.split('\n').map(line => {
     return line.trim();
   }).join('\n');
 }
@@ -6601,25 +5549,16 @@ function match(pattern, input) {
       }
     */
     function get_first_match(patterns, input) {
-      var _iterator5 = _createForOfIteratorHelper(patterns),
-        _step5;
-      try {
-        for (_iterator5.s(); !(_step5 = _iterator5.n()).done;) {
-          var _p = _step5.value;
-          var _m = inner_match(_p, input);
-          if (_m !== -1) {
-            return _m;
-          }
+      for (var _p of patterns) {
+        var _m = inner_match(_p, input);
+        if (_m !== -1) {
+          return _m;
         }
-      } catch (err) {
-        _iterator5.e(err);
-      } finally {
-        _iterator5.f();
       }
       return -1;
     }
     function not_symbol_match() {
-      return pattern[p] === Symbol["for"]('symbol') && !is_symbol_string(input[i]);
+      return pattern[p] === Symbol.for('symbol') && !is_symbol_string(input[i]);
     }
     function match_next() {
       var next_pattern = pattern[p + 1];
@@ -6664,8 +5603,8 @@ function match(pattern, input) {
         if (pattern[p].valueOf() !== input[i]) {
           return -1;
         }
-      } else if (_typeof$1(pattern[p]) === 'symbol') {
-        if (pattern[p] === Symbol["for"]('*')) {
+      } else if (typeof pattern[p] === 'symbol') {
+        if (pattern[p] === Symbol.for('*')) {
           // ignore S-expressions inside for case when next pattern is )
           glob[p] = glob[p] || 0;
           //var zero_match = empty_match();
@@ -6737,9 +5676,9 @@ Formatter.prototype._options = function _options(options) {
   };
   return _objectSpread(_objectSpread(_objectSpread({}, defaults), options), {}, {
     exceptions: {
-      specials: [].concat(_toConsumableArray(defaults.exceptions.specials), _toConsumableArray(specials)),
+      specials: [...defaults.exceptions.specials, ...specials],
       shift: _objectSpread(_objectSpread({}, shift), {}, {
-        1: [].concat(_toConsumableArray(defaults.exceptions.shift[1]), _toConsumableArray(shift[1]))
+        1: [...defaults.exceptions.shift[1], ...shift[1]]
       })
     }
   });
@@ -6758,25 +5697,14 @@ Formatter.exception_shift = function (token, settings) {
     if (list.indexOf(token) !== -1) {
       return true;
     } else {
-      var regexes = list.filter(function (s) {
-        return s instanceof RegExp;
-      });
+      var regexes = list.filter(s => s instanceof RegExp);
       if (!regexes.length) {
         return false;
       }
-      var _iterator6 = _createForOfIteratorHelper(regexes),
-        _step6;
-      try {
-        for (_iterator6.s(); !(_step6 = _iterator6.n()).done;) {
-          var re = _step6.value;
-          if (token.match(re)) {
-            return true;
-          }
+      for (var re of regexes) {
+        if (token.match(re)) {
+          return true;
         }
-      } catch (err) {
-        _iterator6.e(err);
-      } finally {
-        _iterator6.f();
       }
     }
     return false;
@@ -6785,10 +5713,10 @@ Formatter.exception_shift = function (token, settings) {
     return settings.indent;
   }
   var shift = settings.exceptions.shift;
-  for (var _i2 = 0, _Object$entries = Object.entries(shift); _i2 < _Object$entries.length; _i2++) {
-    var _Object$entries$_i = _slicedToArray(_Object$entries[_i2], 2),
-      indent = _Object$entries$_i[0],
-      tokens = _Object$entries$_i[1];
+  for (var _ref14 of Object.entries(shift)) {
+    var _ref15 = _slicedToArray(_ref14, 2);
+    var indent = _ref15[0];
+    var tokens = _ref15[1];
     if (match(tokens)) {
       return +indent;
     }
@@ -6877,9 +5805,7 @@ function Pattern() {
   this.flag = flag;
 }
 Pattern.prototype.toString = function () {
-  var patterns = this.patterns.map(function (x) {
-    return to_string(x);
-  }).join('|');
+  var patterns = this.patterns.map(x => to_string(x)).join('|');
   return "#<pattern(".concat(patterns, " ").concat(this.flag, ")>");
 };
 // ----------------------------------------------------------------------
@@ -6890,13 +5816,13 @@ var p_e = /^[\])]$/;
 var not_p = /[^()[\]]/;
 var not_close = new Ahead(/[^)\]]/);
 //const open = new Ahead(/[([]/);
-var glob = Symbol["for"]('*');
+var glob = Symbol.for('*');
 var sexp_or_atom = new Pattern([p_o, glob, p_e], [not_p], '+');
 var sexp = new Pattern([p_o, glob, p_e], '+');
-var symbol = new Pattern([Symbol["for"]('symbol')], '?');
-var symbols = new Pattern([Symbol["for"]('symbol')], '*');
+var symbol = new Pattern([Symbol.for('symbol')], '?');
+var symbols = new Pattern([Symbol.for('symbol')], '*');
 var identifiers = [p_o, symbols, p_e];
-var let_value = new Pattern([p_o, Symbol["for"]('symbol'), glob, p_e], '+');
+var let_value = new Pattern([p_o, Symbol.for('symbol'), glob, p_e], '+');
 var syntax_rules = keywords_re('syntax-rules');
 // rules for breaking S-Expressions into lines
 var def_lambda_re = keywords_re('define', 'lambda', 'define-macro', 'syntax-rules');
@@ -6913,17 +5839,17 @@ function keywords_re() {
 // line breaking rules
 Formatter.rules = [[[sexp], 0, not_close], [[p_o, keywords_re('begin', 'cond-expand')], 1, not_close], [[p_o, let_re, symbol, p_o, let_value, p_e], 1, not_close], [[p_o, let_re, symbol, sexp_or_atom], 1, not_close], [[p_o, let_re, p_o, let_value], 1, not_close], [[p_o, keywords_re('define-syntax'), /.+/], 1], [[p_o, syntax_rules, not_p, identifiers], 1], [[p_o, syntax_rules, not_p, identifiers, sexp], 1, not_close], [[p_o, syntax_rules, identifiers], 1], [comment_re, -1], [[p_o, syntax_rules, identifiers, sexp], 1, not_close], [[p_o, non_def, new Pattern([/[^()[\]]/], '+'), sexp], 1, not_close], [[p_o, sexp], 1, not_close], [[p_o, not_p, sexp], 1, not_close], [[p_o, keywords_re('lambda', 'if'), not_p], 1, not_close], [[p_o, keywords_re('while'), not_p, sexp], 1, not_close], [[p_o, keywords_re('if'), not_p, glob], 1, not_close], [[p_o, def_lambda_re, identifiers], 0, not_close], [[p_o, def_lambda_re, identifiers, string_re], 0, not_close], [[p_o, def_lambda_re, identifiers, string_re, sexp], 0, not_close], [[p_o, def_lambda_re, identifiers, sexp], 0, not_close]];
 // ----------------------------------------------------------------------
-Formatter.prototype["break"] = function () {
+Formatter.prototype.break = function () {
   var code = this.__code__.replace(/\n[ \t]*/g, '\n ').trim();
   // function that work when calling tokenize with meta data or not
-  var token = function token(t) {
+  var token = t => {
     if (t.token.match(string_re) || t.token.match(re_re)) {
       return t.token;
     } else {
       return t.token.replace(/\s+/, ' ');
     }
   };
-  var first_token_index = function first_token_index(tokens) {
+  var first_token_index = tokens => {
     for (var i = tokens.length; i--;) {
       var _token = tokens[i];
       if (_token.trim() && !is_special(_token)) {
@@ -6933,9 +5859,7 @@ Formatter.prototype["break"] = function () {
   };
   // Tokenize is part of the parser/lexer that split code into tokens and includes
   // meta data like number of column or line
-  var tokens = tokenize(code, true).map(token).filter(function (t) {
-    return t !== '\n';
-  });
+  var tokens = tokenize(code, true).map(token).filter(t => t !== '\n');
   var rules = Formatter.rules;
   outer: for (var i = 1; i < tokens.length; ++i) {
     if (!tokens[i].trim()) {
@@ -6943,9 +5867,7 @@ Formatter.prototype["break"] = function () {
     }
     var sub = tokens.slice(0, i);
     var sexp = {};
-    rules.map(function (b) {
-      return b[1];
-    }).forEach(function (count) {
+    rules.map(b => b[1]).forEach(count => {
       count = count.valueOf();
       // some patterns require to check what was before like
       // if inside let binding
@@ -6953,54 +5875,41 @@ Formatter.prototype["break"] = function () {
         sexp[count] = previousSexp(sub, count);
       }
     });
-    var _iterator7 = _createForOfIteratorHelper(rules),
-      _step7;
-    try {
-      for (_iterator7.s(); !(_step7 = _iterator7.n()).done;) {
-        var _step7$value = _slicedToArray(_step7.value, 3),
-          pattern = _step7$value[0],
-          count = _step7$value[1],
-          ext = _step7$value[2];
-        var debug = pattern === comment_re;
-        count = count.valueOf();
-        // 0 count mean ignore the previous S-Expression
-        // -1 count mean check a single token
-        var test_sexp = count > 0 ? sexp[count] : sub;
-        var input = test_sexp.filter(function (t) {
-          return t.trim() && !is_special(t);
-        });
-        if (!input.length) {
-          continue;
-        }
-        if (count === -1) {
-          // NOTE: match work with arrays but since we check for a single token
-          //       we allow to use a single regex and wrap it with an array here
-          pattern = [pattern];
-          input = input.slice(-1);
-        }
-        var inc = first_token_index(test_sexp);
-        var m = match(pattern, input);
-        var next = tokens.slice(i).find(function (t) {
-          return t.trim() && !is_special(t);
-        });
-        if (m && (ext instanceof Ahead && ext.match(next) || !ext)) {
-          var index = i - inc;
-          if (tokens[index] !== '\n') {
-            if (!tokens[index].trim()) {
-              tokens[index] = '\n';
-            } else {
-              tokens.splice(index, 0, '\n');
-              i++;
-            }
-          }
-          i += inc;
-          continue outer;
-        }
+    for (var _ref18 of rules) {
+      var _ref17 = _slicedToArray(_ref18, 3);
+      var pattern = _ref17[0];
+      var count = _ref17[1];
+      var ext = _ref17[2];
+      count = count.valueOf();
+      // 0 count mean ignore the previous S-Expression
+      // -1 count mean check a single token
+      var test_sexp = count > 0 ? sexp[count] : sub;
+      var input = test_sexp.filter(t => t.trim() && !is_special(t));
+      if (!input.length) {
+        continue;
       }
-    } catch (err) {
-      _iterator7.e(err);
-    } finally {
-      _iterator7.f();
+      if (count === -1) {
+        // NOTE: match work with arrays but since we check for a single token
+        //       we allow to use a single regex and wrap it with an array here
+        pattern = [pattern];
+        input = input.slice(-1);
+      }
+      var inc = first_token_index(test_sexp);
+      var m = match(pattern, input);
+      var next = tokens.slice(i).find(t => t.trim() && !is_special(t));
+      if (m && (ext instanceof Ahead && ext.match(next) || !ext)) {
+        var index = i - inc;
+        if (tokens[index] !== '\n') {
+          if (!tokens[index].trim()) {
+            tokens[index] = '\n';
+          } else {
+            tokens.splice(index, 0, '\n');
+            i++;
+          }
+        }
+        i += inc;
+        continue outer;
+      }
     }
   }
   this.__code__ = tokens.join('');
@@ -7043,12 +5952,12 @@ Formatter.prototype.format = function format(options) {
       }
     }
   }
-  return tokens.map(function (token) {
+  return tokens.map(token => {
     if (token.token.match(string_re)) {
       if (token.token.match(/\n/)) {
         var spaces = ' '.repeat(token.col);
         var lines = token.token.split('\n');
-        token.token = [lines[0]].concat(lines.slice(1).map(function (line) {
+        token.token = [lines[0]].concat(lines.slice(1).map(line => {
           return spaces + line;
         })).join('\n');
       }
@@ -8491,7 +7400,7 @@ var fold_case_mapping = {
 // ----------------------------------------------------------------------
 function foldcase_string(string) {
   string = string.valueOf();
-  return Array.from(string).map(function (str) {
+  return Array.from(string).map(str => {
     var ord = str.codePointAt(0);
     var output = fold_case_mapping[ord];
     if (output) {
@@ -8539,9 +7448,9 @@ function shuffle(array, random) {
     currentIndex--;
 
     // And swap it with the current element.
-    var _ref11 = [array[randomIndex], array[currentIndex]];
-    array[currentIndex] = _ref11[0];
-    array[randomIndex] = _ref11[1];
+    var _ref19 = [array[randomIndex], array[currentIndex]];
+    array[currentIndex] = _ref19[0];
+    array[randomIndex] = _ref19[1];
   }
   return array;
 }
@@ -8649,11 +7558,11 @@ Pair.match = function (obj, item) {
   } else if (is_pair(obj)) {
     return Pair.match(obj.car, item) || Pair.match(obj.cdr, item);
   } else if (Array.isArray(obj)) {
-    return obj.some(function (x) {
+    return obj.some(x => {
       return Pair.match(x, item);
     });
   } else if (is_plain_object(obj)) {
-    return Object.values(obj).some(function (x) {
+    return Object.values(obj).some(x => {
       return Pair.match(x, item);
     });
   }
@@ -8733,13 +7642,13 @@ Pair.from_array = function (array) {
   }
   if (deep === false) {
     var list = _nil;
-    for (var _i3 = array.length; _i3--;) {
-      list = new Pair(array[_i3], list);
+    for (var _i = array.length; _i--;) {
+      list = new Pair(array[_i], list);
     }
     return list;
   }
   if (array.length && !(array instanceof Array)) {
-    array = _toConsumableArray(array);
+    array = [...array];
   }
   var result = _nil;
   var i = array.length;
@@ -8796,16 +7705,14 @@ Pair.prototype.to_object = function () {
 
 // ----------------------------------------------------------------------
 Pair.fromPairs = function (array) {
-  return array.reduce(function (list, pair) {
+  return array.reduce((list, pair) => {
     return new Pair(new Pair(new LSymbol(pair[0]), pair[1]), list);
   }, _nil);
 };
 
 // ----------------------------------------------------------------------
 Pair.fromObject = function (obj) {
-  var array = Object.keys(obj).map(function (key) {
-    return [key, obj[key]];
-  });
+  var array = Object.keys(obj).map(key => [key, obj[key]]);
   return Pair.fromPairs(array);
 };
 
@@ -8876,7 +7783,7 @@ var repr = new Map();
 // ----------------------------------------------------------------------
 var props = Object.getOwnPropertyNames(Array.prototype);
 var array_methods = [];
-props.forEach(function (x) {
+props.forEach(x => {
   array_methods.push(Array[x], Array.prototype[x]);
 });
 // ----------------------------------------------------------------------
@@ -8902,10 +7809,10 @@ function user_repr(obj) {
 }
 // ----------------------------------------------------------------------
 var str_mapping = new Map();
-[[true, '#t'], [false, '#f'], [null, '#null'], [undefined, '#void']].forEach(function (_ref12) {
-  var _ref13 = _slicedToArray(_ref12, 2),
-    key = _ref13[0],
-    value = _ref13[1];
+[[true, '#t'], [false, '#f'], [null, '#null'], [undefined, '#void']].forEach(_ref20 => {
+  var _ref21 = _slicedToArray(_ref20, 2),
+    key = _ref21[0],
+    value = _ref21[1];
   str_mapping.set(key, value);
 });
 // ----------------------------------------------------------------------
@@ -8914,17 +7821,17 @@ var str_mapping = new Map();
 // ----------------------------------------------------------------------
 /* c8 ignore next 22 */
 function symbolize(obj) {
-  if (obj && _typeof$1(obj) === 'object') {
+  if (obj && typeof obj === 'object') {
     var result = {};
     var _symbols = Object.getOwnPropertySymbols(obj);
-    _symbols.forEach(function (key) {
+    _symbols.forEach(key => {
       var name = key.toString().replace(/Symbol\(([^)]+)\)/, '$1');
       result[name] = to_string(obj[key]);
     });
     var _props = Object.getOwnPropertyNames(obj);
-    _props.forEach(function (key) {
+    _props.forEach(key => {
       var o = obj[key];
-      if (o && _typeof$1(o) === 'object' && o.constructor === Object) {
+      if (o && typeof o === 'object' && o.constructor === Object) {
         result[key] = symbolize(o);
       } else {
         result[key] = to_string(o);
@@ -8964,7 +7871,7 @@ function function_to_string(fn) {
   }
   if (fn.hasOwnProperty('__name__')) {
     var _name = fn.__name__;
-    if (_typeof$1(_name) === 'symbol') {
+    if (typeof _name === 'symbol') {
       _name = symbol_to_string(_name);
     }
     if (typeof _name === 'string') {
@@ -8985,23 +7892,23 @@ var instances = new Map();
 // ----------------------------------------------------------------------
 [[Error, function (e) {
   return e.message;
-}], [Pair, function (pair, _ref14) {
-  var quote = _ref14.quote,
-    skip_cycles = _ref14.skip_cycles,
-    pair_args = _ref14.pair_args;
+}], [Pair, function (pair, _ref22) {
+  var quote = _ref22.quote,
+    skip_cycles = _ref22.skip_cycles,
+    pair_args = _ref22.pair_args;
   // make sure that repr directly after update set the cycle ref
   if (!skip_cycles) {
     pair.mark_cycles();
   }
-  return pair.toString.apply(pair, [quote].concat(_toConsumableArray(pair_args)));
-}], [LCharacter, function (chr, _ref15) {
-  var quote = _ref15.quote;
+  return pair.toString(quote, ...pair_args);
+}], [LCharacter, function (chr, _ref23) {
+  var quote = _ref23.quote;
   if (quote) {
     return chr.toString();
   }
   return chr.valueOf();
-}], [LString, function (str, _ref16) {
-  var quote = _ref16.quote;
+}], [LString, function (str, _ref24) {
+  var quote = _ref24.quote;
   str = str.toString();
   if (quote) {
     return JSON.stringify(str).replace(/\\n/g, '\n');
@@ -9009,10 +7916,10 @@ var instances = new Map();
   return str;
 }], [RegExp, function (re) {
   return '#' + re.toString();
-}]].forEach(function (_ref17) {
-  var _ref18 = _slicedToArray(_ref17, 2),
-    cls = _ref18[0],
-    fn = _ref18[1];
+}]].forEach(_ref25 => {
+  var _ref26 = _slicedToArray(_ref25, 2),
+    cls = _ref26[0],
+    fn = _ref26[1];
   instances.set(cls, fn);
 });
 // ----------------------------------------------------------------------
@@ -9035,26 +7942,17 @@ function to_string(obj, quote, skip_cycles) {
         pair_args[_key6 - 3] = arguments[_key6];
       }
       return instances.get(cls)(obj, {
-        quote: quote,
-        skip_cycles: skip_cycles,
-        pair_args: pair_args
+        quote,
+        skip_cycles,
+        pair_args
       });
     }
   }
   // standard objects that have toString
-  var _iterator8 = _createForOfIteratorHelper(native_types),
-    _step8;
-  try {
-    for (_iterator8.s(); !(_step8 = _iterator8.n()).done;) {
-      var _type2 = _step8.value;
-      if (obj instanceof _type2) {
-        return obj.toString(quote);
-      }
+  for (var _type2 of native_types) {
+    if (obj instanceof _type2) {
+      return obj.toString(quote);
     }
-  } catch (err) {
-    _iterator8.e(err);
-  } finally {
-    _iterator8.f();
   }
   if (obj instanceof LNumber) {
     return obj.toString();
@@ -9076,7 +7974,7 @@ function to_string(obj, quote, skip_cycles) {
     }
     return function_to_string(obj);
   }
-  if (_typeof$1(obj) === 'object') {
+  if (typeof obj === 'object') {
     var constructor = obj.constructor;
     if (!constructor) {
       // This is case of fs.constants in Node.js that is null constructor object.
@@ -9104,7 +8002,7 @@ function to_string(obj, quote, skip_cycles) {
     if (type(obj) === 'instance') {
       if (is_lambda(constructor) && constructor.__name__) {
         name = constructor.__name__.valueOf();
-        if (_typeof$1(name) === 'symbol') {
+        if (typeof name === 'symbol') {
           name = name.toString().replace(/^Symbol\((?:#:)?([^\)]+)\)$/, '$1');
         }
       } else if (!is_native_function(constructor)) {
@@ -9210,7 +8108,7 @@ function has_cycle(root) {
     // pairs from the current path so sibling branches see them as shared
     // (black), not as ancestors (gray)
     for (var i = 0; i < spine.length; i++) {
-      gray["delete"](spine[i]);
+      gray.delete(spine[i]);
       black.add(spine[i]);
     }
     return cycle;
@@ -9261,7 +8159,7 @@ function mark_cycles(pair) {
         detect(pair.car, parents.slice());
       }
       if (!cdr) {
-        return new Thunk(function () {
+        return new Thunk(() => {
           return detect_thunk(pair.cdr, parents.slice());
         });
       }
@@ -9274,13 +8172,11 @@ function mark_cycles(pair) {
     }
   }
   detect(pair, []);
-  var ref_nodes = seen_pairs.filter(function (node) {
-    return refs.includes(node);
-  });
-  ref_nodes.forEach(function (node, i) {
+  var ref_nodes = seen_pairs.filter(node => refs.includes(node));
+  ref_nodes.forEach((node, i) => {
     node[__ref__] = "#".concat(i, "=");
   });
-  cycles.forEach(function (node) {
+  cycles.forEach(node => {
     mark_node(node, 'car');
     mark_node(node, 'cdr');
   });
@@ -9288,9 +8184,9 @@ function mark_cycles(pair) {
 
 // ----------------------------------------------------------------------
 Pair.prototype.toString = function (quote) {
-  var _ref19 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-    _ref19$nested = _ref19.nested,
-    nested = _ref19$nested === void 0 ? false : _ref19$nested;
+  var _ref27 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+    _ref27$nested = _ref27.nested,
+    nested = _ref27$nested === void 0 ? false : _ref27$nested;
   var arr = [];
   if (this[__ref__]) {
     arr.push(this[__ref__] + '(');
@@ -9398,9 +8294,9 @@ function abs(x) {
 }
 // ----------------------------------------------------------------------
 function seq_compare(fn, args) {
-  var _args12 = _toArray(args),
-    a = _args12[0],
-    rest = _arrayLikeToArray(_args12).slice(1);
+  var _args2 = _toArray(args),
+    a = _args2[0],
+    rest = _arrayLikeToArray(_args2).slice(1);
   while (rest.length > 0) {
     var _rest = rest,
       _rest2 = _slicedToArray(_rest, 1),
@@ -9505,7 +8401,7 @@ var truncate = function () {
 // :: but the promise is optional same as with unpromise
 // ----------------------------------------------------------------------
 function uniterate(object) {
-  var error = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : function (e) {
+  var error = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : e => {
     throw e;
   };
   if (!(object && is_function(object[Symbol.iterator]))) {
@@ -9522,15 +8418,7 @@ function uniterate(object) {
       while (!_object.done) {
         var value = _object.value;
         if (is_promise(value)) {
-          return unpromise(value, function (v) {
-            return drive(function () {
-              return iterator.next(v);
-            });
-          }, function (e) {
-            return drive(function () {
-              return iterator["throw"](e);
-            });
-          });
+          return unpromise(value, v => drive(() => iterator.next(v)), e => drive(() => iterator.throw(e)));
         }
         _object = iterator.next(value);
       }
@@ -9538,9 +8426,7 @@ function uniterate(object) {
     } catch (e) {
       error(e);
     }
-  }(function () {
-    return iterator.next();
-  });
+  }(() => iterator.next());
 }
 // ----------------------------------------------------------------------
 // :: Macro constructor
@@ -9634,8 +8520,8 @@ function define_macro(name, args, body, source, __doc__, state) {
         // normal mode to obtain the expansion code, but do NOT evaluate
         // the expansion itself - the caller re-expands it. May be a
         // promise (macro bodies can produce code asynchronously).
-        return _evaluate(hygienic_begin([env], body), {
-          env: env,
+        return evaluate(hygienic_begin([env], body), {
+          env,
           error: state.error
         });
       }
@@ -9681,7 +8567,7 @@ function macro_args_env(params, code, scope) {
 // :: Quasiquote helpers
 // ----------------------------------------------------------------------
 function unquoted_arr(arr) {
-  return !!arr.filter(function (value) {
+  return !!arr.filter(value => {
     return is_pair(value) && LSymbol.is(value.car, /^(unquote|unquote-splicing)$/);
   }).length;
 }
@@ -9698,19 +8584,19 @@ function Syntax(fn, env) {
   // allow macroexpand
   this.__defmacro__ = true;
 }
-Syntax.__merge_env__ = Symbol["for"]('merge');
+Syntax.__merge_env__ = Symbol.for('merge');
 // ----------------------------------------------------------------------
 Syntax.prototype = Object.create(Macro.prototype);
-Syntax.prototype._invoke_state = function (code, _ref20, macro_expand) {
-  var error = _ref20.error,
-    env = _ref20.env,
-    use_dynamic = _ref20.use_dynamic;
+Syntax.prototype._invoke_state = function (code, _ref28, macro_expand) {
+  var error = _ref28.error,
+    env = _ref28.env,
+    use_dynamic = _ref28.use_dynamic;
   var args = {
-    error: error,
-    env: env,
-    use_dynamic: use_dynamic,
+    error,
+    env,
+    use_dynamic,
     dynamic_env: this.__env__,
-    macro_expand: macro_expand
+    macro_expand
   };
   return this.__fn__.call(env, code, args, this.__name__ || 'syntax');
 };
@@ -9730,29 +8616,25 @@ Syntax.prototype.toString = function () {
 // :: loop (same continuation chain) - otherwise a continuation captured
 // :: inside, or re-entering, a macro body cannot cross the macro boundary.
 // ----------------------------------------------------------------------
-var SyntaxExpansion = /*#__PURE__*/function () {
-  function SyntaxExpansion(expr, env, names) {
-    _classCallCheck(this, SyntaxExpansion);
+class SyntaxExpansion {
+  constructor(expr, env, names) {
     this.expr = expr;
     this.env = env;
     this.names = names;
   }
   // eager evaluation, used by the legacy evaluate()/evaluate_syntax path
-  return _createClass(SyntaxExpansion, [{
-    key: "eval",
-    value: function _eval(eval_args) {
-      var result = _evaluate(this.expr, _objectSpread(_objectSpread({}, eval_args), {}, {
-        env: this.env
-      }));
-      return clear_gensyms(result, this.names);
-    }
-  }]);
-}(); // ----------------------------------------------------------------------
+  eval(eval_args) {
+    var result = evaluate(this.expr, _objectSpread(_objectSpread({}, eval_args), {}, {
+      env: this.env
+    }));
+    return clear_gensyms(result, this.names);
+  }
+}
+// ----------------------------------------------------------------------
 // :: SRFI-139
 // ----------------------------------------------------------------------
-var SyntaxParameter = /*#__PURE__*/function () {
-  function SyntaxParameter(syntax) {
-    _classCallCheck(this, SyntaxParameter);
+class SyntaxParameter {
+  constructor(syntax) {
     read_only(this, '_syntax', syntax, {
       hidden: true
     });
@@ -9760,18 +8642,13 @@ var SyntaxParameter = /*#__PURE__*/function () {
       hidden: true
     });
   }
-  return _createClass(SyntaxParameter, [{
-    key: "_invoke_state",
-    value: function _invoke_state(code, state, macro_expand) {
-      return this._syntax._invoke_state(code, state, macro_expand);
-    }
-  }, {
-    key: "invoke",
-    value: function invoke(code, options) {
-      return this._syntax.invoke(code, options);
-    }
-  }]);
-}();
+  _invoke_state(code, state, macro_expand) {
+    return this._syntax._invoke_state(code, state, macro_expand);
+  }
+  invoke(code, options) {
+    return this._syntax.invoke(code, options);
+  }
+}
 Syntax.Parameter = SyntaxParameter;
 // ----------------------------------------------------------------------
 // :: for usage in syntax-rule when pattern match it will return
@@ -9836,14 +8713,12 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
             bindings['...'].symbols[name] = Pair.from_array(code, false);
           }
         } else if (Array.isArray(pattern[0])) {
-          var _names = _toConsumableArray(pattern_names);
+          var _names = [...pattern_names];
           var new_state = _objectSpread(_objectSpread({}, state), {}, {
             pattern_names: _names,
             ellipsis: true
           });
-          if (!code.every(function (node) {
-            return traverse(pattern[0], node, new_state);
-          })) {
+          if (!code.every(node => traverse(pattern[0], node, new_state))) {
             return false;
           }
         }
@@ -9966,7 +8841,7 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
         }
         return true;
       } else if (is_pair(pattern.car)) {
-        var names = _toConsumableArray(pattern_names);
+        var names = [...pattern_names];
         if (is_nil(code)) {
           bindings['...'].lists.push(_nil);
           return true;
@@ -9985,7 +8860,7 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
         return true;
       }
       if (Array.isArray(pattern.car)) {
-        var names = _toConsumableArray(pattern_names);
+        var names = [...pattern_names];
         var _node4 = code;
         var _new_state2 = _objectSpread(_objectSpread({}, state), {}, {
           pattern_names: names,
@@ -10102,7 +8977,7 @@ function clear_gensyms(node, gensyms) {
       //       some funky modify of code can happen in macro
       return new Pair(car, cdr);
     } else if (node instanceof LSymbol) {
-      var replacement = gensyms.find(function (gensym) {
+      var replacement = gensyms.find(gensym => {
         return gensym.gensym === node;
       });
       if (replacement) {
@@ -10129,7 +9004,7 @@ function transform_syntax() {
     if (symbol instanceof LSymbol) {
       return true;
     }
-    return ['string', 'symbol'].includes(_typeof$1(symbol));
+    return ['string', 'symbol'].includes(typeof symbol);
   }
   function transform(symbol) {
     if (!valid_symbol(symbol)) {
@@ -10141,7 +9016,7 @@ function transform_syntax() {
       throw new Error('syntax: internal error, ellipis not transformed');
     }
     // symbols are gensyms from nested syntax-rules
-    var n_type = _typeof$1(name);
+    var n_type = typeof name;
     if (['string', 'symbol'].includes(n_type)) {
       if (name in bindings.symbols) {
         return bindings.symbols[name];
@@ -10150,9 +9025,7 @@ function transform_syntax() {
         var parts = name.split('.');
         var first = parts[0];
         if (first in bindings.symbols) {
-          return Pair.from_array([LSymbol('.'), bindings.symbols[first]].concat(parts.slice(1).map(function (x) {
-            return LString(x);
-          })));
+          return Pair.from_array([LSymbol('.'), bindings.symbols[first]].concat(parts.slice(1).map(x => LString(x))));
         }
       }
     }
@@ -10165,7 +9038,7 @@ function transform_syntax() {
     if (!gensyms[name]) {
       var ref = scope.ref(name);
       // nested syntax-rules needs original symbol to get renamed again
-      if (_typeof$1(name) === 'symbol' && !ref) {
+      if (typeof name === 'symbol' && !ref) {
         name = symbol.literal();
       }
       if (gensyms[name]) {
@@ -10188,7 +9061,7 @@ function transform_syntax() {
       // if there are free symbols as output
       // kind of hack
       names.push({
-        name: name,
+        name,
         gensym: gensym_name
       });
       gensyms[name] = gensym_name;
@@ -10202,14 +9075,14 @@ function transform_syntax() {
         // save JavaScript dot notation for Env::get
         if (gensyms[first]) {
           var variable = gensyms[first].__name__;
-          hidden_prop(gensym_name, '__object__', [variable].concat(_toConsumableArray(rest)));
+          hidden_prop(gensym_name, '__object__', [variable, ...rest]);
         }
       }
     }
     return gensyms[name];
   }
   function transform_ellipsis_expr(expr, bindings, state) {
-    var next = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : function () {};
+    var next = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : () => {};
     var nested = state.nested;
     if (Array.isArray(expr) && !expr.length) {
       return expr;
@@ -10314,11 +9187,9 @@ function transform_syntax() {
     var values = Object.values(binding);
     var symbols = Object.getOwnPropertySymbols(binding);
     if (symbols.length) {
-      values.push.apply(values, _toConsumableArray(symbols.map(function (x) {
-        return binding[x];
-      })));
+      values.push(...symbols.map(x => binding[x]));
     }
-    return values.length && values.every(function (x) {
+    return values.length && values.every(x => {
       if (x === null) {
         return !skip_nulls;
       }
@@ -10329,8 +9200,8 @@ function transform_syntax() {
     return Object.keys(object).concat(Object.getOwnPropertySymbols(object));
   }
   function traverse(expr) {
-    var _ref21 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-      disabled = _ref21.disabled;
+    var _ref29 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+      disabled = _ref29.disabled;
     var is_array = Array.isArray(expr);
     if (is_array && expr.length === 0) {
       return expr;
@@ -10354,11 +9225,9 @@ function transform_syntax() {
         // skip expand list of pattern was (x y ... z)
         // and code was (x z) so y == null
         var values = Object.values(_symbols2);
-        if (values.length && values.every(function (x) {
-          return x === null;
-        })) {
+        if (values.length && values.every(x => x === null)) {
           return traverse(rest_second, {
-            disabled: disabled
+            disabled
           });
         }
         var keys = get_names(_symbols2);
@@ -10376,7 +9245,7 @@ function transform_syntax() {
           if (is_nil(bindings['...'].lists[0])) {
             if (!is_spread) {
               return traverse(rest_second, {
-                disabled: disabled
+                disabled
               });
             }
             return _nil;
@@ -10395,7 +9264,7 @@ function transform_syntax() {
                 return 1; // break
               }
               var new_bind = {};
-              var next = function next(key, value) {
+              var next = (key, value) => {
                 // ellipsis decide if what should be the next value
                 // there are two cases ((a . b) ...) and (a ...)
                 new_bind[key] = value;
@@ -10412,8 +9281,7 @@ function transform_syntax() {
                 if (is_spread) {
                   if (is_array) {
                     if (Array.isArray(car)) {
-                      var _result;
-                      (_result = result).push.apply(_result, _toConsumableArray(car));
+                      result.push(...car);
                     }
                   } else {
                     if (is_nil(result)) {
@@ -10440,7 +9308,7 @@ function transform_syntax() {
             if (is_array) {
               if (rest_second) {
                 var _rest9 = traverse(rest_second, {
-                  disabled: disabled
+                  disabled
                 });
                 return result.concat(_rest9);
               }
@@ -10448,7 +9316,7 @@ function transform_syntax() {
             }
             if (!is_nil(expr.cdr.cdr) && !LSymbol.is(expr.cdr.cdr.car, ellipsis_symbol)) {
               var _rest0 = traverse(expr.cdr.cdr, {
-                disabled: disabled
+                disabled
               });
               return result.append(_rest0);
             }
@@ -10469,15 +9337,17 @@ function transform_syntax() {
           if (LSymbol.is(rest_second.car, ellipsis_symbol)) ;
           // case: (x ...)
           var name = first.__name__;
-          var _bind2 = _defineProperty({}, name, _symbols2[name]);
+          var _bind2 = {
+            [name]: _symbols2[name]
+          };
           var _is_null = _symbols2[name] === null;
-          var _result2 = is_array ? [] : _nil;
+          var _result = is_array ? [] : _nil;
           var _loop2 = function _loop2() {
             if (!have_binding(_bind2, true)) {
               return 1; // break
             }
             var new_bind = {};
-            var next = function next(key, value) {
+            var next = (key, value) => {
               new_bind[key] = value;
             };
             var value = transform_ellipsis_expr(expr, _bind2, {
@@ -10488,9 +9358,9 @@ function transform_syntax() {
                 value = value.valueOf();
               }
               if (is_array) {
-                _result2.push(value);
+                _result.push(value);
               } else {
-                _result2 = new Pair(value, _result2);
+                _result = new Pair(value, _result);
               }
             }
             _bind2 = new_bind;
@@ -10498,8 +9368,8 @@ function transform_syntax() {
           while (true) {
             if (_loop2()) break;
           }
-          if (!is_nil(_result2) && !is_array) {
-            _result2 = _result2.reverse();
+          if (!is_nil(_result) && !is_array) {
+            _result = _result.reverse();
           }
           // case if (x ... y ...) second spread is not processed
           // and (??? . x) last symbol
@@ -10507,23 +9377,23 @@ function transform_syntax() {
           if (is_pair(expr.cdr)) {
             if (is_pair(expr.cdr.cdr) || expr.cdr.cdr instanceof LSymbol) {
               var node = traverse(expr.cdr.cdr, {
-                disabled: disabled
+                disabled
               });
               if (_is_null) {
                 return node;
               }
-              if (is_nil(_result2)) {
-                _result2 = node;
+              if (is_nil(_result)) {
+                _result = node;
               } else {
-                _result2.append(node);
+                _result.append(node);
               }
             }
           }
-          return _result2;
+          return _result;
         }
       }
       var head = traverse(first, {
-        disabled: disabled
+        disabled
       });
       var rest;
       var is_syntax;
@@ -10536,18 +9406,18 @@ function transform_syntax() {
       if (is_syntax) {
         if (expr.cdr.car instanceof LSymbol) {
           rest = new Pair(traverse(expr.cdr.car, {
-            disabled: disabled
+            disabled
           }), new Pair(expr.cdr.cdr.car, traverse(expr.cdr.cdr.cdr, {
-            disabled: disabled
+            disabled
           })));
         } else {
           rest = new Pair(expr.cdr.car, traverse(expr.cdr.cdr, {
-            disabled: disabled
+            disabled
           }));
         }
       } else {
         rest = traverse(expr.cdr, {
-          disabled: disabled
+          disabled
         });
       }
       return new Pair(head, rest);
@@ -10619,12 +9489,12 @@ function is_raw_lambda(fn) {
 }
 // ----------------------------------------------------------------------
 function is_native_function(fn) {
-  var _native = Symbol["for"]('__native__');
-  return is_function(fn) && fn.toString().match(/\{\s*\[native code\]\s*\}/) && (fn.name.match(/^bound /) && fn[_native] === true || !fn.name.match(/^bound /) && !fn[_native]);
+  var native = Symbol.for('__native__');
+  return is_function(fn) && fn.toString().match(/\{\s*\[native code\]\s*\}/) && (fn.name.match(/^bound /) && fn[native] === true || !fn.name.match(/^bound /) && !fn[native]);
 }
 // ----------------------------------------------------------------------------
 function is_prototype(obj) {
-  return obj && _typeof$1(obj) === 'object' && obj.hasOwnProperty && obj.hasOwnProperty("constructor") && typeof obj.constructor === "function" && obj.constructor.prototype === obj;
+  return obj && typeof obj === 'object' && obj.hasOwnProperty && obj.hasOwnProperty("constructor") && typeof obj.constructor === "function" && obj.constructor.prototype === obj;
 }
 // ----------------------------------------------------------------------
 function is_continuation(o) {
@@ -10668,7 +9538,7 @@ function is_macro(o) {
 }
 // ----------------------------------------------------------------------
 function is_promise(o) {
-  if (o === null || _typeof$1(o) !== 'object') {
+  if (o === null || typeof o !== 'object') {
     return false;
   }
   if (o instanceof Promise) {
@@ -10684,7 +9554,7 @@ function is_object(object) {
   if (!object) {
     return false;
   }
-  return _typeof$1(object) === 'object';
+  return typeof object === 'object';
 }
 // ----------------------------------------------------------------------
 function is_plain_object(object) {
@@ -10696,7 +9566,7 @@ function is_plain_object(object) {
 // this is case, see dir function and #73
 // ----------------------------------------------------------------------
 function is_object_bound(obj) {
-  return is_bound(obj) && obj[Symbol["for"]('__context__')] === Object;
+  return is_bound(obj) && obj[Symbol.for('__context__')] === Object;
 }
 // ----------------------------------------------------------------------
 function is_bound(obj) {
@@ -10755,7 +9625,7 @@ function has_own_symbol(obj, symbol) {
 function box(object) {
   // We only need to box lips data and arrays. Object don't need
   // to be boxed, but values from objects will be boxed when accessed.
-  switch (_typeof$1(object)) {
+  switch (typeof object) {
     case 'string':
       return LString(object);
     case 'bigint':
@@ -10774,7 +9644,7 @@ function map_object(object, fn) {
   var props = Object.getOwnPropertyNames(object);
   var symbols = Object.getOwnPropertySymbols(object);
   var result = {};
-  props.concat(symbols).forEach(function (key) {
+  props.concat(symbols).forEach(key => {
     var value = fn(object[key]);
     result[key] = value;
   });
@@ -10825,28 +9695,19 @@ function unbind(obj) {
 // :: get original function with unbind
 // ----------------------------------------------------------------------
 function bind(fn, context) {
-  if (fn[Symbol["for"]('__bound__')]) {
+  if (fn[Symbol.for('__bound__')]) {
     return fn;
   }
   var bound = fn.bind(context);
   var props = Object.getOwnPropertyNames(fn);
-  var _iterator9 = _createForOfIteratorHelper(props),
-    _step9;
-  try {
-    for (_iterator9.s(); !(_step9 = _iterator9.n()).done;) {
-      var prop = _step9.value;
-      if (filter_fn_names(prop)) {
-        try {
-          bound[prop] = fn[prop];
-        } catch (e) {
-          // ignore error from express.js while accessing bodyParser
-        }
+  for (var prop of props) {
+    if (filter_fn_names(prop)) {
+      try {
+        bound[prop] = fn[prop];
+      } catch (e) {
+        // ignore error from express.js while accessing bodyParser
       }
     }
-  } catch (err) {
-    _iterator9.e(err);
-  } finally {
-    _iterator9.f();
   }
   hidden_prop(bound, '__fn__', fn);
   hidden_prop(bound, '__context__', context);
@@ -10875,14 +9736,14 @@ function lips_context(obj) {
 // ----------------------------------------------------------------------
 // Hidden props
 // ----------------------------------------------------------------------
-var __context__ = Symbol["for"]('__context__');
-var __fn__ = Symbol["for"]('__fn__');
-var __ref__ = Symbol["for"]('__ref__');
-var __cycles__ = Symbol["for"]('__cycles__');
-var __class__ = Symbol["for"]('__class__');
-var __method__ = Symbol["for"]('__method__');
-var __prototype__ = Symbol["for"]('__prototype__');
-var __lambda__ = Symbol["for"]('__lambda__');
+var __context__ = Symbol.for('__context__');
+var __fn__ = Symbol.for('__fn__');
+var __ref__ = Symbol.for('__ref__');
+var __cycles__ = Symbol.for('__cycles__');
+var __class__ = Symbol.for('__class__');
+var __method__ = Symbol.for('__method__');
+var __prototype__ = Symbol.for('__prototype__');
+var __lambda__ = Symbol.for('__lambda__');
 // ----------------------------------------------------------------------
 // :: Function bind fn with context but it also move all props
 // :: mostly used for Object function
@@ -10894,18 +9755,16 @@ function filter_fn_names(name) {
 // ----------------------------------------------------------------------
 function enumerable(object, name, value) {
   Object.defineProperty(object, name, {
-    value: value,
+    value,
     configurable: true,
     enumerable: true
   });
 }
 // ----------------------------------------------------------------------
 function hidden_prop(obj, name, value) {
-  Object.defineProperty(obj, Symbol["for"](name), {
-    get: function get() {
-      return value;
-    },
-    set: function set() {},
+  Object.defineProperty(obj, Symbol.for(name), {
+    get: () => value,
+    set: () => {},
     configurable: false,
     enumerable: false
   });
@@ -10922,9 +9781,7 @@ function set_fn_length(fn, length) {
   } catch (e) {
     // hack that create function with specific length should work for browsers
     // that don't support Object.defineProperty like old IE
-    var args = new Array(length).fill(0).map(function (_, i) {
-      return 'a' + i;
-    }).join(',');
+    var args = new Array(length).fill(0).map((_, i) => 'a' + i).join(',');
     var wrapper = new Function("f", "return function(".concat(args, ") {\n                return f.apply(this, arguments);\n            };"));
     return wrapper(fn);
   }
@@ -10944,12 +9801,8 @@ function let_macro(name) {
         args = _nil;
         params = _nil;
       } else {
-        params = code.cdr.car.map(function (pair) {
-          return pair.car;
-        });
-        args = code.cdr.car.map(function (pair) {
-          return pair.cdr.car;
-        });
+        params = code.cdr.car.map(pair => pair.car);
+        args = code.cdr.car.map(pair => pair.cdr.car);
       }
       var _env = state.env = state.env.inherit('let');
       state.object = hygiene([_env], ['letrec', 'lambda'], function (letrec, lambda) {
@@ -11028,20 +9881,20 @@ function let_macro(name) {
 // -------------------------------------------------------------------------
 function parallel(name, fn) {
   return new Macro(name, function (source) {
-    var _ref22 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-      use_dynamic = _ref22.use_dynamic,
-      error = _ref22.error;
+    var _ref30 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+      use_dynamic = _ref30.use_dynamic,
+      error = _ref30.error;
     var code = source;
     var env = this;
     var dynamic_env = this;
     var results = [];
     var node = code;
     while (is_pair(node)) {
-      results.push(_evaluate(node.car, {
-        env: env,
-        dynamic_env: dynamic_env,
-        use_dynamic: use_dynamic,
-        error: error
+      results.push(evaluate(node.car, {
+        env,
+        dynamic_env,
+        use_dynamic,
+        error
       }));
       node = node.cdr;
     }
@@ -11055,20 +9908,18 @@ function parallel(name, fn) {
 }
 // ----------------------------------------------------------------------
 function pipe() {
-  var _this8 = this;
+  var _this10 = this;
   for (var _len8 = arguments.length, fns = new Array(_len8), _key8 = 0; _key8 < _len8; _key8++) {
     fns[_key8] = arguments[_key8];
   }
-  fns.forEach(function (fn, i) {
+  fns.forEach((fn, i) => {
     typecheck('pipe', fn, 'function', i + 1);
   });
   return function () {
     for (var _len9 = arguments.length, args = new Array(_len9), _key9 = 0; _key9 < _len9; _key9++) {
       args[_key9] = arguments[_key9];
     }
-    return fns.reduce(function (args, f) {
-      return [f.apply(_this8, args)];
-    }, args)[0];
+    return fns.reduce((args, f) => [f.apply(_this10, args)], args)[0];
   };
 }
 // -------------------------------------------------------------------------
@@ -11076,10 +9927,10 @@ function compose() {
   for (var _len0 = arguments.length, fns = new Array(_len0), _key0 = 0; _key0 < _len0; _key0++) {
     fns[_key0] = arguments[_key0];
   }
-  fns.forEach(function (fn, i) {
+  fns.forEach((fn, i) => {
     typecheck('compose', fn, 'function', i + 1);
   });
-  return pipe.apply(void 0, _toConsumableArray(fns.reverse()));
+  return pipe(...fns.reverse());
 }
 // -------------------------------------------------------------------------
 function limit_math_op(n, fn) {
@@ -11100,7 +9951,7 @@ function limit_math_op(n, fn) {
     for (var i = 0; i < args.length; i++) {
       typecheck('', args[i], 'number');
     }
-    return fn.apply(void 0, args);
+    return fn(...args);
   };
 }
 // -------------------------------------------------------------------------
@@ -11110,12 +9961,8 @@ function limit_math_op(n, fn) {
 // definition, but currying them added no value and made binary_math_op(fn)
 // (called per arithmetic op inside reduce_math_op / - / /) go through the
 // allocation-heavy curry machinery
-var single_math_op = function single_math_op(fn) {
-  return limit_math_op(1, fn);
-};
-var binary_math_op = function binary_math_op(fn) {
-  return limit_math_op(2, fn);
-};
+var single_math_op = fn => limit_math_op(1, fn);
+var binary_math_op = fn => limit_math_op(2, fn);
 // -------------------------------------------------------------------------
 function reduce_math_op(fn) {
   var init = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
@@ -11127,7 +9974,7 @@ function reduce_math_op(fn) {
       args[_key10] = arguments[_key10];
     }
     if (init !== null) {
-      args = [init].concat(_toConsumableArray(args));
+      args = [init, ...args];
     }
     return args.reduce(reducer);
   };
@@ -11140,54 +9987,54 @@ function curry(fn) {
   typecheck('curry', fn, 'function');
   var len = fn.length;
   return function () {
-    var _this9 = this;
+    var _this11 = this;
     var args = init_args.slice();
     // HACK: we use IIFE here to get rid of the name of the function.
     // The JavaScript is smart and add name property to a function
     // if it's assigned to a variable, with IIFE we can get rid of it.
     // we need this so the curried function display as #<procedure>
-    var curried = function () {
+    var curried = (() => {
       return function () {
         for (var _len12 = arguments.length, more_args = new Array(_len12), _key12 = 0; _key12 < _len12; _key12++) {
           more_args[_key12] = arguments[_key12];
         }
         args = args.concat(more_args);
         if (args.length >= len) {
-          return fn.apply(_this9, args);
+          return fn.apply(_this11, args);
         } else {
           return curried;
         }
       };
-    }();
-    return curried.apply(void 0, arguments);
+    })();
+    return curried(...arguments);
   };
 }
 // -------------------------------------------------------------------------
 // :: Character object representation
 // -------------------------------------------------------------------------
-function LCharacter(_char8) {
+function LCharacter(char) {
   if (typeof this !== 'undefined' && !(this instanceof LCharacter) || typeof this === 'undefined') {
-    return new LCharacter(_char8);
+    return new LCharacter(char);
   }
-  if (_char8 instanceof LString) {
-    _char8 = _char8.valueOf();
+  if (char instanceof LString) {
+    char = char.valueOf();
   }
   var name;
-  if (Array.from(_char8).length > 1) {
+  if (Array.from(char).length > 1) {
     // this is name
-    _char8 = _char8.toLowerCase();
-    if (LCharacter.__names__[_char8]) {
-      name = _char8;
-      _char8 = LCharacter.__names__[_char8];
+    char = char.toLowerCase();
+    if (LCharacter.__names__[char]) {
+      name = char;
+      char = LCharacter.__names__[char];
     } else {
       // this should never happen
       // parser don't allow not defined named characters
       throw new Error('Internal: Unknown named character');
     }
   } else {
-    name = LCharacter.__rev_names__[_char8];
+    name = LCharacter.__rev_names__[char];
   }
-  enumerable(this, '__char__', _char8);
+  enumerable(this, '__char__', char);
   if (name) {
     enumerable(this, '__name__', name);
   }
@@ -11197,7 +10044,7 @@ LCharacter.is = function (character, value) {
 };
 LCharacter.__names__ = characters;
 LCharacter.__rev_names__ = {};
-Object.keys(LCharacter.__names__).forEach(function (key) {
+Object.keys(LCharacter.__names__).forEach(key => {
   var value = LCharacter.__names__[key];
   LCharacter.__rev_names__[value] = key;
 });
@@ -11221,7 +10068,7 @@ function LString(string) {
     return new LString(string);
   }
   if (string instanceof Array) {
-    this.__string__ = string.map(function (x, i) {
+    this.__string__ = string.map((x, i) => {
       typecheck('LString', x, 'character', i + 1);
       return x.toString();
     }).join('');
@@ -11231,55 +10078,25 @@ function LString(string) {
 }
 {
   var ignore = ['length', 'constructor'];
-  var _keys = Object.getOwnPropertyNames(String.prototype).filter(function (name) {
+  var _keys = Object.getOwnPropertyNames(String.prototype).filter(name => {
     return !ignore.includes(name);
   });
-  var wrap = function wrap(fn) {
-    return function () {
-      for (var _len14 = arguments.length, args = new Array(_len14), _key14 = 0; _key14 < _len14; _key14++) {
-        args[_key14] = arguments[_key14];
-      }
-      return fn.apply(this.__string__, args);
-    };
-  };
-  var _iterator0 = _createForOfIteratorHelper(_keys),
-    _step0;
-  try {
-    for (_iterator0.s(); !(_step0 = _iterator0.n()).done;) {
-      var key = _step0.value;
-      LString.prototype[key] = wrap(String.prototype[key]);
+  var wrap = fn => function () {
+    for (var _len14 = arguments.length, args = new Array(_len14), _key14 = 0; _key14 < _len14; _key14++) {
+      args[_key14] = arguments[_key14];
     }
-  } catch (err) {
-    _iterator0.e(err);
-  } finally {
-    _iterator0.f();
+    return fn.apply(this.__string__, args);
+  };
+  for (var key of _keys) {
+    LString.prototype[key] = wrap(String.prototype[key]);
   }
 }
-LString.prototype[Symbol.iterator] = /*#__PURE__*/_regeneratorRuntime.mark(function _callee11() {
-  var chars, _i4, _chars, _char9;
-  return _regeneratorRuntime.wrap(function (_context11) {
-    while (1) switch (_context11.prev = _context11.next) {
-      case 0:
-        chars = Array.from(this.__string__);
-        _i4 = 0, _chars = chars;
-      case 1:
-        if (!(_i4 < _chars.length)) {
-          _context11.next = 3;
-          break;
-        }
-        _char9 = _chars[_i4];
-        _context11.next = 2;
-        return LCharacter(_char9);
-      case 2:
-        _i4++;
-        _context11.next = 1;
-        break;
-      case 3:
-      case "end":
-        return _context11.stop();
-    }
-  }, _callee11, this);
-});
+LString.prototype[Symbol.iterator] = function* () {
+  var chars = Array.from(this.__string__);
+  for (var char of chars) {
+    yield LCharacter(char);
+  }
+};
 LString.prototype.serialize = function () {
   return this.valueOf();
 };
@@ -11316,18 +10133,18 @@ LString.prototype.lower = function () {
 LString.prototype.upper = function () {
   return LString(this.__string__.toUpperCase());
 };
-LString.prototype.set = function (n, _char0) {
+LString.prototype.set = function (n, char) {
   typecheck('LString::set', n, 'number');
-  typecheck('LString::set', _char0, ['string', 'character']);
+  typecheck('LString::set', char, ['string', 'character']);
   n = n.valueOf();
-  if (_char0 instanceof LCharacter) {
-    _char0 = _char0.__char__;
+  if (char instanceof LCharacter) {
+    char = char.__char__;
   }
   var string = [];
   if (n > 0) {
     string.push(this.__string__.substring(0, n));
   }
-  string.push(_char0);
+  string.push(char);
   if (n < this.__string__.length - 1) {
     string.push(this.__string__.substring(n + 1));
   }
@@ -11341,13 +10158,13 @@ Object.defineProperty(LString.prototype, "length", {
 LString.prototype.clone = function () {
   return LString(this.valueOf());
 };
-LString.prototype.fill = function (_char1) {
-  typecheck('LString::fill', _char1, ['string', 'character']);
-  if (_char1 instanceof LCharacter) {
-    _char1 = _char1.valueOf();
+LString.prototype.fill = function (char) {
+  typecheck('LString::fill', char, ['string', 'character']);
+  if (char instanceof LCharacter) {
+    char = char.valueOf();
   }
   var len = this.__string__.length;
-  this.__string__ = _char1.repeat(len);
+  this.__string__ = char.repeat(len);
 };
 // -------------------------------------------------------------------------
 // :: Number wrapper that handle BigNumbers
@@ -11425,11 +10242,9 @@ function LNumber(n) {
         if (typeof prefix === 'undefined') {
           // non standard radix we convert by hand
           var n_radix = BigInt(radix);
-          value = _toConsumableArray(str).map(function (x, i) {
+          value = [...str].map((x, i) => {
             return BigInt(parseInt(x, radix)) * pow(n_radix, BigInt(i));
-          }).reduce(function (a, b) {
-            return a + b;
-          });
+          }).reduce((a, b) => a + b);
         } else {
           value = BigInt(prefix + str);
         }
@@ -11445,7 +10260,7 @@ function LNumber(n) {
     return LBigInteger(value, true);
   } else if (typeof BN !== 'undefined' && !(n instanceof BN)) {
     if (n instanceof Array) {
-      return LBigInteger(_construct(BN, _toConsumableArray(n)));
+      return LBigInteger(new BN(...n));
     }
     return LBigInteger(new BN(n));
   } else if (parsable) {
@@ -11454,8 +10269,8 @@ function LNumber(n) {
     this.constant(n, 'integer');
   }
 }
-LNumber._registry = new FinalizationRegistry(function (value) {
-  LNumber._cache["delete"](value);
+LNumber._registry = new FinalizationRegistry(value => {
+  LNumber._cache.delete(value);
 });
 LNumber._cache = new Map();
 LNumber.get = function (value) {
@@ -11487,7 +10302,7 @@ LNumber.prototype.constant = function (value, type) {
 };
 // -------------------------------------------------------------------------
 LNumber.types = {
-  "float": function _float2(n) {
+  float: function float(n) {
     return new LFloat(n);
   },
   complex: function complex(n) {
@@ -11621,9 +10436,9 @@ LNumber.prototype.isBigNumber = function () {
   return typeof this.__value__ === 'bigint' || typeof BN !== 'undefined' && !(this.value instanceof BN);
 };
 // -------------------------------------------------------------------------
-['floor', 'ceil', 'round'].forEach(function (fn) {
+['floor', 'ceil', 'round'].forEach(fn => {
   LNumber.prototype[fn] = function () {
-    if (this["float"] || LNumber.isFloat(this.__value__)) {
+    if (this.float || LNumber.isFloat(this.__value__)) {
       return LNumber(Math[fn](this.__value__));
     }
     return LNumber(Math[fn](this.valueOf()));
@@ -11641,70 +10456,48 @@ LNumber.prototype.valueOf = function () {
 // Type coercion matrix
 // -------------------------------------------------------------------------
 var matrix = function () {
-  var i = function i(a, b) {
-    return [a, b];
-  };
+  var i = (a, b) => [a, b];
   return {
     bigint: {
       bigint: i,
-      "float": function float(a, b) {
-        return [LFloat(a.valueOf()), b];
-      },
-      rational: function rational(a, b) {
-        return [{
-          num: a,
-          denom: 1
-        }, b];
-      },
-      complex: function complex(a, b) {
-        return [{
-          im: 0,
-          re: a
-        }, b];
-      }
+      float: (a, b) => [LFloat(a.valueOf()), b],
+      rational: (a, b) => [{
+        num: a,
+        denom: 1
+      }, b],
+      complex: (a, b) => [{
+        im: 0,
+        re: a
+      }, b]
     },
     integer: {
       integer: i,
-      "float": function float(a, b) {
-        return [LFloat(a.valueOf()), b];
-      },
-      rational: function rational(a, b) {
-        return [{
-          num: a,
-          denom: 1
-        }, b];
-      },
-      complex: function complex(a, b) {
-        return [{
-          im: 0,
-          re: a
-        }, b];
-      }
+      float: (a, b) => [LFloat(a.valueOf()), b],
+      rational: (a, b) => [{
+        num: a,
+        denom: 1
+      }, b],
+      complex: (a, b) => [{
+        im: 0,
+        re: a
+      }, b]
     },
-    "float": {
-      bigint: function bigint(a, b) {
-        return [a, b && LFloat(b.valueOf())];
-      },
-      integer: function integer(a, b) {
-        return [a, b && LFloat(b.valueOf())];
-      },
-      "float": i,
-      rational: function rational(a, b) {
-        return [a, b && LFloat(b.valueOf())];
-      },
-      complex: function complex(a, b) {
-        return [{
-          re: a,
-          im: LFloat(0)
-        }, b];
-      }
+    float: {
+      bigint: (a, b) => [a, b && LFloat(b.valueOf())],
+      integer: (a, b) => [a, b && LFloat(b.valueOf())],
+      float: i,
+      rational: (a, b) => [a, b && LFloat(b.valueOf())],
+      complex: (a, b) => [{
+        re: a,
+        im: LFloat(0)
+      }, b]
     },
     complex: {
       bigint: complex('bigint'),
       integer: complex('integer'),
-      "float": complex('float'),
+      float: complex('float'),
       rational: complex('rational'),
-      complex: function complex(a, b) {
+      complex: (a, b) => {
         var _LNumber$coerce = LNumber.coerce(a.__re__, b.__re__),
           _LNumber$coerce2 = _slicedToArray(_LNumber$coerce, 2),
           a_re = _LNumber$coerce2[0],
@@ -11723,23 +10516,17 @@ var matrix = function () {
       }
     },
     rational: {
-      bigint: function bigint(a, b) {
-        return [a, b && {
-          num: b,
-          denom: 1
-        }];
-      },
-      integer: function integer(a, b) {
-        return [a, b && {
-          num: b,
-          denom: 1
-        }];
-      },
-      "float": function float(a, b) {
-        return [LFloat(a.valueOf()), b];
-      },
+      bigint: (a, b) => [a, b && {
+        num: b,
+        denom: 1
+      }],
+      integer: (a, b) => [a, b && {
+        num: b,
+        denom: 1
+      }],
+      float: (a, b) => [LFloat(a.valueOf()), b],
       rational: i,
-      complex: function complex(a, b) {
+      complex: (a, b) => {
         return [{
           im: coerce(a.__type__, b.__im__.__type__, 0)[0],
           re: coerce(a.__type__, b.__re__.__type__, a)[0]
@@ -11751,7 +10538,7 @@ var matrix = function () {
     }
   };
   function complex(type) {
-    return function (a, b) {
+    return (a, b) => {
       return [{
         im: coerce(type, a.__im__.__type__, 0, a.__im__)[1],
         re: coerce(type, a.__re__.__type__, 0, a.__re__)[1]
@@ -11776,9 +10563,7 @@ LNumber.coerce = function (a, b) {
     throw new Error("LNumber::coerce unknown rhs type ".concat(b_type));
   }
   var tmp = matrix[a_type][b_type](a, b);
-  return tmp.map(function (n) {
-    return LNumber(n, true);
-  });
+  return tmp.map(n => LNumber(n, true));
 };
 // -------------------------------------------------------------------------
 LNumber.prototype.coerce = function (n) {
@@ -11813,7 +10598,7 @@ LNumber.getType = function (n) {
 };
 // -------------------------------------------------------------------------
 LNumber.prototype.isFloat = function () {
-  return !!(LNumber.isFloat(this.__value__) || this["float"]);
+  return !!(LNumber.isFloat(this.__value__) || this.float);
 };
 // -------------------------------------------------------------------------
 var mapping = {
@@ -11829,7 +10614,7 @@ var mapping = {
   'shr': '<<'
 };
 var rev_mapping = {};
-Object.keys(mapping).forEach(function (key) {
+Object.keys(mapping).forEach(key => {
   rev_mapping[mapping[key]] = key;
   LNumber.prototype[key] = function (n) {
     return this.op(mapping[key], n);
@@ -11901,7 +10686,7 @@ LNumber.prototype.sqrt = function () {
     var im = Math.sqrt(-value);
     return LComplex({
       re: 0,
-      im: im
+      im
     });
   }
   return LNumber(Math.sqrt(value));
@@ -12053,8 +10838,8 @@ LComplex.prototype.toRational = function (n) {
     re = LFloat(this.__re__).toRational(n);
   }
   return LComplex({
-    im: im,
-    re: re
+    im,
+    re
   });
 };
 // -------------------------------------------------------------------------
@@ -12160,8 +10945,8 @@ LComplex.prototype.sqrt = function () {
     re = this.__im__.div(im).div(2);
   }
   return LComplex({
-    im: im,
-    re: re
+    im,
+    re
   });
 };
 // -------------------------------------------------------------------------
@@ -12200,8 +10985,8 @@ LComplex.prototype.div = function (n) {
   var re = num.__re__.op('/', denom);
   var im = num.__im__.op('/', denom);
   return LComplex({
-    re: re,
-    im: im
+    re,
+    im
   });
 };
 // -------------------------------------------------------------------------
@@ -12225,9 +11010,8 @@ LComplex.prototype.mul = function (n) {
 };
 // -------------------------------------------------------------------------
 LComplex.prototype.complex_op = function (name, n, fn) {
-  var _this0 = this;
-  var calc = function calc(re, im) {
-    var result = fn(_this0.__re__, re, _this0.__im__, im);
+  var calc = (re, im) => {
+    var result = fn(this.__re__, re, this.__im__, im);
     if ('im' in result && 're' in result) {
       if (result.im.cmp(0) === 0) {
         return result.re;
@@ -12290,9 +11074,7 @@ LComplex.prototype.cmp = function (n) {
 };
 // -------------------------------------------------------------------------
 LComplex.prototype.valueOf = function () {
-  return [this.__re__, this.__im__].map(function (x) {
-    return x.valueOf();
-  });
+  return [this.__re__, this.__im__].map(x => x.valueOf());
 };
 // -------------------------------------------------------------------------
 LComplex.prototype.toString = function () {
@@ -12409,7 +11191,7 @@ LFloat.prototype.sqrt = function () {
     var im = LFloat(Math.sqrt(-value));
     return LComplex({
       re: 0,
-      im: im
+      im
     });
   }
   return LFloat(Math.sqrt(value));
@@ -12428,14 +11210,12 @@ LFloat.prototype.abs = function () {
 var toRational = approxRatio(1e-10);
 function approxRatio(eps) {
   return function (n) {
-    var gcde = function gcde(e, x, y) {
-        var _gcd2 = function _gcd(a, b) {
-          return b < e ? a : _gcd2(b, a % b);
-        };
+    var gcde = (e, x, y) => {
+        var _gcd = (a, b) => b < e ? a : _gcd(b, a % b);
         if (Number.isNaN(x) || Number.isNaN(y)) {
           return NaN;
         }
-        return _gcd2(Math.abs(x), Math.abs(y));
+        return _gcd(Math.abs(x), Math.abs(y));
       },
       c = gcde(eps ? eps : 1 / 10000, 1, n);
     return LRational({
@@ -12540,8 +11320,8 @@ LRational.prototype.pow = function (n) {
     var num = this.__denom__.pow(n);
     var denom = this.__num__.pow(n);
     return LRational({
-      num: num,
-      denom: denom
+      num,
+      denom
     });
   }
   var result = this;
@@ -12560,8 +11340,8 @@ LRational.prototype.sqrt = function () {
     return num.div(denom);
   }
   return LRational({
-    num: num,
-    denom: denom
+    num,
+    denom
   });
 };
 // -------------------------------------------------------------------------
@@ -12595,8 +11375,8 @@ LRational.prototype.abs = function () {
     denom = denom.sub();
   }
   return LRational({
-    num: num,
-    denom: denom
+    num,
+    denom
   });
 };
 // -------------------------------------------------------------------------
@@ -12652,8 +11432,8 @@ LRational.prototype._rem_quot = function () {
   var quotient = LNumber._ops['/'](num, denom);
   var remainder = LNumber._ops['%'](num, denom);
   return {
-    remainder: remainder,
-    quotient: quotient
+    remainder,
+    quotient
   };
 };
 // -------------------------------------------------------------------------
@@ -12712,8 +11492,8 @@ LRational.prototype.mul = function (n) {
     var num = this.__num__.mul(n.__num__);
     var denom = this.__denom__.mul(n.__denom__);
     return LRational({
-      num: num,
-      denom: denom
+      num,
+      denom
     });
   }
   var _LNumber$coerce5 = LNumber.coerce(this, n),
@@ -12731,8 +11511,8 @@ LRational.prototype.div = function (n) {
     var num = this.__num__.mul(n.__denom__);
     var denom = this.__denom__.mul(n.__num__);
     return LRational({
-      num: num,
-      denom: denom
+      num,
+      denom
     });
   }
   var _LNumber$coerce7 = LNumber.coerce(this, n),
@@ -12758,8 +11538,8 @@ LRational.prototype.sub = function (n) {
     var num = n.__num__.sub();
     var denom = n.__denom__;
     return this.add(LRational({
-      num: num,
-      denom: denom
+      num,
+      denom
     }));
   }
   if (!(n instanceof LNumber)) {
@@ -12792,8 +11572,8 @@ LRational.prototype.add = function (n) {
       denom = a_denom;
     }
     return LRational({
-      num: num,
-      denom: denom
+      num,
+      denom
     });
   }
   if (LNumber.isFloat(n)) {
@@ -12806,9 +11586,9 @@ LRational.prototype.add = function (n) {
   return a.add(b);
 };
 // -------------------------------------------------------------------------
-function LBigInteger(n, _native2) {
+function LBigInteger(n, native) {
   if (typeof this !== 'undefined' && !(this instanceof LBigInteger) || typeof this === 'undefined') {
-    return new LBigInteger(n, _native2);
+    return new LBigInteger(n, native);
   }
   if (n instanceof LBigInteger) {
     return LBigInteger(n.__value__, n._native);
@@ -12818,7 +11598,7 @@ function LBigInteger(n, _native2) {
   }
   this.constant(n, 'bigint');
   Object.defineProperty(this, '_native', {
-    value: _native2
+    value: native
   });
 }
 // -------------------------------------------------------------------------
@@ -12895,7 +11675,7 @@ LComplex.i = LComplex({
 // :: Port abstraction - read should be a function that return next line
 // -------------------------------------------------------------------------
 function InputPort(read) {
-  var _this1 = this;
+  var _this12 = this;
   var env = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : global_env;
   if (typeof this !== 'undefined' && !(this instanceof InputPort) || typeof this === 'undefined') {
     return new InputPort(read);
@@ -12914,94 +11694,62 @@ function InputPort(read) {
     }
   });
   this._read = read;
-  this._with_parser = this._with_init_parser.bind(this, /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee12() {
-    var line;
-    return _regeneratorRuntime.wrap(function (_context12) {
-      while (1) switch (_context12.prev = _context12.next) {
-        case 0:
-          if (_this1.char_ready()) {
-            _context12.next = 2;
-            break;
-          }
-          _context12.next = 1;
-          return _this1._read();
-        case 1:
-          line = _context12.sent;
-          parser = new Parser({
-            env: env
-          });
-          parser.prepare(line);
-        case 2:
-          return _context12.abrupt("return", _this1.__parser__);
-        case 3:
-        case "end":
-          return _context12.stop();
-      }
-    }, _callee12);
-  })));
+  this._with_parser = this._with_init_parser.bind(this, /*#__PURE__*/_asyncToGenerator(function* () {
+    if (!_this12.char_ready()) {
+      var line = yield _this12._read();
+      parser = new Parser({
+        env
+      });
+      parser.prepare(line);
+    }
+    return _this12.__parser__;
+  }));
   this.char_ready = function () {
     return !!this.__parser__ && this.__parser__.__lexer__.peek() !== eof;
   };
   this._make_defaults();
 }
 InputPort.prototype._make_defaults = function () {
-  this.read = this._with_parser(function (parser) {
+  this.read = this._with_parser(parser => {
     return parser.read_object();
   });
-  this.read_line = this._with_parser(function (parser) {
+  this.read_line = this._with_parser(parser => {
     return parser.__lexer__.read_line();
   });
-  this.read_char = this._with_parser(function (parser) {
+  this.read_char = this._with_parser(parser => {
     return parser.__lexer__.read_char();
   });
-  this.read_string = this._with_parser(function (parser, number) {
+  this.read_string = this._with_parser((parser, number) => {
     if (!LNumber.isInteger(number)) {
       var _type4 = LNumber.getType(number);
       typeErrorMessage('read-string', _type4, 'integer');
     }
     return parser.__lexer__.read_string(number.valueOf());
   });
-  this.peek_char = this._with_parser(function (parser) {
+  this.peek_char = this._with_parser(parser => {
     return parser.__lexer__.peek_char();
   });
 };
 InputPort.prototype._with_init_parser = function (make_parser, fn) {
   var self = this;
-  return /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee13() {
-    var parser,
-      _len15,
-      args,
-      _key15,
-      _args15 = arguments;
-    return _regeneratorRuntime.wrap(function (_context13) {
-      while (1) switch (_context13.prev = _context13.next) {
-        case 0:
-          _context13.next = 1;
-          return make_parser.call(self);
-        case 1:
-          parser = _context13.sent;
-          for (_len15 = _args15.length, args = new Array(_len15), _key15 = 0; _key15 < _len15; _key15++) {
-            args[_key15] = _args15[_key15];
-          }
-          return _context13.abrupt("return", fn.apply(void 0, [parser].concat(args)));
-        case 2:
-        case "end":
-          return _context13.stop();
-      }
-    }, _callee13);
-  }));
+  return /*#__PURE__*/_asyncToGenerator(function* () {
+    var parser = yield make_parser.call(self);
+    for (var _len15 = arguments.length, args = new Array(_len15), _key15 = 0; _key15 < _len15; _key15++) {
+      args[_key15] = arguments[_key15];
+    }
+    return fn(parser, ...args);
+  });
 };
 InputPort.prototype.is_open = function () {
   return this._with_parser !== null;
 };
 InputPort.prototype.close = function () {
-  var _this10 = this;
   this.__parser__ = null;
   // make content garbage collected, we assign null,
   // because the value is in prototype
   this._with_parser = null;
-  ['read', 'close', 'read_char', 'peek-char', 'read_line'].forEach(function (name) {
-    _this10[name] = function () {
+  ['read', 'close', 'read_char', 'peek-char', 'read_line'].forEach(name => {
+    this[name] = function () {
       throw new Error('input-port: port is closed');
     };
   });
@@ -13026,10 +11774,8 @@ OutputPort.prototype.is_open = function () {
 };
 OutputPort.prototype.close = function () {
   Object.defineProperty(this, '_closed', {
-    get: function get() {
-      return true;
-    },
-    set: function set() {},
+    get: () => true,
+    set: () => {},
     configurable: false,
     enumerable: false
   });
@@ -13044,67 +11790,58 @@ OutputPort.prototype.toString = function () {
   return '#<output-port>';
 };
 // -------------------------------------------------------------------------
-var BufferedOutputPort = /*#__PURE__*/function (_OutputPort) {
-  function BufferedOutputPort(fn) {
-    var _this11;
-    _classCallCheck(this, BufferedOutputPort);
-    _this11 = _callSuper(this, BufferedOutputPort, [function () {
-      var _this12;
-      return (_this12 = _this11)._write.apply(_this12, arguments);
-    }]);
+class BufferedOutputPort extends OutputPort {
+  constructor(fn) {
+    var _this13;
+    super(function () {
+      return _this13._write(...arguments);
+    });
+    _this13 = this;
     typecheck('BufferedOutputPort', fn, 'function');
-    read_only(_this11, '_fn', fn, {
+    read_only(this, '_fn', fn, {
       hidden: true
     });
-    read_only(_this11, '_buffer', [], {
+    read_only(this, '_buffer', [], {
       hidden: true
     });
-    return _this11;
   }
-  _inherits(BufferedOutputPort, _OutputPort);
-  return _createClass(BufferedOutputPort, [{
-    key: "flush",
-    value: function flush() {
-      if (this._buffer.length) {
-        this._fn(this._buffer.join(''));
-        this._buffer.length = 0;
+  flush() {
+    if (this._buffer.length) {
+      this._fn(this._buffer.join(''));
+      this._buffer.length = 0;
+    }
+  }
+  _write() {
+    for (var _len16 = arguments.length, args = new Array(_len16), _key16 = 0; _key16 < _len16; _key16++) {
+      args[_key16] = arguments[_key16];
+    }
+    if (args.length) {
+      args.forEach(arg => {
+        this._buffer.push(arg);
+      });
+      var last_value = this._buffer[this._buffer.length - 1];
+      if (last_value.match(/\n$/)) {
+        this._buffer[this._buffer.length - 1] = last_value.replace(/\n$/, '');
+        this.flush();
       }
     }
-  }, {
-    key: "_write",
-    value: function _write() {
-      var _this13 = this;
-      for (var _len16 = arguments.length, args = new Array(_len16), _key16 = 0; _key16 < _len16; _key16++) {
-        args[_key16] = arguments[_key16];
-      }
-      if (args.length) {
-        args.forEach(function (arg) {
-          _this13._buffer.push(arg);
-        });
-        var last_value = this._buffer[this._buffer.length - 1];
-        if (last_value.match(/\n$/)) {
-          this._buffer[this._buffer.length - 1] = last_value.replace(/\n$/, '');
-          this.flush();
-        }
-      }
-    }
-  }]);
-}(OutputPort); // -------------------------------------------------------------------------
+  }
+}
+// -------------------------------------------------------------------------
 function OutputStringPort(toString) {
-  var _this14 = this;
   if (typeof this !== 'undefined' && !(this instanceof OutputStringPort) || typeof this === 'undefined') {
     return new OutputStringPort(toString);
   }
   typecheck('OutputStringPort', toString, 'function');
   read_only(this, '__type__', text_port);
   read_only(this, '__buffer__', []);
-  this.write = function (x) {
+  this.write = x => {
     if (!LString.isString(x)) {
       x = toString(x);
     } else {
       x = x.valueOf();
     }
-    _this14.__buffer__.push(x);
+    this.__buffer__.push(x);
   };
 }
 OutputStringPort.prototype = Object.create(OutputPort.prototype);
@@ -13113,13 +11850,10 @@ OutputStringPort.prototype.toString = function () {
   return '#<output-port (string)>';
 };
 OutputStringPort.prototype.valueOf = function () {
-  return this.__buffer__.map(function (x) {
-    return x.valueOf();
-  }).join('');
+  return this.__buffer__.map(x => x.valueOf()).join('');
 };
 // -------------------------------------------------------------------------
 function OutputFilePort(filename, fd) {
-  var _this15 = this;
   if (typeof this !== 'undefined' && !(this instanceof OutputFilePort) || typeof this === 'undefined') {
     return new OutputFilePort(filename, fd);
   }
@@ -13129,13 +11863,13 @@ function OutputFilePort(filename, fd) {
     hidden: true
   });
   read_only(this, '__type__', text_port);
-  this.write = function (x) {
+  this.write = x => {
     if (!LString.isString(x)) {
       x = to_string(x);
     } else {
       x = x.valueOf();
     }
-    _this15.fs().write(_this15._fd, x, function (err) {
+    this.fs().write(this._fd, x, function (err) {
       if (err) {
         throw err;
       }
@@ -13154,16 +11888,15 @@ OutputFilePort.prototype.internal = function (name) {
   return internal_env.get(name);
 };
 OutputFilePort.prototype.close = function () {
-  var _this16 = this;
-  return new Promise(function (resolve, reject) {
-    _this16.fs().close(_this16._fd, function (err) {
+  return new Promise((resolve, reject) => {
+    this.fs().close(this._fd, err => {
       if (err) {
         reject(err);
       } else {
-        read_only(_this16, '_fd', null, {
+        read_only(this, '_fd', null, {
           hidden: true
         });
-        OutputPort.prototype.close.call(_this16);
+        OutputPort.prototype.close.call(this);
         resolve();
       }
     });
@@ -13174,21 +11907,20 @@ OutputFilePort.prototype.toString = function () {
 };
 // -------------------------------------------------------------------------
 function InputStringPort(string) {
-  var _this17 = this;
   var env = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : global_env;
   if (typeof this !== 'undefined' && !(this instanceof InputStringPort) || typeof this === 'undefined') {
     return new InputStringPort(string);
   }
   typecheck('InputStringPort', string, 'string');
   string = string.valueOf();
-  this._with_parser = this._with_init_parser.bind(this, function () {
-    if (!_this17.__parser__) {
-      _this17.__parser__ = new Parser({
-        env: env
+  this._with_parser = this._with_init_parser.bind(this, () => {
+    if (!this.__parser__) {
+      this.__parser__ = new Parser({
+        env
       });
-      _this17.__parser__.prepare(string);
+      this.__parser__.prepare(string);
     }
-    return _this17.__parser__;
+    return this.__parser__;
   });
   read_only(this, '__type__', text_port);
   this._make_defaults();
@@ -13206,7 +11938,7 @@ function ParserInputPort(parser) {
   if (typeof this !== 'undefined' && !(this instanceof ParserInputPort) || typeof this === 'undefined') {
     return new ParserInputPort(parser);
   }
-  this._with_parser = this._with_init_parser.bind(this, function () {
+  this._with_parser = this._with_init_parser.bind(this, () => {
     return parser;
   });
   read_only(this, '__type__', text_port);
@@ -13255,13 +11987,12 @@ InputByteVectorPort.prototype.toString = function () {
   return "#<input-port (bytevector)>";
 };
 InputByteVectorPort.prototype.close = function () {
-  var _this18 = this;
   read_only(this, '__vector__', _nil);
   var err = function err() {
     throw new Error('Input-binary-port: port is closed');
   };
-  ['read_u8', 'close', 'peek_u8', 'read_u8_vector'].forEach(function (name) {
-    _this18[name] = err;
+  ['read_u8', 'close', 'peek_u8', 'read_u8_vector'].forEach(name => {
+    this[name] = err;
   });
   this.u8_ready = this.char_ready = function () {
     return false;
@@ -13282,9 +12013,9 @@ InputByteVectorPort.prototype.skip = function () {
   }
 };
 InputByteVectorPort.prototype.read_u8 = function () {
-  var _byte = this.peek_u8();
+  var byte = this.peek_u8();
   this.skip();
-  return _byte;
+  return byte;
 };
 InputByteVectorPort.prototype.read_u8_vector = function (len) {
   if (typeof len === 'undefined') {
@@ -13311,8 +12042,7 @@ function OutputByteVectorPort() {
     if (LNumber.isNumber(x)) {
       this._buffer.push(x.valueOf());
     } else {
-      var _this$_buffer;
-      (_this$_buffer = this._buffer).push.apply(_this$_buffer, _toConsumableArray(Array.from(x)));
+      this._buffer.push(...Array.from(x));
     }
   };
   Object.defineProperty(this, '__buffer__', {
@@ -13335,9 +12065,9 @@ OutputByteVectorPort.prototype._close_guard = function () {
     throw new Error('output-port: binary port is closed');
   }
 };
-OutputByteVectorPort.prototype.write_u8 = function (_byte2) {
-  typecheck('OutputByteVectorPort::write_u8', _byte2, 'number');
-  this.write(_byte2);
+OutputByteVectorPort.prototype.write_u8 = function (byte) {
+  typecheck('OutputByteVectorPort::write_u8', byte, 'number');
+  this.write(byte);
 };
 OutputByteVectorPort.prototype.write_u8_vector = function (vector) {
   typecheck('OutputByteVectorPort::write_u8_vector', vector, 'uint8array');
@@ -13379,7 +12109,6 @@ InputBinaryFilePort.prototype.toString = function () {
 };
 // -------------------------------------------------------------------------
 function OutputBinaryFilePort(filename, fd) {
-  var _this19 = this;
   if (typeof this !== 'undefined' && !(this instanceof OutputBinaryFilePort) || typeof this === 'undefined') {
     return new OutputBinaryFilePort(filename, fd);
   }
@@ -13390,19 +12119,19 @@ function OutputBinaryFilePort(filename, fd) {
   });
   read_only(this, '__type__', binary_port);
   var fs;
-  this.write = function (x) {
+  this.write = x => {
     typecheck('write', x, ['number', 'uint8array']);
     var buffer;
     if (!fs) {
-      fs = _this19.internal('fs');
+      fs = this.internal('fs');
     }
     if (LNumber.isNumber(x)) {
       buffer = new Uint8Array([x.valueOf()]);
     } else {
       buffer = new Uint8Array(Array.from(x));
     }
-    return new Promise(function (resolve, reject) {
-      fs.write(_this19._fd, buffer, function (err) {
+    return new Promise((resolve, reject) => {
+      fs.write(this._fd, buffer, function (err) {
         if (err) {
           reject(err);
         } else {
@@ -13414,17 +12143,17 @@ function OutputBinaryFilePort(filename, fd) {
 }
 OutputBinaryFilePort.prototype = Object.create(OutputFilePort.prototype);
 OutputBinaryFilePort.prototype.constructor = OutputBinaryFilePort;
-OutputBinaryFilePort.prototype.write_u8 = function (_byte3) {
-  typecheck('OutputByteVectorPort::write_u8', _byte3, 'number');
-  this.write(_byte3);
+OutputBinaryFilePort.prototype.write_u8 = function (byte) {
+  typecheck('OutputByteVectorPort::write_u8', byte, 'number');
+  this.write(byte);
 };
 OutputBinaryFilePort.prototype.write_u8_vector = function (vector) {
   typecheck('OutputByteVectorPort::write_u8_vector', vector, 'uint8array');
   this.write(vector);
 };
 // -------------------------------------------------------------------------
-var binary_port = Symbol["for"]('binary');
-var text_port = Symbol["for"]('text');
+var binary_port = Symbol.for('binary');
+var text_port = Symbol.for('text');
 var eof = new EOF();
 function EOF() {}
 EOF.prototype.toString = function () {
@@ -13434,25 +12163,25 @@ EOF.prototype.toString = function () {
 // Simpler way to create interpreter with interaction-environment
 // -------------------------------------------------------------------------
 function Interpreter(name) {
-  var _ref25 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-    stderr = _ref25.stderr,
-    stdin = _ref25.stdin,
-    stdout = _ref25.stdout,
-    _ref25$meta = _ref25.meta,
-    meta = _ref25$meta === void 0 ? false : _ref25$meta,
-    _ref25$command_line = _ref25.command_line,
-    command_line = _ref25$command_line === void 0 ? null : _ref25$command_line,
-    _ref25$filename = _ref25.filename,
-    filename = _ref25$filename === void 0 ? null : _ref25$filename,
-    obj = _objectWithoutProperties(_ref25, _excluded3);
+  var _ref33 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+    stderr = _ref33.stderr,
+    stdin = _ref33.stdin,
+    stdout = _ref33.stdout,
+    _ref33$meta = _ref33.meta,
+    meta = _ref33$meta === void 0 ? false : _ref33$meta,
+    _ref33$command_line = _ref33.command_line,
+    command_line = _ref33$command_line === void 0 ? null : _ref33$command_line,
+    _ref33$filename = _ref33.filename,
+    filename = _ref33$filename === void 0 ? null : _ref33$filename,
+    obj = _objectWithoutProperties(_ref33, _excluded3);
   if (typeof this !== 'undefined' && !(this instanceof Interpreter) || typeof this === 'undefined') {
     return new Interpreter(name, _objectSpread({
-      stdin: stdin,
-      stdout: stdout,
-      stderr: stderr,
-      meta: meta,
-      command_line: command_line,
-      filename: filename
+      stdin,
+      stdout,
+      stderr,
+      meta,
+      command_line,
+      filename
     }, obj));
   }
   if (typeof name === 'undefined') {
@@ -13461,8 +12190,8 @@ function Interpreter(name) {
   read_only(this, '__env__', user_env.inherit(name, obj));
   read_only(this, '__parser__', new Parser({
     env: this.__env__,
-    filename: filename,
-    meta: meta
+    filename,
+    meta
   }));
   var defaults_name = '**interaction-environment-defaults**';
   this.set(defaults_name, get_props(obj).concat(defaults_name));
@@ -13504,20 +12233,20 @@ Interpreter.prototype.exec = function (arg) {
   }
   if (Array.isArray(arg)) {
     return exec(arg, {
-      env: env,
-      dynamic_env: dynamic_env,
-      use_dynamic: use_dynamic,
-      filename: filename
+      env,
+      dynamic_env,
+      use_dynamic,
+      filename
     });
   } else {
     this.__parser__.prepare(arg, {
-      filename: filename
+      filename
     });
     return exec(this.__parser__, {
-      env: env,
-      dynamic_env: dynamic_env,
-      filename: filename,
-      use_dynamic: use_dynamic
+      env,
+      dynamic_env,
+      filename,
+      use_dynamic
     });
   }
 };
@@ -13578,7 +12307,7 @@ Environment.prototype.names = function () {
   var env = this;
   var result = [];
   while (env !== user_env) {
-    result.push.apply(result, _toConsumableArray(Object.keys(env.__env__)));
+    result.push(...Object.keys(env.__env__));
     env = env.__parent__;
   }
   return result;
@@ -13594,10 +12323,10 @@ Environment.prototype.unset = function (name) {
 // -------------------------------------------------------------------------
 Environment.prototype.inherit = function (name) {
   var obj = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-  if (_typeof$1(name) === "object") {
+  if (typeof name === "object") {
     obj = name;
   }
-  if (!name || _typeof$1(name) === "object") {
+  if (!name || typeof name === "object") {
     name = 'child of ' + (this.__name__ || 'unknown');
   }
   return new Environment(obj || {}, this, name);
@@ -13656,12 +12385,11 @@ Environment.prototype.toString = function () {
 };
 // -------------------------------------------------------------------------
 Environment.prototype.clone = function () {
-  var _this20 = this;
   // duplicate refs
   var env = {};
   // TODO: duplicated Symbols
-  Object.keys(this.__env__).forEach(function (key) {
-    env[key] = _this20.__env__[key];
+  Object.keys(this.__env__).forEach(key => {
+    env[key] = this.__env__[key];
   });
   return new Environment(env, this.__parent__, this.__name__);
 };
@@ -13709,9 +12437,7 @@ function Values(values) {
   this.__values__ = values;
 }
 Values.prototype.toString = function () {
-  return this.__values__.map(function (x) {
-    return to_string(x);
-  }).join('\n');
+  return this.__values__.map(x => to_string(x)).join('\n');
 };
 Values.prototype.valueOf = function () {
   return this.__values__;
@@ -13764,7 +12490,7 @@ Environment.prototype.get = function (symbol) {
         }
         if (typeof value !== 'undefined') {
           // object accessor
-          return get.apply(void 0, [value].concat(_toConsumableArray(rest)));
+          return get(value, ...rest);
         }
       } catch (e) {
         throw e;
@@ -13808,14 +12534,13 @@ Environment.prototype.set = function (name, value) {
 // For internal use only
 // -------------------------------------------------------------------------
 Environment.prototype.constant = function (name, value) {
-  var _this21 = this;
   if (this.__env__.hasOwnProperty(name)) {
     throw new Error("Environment::constant: ".concat(name, " already exists"));
   }
   if (arguments.length === 1 && is_plain_object(arguments[0])) {
     var obj = arguments[0];
-    Object.keys(obj).forEach(function (key) {
-      _this21.constant(name, obj[key]);
+    Object.keys(obj).forEach(key => {
+      this.constant(name, obj[key]);
     });
   } else {
     enumerable(this.__env__, name, value);
@@ -13870,7 +12595,7 @@ var get = doc('get', function get(object) {
   var len = args.length;
   while (args.length) {
     // if arg is symbol someone probably want to get __fn__ from binded function
-    if (is_function(object) && _typeof$1(args[0]) !== 'symbol') {
+    if (is_function(object) && typeof args[0] !== 'symbol') {
       object = unbind(object);
     }
     var arg = args.shift();
@@ -13928,13 +12653,11 @@ function get_interaction_env(env, name) {
 // -------------------------------------------------------------------------
 var internal_env = new Environment({
   stdout: new BufferedOutputPort(function () {
-    var _console2;
-    (_console2 = console).log.apply(_console2, arguments);
+    console.log(...arguments);
   }),
   // ------------------------------------------------------------------
   stderr: new BufferedOutputPort(function () {
-    var _console3;
-    (_console3 = console).error.apply(_console3, arguments);
+    console.error(...arguments);
   }),
   'command-line': [],
   // ------------------------------------------------------------------
@@ -13960,8 +12683,8 @@ var constants = _objectSpread({
 }, parsable_contants);
 // -------------------------------------------------------------------------
 var global_env = new Environment({
-  eof: eof,
-  undefined: undefined,
+  eof,
+  undefined,
   // undefined as parser constant breaks most of the unit tests
   // ---------------------------------------------------------------------
   'peek-char': doc('peek-char', function () {
@@ -13992,38 +12715,27 @@ var global_env = new Environment({
   }, "(read-char port)\n\n        This function reads and returns the next character from the\n        input port."),
   // ------------------------------------------------------------------
   read: doc('read', /*#__PURE__*/function () {
-    var _read4 = _asyncToGenerator(function () {
-      var _this22 = this;
+    var _read = _asyncToGenerator(function* () {
       var arg = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
-      return /*#__PURE__*/_regeneratorRuntime.mark(function _callee14() {
-        var env, port;
-        return _regeneratorRuntime.wrap(function (_context14) {
-          while (1) switch (_context14.prev = _context14.next) {
-            case 0:
-              env = _this22.env;
-              if (arg === null) {
-                port = get_internal_value(env, 'stdin');
-              } else {
-                port = arg;
-              }
-              typecheck_text_port('read', port, 'input-port');
-              return _context14.abrupt("return", port.read.call(env));
-            case 1:
-            case "end":
-              return _context14.stop();
-          }
-        }, _callee14);
-      })();
+      var env = this.env;
+      var port;
+      if (arg === null) {
+        port = get_internal_value(env, 'stdin');
+      } else {
+        port = arg;
+      }
+      typecheck_text_port('read', port, 'input-port');
+      return port.read.call(env);
     });
     function read() {
-      return _read4.apply(this, arguments);
+      return _read.apply(this, arguments);
     }
     return read;
   }(), "(read [port])\n\n        This function, if called with a port, it will parse the next\n        item from the port. If called without an input, it will read\n        a string from standard input (using the browser's prompt or\n        a user defined input method) and parse it. This function can be\n        used together with `eval` to evaluate code from port."),
   // ------------------------------------------------------------------
   pprint: doc('pprint', function pprint(arg) {
     if (is_pair(arg)) {
-      arg = new lips.Formatter(arg.toString(true))["break"]().format();
+      arg = new lips.Formatter(arg.toString(true)).break().format();
       global_env.get('display').call(global_env, arg);
     } else {
       global_env.get('write').call(global_env, arg);
@@ -14040,16 +12752,16 @@ var global_env = new Environment({
     for (var _len18 = arguments.length, args = new Array(_len18), _key18 = 0; _key18 < _len18; _key18++) {
       args[_key18] = arguments[_key18];
     }
-    args.forEach(function (arg) {
+    args.forEach(arg => {
       call_function(display, [arg], {
-        env: env,
-        dynamic_env: dynamic_env,
-        use_dynamic: use_dynamic
+        env,
+        dynamic_env,
+        use_dynamic
       });
       call_function(newline, [], {
-        env: env,
-        dynamic_env: dynamic_env,
-        use_dynamic: use_dynamic
+        env,
+        dynamic_env,
+        use_dynamic
       });
     });
   }, "(print . args)\n\n        This function converts each input into a string and prints\n        the result to the standard output (by default it's the\n        console but it can be defined in user code). This function\n        calls `(newline)` after printing each input."),
@@ -14062,7 +12774,7 @@ var global_env = new Environment({
   // ------------------------------------------------------------------
   'stack-trace': doc(function (cc) {
     typecheck('stack-trace', cc, 'continuation');
-    return cc.trace(function (cc, i) {
+    return cc.trace((cc, i) => {
       return "[".concat(i, "]: ").concat(to_string(cc.__code__));
     }).join('\n');
   }, "(stack-trace <continuation>)\n\n        Function return stack trace if given continuation as a string.\n        You first need to enable collecting stack frames using (trace)."),
@@ -14079,7 +12791,7 @@ var global_env = new Environment({
     }
     var i = 0;
     var repr = global_env.get('repr');
-    str = str.replace(re, function (x) {
+    str = str.replace(re, x => {
       var chr = x[1];
       if (chr === '~') {
         return '~';
@@ -14108,9 +12820,9 @@ var global_env = new Environment({
       env = this.env,
       dynamic_env = this.dynamic_env;
     call_function(display, ['\n', port], {
-      env: env,
-      dynamic_env: dynamic_env,
-      use_dynamic: use_dynamic
+      env,
+      dynamic_env,
+      use_dynamic
     });
   }, "(newline [port])\n\n        Write newline character to standard output or given port"),
   // ------------------------------------------------------------------
@@ -14151,10 +12863,10 @@ var global_env = new Environment({
     return unbind(a) === unbind(b);
   }, "(%same-functions a b)\n\n        A helper function that checks if the two input functions are\n        the same."),
   // ------------------------------------------------------------------
-  help: doc(new Macro('help', function (source, _ref26) {
-    var dynamic_env = _ref26.dynamic_env,
-      use_dynamic = _ref26.use_dynamic,
-      error = _ref26.error;
+  help: doc(new Macro('help', function (source, _ref34) {
+    var dynamic_env = _ref34.dynamic_env,
+      use_dynamic = _ref34.use_dynamic,
+      error = _ref34.error;
     var code = source.cdr;
     var symbol;
     if (code.car instanceof LSymbol) {
@@ -14165,11 +12877,11 @@ var global_env = new Environment({
     } else {
       var _env2 = this;
       dynamic_env = this;
-      var ret = _evaluate(code.car, {
+      var ret = evaluate(code.car, {
         env: _env2,
-        error: error,
-        dynamic_env: dynamic_env,
-        use_dynamic: use_dynamic
+        error,
+        dynamic_env,
+        use_dynamic
       });
       if (ret && ret.__doc__) {
         return ret.__doc__;
@@ -14270,15 +12982,13 @@ var global_env = new Environment({
         }
       }
       return exec(code, _objectSpread(_objectSpread({
-        env: env
+        env
       }, eval_args), {}, {
-        filename: filename
+        filename
       }));
     }
     function fetch(file) {
-      return root.fetch(file).then(function (res) {
-        return IS_BIN ? res.arrayBuffer() : res.text();
-      }).then(function (code) {
+      return root.fetch(file).then(res => IS_BIN ? res.arrayBuffer() : res.text()).then(code => {
         if (IS_BIN) {
           code = new Uint8Array(code);
         }
@@ -14291,108 +13001,61 @@ var global_env = new Environment({
     }
     if (is_node()) {
       return new Promise(/*#__PURE__*/function () {
-        var _ref27 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee16(resolve, reject) {
-          var _path, _fs, root_dir, cmd, _args17, _t6;
-          return _regeneratorRuntime.wrap(function (_context16) {
-            while (1) switch (_context16.prev = _context16.next) {
-              case 0:
-                _context16.prev = 0;
-                _context16.next = 1;
-                return node_ready;
-              case 1:
-                _path = node_require('path');
-                _fs = node_require('fs');
-                root_dir = get_root_dir();
-                if (has_package) {
-                  file = file.replace(package_name, root_dir);
-                }
-                if (!module_path) {
-                  _context16.next = 2;
-                  break;
-                }
-                module_path = module_path.valueOf();
-                if (!file.startsWith('/')) {
-                  file = _path.join(module_path, file);
-                }
-                _context16.next = 5;
-                break;
-              case 2:
-                if (file.startsWith('/')) {
-                  _context16.next = 5;
-                  break;
-                }
-                cmd = g_env.get('command-line', {
-                  throwError: false
-                });
-                if (!cmd) {
-                  _context16.next = 4;
-                  break;
-                }
-                _context16.next = 3;
-                return cmd();
-              case 3:
-                _args17 = _context16.sent;
-              case 4:
-                if (_args17 && !is_nil(_args17)) {
-                  process.cwd();
-                  file = _path.join(_path.dirname(_args17.car.valueOf()), file);
-                }
-              case 5:
-                global_env.set(PATH, _path.dirname(file));
-                _fs.readFile(file, /*#__PURE__*/function () {
-                  var _ref28 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee15(err, data) {
-                    var _t5;
-                    return _regeneratorRuntime.wrap(function (_context15) {
-                      while (1) switch (_context15.prev = _context15.next) {
-                        case 0:
-                          if (!err) {
-                            _context15.next = 1;
-                            break;
-                          }
-                          global_env.set(PATH, module_path);
-                          reject(err);
-                          _context15.next = 5;
-                          break;
-                        case 1:
-                          _context15.prev = 1;
-                          _context15.next = 2;
-                          return run(data);
-                        case 2:
-                          resolve();
-                          _context15.next = 4;
-                          break;
-                        case 3:
-                          _context15.prev = 3;
-                          _t5 = _context15["catch"](1);
-                          reject(_t5);
-                        case 4:
-                          _context15.prev = 4;
-                          global_env.set(PATH, module_path);
-                          return _context15.finish(4);
-                        case 5:
-                        case "end":
-                          return _context15.stop();
-                      }
-                    }, _callee15, null, [[1, 3, 4, 5]]);
-                  }));
-                  return function (_x0, _x1) {
-                    return _ref28.apply(this, arguments);
-                  };
-                }());
-                _context16.next = 7;
-                break;
-              case 6:
-                _context16.prev = 6;
-                _t6 = _context16["catch"](0);
-                console.error(_t6);
-              case 7:
-              case "end":
-                return _context16.stop();
+        var _ref35 = _asyncToGenerator(function* (resolve, reject) {
+          try {
+            yield node_ready;
+            var _path = node_require('path');
+            var _fs = node_require('fs');
+            var cwd;
+            var root_dir = get_root_dir();
+            if (has_package) {
+              file = file.replace(package_name, root_dir);
             }
-          }, _callee16, null, [[0, 6]]);
-        }));
-        return function (_x8, _x9) {
-          return _ref27.apply(this, arguments);
+            if (module_path) {
+              module_path = module_path.valueOf();
+              if (!file.startsWith('/')) {
+                file = _path.join(module_path, file);
+              }
+            } else if (!file.startsWith('/')) {
+              var cmd = g_env.get('command-line', {
+                throwError: false
+              });
+              var args;
+              if (cmd) {
+                args = yield cmd();
+              }
+              if (args && !is_nil(args)) {
+                cwd = process.cwd();
+                file = _path.join(_path.dirname(args.car.valueOf()), file);
+              }
+            }
+            global_env.set(PATH, _path.dirname(file));
+            _fs.readFile(file, /*#__PURE__*/function () {
+              var _ref36 = _asyncToGenerator(function* (err, data) {
+                if (err) {
+                  global_env.set(PATH, module_path);
+                  reject(err);
+                } else {
+                  try {
+                    yield run(data);
+                    resolve();
+                  } catch (e) {
+                    reject(e);
+                  } finally {
+                    global_env.set(PATH, module_path);
+                  }
+                }
+              });
+              return function (_x5, _x6) {
+                return _ref36.apply(this, arguments);
+              };
+            }());
+          } catch (e) {
+            console.error(e);
+          }
+        });
+        return function (_x3, _x4) {
+          return _ref35.apply(this, arguments);
         };
       }());
     }
@@ -14411,10 +13074,10 @@ var global_env = new Environment({
         file = module_path + '/' + file.replace(/^\.?\/?/, '');
       }
     }
-    return fetch(file).then(function (code) {
+    return fetch(file).then(code => {
       global_env.set(PATH, file.replace(/\/[^/]*$/, ''));
       return run(code);
-    }).then(function () {})["finally"](function () {
+    }).then(() => {}).finally(() => {
       global_env.set(PATH, module_path);
     });
   }, "(load filename)\n        (load filename environment)\n\n        Fetches the file (from disk or network) and evaluates its content as LIPS code.\n        If the second argument is provided and it's an environment the evaluation\n        will happen in that environment."),
@@ -14432,38 +13095,29 @@ var global_env = new Environment({
   }), "(while cond body)\n\n         Creates a loop, it executes cond and body until cond expression is false."),
   // ------------------------------------------------------------------
   'do': doc(new Macro('do', /*#__PURE__*/function () {
-    var _ref29 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee17(source, state) {
-      var code, loop, names, result, body;
-      return _regeneratorRuntime.wrap(function (_context17) {
-        while (1) switch (_context17.prev = _context17.next) {
-          case 0:
-            code = source.cdr;
-            state.env = state.env.inherit('do');
-            loop = gensym('loop');
-            names = ['let', 'if', 'begin'];
-            result = is_nil(code.cdr.car.cdr) ? undefined : code.cdr.car.cdr.car;
-            body = Pair(Pair(loop, code.car.map(function (list) {
-              if (!is_pair(list.cdr.cdr)) {
-                return list.car;
-              }
-              return list.cdr.cdr.car;
-            })), _nil);
-            is_nil(code.cdr.cdr) ? _nil : code.cdr.cdr.clone();
-            state.object = hygiene([state.env], names, function (_let, _if, _begin) {
-              return Pair.from_array([_let, loop, code.car.map(function (list) {
-                return Pair(list.car, Pair(list.cdr.car, _nil));
-              }), [_if, code.cdr.car.car, result, Pair(_begin, is_nil(code.cdr.cdr) ? body : code.cdr.cdr.clone().append(body))]]);
-            });
-            state.ready = false;
-            return _context17.abrupt("return", state);
-          case 1:
-          case "end":
-            return _context17.stop();
+    var _ref37 = _asyncToGenerator(function* (source, state) {
+      var code = source.cdr;
+      state.env = state.env.inherit('do');
+      var loop = gensym('loop');
+      var names = ['let', 'if', 'begin'];
+      var result = is_nil(code.cdr.car.cdr) ? undefined : code.cdr.car.cdr.car;
+      var body = Pair(Pair(loop, code.car.map(list => {
+        if (!is_pair(list.cdr.cdr)) {
+          return list.car;
         }
-      }, _callee17);
-    }));
-    return function (_x10, _x11) {
-      return _ref29.apply(this, arguments);
+        return list.cdr.cdr.car;
+      })), _nil);
+      is_nil(code.cdr.cdr) ? _nil : code.cdr.cdr.clone();
+      state.object = hygiene([state.env], names, function (_let, _if, _begin) {
+        return Pair.from_array([_let, loop, code.car.map(list => {
+          return Pair(list.car, Pair(list.cdr.car, _nil));
+        }), [_if, code.cdr.car.car, result, Pair(_begin, is_nil(code.cdr.cdr) ? body : code.cdr.cdr.clone().append(body))]]);
+      });
+      state.ready = false;
+      return state;
+    });
+    return function (_x7, _x8) {
+      return _ref37.apply(this, arguments);
     };
   }()), "(do ((<var> <init> <next>)) (test return) . body)\n\n         Iteration macro that evaluates the expression body in scope of the variables.\n         On each loop it changes the variables according to the <next> expression and runs\n         test to check if the loop should continue. If test is a single value, the macro\n         will return undefined. If the test is a pair of expressions the macro will\n         evaluate and return the second expression after the loop exits."),
   // ------------------------------------------------------------------
@@ -14476,18 +13130,18 @@ var global_env = new Environment({
       use_dynamic = options.use_dynamic,
       error = options.error;
     typecheck('let-env', code, 'pair');
-    var ret = _evaluate(code.car, {
+    var ret = evaluate(code.car, {
       env: this,
-      dynamic_env: dynamic_env,
-      error: error,
-      use_dynamic: use_dynamic
+      dynamic_env,
+      error,
+      use_dynamic
     });
     return unpromise(ret, function (value) {
       typecheck('let-env', value, 'environment');
-      return _evaluate(Pair(LSymbol('begin'), code.cdr), {
+      return evaluate(Pair(LSymbol('begin'), code.cdr), {
         env: value,
-        dynamic_env: dynamic_env,
-        error: error
+        dynamic_env,
+        error
       });
     });
   }, "(let-env env . body)\n\n        Special macro that evaluates body in context of given environment\n        object."),
@@ -14524,11 +13178,11 @@ var global_env = new Environment({
     var code = source.cdr;
     var env = this.inherit('ignore');
     var eval_args = _objectSpread(_objectSpread({}, state), {}, {
-      env: env,
+      env,
       dynamic_env: env,
       cc: top_cc
     });
-    _evaluate(hygienic_begin([env], code), eval_args);
+    evaluate(hygienic_begin([env], code), eval_args);
   }, "(ignore . body)\n\n        Macro that will evaluate the expression and swallow any promises that may\n        be created. It will discard any value that may be returned by the last body\n        expression. The code should have side effects and/or when it's promise\n        it should resolve to undefined. Macro ignore don't capture any continuations,\n        so it work like top level expression.\n\n        You can use call/cc inside ignore, but capturing continuations and\n        using it outside of ignore can give unspecified results."),
   // ------------------------------------------------------------------
   'call/cc': doc(new Macro('call/cc', function (source, state) {
@@ -14568,7 +13222,7 @@ var global_env = new Environment({
     while (is_pair(p)) {
       var pair = p.car;
       var name = pair.car.valueOf();
-      var value = _evaluate(pair.cdr.car, _objectSpread(_objectSpread({}, state), {}, {
+      var value = evaluate(pair.cdr.car, _objectSpread(_objectSpread({}, state), {}, {
         cc: top_cc
       }));
       // the parameter object is an ordinary binding - resolve it in the
@@ -14602,10 +13256,10 @@ var global_env = new Environment({
     var args = _objectSpread(_objectSpread({}, eval_args), {}, {
       cc: top_cc
     });
-    var init = _evaluate(code.car, args);
+    var init = evaluate(code.car, args);
     var fn;
     if (is_pair(code.cdr.car)) {
-      fn = _evaluate(code.cdr.car, args);
+      fn = evaluate(code.cdr.car, args);
     }
     return new Parameter(init, fn);
   }), "(make-parameter init converter)\n\n    Function creates new dynamic variable that can be custimized with parameterize\n    macro. The value should be assigned to a variable e.g.:\n\n    (define radix (make-parameter 10))\n\n    The result value is a procedure that return the value of dynamic variable."),
@@ -14619,8 +13273,8 @@ var global_env = new Environment({
     }
     // cc: top_cc isolates this nested eval - without it the outer
     // continuation leaks in and the result comes back as a promise
-    var syntax = _evaluate(code.cdr.car, _objectSpread(_objectSpread({
-      env: env
+    var syntax = evaluate(code.cdr.car, _objectSpread(_objectSpread({
+      env
     }, eval_args), {}, {
       cc: top_cc
     }));
@@ -14646,7 +13300,7 @@ var global_env = new Environment({
         var msg = "invalid syntax for syntax-parameterize: ".concat(repr(code, true));
         throw new Error("syntax-parameterize: ".concat(msg));
       }
-      var syntax = _evaluate(pair.cdr.car, _objectSpread(_objectSpread({}, eval_args), {}, {
+      var syntax = evaluate(pair.cdr.car, _objectSpread(_objectSpread({}, eval_args), {}, {
         env: this,
         cc: top_cc
       }));
@@ -14685,7 +13339,7 @@ var global_env = new Environment({
   // ------------------------------------------------------------------
   'set-object!': doc('set-object!', function (obj, key, value) {
     var options = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
-    var obj_type = _typeof$1(obj);
+    var obj_type = typeof obj;
     if (is_null(obj) || obj_type !== 'object' && obj_type !== 'function') {
       var msg = typeErrorMessage('set-object!', type(obj), ['object', 'function']);
       throw new Error(msg);
@@ -14741,10 +13395,10 @@ var global_env = new Environment({
   // ------------------------------------------------------------------
   'eval': doc('eval', function (code, env) {
     env = env || this.get('interaction-environment').call(this);
-    return _evaluate(code, {
-      env: env,
+    return evaluate(code, {
+      env,
       dynamic_env: env,
-      error: function error(e) {
+      error: e => {
         throw e;
       }
     });
@@ -14806,7 +13460,7 @@ var global_env = new Environment({
       if (use_dynamic) {
         dynamic_env.set(lambda._begin_gensym, global_env.get('begin'));
       }
-      return _evaluate(body, _objectSpread(_objectSpread({}, eval_args), {}, {
+      return evaluate(body, _objectSpread(_objectSpread({}, eval_args), {}, {
         cc: top_cc
       }));
     }
@@ -14838,56 +13492,41 @@ var global_env = new Environment({
   }, "(lambda (a b) body)\n        (lambda args body)\n        (lambda (a b . rest) body)\n\n        The lambda macro creates a new anonymous function. If the first element of\n        the body is a string and there is more elements the string is used as the\n        documentation string, that can be read using (help fn)."),
   // ------------------------------------------------------------------
   macroexpand: doc(/*#__PURE__*/function () {
-    var _ref30 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee18(code) {
-      return _regeneratorRuntime.wrap(function (_context18) {
-        while (1) switch (_context18.prev = _context18.next) {
-          case 0:
-            return _context18.abrupt("return", _evaluate(code, {
-              macro_expand: true,
-              env: this.env,
-              error: function error(e) {
-                throw e;
-              }
-            }));
-          case 1:
-          case "end":
-            return _context18.stop();
+    var _ref38 = _asyncToGenerator(function* (code) {
+      // macroexpand is a function (like Common Lisp), NOT a macro, so its
+      // argument is already evaluated - quote the code you want expanded:
+      // (macroexpand '(when test body)). The expansion is produced in the tco
+      // loop in macro_expand mode (see evaluate_code and macroexpand_code).
+      return evaluate(code, {
+        macro_expand: true,
+        env: this.env,
+        error: e => {
+          throw e;
         }
-      }, _callee18, this);
-    }));
-    return function (_x12) {
-      return _ref30.apply(this, arguments);
+      });
+    });
+    return function (_x9) {
+      return _ref38.apply(this, arguments);
     };
   }(), "(macroexpand expr)\n\n        Function that expands all macros in the quoted expression and returns\n        the expanded code. Being a function, its argument is evaluated, so pass\n        quoted code: (macroexpand '(when x y))."),
   // ------------------------------------------------------------------
   'macroexpand-1': doc(/*#__PURE__*/function () {
-    var _ref31 = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee19(code) {
-      var value;
-      return _regeneratorRuntime.wrap(function (_context19) {
-        while (1) switch (_context19.prev = _context19.next) {
-          case 0:
-            if (!(is_pair(code) && code.car instanceof LSymbol)) {
-              _context19.next = 1;
-              break;
-            }
-            value = this.env.get(code.car, {
-              throwError: false
-            });
-            if (!(value && is_macro(value) && !is_internal_macro(value))) {
-              _context19.next = 1;
-              break;
-            }
-            return _context19.abrupt("return", macroexpand_once(value, code, this.env));
-          case 1:
-            return _context19.abrupt("return", code);
-          case 2:
-          case "end":
-            return _context19.stop();
+    var _ref39 = _asyncToGenerator(function* (code) {
+      // like macroexpand but expands only the outermost macro use one step
+      // (does not recurse into the result or subforms). Also a function, so
+      // pass quoted code: (macroexpand-1 '(when x y)).
+      if (is_pair(code) && code.car instanceof LSymbol) {
+        var value = this.env.get(code.car, {
+          throwError: false
+        });
+        if (value && is_macro(value) && !is_internal_macro(value)) {
+          return macroexpand_once(value, code, this.env);
         }
-      }, _callee19, this);
-    }));
-    return function (_x13) {
-      return _ref31.apply(this, arguments);
+      }
+      return code;
+    });
+    return function (_x0) {
+      return _ref39.apply(this, arguments);
     };
   }(), "(macroexpand-1 expr)\n\n         Function similar to macroexpand but it expands the outermost macro only\n         one level and returns the resulting code. Being a function, its argument\n         is evaluated, so pass quoted code: (macroexpand-1 '(when x y))."),
   // ------------------------------------------------------------------
@@ -14946,15 +13585,15 @@ var global_env = new Environment({
     } else {
       validate_identifiers(macro.car);
     }
-    var syntax = new Syntax(function (code, _ref32) {
-      var macro_expand = _ref32.macro_expand;
+    var syntax = new Syntax(function (code, _ref40) {
+      var macro_expand = _ref40.macro_expand;
       var scope = env.inherit('syntax');
       var var_scope = this;
       // for macros that define variables used in macro (2 levels nestting)
       if (var_scope.__name__ === Syntax.__merge_env__) {
         // copy refs for defined gynsyms
         var _props2 = Object.getOwnPropertySymbols(var_scope.__env__);
-        _props2.forEach(function (symbol) {
+        _props2.forEach(symbol => {
           var_scope.__parent__.set(symbol, var_scope.__env__[symbol]);
         });
         var_scope = var_scope.__parent__;
@@ -14987,13 +13626,13 @@ var global_env = new Environment({
             // name is modified in transform_syntax
             var names = [];
             var new_expr = transform_syntax({
-              bindings: bindings,
-              expr: expr,
-              symbols: symbols,
-              scope: scope,
+              bindings,
+              expr,
+              symbols,
+              scope,
               lex_scope: var_scope,
-              names: names,
-              ellipsis: ellipsis
+              names,
+              ellipsis
             });
             // TODO: if expression is undefined throw an error
             if (new_expr) {
@@ -15002,7 +13641,7 @@ var global_env = new Environment({
             var new_env = var_scope.merge(scope, Syntax.__merge_env__);
             if (macro_expand) {
               return {
-                expr: expr,
+                expr,
                 scope: new_env
               };
             }
@@ -15210,7 +13849,7 @@ var global_env = new Environment({
     //     obj)
     function qq_expand_object(object, depth) {
       var obj = gensym('obj');
-      var setters = Object.keys(object).map(function (key) {
+      var setters = Object.keys(object).map(key => {
         var value = object[key];
         if (is_pair(value) && LSymbol.is(value.car, 'unquote-splicing')) {
           throw new Error("You can't call `unquote-splicing` inside an object");
@@ -15218,7 +13857,7 @@ var global_env = new Environment({
         return make_list(op('set-object!'), obj, LString(key), qq_expand(value, depth));
       });
       var bindings = make_list(make_list(obj, make_list(symbol('Object.fromEntries'), make_list(symbol('Array')))));
-      return Pair.from_array([symbol('let'), bindings].concat(_toConsumableArray(setters), [obj]), false);
+      return Pair.from_array([symbol('let'), bindings, ...setters, obj], false);
     }
     return Macro.defmacro('quasiquote', function (source, state) {
       var arg = source.cdr;
@@ -15244,17 +13883,16 @@ var global_env = new Environment({
   }, "(clone list)\n\n        Function that returns a clone of the list, that does not share any pairs with the\n        original, so the clone can be safely mutated without affecting the original."),
   // ------------------------------------------------------------------
   append: doc('append', function append() {
-    var _global_env$get2;
     for (var _len24 = arguments.length, items = new Array(_len24), _key24 = 0; _key24 < _len24; _key24++) {
       items[_key24] = arguments[_key24];
     }
-    items = items.map(function (item) {
+    items = items.map(item => {
       if (is_pair(item)) {
         return item.clone();
       }
       return item;
     });
-    return (_global_env$get2 = global_env.get('append!')).call.apply(_global_env$get2, [this].concat(_toConsumableArray(items)));
+    return global_env.get('append!').call(this, ...items);
   }, "(append item ...)\n\n        Function that creates a new list with each argument appended end-to-end.\n        It will always return a new list and not modify its arguments."),
   // ------------------------------------------------------------------
   'append!': doc('append!', function () {
@@ -15263,7 +13901,7 @@ var global_env = new Environment({
       items[_key25] = arguments[_key25];
     }
     var last = items.length - 1;
-    return items.reduce(function (acc, item, i) {
+    return items.reduce((acc, item, i) => {
       typecheck('append!', acc, ['nil', 'pair']);
       // only the non-last arguments must be proper lists; the last
       // argument may be an improper list or any object (R7RS append) so
@@ -15329,9 +13967,7 @@ var global_env = new Environment({
     for (var _len26 = arguments.length, args = new Array(_len26), _key26 = 0; _key26 < _len26; _key26++) {
       args[_key26] = arguments[_key26];
     }
-    return args.reverse().reduce(function (list, item) {
-      return new Pair(item, list);
-    }, _nil);
+    return args.reverse().reduce((list, item) => new Pair(item, list), _nil);
   }, "(list . args)\n\n        Function that creates a new list out of its arguments."),
   // ------------------------------------------------------------------
   substring: doc('substring', function substring(string, start, end) {
@@ -15345,11 +13981,9 @@ var global_env = new Environment({
     for (var _len27 = arguments.length, args = new Array(_len27), _key27 = 0; _key27 < _len27; _key27++) {
       args[_key27] = arguments[_key27];
     }
-    args.forEach(function (arg, i) {
-      return typecheck('concat', arg, 'string', i + 1);
-    });
+    args.forEach((arg, i) => typecheck('concat', arg, 'string', i + 1));
     return args.join('');
-  }, "(concat . strings)\n\n        Function that creates a new string by joining its arguments."),
+  }, "(string-append string string2 ...)\n\n        Function that creates a new string by joining its arguments."),
   // ------------------------------------------------------------------
   join: doc('join', function join(separator, list) {
     typecheck('join', separator, 'string');
@@ -15371,12 +14005,10 @@ var global_env = new Environment({
       // ref: https://stackoverflow.com/a/48032528/387194
       var replacements = [];
       string.replace(pattern, function () {
-        replacements.push(replacement.apply(void 0, arguments));
+        replacements.push(replacement(...arguments));
       });
-      return unpromise(replacements, function (replacements) {
-        return string.replace(pattern, function () {
-          return replacements.shift();
-        });
+      return unpromise(replacements, replacements => {
+        return string.replace(pattern, () => replacements.shift());
       });
     }
     return string.replace(pattern, replacement);
@@ -15425,12 +14057,10 @@ var global_env = new Environment({
     for (var _len28 = arguments.length, args = new Array(_len28 > 1 ? _len28 - 1 : 0), _key28 = 1; _key28 < _len28; _key28++) {
       args[_key28 - 1] = arguments[_key28];
     }
-    if (cls[Symbol["for"]("__class__")]) {
-      instance = _construct(cls, args);
+    if (cls[Symbol.for("__class__")]) {
+      instance = new cls(...args);
     } else {
-      instance = _construct(cls, _toConsumableArray(args.map(function (x) {
-        return unbox(x);
-      })));
+      instance = new cls(...args.map(x => unbox(x)));
     }
     return instance;
   }, "(new obj . args)\n\n        Function that creates new JavaScript instance of an object."),
@@ -15526,7 +14156,7 @@ var global_env = new Environment({
   }, "(array? expression)\n\n        Predicate that tests if value is an array."),
   // ------------------------------------------------------------------
   'object?': doc('object?', function (obj) {
-    return !is_nil(obj) && obj !== null && !(obj instanceof LCharacter) && !(obj instanceof RegExp) && !(obj instanceof LString) && !is_pair(obj) && !(obj instanceof LNumber) && _typeof$1(obj) === 'object' && !(obj instanceof Array);
+    return !is_nil(obj) && obj !== null && !(obj instanceof LCharacter) && !(obj instanceof RegExp) && !(obj instanceof LString) && !is_pair(obj) && !(obj instanceof LNumber) && typeof obj === 'object' && !(obj instanceof Array);
   }, "(object? expression)\n\n        Predicate that tests if value is an plain object (not another LIPS type)."),
   // ------------------------------------------------------------------
   flatten: doc('flatten', function flatten(list) {
@@ -15544,7 +14174,7 @@ var global_env = new Environment({
     typecheck_args('vector-append', args, 'array');
     var first = args[0],
       rest = _arrayLikeToArray(args).slice(1);
-    return first.concat.apply(first, _toConsumableArray(rest));
+    return first.concat(...rest);
   }, "(vector-append v1 v2 ...)\n\n         Returns new vector by combining it's arguments that should be vectors."),
   // ------------------------------------------------------------------
   'array->list': doc('array->list', function (array) {
@@ -15634,11 +14264,11 @@ var global_env = new Environment({
       env: this,
       use_dynamic: state.use_dynamic,
       dynamic_env: state.dynamic_env,
-      catch_var: catch_var,
+      catch_var,
       catch_body: catch_clause ? catch_clause.cdr.cdr : null,
       finally_body: finally_clause ? finally_clause.cdr : null,
       return_cc: state.cc,
-      source: source
+      source
     };
     state.handlers.push(handler);
     // normal completion of the body: unregister the handler, run finally
@@ -15684,9 +14314,7 @@ var global_env = new Environment({
       keys[_key31] = arguments[_key31];
     }
     return function (obj) {
-      keys = keys.map(function (x) {
-        return x instanceof LSymbol ? x.__name__ : x;
-      });
+      keys = keys.map(x => x instanceof LSymbol ? x.__name__ : x);
       if (keys.length === 0) {
         return _nil;
       } else if (keys.length === 1) {
@@ -15696,7 +14324,7 @@ var global_env = new Environment({
         return obj[_key32];
       }
       var result = {};
-      keys.forEach(function (key) {
+      keys.forEach(key => {
         result[key] = obj[key];
       });
       return result;
@@ -15879,8 +14507,8 @@ var global_env = new Environment({
       var re = base.mul(Math.cos(alpha));
       var im = base.mul(Math.sin(alpha));
       return LComplex({
-        re: re,
-        im: im
+        re,
+        im
       });
     }
     var _a$coerce3 = a.coerce(b);
@@ -15909,9 +14537,7 @@ var global_env = new Environment({
       args[_key37] = arguments[_key37];
     }
     typecheck_args('==', args, 'number');
-    return seq_compare(function (a, b) {
-      return LNumber(a).cmp(b) === 0;
-    }, args);
+    return seq_compare((a, b) => LNumber(a).cmp(b) === 0, args);
   }, "(== x1 x2 ...)}\n\n        Function that compares its numerical arguments and checks if they are\n        all equal."),
   // ------------------------------------------------------------------
   '>': doc('>', function () {
@@ -15919,9 +14545,7 @@ var global_env = new Environment({
       args[_key38] = arguments[_key38];
     }
     typecheck_numbers('>', args, ['bigint', 'float', 'rational']);
-    return seq_compare(function (a, b) {
-      return LNumber(a).cmp(b) === 1;
-    }, args);
+    return seq_compare((a, b) => LNumber(a).cmp(b) === 1, args);
   }, "(> x1 x2 x3 ...)\n\n        Function that compares its numerical arguments and checks if they are\n        monotonically decreasing, i.e. x1 > x2 and x2 > x3 and so on."),
   // ------------------------------------------------------------------
   '<': doc('<', function () {
@@ -15929,9 +14553,7 @@ var global_env = new Environment({
       args[_key39] = arguments[_key39];
     }
     typecheck_numbers('<', args, ['bigint', 'float', 'rational']);
-    return seq_compare(function (a, b) {
-      return LNumber(a).cmp(b) === -1;
-    }, args);
+    return seq_compare((a, b) => LNumber(a).cmp(b) === -1, args);
   }, "(< x1 x2 ...)\n\n        Function that compares its numerical arguments and checks if they are\n        monotonically increasing, i.e. x1 < x2 and x2 < x3 and so on."),
   // ------------------------------------------------------------------
   '<=': doc('<=', function () {
@@ -15939,9 +14561,7 @@ var global_env = new Environment({
       args[_key40] = arguments[_key40];
     }
     typecheck_numbers('<=', args, ['bigint', 'float', 'rational']);
-    return seq_compare(function (a, b) {
-      return [0, -1].includes(LNumber(a).cmp(b));
-    }, args);
+    return seq_compare((a, b) => [0, -1].includes(LNumber(a).cmp(b)), args);
   }, "(<= x1 x2 ...)\n\n        Function that compares its numerical arguments and checks if they are\n        monotonically nondecreasing, i.e. x1 <= x2 and x2 <= x3 and so on."),
   // ------------------------------------------------------------------
   '>=': doc('>=', function () {
@@ -15949,9 +14569,7 @@ var global_env = new Environment({
       args[_key41] = arguments[_key41];
     }
     typecheck_numbers('>=', args, ['bigint', 'float', 'rational']);
-    return seq_compare(function (a, b) {
-      return [0, 1].includes(LNumber(a).cmp(b));
-    }, args);
+    return seq_compare((a, b) => [0, 1].includes(LNumber(a).cmp(b)), args);
   }, "(>= x1 x2 ...)\n\n        Function that compares its numerical arguments and checks if they are\n        monotonically nonincreasing, i.e. x1 >= x2 and x2 >= x3 and so on."),
   // ------------------------------------------------------------------
   'eq?': doc('eq?', equal, "(eq? a b)\n\n         Function that compares two values if they are identical."),
@@ -15997,7 +14615,7 @@ function set_fs(fs) {
   var map = {
     ceil: 'ceiling'
   };
-  ['floor', 'round', 'ceil'].forEach(function (fn) {
+  ['floor', 'round', 'ceil'].forEach(fn => {
     var name = map[fn] ? map[fn] : fn;
     global_env.set(name, doc(name, function (value) {
       typecheck(name, value, 'number');
@@ -16040,12 +14658,10 @@ function combinations(input, start, end) {
 
 // -------------------------------------------------------------------------
 // cadr caddr cadadr etc.
-combinations(['d', 'a'], 2, 5).forEach(function (spec) {
+combinations(['d', 'a'], 2, 5).forEach(spec => {
   var s = spec.split('');
   var chars = s.slice().reverse();
-  var code = s.map(function (c) {
-    return "(c".concat(c, "r");
-  }).join(' ') + ' arg' + ')'.repeat(s.length);
+  var code = s.map(c => "(c".concat(c, "r")).join(' ') + ' arg' + ')'.repeat(s.length);
   var name = 'c' + spec + 'r';
   global_env.set(name, doc(name, function (arg) {
     return chars.reduce(function (list, type) {
@@ -16062,8 +14678,7 @@ combinations(['d', 'a'], 2, 5).forEach(function (spec) {
 function reversseFind(dir, fn) {
   var parts = dir.split(path.sep).filter(Boolean);
   for (var i = parts.length; i--;) {
-    var _path3;
-    var p = (_path3 = path).join.apply(_path3, ['/'].concat(_toConsumableArray(parts.slice(0, i + 1))));
+    var p = path.join('/', ...parts.slice(0, i + 1));
     if (fn(p)) {
       return p;
     }
@@ -16082,7 +14697,7 @@ function is_node() {
   return typeof global !== 'undefined' && global.global === global;
 }
 // -------------------------------------------------------------------------
-var noop = function noop() {};
+var noop = () => {};
 // -------------------------------------------------------------------------
 var inspect;
 function node_specific() {
@@ -16090,85 +14705,68 @@ function node_specific() {
 } // -------------------------------------------------------------------------
 /* c8 ignore next 15 */
 function _node_specific() {
-  _node_specific = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee24() {
-    var _yield$import, createRequire, moduleURL, __dirname__, __filename__, originalLog;
-    return _regeneratorRuntime.wrap(function (_context27) {
-      while (1) switch (_context27.prev = _context27.next) {
-        case 0:
-          _context27.next = 1;
-          return import('mod' + 'ule');
-        case 1:
-          _yield$import = _context27.sent;
-          createRequire = _yield$import.createRequire;
-          node_require = createRequire(import.meta.url);
-          _context27.next = 2;
-          return import('fs');
-        case 2:
-          fs = _context27.sent;
-          _context27.next = 3;
-          return import('path');
-        case 3:
-          path = _context27.sent;
-          global_env.set('global', global);
-          global_env.set('self', global);
-          global_env.set('window', undefined);
-          moduleURL = new URL(import.meta.url); // using name __direname and __filename breaks after transpilation
-          __dirname__ = path.dirname(moduleURL.pathname);
-          __filename__ = path.basename(moduleURL.pathname);
-          global_env.set('__dirname', __dirname__);
-          global_env.set('__filename', __filename__);
-          inspect = node_require('util').inspect;
-          // ---------------------------------------------------------------------
-          global_env.set('require.resolve', doc('require.resolve', function (path) {
-            typecheck('require.resolve', path, 'string');
-            var name = path.valueOf();
-            return node_require.resolve(name);
-          }, "(require.resolve path)\n\n        Returns the path relative to the current module.\n\n        Only available when LIPS is running under Node.js."));
-          // ---------------------------------------------------------------------
-          global_env.set('require', doc('require', function (module) {
-            typecheck('require', module, 'string');
-            module = module.valueOf();
-            var root = process.cwd();
-            var value;
-            try {
-              if (module.match(/^\s*\./)) {
-                value = node_require(path.join(root, module));
-              } else {
-                var dir = nodeModuleFind(root);
-                if (dir) {
-                  value = node_require(path.join(dir, 'node_modules', module));
-                } else {
-                  value = node_require(module);
-                }
-              }
-            } catch (e) {
-              value = node_require(module);
-            }
-            return patch_value(value, global);
-          }, "(require module)\n\n        Function used inside Node.js to import a module."));
-
-          // ignore exceptions that are caught elsewhere. This is needed to fix AVA
-          // reporting unhandled rejections for try..catch
-          // see: https://github.com/avajs/ava/discussions/3289
-          process.on('unhandledRejection', function (reason, promise) {
-            if (reason instanceof IgnoreException) {
-              promise["catch"](noop);
-            }
-          });
-          originalLog = console.log;
-          console.log = function () {
-            for (var _len43 = arguments.length, args = new Array(_len43), _key46 = 0; _key46 < _len43; _key46++) {
-              args[_key46] = arguments[_key46];
-            }
-            originalLog.apply(console, args);
-            process.stdout.write('');
-          };
-        case 4:
-        case "end":
-          return _context27.stop();
+  _node_specific = _asyncToGenerator(function* () {
+    var _yield$import = yield import('mod' + 'ule'),
+      createRequire = _yield$import.createRequire;
+    node_require = createRequire(import.meta.url);
+    fs = yield import('fs');
+    path = yield import('path');
+    global_env.set('global', global);
+    global_env.set('self', global);
+    global_env.set('window', undefined);
+    var moduleURL = new URL(import.meta.url);
+    // using name __direname and __filename breaks after transpilation
+    var __dirname__ = path.dirname(moduleURL.pathname);
+    var __filename__ = path.basename(moduleURL.pathname);
+    global_env.set('__dirname', __dirname__);
+    global_env.set('__filename', __filename__);
+    inspect = node_require('util').inspect;
+    // ---------------------------------------------------------------------
+    global_env.set('require.resolve', doc('require.resolve', function (path) {
+      typecheck('require.resolve', path, 'string');
+      var name = path.valueOf();
+      return node_require.resolve(name);
+    }, "(require.resolve path)\n\n        Returns the path relative to the current module.\n\n        Only available when LIPS is running under Node.js."));
+    // ---------------------------------------------------------------------
+    global_env.set('require', doc('require', function (module) {
+      typecheck('require', module, 'string');
+      module = module.valueOf();
+      var root = process.cwd();
+      var value;
+      try {
+        if (module.match(/^\s*\./)) {
+          value = node_require(path.join(root, module));
+        } else {
+          var dir = nodeModuleFind(root);
+          if (dir) {
+            value = node_require(path.join(dir, 'node_modules', module));
+          } else {
+            value = node_require(module);
+          }
+        }
+      } catch (e) {
+        value = node_require(module);
       }
-    }, _callee24);
-  }));
+      return patch_value(value, global);
+    }, "(require module)\n\n        Function used inside Node.js to import a module."));
+
+    // ignore exceptions that are caught elsewhere. This is needed to fix AVA
+    // reporting unhandled rejections for try..catch
+    // see: https://github.com/avajs/ava/discussions/3289
+    process.on('unhandledRejection', (reason, promise) => {
+      if (reason instanceof IgnoreException) {
+        promise.catch(noop);
+      }
+    });
+    var originalLog = console.log;
+    console.log = function () {
+      for (var _len43 = arguments.length, args = new Array(_len43), _key46 = 0; _key46 < _len43; _key46++) {
+        args[_key46] = arguments[_key46];
+      }
+      originalLog.apply(console, args);
+      process.stdout.write('');
+    };
+  });
   return _node_specific.apply(this, arguments);
 }
 var node_ready; // Scheme load function need to wait for node_specific
@@ -16220,14 +14818,10 @@ function typecheck_number(fn, arg, expected) {
     expected = expected.to_array();
   }
   if (expected instanceof Array) {
-    expected = expected.map(function (x) {
-      return x.valueOf();
-    });
+    expected = expected.map(x => x.valueOf());
   }
   if (expected instanceof Array) {
-    expected = expected.map(function (x) {
-      return x.valueOf().toLowerCase();
-    });
+    expected = expected.map(x => x.valueOf().toLowerCase());
     if (expected.includes(arg_type)) {
       match = true;
     }
@@ -16241,14 +14835,14 @@ function typecheck_number(fn, arg, expected) {
 
 // -------------------------------------------------------------------------
 function typecheck_numbers(fn, args, expected) {
-  args.forEach(function (arg, i) {
+  args.forEach((arg, i) => {
     typecheck_number(fn, arg, expected, i + 1);
   });
 }
 
 // -------------------------------------------------------------------------
 function typecheck_args(fn, args, expected) {
-  args.forEach(function (arg, i) {
+  args.forEach((arg, i) => {
     typecheck(fn, arg, expected, i + 1);
   });
 }
@@ -16281,14 +14875,10 @@ function typecheck(fn, arg, expected) {
     expected = expected.to_array();
   }
   if (expected instanceof Array) {
-    expected = expected.map(function (x) {
-      return x.valueOf();
-    });
+    expected = expected.map(x => x.valueOf());
   }
   if (expected instanceof Array) {
-    expected = expected.map(function (x) {
-      return x.valueOf().toLowerCase();
-    });
+    expected = expected.map(x => x.valueOf().toLowerCase());
     if (expected.includes(arg_type)) {
       match = true;
     }
@@ -16319,22 +14909,14 @@ function type(obj) {
   if (t) {
     return t;
   }
-  if (_typeof$1(obj) === 'object') {
-    var _iterator1 = _createForOfIteratorHelper(type_mapping_entries),
-      _step1;
-    try {
-      for (_iterator1.s(); !(_step1 = _iterator1.n()).done;) {
-        var _step1$value = _slicedToArray(_step1.value, 2),
-          _key42 = _step1$value[0],
-          value = _step1$value[1];
-        if (obj instanceof value) {
-          return _key42;
-        }
+  if (typeof obj === 'object') {
+    for (var _ref43 of type_mapping_entries) {
+      var _ref42 = _slicedToArray(_ref43, 2);
+      var _key42 = _ref42[0];
+      var value = _ref42[1];
+      if (obj instanceof value) {
+        return _key42;
       }
-    } catch (err) {
-      _iterator1.e(err);
-    } finally {
-      _iterator1.f();
     }
     if (is_instance(obj)) {
       if (is_function(obj.typeOf)) {
@@ -16363,7 +14945,7 @@ function type(obj) {
   if (obj === undefined) {
     return 'void';
   }
-  return _typeof$1(obj);
+  return typeof obj;
 }
 // -------------------------------------------------------------------------
 // :; wrap tree of Promises with single Promise or return argument as is
@@ -16390,52 +14972,14 @@ function resolve_promises(arg) {
       node.forEach(traverse);
     }
   }
-  function promise(_x14) {
+  function promise(_x1) {
     return _promise.apply(this, arguments);
   }
   function _promise() {
-    _promise = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee20(node) {
-      var pair, _t7, _t8, _t9, _t0, _t1;
-      return _regeneratorRuntime.wrap(function (_context20) {
-        while (1) switch (_context20.prev = _context20.next) {
-          case 0:
-            _t7 = Pair;
-            if (!node.have_cycles('car')) {
-              _context20.next = 1;
-              break;
-            }
-            _t8 = node.car;
-            _context20.next = 3;
-            break;
-          case 1:
-            _context20.next = 2;
-            return resolve(node.car);
-          case 2:
-            _t8 = _context20.sent;
-          case 3:
-            _t9 = _t8;
-            if (!node.have_cycles('cdr')) {
-              _context20.next = 4;
-              break;
-            }
-            _t0 = node.cdr;
-            _context20.next = 6;
-            break;
-          case 4:
-            _context20.next = 5;
-            return resolve(node.cdr);
-          case 5:
-            _t0 = _context20.sent;
-          case 6:
-            _t1 = _t0;
-            pair = new _t7(_t9, _t1);
-            return _context20.abrupt("return", pair);
-          case 7:
-          case "end":
-            return _context20.stop();
-        }
-      }, _callee20);
-    }));
+    _promise = _asyncToGenerator(function* (node) {
+      var pair = new Pair(node.have_cycles('car') ? node.car : yield resolve(node.car), node.have_cycles('cdr') ? node.cdr : yield resolve(node.cdr));
+      return pair;
+    });
     return _promise.apply(this, arguments);
   }
   function resolve(node) {
@@ -16492,10 +15036,10 @@ function prepare_fn_args(fn, args) {
 
 // -------------------------------------------------------------------------
 function call_function(fn, args) {
-  var _ref34 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
-    env = _ref34.env,
-    dynamic_env = _ref34.dynamic_env,
-    use_dynamic = _ref34.use_dynamic;
+  var _ref45 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
+    env = _ref45.env,
+    dynamic_env = _ref45.dynamic_env,
+    use_dynamic = _ref45.use_dynamic;
   if (!fn._context) {
     read_only(fn, '_context', new LambdaContext({}), {
       hidden: true
@@ -16523,11 +15067,10 @@ function call_function(fn, args) {
 // :: Parameters for make-parameter and parametrize
 // -------------------------------------------------------------------------
 var _p_name__ = /*#__PURE__*/new WeakMap();
-var Parameter = /*#__PURE__*/function () {
-  function Parameter(init) {
+class Parameter {
+  constructor(init) {
     var fn = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
     var name = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
-    _classCallCheck(this, Parameter);
     _defineProperty(this, "__value__", void 0);
     _defineProperty(this, "__fn__", void 0);
     _classPrivateFieldInitSpec(this, _p_name__, void 0);
@@ -16542,84 +15085,66 @@ var Parameter = /*#__PURE__*/function () {
       _classPrivateFieldSet(_p_name__, this, name);
     }
   }
-  return _createClass(Parameter, [{
-    key: "__name__",
-    get: function get() {
-      return _classPrivateFieldGet(_p_name__, this);
-    },
-    set: function set(name) {
-      _classPrivateFieldSet(_p_name__, this, name);
-      if (this.__fn__) {
-        this.__fn__.__name__ = "fn-".concat(name);
-      }
+  get __name__() {
+    return _classPrivateFieldGet(_p_name__, this);
+  }
+  set __name__(name) {
+    _classPrivateFieldSet(_p_name__, this, name);
+    if (this.__fn__) {
+      this.__fn__.__name__ = "fn-".concat(name);
     }
-  }, {
-    key: "invoke",
-    value: function invoke() {
-      if (is_function(this.__fn__)) {
-        return this.__fn__(this.__value__);
-      }
-      return this.__value__;
+  }
+  invoke() {
+    if (is_function(this.__fn__)) {
+      return this.__fn__(this.__value__);
     }
-  }, {
-    key: "inherit",
-    value: function inherit(value) {
-      return new Parameter(value, this.__fn__, this.__name__);
-    }
-  }]);
-}(); // -------------------------------------------------------------------------
-var LambdaContext = /*#__PURE__*/function () {
-  function LambdaContext(payload) {
-    _classCallCheck(this, LambdaContext);
+    return this.__value__;
+  }
+  inherit(value) {
+    return new Parameter(value, this.__fn__, this.__name__);
+  }
+}
+// -------------------------------------------------------------------------
+class LambdaContext {
+  constructor(payload) {
     _defineProperty(this, "use_dynamic", void 0);
     Object.assign(this, payload);
   }
   // env / dynamic_env frames are created lazily (see call_function): a native
   // builtin that never reads them pays no allocation.
-  return _createClass(LambdaContext, [{
-    key: "env",
-    get: function get() {
-      if (!this._env_computed) {
-        this._env_frame = this._raw_env ? this._raw_env.new_frame(this._fn, this._args) : this._raw_env;
-        this._env_computed = true;
-      }
-      return this._env_frame;
-    },
-    set: function set(v) {
-      this._env_frame = v;
+  get env() {
+    if (!this._env_computed) {
+      this._env_frame = this._raw_env ? this._raw_env.new_frame(this._fn, this._args) : this._raw_env;
       this._env_computed = true;
     }
-  }, {
-    key: "dynamic_env",
-    get: function get() {
-      if (!this._dyn_computed) {
-        this._dyn_frame = this._raw_dyn ? this._raw_dyn.new_frame(this._fn, this._args) : this._raw_dyn;
-        this._dyn_computed = true;
-      }
-      return this._dyn_frame;
-    },
-    set: function set(v) {
-      this._dyn_frame = v;
+    return this._env_frame;
+  }
+  set env(v) {
+    this._env_frame = v;
+    this._env_computed = true;
+  }
+  get dynamic_env() {
+    if (!this._dyn_computed) {
+      this._dyn_frame = this._raw_dyn ? this._raw_dyn.new_frame(this._fn, this._args) : this._raw_dyn;
       this._dyn_computed = true;
     }
-  }, {
-    key: "__name__",
-    get: function get() {
-      return this.env.__name__;
-    }
-  }, {
-    key: "__parent__",
-    get: function get() {
-      return this.env.__parent__;
-    }
-  }, {
-    key: "get",
-    value: function get() {
-      var _this$env;
-      return (_this$env = this.env).get.apply(_this$env, arguments);
-    }
-  }]);
-}(); // -------------------------------------------------------------------------
+    return this._dyn_frame;
+  }
+  set dynamic_env(v) {
+    this._dyn_frame = v;
+    this._dyn_computed = true;
+  }
+  get __name__() {
+    return this.env.__name__;
+  }
+  get __parent__() {
+    return this.env.__parent__;
+  }
+  get() {
+    return this.env.get(...arguments);
+  }
+}
+// -------------------------------------------------------------------------
 function search_param(env, param) {
   // Walk the dynamic environment chain looking for a shadowing parameter
   // installed by `parameterize` (a binding of the same name whose value is a
@@ -16641,9 +15166,8 @@ function search_param(env, param) {
 // -------------------------------------------------------------------------
 // :: Continuations object from call/cc
 // -------------------------------------------------------------------------
-var Continuation = /*#__PURE__*/function () {
-  function Continuation(name, object, code, state, next, data) {
-    _classCallCheck(this, Continuation);
+class Continuation {
+  constructor(name, object, code, state, next, data) {
     var _state$env = state.env,
       env = _state$env === void 0 ? null : _state$env,
       _state$cc = state.cc,
@@ -16665,79 +15189,71 @@ var Continuation = /*#__PURE__*/function () {
     // enumerate its fields).
     this._state = _objectSpread(_objectSpread({}, data), {}, {
       i: 0,
-      n: n,
+      n,
       args: [],
-      state: state,
-      name: name,
+      state,
+      name,
       count: 0
     });
   }
-  return _createClass(Continuation, [{
-    key: "__name__",
-    get: function get() {
-      if (this._state.count === 0) {
-        return this._state.name;
-      }
-      var result = "clone(".concat(this._state.name, ")");
-      if (this._state.count > 1) {
-        result += "[".concat(this._state.count, "]");
-      }
-      return result;
+  get __name__() {
+    if (this._state.count === 0) {
+      return this._state.name;
     }
-  }, {
-    key: "hidden",
-    value: function hidden() {
-      // we ignore top continuations that have no data
-      // and _ignore that is added in call/cc when invoking argument
-      return this._state.name === 'top' || this.__code__._ignore;
+    var result = "clone(".concat(this._state.name, ")");
+    if (this._state.count > 1) {
+      result += "[".concat(this._state.count, "]");
     }
-  }, {
-    key: "trace",
-    value: function trace(callback) {
-      // the state records every (non-hidden) continuation seen during
-      // evaluation, outermost first - this is the call stack (the cc chain
-      // alone loses tail frames to TCO).
-      var state = this._state.state;
-      if (!state.stack) {
-        return [];
-      }
-      return state.stack.map(callback);
+    return result;
+  }
+  hidden() {
+    // we ignore top continuations that have no data
+    // and _ignore that is added in call/cc when invoking argument
+    return this._state.name === 'top' || this.__code__._ignore;
+  }
+  trace(callback) {
+    // the state records every (non-hidden) continuation seen during
+    // evaluation, outermost first - this is the call stack (the cc chain
+    // alone loses tail frames to TCO).
+    var state = this._state.state;
+    if (!state.stack) {
+      return [];
     }
-  }, {
-    key: "clone",
-    value: function clone() {
-      var mark = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
-      var cc = this.__continuation__;
-      if (cc) {
-        cc = cc.clone(mark);
-      }
-      var env = this.__env__;
-      var copy = new Continuation(this.__name__, this.__object__, this.__code__, {
-        env: env,
-        cc: cc
-      }, this.__next__);
-      var count = this._state.count;
-      if (mark) {
-        count++;
-      }
-      copy._state = _objectSpread(_objectSpread({}, this._state), {}, {
-        count: count,
-        args: _toConsumableArray(this._state.args)
-      });
-      return copy;
+    return state.stack.map(callback);
+  }
+  clone() {
+    var mark = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
+    var cc = this.__continuation__;
+    if (cc) {
+      cc = cc.clone(mark);
     }
-  }]);
-}(); // -------------------------------------------------------------------------
+    var env = this.__env__;
+    var copy = new Continuation(this.__name__, this.__object__, this.__code__, {
+      env,
+      cc
+    }, this.__next__);
+    var count = this._state.count;
+    if (mark) {
+      count++;
+    }
+    copy._state = _objectSpread(_objectSpread({}, this._state), {}, {
+      count,
+      args: [...this._state.args]
+    });
+    return copy;
+  }
+}
+
+// -------------------------------------------------------------------------
 // :: code based on ideas from jsScheme by Alex Yakovlev
 // -------------------------------------------------------------------------
-var State = /*#__PURE__*/function () {
-  function State(object, cc, _ref35) {
-    var env = _ref35.env,
-      dynamic_env = _ref35.dynamic_env,
-      use_dynamic = _ref35.use_dynamic,
-      error = _ref35.error,
-      macro_expand = _ref35.macro_expand;
-    _classCallCheck(this, State);
+class State {
+  constructor(object, cc, _ref46) {
+    var env = _ref46.env,
+      dynamic_env = _ref46.dynamic_env,
+      use_dynamic = _ref46.use_dynamic,
+      error = _ref46.error,
+      macro_expand = _ref46.macro_expand;
     if (is_debug('continuations')) {
       console.log('[STATE] ' + macro_expand);
       console.trace();
@@ -16765,73 +15281,56 @@ var State = /*#__PURE__*/function () {
     this.stack = null;
     this._stack_set = null;
   }
-  return _createClass(State, [{
-    key: "cont",
-    value: function cont() {
-      if (is_debug('continuations')) {
-        if (this.cc._state.name == 'top') {
-          console.log('[CONTINUE] => top');
-        } else {
-          console.log('[CONTINUE] => ' + to_string(this.cc.__code__));
-          console.log('              ' + to_string(this.cc.__object__));
-        }
+  cont() {
+    if (is_debug('continuations')) {
+      if (this.cc._state.name == 'top') {
+        console.log('[CONTINUE] => top');
+      } else {
+        console.log('[CONTINUE] => ' + to_string(this.cc.__code__));
+        console.log('              ' + to_string(this.cc.__object__));
       }
-      // we use uniterate because ignore need to be generator but all other
-      // callbacks are normal functions, so yield* will not work
-      return uniterate(this.cc.__next__(this));
     }
-  }, {
-    key: "eval",
-    value: /*#__PURE__*/_regeneratorRuntime.mark(function _eval() {
-      var cc;
-      return _regeneratorRuntime.wrap(function (_context21) {
-        while (1) switch (_context21.prev = _context21.next) {
-          case 0:
-            if (this.object === null) {
-              this.ready = false;
-            }
-            if (this.object === undefined) {
-              this.ready = true;
-            }
-            // record the current continuation for the stack trace (TCO removes tail
-            // frames from the cc chain, so we accumulate them here as they're seen).
-            // The stack/_stack_set are created lazily on first use so the common
-            // (no-trace) path allocates neither.
-            if (_collect_stack) {
-              if (this._stack_set === null) {
-                this.stack = [];
-                this._stack_set = new Set();
-              }
-              cc = this.cc;
-              if (!this._stack_set.has(cc) && !cc.hidden()) {
-                this._stack_set.add(cc);
-                this.stack.push(cc);
-              }
-            }
-            if (this.ready) {
-              _context21.next = 2;
-              break;
-            }
-            if (is_debug(['eval', 'macro'])) {
-              console.log("eval: " + to_string(this.object, true));
-              console.log('scope: ' + JSON.stringify(this.env.names()));
-            }
-            return _context21.delegateYield(evaluate_code(this), "t0", 1);
-          case 1:
-            if (is_debug(['eval', 'macro'])) {
-              console.log('result: ' + to_string(this.object, true));
-            }
-          case 2:
-            return _context21.abrupt("return", this.ready);
-          case 3:
-          case "end":
-            return _context21.stop();
-        }
-      }, _eval, this);
-    })
-  }]);
-}(); // -------------------------------------------------------------------------
-var top_cc = new Continuation('top', null, null, {}, function (state) {
+    // we use uniterate because ignore need to be generator but all other
+    // callbacks are normal functions, so yield* will not work
+    return uniterate(this.cc.__next__(this));
+  }
+  *eval() {
+    if (this.object === null) {
+      this.ready = false;
+    }
+    if (this.object === undefined) {
+      this.ready = true;
+    }
+    // record the current continuation for the stack trace (TCO removes tail
+    // frames from the cc chain, so we accumulate them here as they're seen).
+    // The stack/_stack_set are created lazily on first use so the common
+    // (no-trace) path allocates neither.
+    if (_collect_stack) {
+      if (this._stack_set === null) {
+        this.stack = [];
+        this._stack_set = new Set();
+      }
+      var cc = this.cc;
+      if (!this._stack_set.has(cc) && !cc.hidden()) {
+        this._stack_set.add(cc);
+        this.stack.push(cc);
+      }
+    }
+    if (!this.ready) {
+      if (is_debug(['eval', 'macro'])) {
+        console.log("eval: " + to_string(this.object, true));
+        console.log('scope: ' + JSON.stringify(this.env.names()));
+      }
+      yield* evaluate_code(this);
+      if (is_debug(['eval', 'macro'])) {
+        console.log('result: ' + to_string(this.object, true));
+      }
+    }
+    return this.ready;
+  }
+}
+// -------------------------------------------------------------------------
+var top_cc = new Continuation('top', null, null, {}, state => {
   throw state;
 });
 
@@ -16878,78 +15377,56 @@ function finish_try(state, handler, kind, payload) {
     done(state);
   }
 }
-function _evaluate() {
-  return uniterate(tco_generator.apply(void 0, arguments));
+function evaluate() {
+  return uniterate(tco_generator(...arguments));
 }
 // -------------------------------------------------------------------------
 // :: Tail Call Optimized eval
 // -------------------------------------------------------------------------
-function tco_generator(code, _ref36) {
-  var env = _ref36.env,
-    cc = _ref36.cc,
-    dynamic_env = _ref36.dynamic_env,
-    use_dynamic = _ref36.use_dynamic,
-    _ref36$macro_expand = _ref36.macro_expand,
-    macro_expand = _ref36$macro_expand === void 0 ? false : _ref36$macro_expand;
-  return /*#__PURE__*/_regeneratorRuntime.mark(function _callee21() {
-    var state, ret, _t10;
-    return _regeneratorRuntime.wrap(function (_context22) {
-      while (1) switch (_context22.prev = _context22.next) {
-        case 0:
-          if (!is_env(dynamic_env)) {
-            dynamic_env = env === true ? user_env : env || user_env;
-          }
-          if (use_dynamic) {
-            env = dynamic_env;
-          } else if (env === true) {
-            env = user_env;
-          } else {
-            env = env || user_env;
-          }
-          state = new State(code, cc || top_cc, {
-            env: env,
-            cc: cc,
-            dynamic_env: dynamic_env,
-            use_dynamic: use_dynamic,
-            macro_expand: macro_expand
-          }); // handlers registered by an enclosing eval don't belong to this loop - only
-          // dispatch to handlers pushed while running this generator.
-        case 1:
-          _context22.prev = 2;
-          return _context22.delegateYield(state.eval(), "t0", 3);
-        case 3:
-          if (!_context22.t0) {
-            _context22.next = 4;
-            break;
-          }
+function tco_generator(code, _ref47) {
+  var env = _ref47.env,
+    cc = _ref47.cc,
+    dynamic_env = _ref47.dynamic_env,
+    use_dynamic = _ref47.use_dynamic,
+    _ref47$macro_expand = _ref47.macro_expand,
+    macro_expand = _ref47$macro_expand === void 0 ? false : _ref47$macro_expand;
+  return function* () {
+    if (!is_env(dynamic_env)) {
+      dynamic_env = env === true ? user_env : env || user_env;
+    }
+    if (use_dynamic) {
+      env = dynamic_env;
+    } else if (env === true) {
+      env = user_env;
+    } else {
+      env = env || user_env;
+    }
+    var state = new State(code, cc || top_cc, {
+      env,
+      cc,
+      dynamic_env,
+      use_dynamic,
+      macro_expand
+    });
+    // handlers registered by an enclosing eval don't belong to this loop - only
+    // dispatch to handlers pushed while running this generator.
+    while (true) {
+      try {
+        if (yield* state.eval()) {
           state.ready = false;
-          _context22.next = 4;
-          return state.cont();
-        case 4:
-          _context22.next = 7;
-          break;
-        case 5:
-          _context22.prev = 5;
-          _t10 = _context22["catch"](2);
-          ret = tco_error_handler(_t10, state, code);
-          if (!(ret === __continue__)) {
-            _context22.next = 6;
-            break;
-          }
-          return _context22.abrupt("continue", 1);
-        case 6:
-          return _context22.abrupt("return", ret);
-        case 7:
-          _context22.next = 1;
-          break;
-        case 8:
-        case "end":
-          return _context22.stop();
+          yield state.cont();
+        }
+      } catch (e) {
+        var ret = tco_error_handler(e, state, code);
+        if (ret === __continue__) {
+          continue;
+        }
+        return ret;
       }
-    }, _callee21, null, [[2, 5]]);
-  })();
+    }
+  }();
 }
-var __continue__ = Symbol["for"]('__continue__');
+var __continue__ = Symbol.for('__continue__');
 
 // -------------------------------------------------------------------------
 function tco_error_handler(e, state, code) {
@@ -16994,21 +15471,12 @@ function tco_error_handler(e, state, code) {
     e.__stack__ = [];
   }
   var seen = new Set(e.__stack__);
-  var _iterator10 = _createForOfIteratorHelper(frames),
-    _step10;
-  try {
-    for (_iterator10.s(); !(_step10 = _iterator10.n()).done;) {
-      var cc = _step10.value;
-      var str = to_string(cc.__code__, true);
-      if (!seen.has(str)) {
-        seen.add(str);
-        e.__stack__.push(str);
-      }
+  for (var cc of frames) {
+    var str = to_string(cc.__code__, true);
+    if (!seen.has(str)) {
+      seen.add(str);
+      e.__stack__.push(str);
     }
-  } catch (err) {
-    _iterator10.e(err);
-  } finally {
-    _iterator10.f();
   }
   if (!e.__stack__.length && code) {
     e.__stack__.push(to_string(code, true));
@@ -17023,43 +15491,23 @@ function tco_error_handler(e, state, code) {
 }
 
 // -------------------------------------------------------------------------
-function tco_resolve(state) {
-  var ret, _t11;
-  return _regeneratorRuntime.wrap(function (_context23) {
-    while (1) switch (_context23.prev = _context23.next) {
-      case 0:
-        _context23.prev = 1;
-        return _context23.delegateYield(state.eval(), "t0", 2);
-      case 2:
-        if (!_context23.t0) {
-          _context23.next = 3;
-          break;
-        }
+function* tco_resolve(state) {
+  // handlers registered by an enclosing eval don't belong to this loop - only
+  // dispatch to handlers pushed while running this generator.
+  while (true) {
+    try {
+      if (yield* state.eval()) {
         state.ready = false;
-        _context23.next = 3;
-        return state.cont();
-      case 3:
-        _context23.next = 6;
-        break;
-      case 4:
-        _context23.prev = 4;
-        _t11 = _context23["catch"](1);
-        ret = tco_error_handler(_t11, state);
-        if (!(ret === __continue__)) {
-          _context23.next = 5;
-          break;
-        }
-        return _context23.abrupt("continue", 0);
-      case 5:
-        return _context23.abrupt("return", ret);
-      case 6:
-        _context23.next = 0;
-        break;
-      case 7:
-      case "end":
-        return _context23.stop();
+        yield state.cont();
+      }
+    } catch (e) {
+      var ret = tco_error_handler(e, state);
+      if (ret === __continue__) {
+        continue;
+      }
+      return ret;
     }
-  }, _marked, null, [[1, 4]]);
+  }
 }
 
 // -------------------------------------------------------------------------
@@ -17077,11 +15525,11 @@ function macro_result_value(result, state) {
 }
 
 // -------------------------------------------------------------------------
-function lambda_scope(self, fn, code, args, _ref37) {
-  var use_dynamic = _ref37.use_dynamic,
-    error = _ref37.error,
-    cc = _ref37.cc,
-    call_dynamic_env = _ref37.dynamic_env;
+function lambda_scope(self, fn, code, args, _ref48) {
+  var use_dynamic = _ref48.use_dynamic,
+    error = _ref48.error,
+    cc = _ref48.cc,
+    call_dynamic_env = _ref48.dynamic_env;
   // lambda got scopes as context in apply
   var dynamic_env;
   if (is_context(this)) {
@@ -17107,10 +15555,8 @@ function lambda_scope(self, fn, code, args, _ref37) {
     if (this && !this.__instance__) {
       Object.defineProperty(this, '__instance__', {
         enumerable: false,
-        get: function get() {
-          return true;
-        },
-        set: function set() {},
+        get: () => true,
+        set: () => {},
         configurable: false
       });
     }
@@ -17158,11 +15604,11 @@ function lambda_scope(self, fn, code, args, _ref37) {
     }
   }
   return {
-    env: env,
-    cc: cc,
-    dynamic_env: dynamic_env,
-    use_dynamic: use_dynamic,
-    error: error
+    env,
+    cc,
+    dynamic_env,
+    use_dynamic,
+    error
   };
 }
 
@@ -17188,14 +15634,12 @@ function is_internal_macro(macro) {
 function macroexpand_special_forms() {
   // resolved lazily - let*/letrec/quasiquote come from the stdlib which is
   // loaded after this module. throwError:false so a missing form is undefined.
-  var get = function get(name) {
-    return global_env.get(name, {
-      throwError: false
-    });
-  };
+  var get = name => global_env.get(name, {
+    throwError: false
+  });
   return {
     lambda: get('lambda'),
-    "let": get('let'),
+    let: get('let'),
     let_star: get('let*'),
     letrec: get('letrec'),
     letrec_star: get('letrec*'),
@@ -17241,366 +15685,203 @@ function macroexpand_shadow(env, names) {
     return env;
   }
   var scope = env.inherit('macroexpand');
-  names.forEach(function (name) {
-    return scope.set(name, true);
-  });
+  names.forEach(name => scope.set(name, true));
   return scope;
 }
 // -------------------------------------------------------------------------
-function macroexpand_list(_x15, _x16) {
+function macroexpand_list(_x10, _x11) {
   return _macroexpand_list.apply(this, arguments);
 } // -------------------------------------------------------------------------
 function _macroexpand_list() {
-  _macroexpand_list = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee25(code, env) {
-    var items, node, result, _i7, _t16;
-    return _regeneratorRuntime.wrap(function (_context28) {
-      while (1) switch (_context28.prev = _context28.next) {
-        case 0:
-          // expand every element of a (possibly improper) list, preserving structure
-          items = [];
-          node = code;
-        case 1:
-          if (!is_pair(node)) {
-            _context28.next = 3;
-            break;
-          }
-          _t16 = items;
-          _context28.next = 2;
-          return macroexpand_code(node.car, env);
-        case 2:
-          _t16.push.call(_t16, _context28.sent);
-          node = node.cdr;
-          _context28.next = 1;
-          break;
-        case 3:
-          result = node; // improper tail or nil, left untouched
-          for (_i7 = items.length - 1; _i7 >= 0; _i7--) {
-            result = new Pair(items[_i7], result);
-          }
-          return _context28.abrupt("return", result);
-        case 4:
-        case "end":
-          return _context28.stop();
-      }
-    }, _callee25);
-  }));
+  _macroexpand_list = _asyncToGenerator(function* (code, env) {
+    // expand every element of a (possibly improper) list, preserving structure
+    var items = [];
+    var node = code;
+    while (is_pair(node)) {
+      items.push(yield macroexpand_code(node.car, env));
+      node = node.cdr;
+    }
+    var result = node; // improper tail or nil, left untouched
+    for (var _i2 = items.length - 1; _i2 >= 0; _i2--) {
+      result = new Pair(items[_i2], result);
+    }
+    return result;
+  });
   return _macroexpand_list.apply(this, arguments);
 }
-function macroexpand_bindings(_x17, _x18) {
+function macroexpand_bindings(_x12, _x13) {
   return _macroexpand_bindings.apply(this, arguments);
 } // -------------------------------------------------------------------------
 function _macroexpand_bindings() {
-  _macroexpand_bindings = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee26(bindings, env) {
-    var items, node, binding, value, result, _i8;
-    return _regeneratorRuntime.wrap(function (_context29) {
-      while (1) switch (_context29.prev = _context29.next) {
-        case 0:
-          // ((name value) ...) - keep names, expand values
-          items = [];
-          node = bindings;
-        case 1:
-          if (!is_pair(node)) {
-            _context29.next = 5;
-            break;
-          }
-          binding = node.car;
-          if (!(is_pair(binding) && is_pair(binding.cdr))) {
-            _context29.next = 3;
-            break;
-          }
-          _context29.next = 2;
-          return macroexpand_code(binding.cdr.car, env);
-        case 2:
-          value = _context29.sent;
-          items.push(new Pair(binding.car, new Pair(value, binding.cdr.cdr)));
-          _context29.next = 4;
-          break;
-        case 3:
-          items.push(binding);
-        case 4:
-          node = node.cdr;
-          _context29.next = 1;
-          break;
-        case 5:
-          result = node;
-          for (_i8 = items.length - 1; _i8 >= 0; _i8--) {
-            result = new Pair(items[_i8], result);
-          }
-          return _context29.abrupt("return", result);
-        case 6:
-        case "end":
-          return _context29.stop();
+  _macroexpand_bindings = _asyncToGenerator(function* (bindings, env) {
+    // ((name value) ...) - keep names, expand values
+    var items = [];
+    var node = bindings;
+    while (is_pair(node)) {
+      var binding = node.car;
+      if (is_pair(binding) && is_pair(binding.cdr)) {
+        var value = yield macroexpand_code(binding.cdr.car, env);
+        items.push(new Pair(binding.car, new Pair(value, binding.cdr.cdr)));
+      } else {
+        items.push(binding);
       }
-    }, _callee26);
-  }));
+      node = node.cdr;
+    }
+    var result = node;
+    for (var _i3 = items.length - 1; _i3 >= 0; _i3--) {
+      result = new Pair(items[_i3], result);
+    }
+    return result;
+  });
   return _macroexpand_bindings.apply(this, arguments);
 }
-function macroexpand_once(_x19, _x20, _x21) {
+function macroexpand_once(_x14, _x15, _x16) {
   return _macroexpand_once.apply(this, arguments);
 } // -------------------------------------------------------------------------
 function _macroexpand_once() {
-  _macroexpand_once = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee27(macro, code, env) {
-    var state, result;
-    return _regeneratorRuntime.wrap(function (_context30) {
-      while (1) switch (_context30.prev = _context30.next) {
-        case 0:
-          // one-step expansion of a macro use into its output code (never evaluated)
-          state = {
-            env: env,
-            error: function error(e) {
-              throw e;
-            },
-            macro_expand: true
-          };
-          result = macro._invoke_state(code, state, true);
-          if (!is_promise(result)) {
-            _context30.next = 2;
-            break;
-          }
-          _context30.next = 1;
-          return result;
-        case 1:
-          result = _context30.sent;
-        case 2:
-          if (!(result instanceof SyntaxExpansion)) {
-            _context30.next = 3;
-            break;
-          }
-          return _context30.abrupt("return", result.expr);
-        case 3:
-          if (!(result && _typeof$1(result) === 'object' && !is_pair(result) && 'expr' in result)) {
-            _context30.next = 4;
-            break;
-          }
-          return _context30.abrupt("return", result.expr);
-        case 4:
-          return _context30.abrupt("return", result);
-        case 5:
-        case "end":
-          return _context30.stop();
-      }
-    }, _callee27);
-  }));
+  _macroexpand_once = _asyncToGenerator(function* (macro, code, env) {
+    // one-step expansion of a macro use into its output code (never evaluated)
+    var state = {
+      env,
+      error: e => {
+        throw e;
+      },
+      macro_expand: true
+    };
+    var result = macro._invoke_state(code, state, true);
+    if (is_promise(result)) {
+      result = yield result;
+    }
+    if (result instanceof SyntaxExpansion) {
+      return result.expr;
+    }
+    // syntax-rules in macro_expand mode returns a plain { expr, scope } bag
+    if (result && typeof result === 'object' && !is_pair(result) && 'expr' in result) {
+      return result.expr;
+    }
+    return result;
+  });
   return _macroexpand_once.apply(this, arguments);
 }
-function macroexpand_code(_x22, _x23) {
+function macroexpand_code(_x17, _x18) {
   return _macroexpand_code.apply(this, arguments);
 } // -------------------------------------------------------------------------
 function _macroexpand_code() {
-  _macroexpand_code = _asyncToGenerator(/*#__PURE__*/_regeneratorRuntime.mark(function _callee28(code, env) {
-    var car, value, sf, params, scope, body, rest, name, bindings, names, new_bindings, body_names, _body, tail, _bindings, _scope, _new_bindings, _body2, target, _names2, _body3, _scope2, _rest1, expansion;
-    return _regeneratorRuntime.wrap(function (_context31) {
-      while (1) switch (_context31.prev = _context31.next) {
-        case 0:
-          if (is_pair(code)) {
-            _context31.next = 1;
-            break;
-          }
-          return _context31.abrupt("return", code);
-        case 1:
-          car = code.car;
-          if (!(car instanceof LSymbol)) {
-            _context31.next = 16;
-            break;
-          }
-          value = env.get(car, {
-            throwError: false
-          });
-          if (!value) {
-            _context31.next = 16;
-            break;
-          }
-          sf = macroexpand_special_forms(); // quote/quasiquote: keep the form, do not expand inside
-          if (!(value === __quote__ || value === sf.quasiquote)) {
-            _context31.next = 2;
-            break;
-          }
-          return _context31.abrupt("return", code);
-        case 2:
-          if (!(value === sf.lambda)) {
-            _context31.next = 4;
-            break;
-          }
-          params = code.cdr.car;
-          scope = macroexpand_shadow(env, macroexpand_names(params));
-          _context31.next = 3;
-          return macroexpand_list(code.cdr.cdr, scope);
-        case 3:
-          body = _context31.sent;
-          return _context31.abrupt("return", new Pair(car, new Pair(params, body)));
-        case 4:
-          if (!(value === sf["let"] || value === sf.let_star)) {
-            _context31.next = 7;
-            break;
-          }
-          rest = code.cdr;
-          name = null;
+  _macroexpand_code = _asyncToGenerator(function* (code, env) {
+    // atoms (symbols, numbers, strings, ...) are returned unchanged - crucially
+    // symbols are NOT looked up, they stay as symbols in the expanded code
+    if (!is_pair(code)) {
+      return code;
+    }
+    var car = code.car;
+    if (car instanceof LSymbol) {
+      var value = env.get(car, {
+        throwError: false
+      });
+      if (value) {
+        var sf = macroexpand_special_forms();
+        // quote/quasiquote: keep the form, do not expand inside
+        if (value === __quote__ || value === sf.quasiquote) {
+          return code;
+        }
+        // (lambda params . body): keep params, expand body with params bound
+        if (value === sf.lambda) {
+          var params = code.cdr.car;
+          var scope = macroexpand_shadow(env, macroexpand_names(params));
+          var body = yield macroexpand_list(code.cdr.cdr, scope);
+          return new Pair(car, new Pair(params, body));
+        }
+        // (let/let* bindings . body): expand values in the outer scope,
+        // expand body with the bound names shadowing macros
+        if (value === sf.let || value === sf.let_star) {
+          var rest = code.cdr;
+          var name = null;
           if (rest.car instanceof LSymbol) {
             // named let
             name = rest.car;
             rest = rest.cdr;
           }
-          bindings = rest.car;
-          names = macroexpand_binding_names(bindings);
-          _context31.next = 5;
-          return macroexpand_bindings(bindings, env);
-        case 5:
-          new_bindings = _context31.sent;
-          body_names = name ? [name].concat(_toConsumableArray(names)) : names;
-          _context31.next = 6;
-          return macroexpand_list(rest.cdr, macroexpand_shadow(env, body_names));
-        case 6:
-          _body = _context31.sent;
-          tail = new Pair(new_bindings, _body);
+          var bindings = rest.car;
+          var names = macroexpand_binding_names(bindings);
+          var new_bindings = yield macroexpand_bindings(bindings, env);
+          var body_names = name ? [name, ...names] : names;
+          var _body = yield macroexpand_list(rest.cdr, macroexpand_shadow(env, body_names));
+          var tail = new Pair(new_bindings, _body);
           if (name) {
             tail = new Pair(name, tail);
           }
-          return _context31.abrupt("return", new Pair(car, tail));
-        case 7:
-          if (!(value === sf.letrec || value === sf.letrec_star)) {
-            _context31.next = 10;
-            break;
+          return new Pair(car, tail);
+        }
+        // (letrec bindings . body): bound names are visible in values too
+        if (value === sf.letrec || value === sf.letrec_star) {
+          var _bindings = code.cdr.car;
+          var _scope = macroexpand_shadow(env, macroexpand_binding_names(_bindings));
+          var _new_bindings = yield macroexpand_bindings(_bindings, _scope);
+          var _body2 = yield macroexpand_list(code.cdr.cdr, _scope);
+          return new Pair(car, new Pair(_new_bindings, _body2));
+        }
+        // (define name value) or (define (name . args) . body)
+        if (value === __define__) {
+          var target = code.cdr.car;
+          if (is_pair(target)) {
+            var _names2 = [target.car, ...macroexpand_names(target.cdr)];
+            var _body3 = yield macroexpand_list(code.cdr.cdr, macroexpand_shadow(env, _names2));
+            return new Pair(car, new Pair(target, _body3));
           }
-          _bindings = code.cdr.car;
-          _scope = macroexpand_shadow(env, macroexpand_binding_names(_bindings));
-          _context31.next = 8;
-          return macroexpand_bindings(_bindings, _scope);
-        case 8:
-          _new_bindings = _context31.sent;
-          _context31.next = 9;
-          return macroexpand_list(code.cdr.cdr, _scope);
-        case 9:
-          _body2 = _context31.sent;
-          return _context31.abrupt("return", new Pair(car, new Pair(_new_bindings, _body2)));
-        case 10:
-          if (!(value === __define__)) {
-            _context31.next = 14;
-            break;
-          }
-          target = code.cdr.car;
-          if (!is_pair(target)) {
-            _context31.next = 12;
-            break;
-          }
-          _names2 = [target.car].concat(_toConsumableArray(macroexpand_names(target.cdr)));
-          _context31.next = 11;
-          return macroexpand_list(code.cdr.cdr, macroexpand_shadow(env, _names2));
-        case 11:
-          _body3 = _context31.sent;
-          return _context31.abrupt("return", new Pair(car, new Pair(target, _body3)));
-        case 12:
-          _scope2 = macroexpand_shadow(env, [target]);
-          _context31.next = 13;
-          return macroexpand_list(code.cdr.cdr, _scope2);
-        case 13:
-          _rest1 = _context31.sent;
-          return _context31.abrupt("return", new Pair(car, new Pair(target, _rest1)));
-        case 14:
-          if (!(is_macro(value) && !is_internal_macro(value))) {
-            _context31.next = 16;
-            break;
-          }
-          _context31.next = 15;
-          return macroexpand_once(value, code, env);
-        case 15:
-          expansion = _context31.sent;
-          return _context31.abrupt("return", macroexpand_code(expansion, env));
-        case 16:
-          return _context31.abrupt("return", macroexpand_list(code, env));
-        case 17:
-        case "end":
-          return _context31.stop();
+          var _scope2 = macroexpand_shadow(env, [target]);
+          var _rest1 = yield macroexpand_list(code.cdr.cdr, _scope2);
+          return new Pair(car, new Pair(target, _rest1));
+        }
+        // a real macro (syntax-rules or define-macro) that isn't shadowed:
+        // expand one step then re-expand the result (fixpoint)
+        if (is_macro(value) && !is_internal_macro(value)) {
+          var expansion = yield macroexpand_once(value, code, env);
+          return macroexpand_code(expansion, env);
+        }
       }
-    }, _callee28);
-  }));
+    }
+    // application / if / begin / set! / compound operator: expand each element
+    return macroexpand_list(code, env);
+  });
   return _macroexpand_code.apply(this, arguments);
 }
-function evaluate_code(state) {
-  var code, car, cdr, first, _doc, value, new_expr, result, expanded, op, _result3, _t12;
-  return _regeneratorRuntime.wrap(function (_context24) {
-    while (1) switch (_context24.prev = _context24.next) {
-      case 0:
-        code = state.object;
-        if (!state.macro_expand) {
-          _context24.next = 2;
-          break;
-        }
-        _context24.next = 1;
-        return macroexpand_code(code, state.env);
-      case 1:
-        state.object = _context24.sent;
-        state.ready = true;
-        return _context24.abrupt("return");
-      case 2:
-        if (!(code instanceof State)) {
-          _context24.next = 3;
-          break;
-        }
-        throw new Error('Internal: expecting LIPS expression got State');
-      case 3:
-        if (!(code instanceof LNumber)) {
-          _context24.next = 4;
-          break;
-        }
-        state.ready = true;
-        _context24.next = 25;
-        break;
-      case 4:
-        if (!(code instanceof LSymbol)) {
-          _context24.next = 5;
-          break;
-        }
-        state.object = state.env.get(state.object);
-        state.ready = true;
-        _context24.next = 25;
-        break;
-      case 5:
-        if (!is_promise(code)) {
-          _context24.next = 9;
-          break;
-        }
-        if (!(state.cc && state.cc._state && state.cc._state.quote_promise)) {
-          _context24.next = 6;
-          break;
-        }
-        state.object = code;
-        _context24.next = 8;
-        break;
-      case 6:
-        _t12 = box;
-        _context24.next = 7;
-        return code;
-      case 7:
-        state.object = _t12(_context24.sent);
-      case 8:
-        state.ready = true;
-        _context24.next = 25;
-        break;
-      case 9:
-        if (!is_pair(code)) {
-          _context24.next = 24;
-          break;
-        }
-        car = code.car, cdr = code.cdr;
-        if (!(car instanceof LSymbol)) {
-          _context24.next = 19;
-          break;
-        }
-        first = state.env.get(car);
-        if (!(first === __if__)) {
-          _context24.next = 10;
-          break;
-        }
+function* evaluate_code(state) {
+  var code = state.object;
+  if (state.macro_expand) {
+    // expansion mode: walk the code and expand macros without evaluating.
+    // macroexpand_code is async (macros may return promises of code), so we
+    // yield the promise - the tco driver resolves it before continuing.
+    state.object = yield macroexpand_code(code, state.env);
+    state.ready = true;
+    return;
+  }
+  if (code instanceof State) {
+    throw new Error('Internal: expecting LIPS expression got State');
+  } else if (code instanceof LNumber) {
+    state.ready = true;
+  } else if (code instanceof LSymbol) {
+    state.object = state.env.get(state.object);
+    state.ready = true;
+  } else if (is_promise(code)) {
+    // Don't await a promise that is the direct result of a quote-promise
+    // body - pass it through so the quote-promise continuation wraps it.
+    // Every other promise (nested usage) is awaited.
+    if (state.cc && state.cc._state && state.cc._state.quote_promise) {
+      state.object = code;
+    } else {
+      state.object = box(yield code);
+    }
+    state.ready = true;
+  } else if (is_pair(code)) {
+    var car = code.car,
+      cdr = code.cdr;
+    if (car instanceof LSymbol) {
+      var first = state.env.get(car);
+      if (first === __if__) {
         state.object = cdr.car;
         state.cc = new Continuation('if', cdr.cdr, code, state, next_if);
         state.ready = false;
-        _context24.next = 18;
-        break;
-      case 10:
-        if (!(first === __begin__)) {
-          _context24.next = 11;
-          break;
-        }
+      } else if (first === __begin__) {
         if (is_nil(cdr)) {
           delete state.object;
         } else {
@@ -17610,69 +15891,41 @@ function evaluate_code(state) {
           }
         }
         state.ready = false;
-        _context24.next = 18;
-        break;
-      case 11:
-        if (!(first === __quote__)) {
-          _context24.next = 12;
-          break;
-        }
+      } else if (first === __quote__) {
         state.object = cdr.car;
         state.ready = true;
-        _context24.next = 18;
-        break;
-      case 12:
-        if (!(first === __set__)) {
-          _context24.next = 13;
-          break;
-        }
+      } else if (first === __set__) {
         state.object = cdr.cdr.car;
         state.ready = false;
         state.cc = new Continuation('set!', cdr.car, code, state, next_set);
-        _context24.next = 18;
-        break;
-      case 13:
-        if (!(first === __define__)) {
-          _context24.next = 14;
-          break;
-        }
+      } else if (first === __define__) {
         if (is_pair(cdr.car)) {
           // (define (foo x) x) => (define foo (lambda (x) x))
           state.object = new Pair(new LSymbol('define'), new Pair(cdr.car.car, new Pair(new Pair(new LSymbol('lambda'), new Pair(cdr.car.cdr, cdr.cdr)), _nil)));
           state.ready = false;
         } else {
           typecheck('define', car, 'symbol');
+          var _doc;
           if (is_pair(cdr.cdr.car) && LSymbol.is(cdr.cdr.car.car, 'lambda') && is_pair(cdr.cdr.car.cdr) && LString.isString(cdr.cdr.car.cdr.cdr.car)) {
             _doc = cdr.cdr.car.cdr.cdr.car.valueOf();
           }
-          value = state.object = cdr.cdr.car; // the value has not been evaluated yet, so decide whether it
+          var value = state.object = cdr.cdr.car;
+          // the value has not been evaluated yet, so decide whether it
           // may need a name (lambda/syntax/parameter) from the SOURCE
           // being a compound expression, and apply the name in
           // next_define once the real value is known.
-          new_expr = is_pair(value);
+          var new_expr = is_pair(value);
           state.cc = new Continuation('define', cdr.car, code, state, next_define, {
             doc: _doc,
-            new_expr: new_expr
+            new_expr
           });
           state.ready = false;
         }
-        _context24.next = 18;
-        break;
-      case 14:
-        if (!is_macro(first)) {
-          _context24.next = 17;
-          break;
+      } else if (is_macro(first)) {
+        var result = first._invoke_state(code, state);
+        if (is_promise(result)) {
+          result = yield result;
         }
-        result = first._invoke_state(code, state);
-        if (!is_promise(result)) {
-          _context24.next = 16;
-          break;
-        }
-        _context24.next = 15;
-        return result;
-      case 15:
-        result = _context24.sent;
-      case 16:
         if (result instanceof SyntaxExpansion) {
           // A syntax-rules macro: evaluate its expansion in THIS loop
           // (same continuation chain) so a continuation captured
@@ -17694,69 +15947,48 @@ function evaluate_code(state) {
           // evaluated; other Macro/SyntaxParameter values are final.
           state.ready = first instanceof Syntax || first instanceof SyntaxParameter;
         }
-        _context24.next = 18;
-        break;
-      case 17:
+      } else {
         state.object = first;
         state.cc = new Continuation('pair[a]', cdr, code, state, next_pair);
         state.ready = false;
-      case 18:
-        _context24.next = 23;
-        break;
-      case 19:
-        // car is a compound expression in operator position. If it is a
-        // syntax-rules macro use, expand it and re-dispatch the WHOLE form,
-        // so an operator that expands to a special form or another macro -
-        // e.g. ((undswap 3 if) ...) -> (if ...)
-        expanded = false;
-        if (!(is_pair(car) && car.car instanceof LSymbol)) {
-          _context24.next = 22;
-          break;
-        }
-        op = state.env.get(car.car, {
+      }
+    } else {
+      // car is a compound expression in operator position. If it is a
+      // syntax-rules macro use, expand it and re-dispatch the WHOLE form,
+      // so an operator that expands to a special form or another macro -
+      // e.g. ((undswap 3 if) ...) -> (if ...)
+      var expanded = false;
+      if (is_pair(car) && car.car instanceof LSymbol) {
+        var op = state.env.get(car.car, {
           throwError: false
         });
-        if (!(op instanceof Syntax)) {
-          _context24.next = 22;
-          break;
-        }
-        _result3 = op._invoke_state(car, state);
-        if (!is_promise(_result3)) {
-          _context24.next = 21;
-          break;
-        }
-        _context24.next = 20;
-        return _result3;
-      case 20:
-        _result3 = _context24.sent;
-      case 21:
-        if (_result3 instanceof SyntaxExpansion) {
-          if (_result3.names.length) {
-            state.cc = new Continuation('syntax', null, code, state, next_syntax, {
-              names: _result3.names
-            });
+        if (op instanceof Syntax) {
+          var _result2 = op._invoke_state(car, state);
+          if (is_promise(_result2)) {
+            _result2 = yield _result2;
           }
-          state.env = _result3.env;
-          state.object = new Pair(_result3.expr, cdr);
-          state.ready = false;
-          expanded = true;
+          if (_result2 instanceof SyntaxExpansion) {
+            if (_result2.names.length) {
+              state.cc = new Continuation('syntax', null, code, state, next_syntax, {
+                names: _result2.names
+              });
+            }
+            state.env = _result2.env;
+            state.object = new Pair(_result2.expr, cdr);
+            state.ready = false;
+            expanded = true;
+          }
         }
-      case 22:
-        if (!expanded) {
-          state.object = car;
-          state.cc = new Continuation('pair[b]', cdr, code, state, next_pair);
-          state.ready = false;
-        }
-      case 23:
-        _context24.next = 25;
-        break;
-      case 24:
-        state.ready = true;
-      case 25:
-      case "end":
-        return _context24.stop();
+      }
+      if (!expanded) {
+        state.object = car;
+        state.cc = new Continuation('pair[b]', cdr, code, state, next_pair);
+        state.ready = false;
+      }
     }
-  }, _marked2);
+  } else {
+    state.ready = true;
+  }
 }
 
 // -------------------------------------------------------------------------
@@ -17911,12 +16143,12 @@ function next_pair(state) {
     state.env = this.__env__;
     var _this$_state$args = _toArray(this._state.args),
       first = _this$_state$args[0],
-      _args28 = _arrayLikeToArray(_this$_state$args).slice(1);
+      args = _arrayLikeToArray(_this$_state$args).slice(1);
     if (is_lambda(first)) {
-      evaluate_lambda(first, _args28, state, this);
+      evaluate_lambda(first, args, state, this);
     } else if (is_continuation(first)) {
       state.ready = true;
-      state.object = _args28[0];
+      state.object = args[0];
       var clone = first.clone(false);
       // restore the try handlers captured when this continuation was
       // created, so escaping/re-entering a `try` updates the active set.
@@ -17924,29 +16156,29 @@ function next_pair(state) {
         state.handlers = clone._state.handlers.slice();
       }
       state.cc = clone;
-    } else if (first === __apply__ && is_lambda(_args28[0])) {
-      var _fn = _args28.shift();
+    } else if (first === __apply__ && is_lambda(args[0])) {
+      var _fn = args.shift();
       typecheck('apply', _fn, 'function', 1);
-      var last = _args28.pop();
-      typecheck('apply', last, ['pair', 'nil'], _args28.length + 2);
+      var last = args.pop();
+      typecheck('apply', last, ['pair', 'nil'], args.length + 2);
       last = global_env.get('list->array').call(global_env, last);
-      evaluate_lambda(_fn, _args28.concat(last), state, this);
+      evaluate_lambda(_fn, args.concat(last), state, this);
     } else if (is_parameter(first)) {
       // a dynamic variable created by make-parameter. Look up the
       // effective binding in the dynamic environment (parameterize
       // installs a shadowing Parameter there) before reading/setting it.
       state.cc = this.__continuation__;
       var param = search_param(state.dynamic_env, first);
-      if (_args28.length === 0) {
+      if (args.length === 0) {
         state.object = box(param.invoke());
       } else {
-        param.__value__ = _args28[0];
+        param.__value__ = args[0];
         state.object = undefined;
       }
       state.ready = !is_promise(state.object);
     } else if (is_function(first)) {
       state.cc = this.__continuation__;
-      state.object = box(call_function(first, prepare_fn_args(first, _args28), state));
+      state.object = box(call_function(first, prepare_fn_args(first, args), state));
       state.ready = !is_promise(state.object);
     } else {
       throw new Error("".concat(type(first), " ").concat(env.get('repr')(first), " is not callable while evaluating ") + to_string(this.__code__));
@@ -17971,102 +16203,61 @@ var exec = exec_collect(function (code, value) {
 // -------------------------------------------------------------------------
 function exec_collect(collect_callback) {
   return /*#__PURE__*/function () {
-    var _exec_lambda = _asyncToGenerator(function (arg) {
+    var _exec_lambda = _asyncToGenerator(function* (arg) {
       var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-      return /*#__PURE__*/_regeneratorRuntime.mark(function _callee22() {
-        var env, dynamic_env, use_dynamic, parser_args, results, input, _iteratorAbruptCompletion2, _didIteratorError2, _iteratorError2, _iterator2, _step2, code, value, _t13, _t14;
-        return _regeneratorRuntime.wrap(function (_context25) {
-          while (1) switch (_context25.prev = _context25.next) {
-            case 0:
-              env = options.env, dynamic_env = options.dynamic_env, use_dynamic = options.use_dynamic, parser_args = _objectWithoutProperties(options, _excluded5);
-              if (!is_env(dynamic_env)) {
-                dynamic_env = env === true ? user_env : env || user_env;
-              }
-              if (env === true) {
-                env = user_env;
-              } else {
-                env = env || user_env;
-              }
-              results = [];
-              if (!is_pair(arg)) {
-                _context25.next = 2;
-                break;
-              }
-              _context25.next = 1;
-              return _evaluate(arg, {
-                env: env,
-                dynamic_env: dynamic_env,
-                use_dynamic: use_dynamic
-              });
-            case 1:
-              _t13 = _context25.sent;
-              return _context25.abrupt("return", [_t13]);
-            case 2:
-              input = Array.isArray(arg) ? arg : _parse(arg, parser_args);
-              _iteratorAbruptCompletion2 = false;
-              _didIteratorError2 = false;
-              _context25.prev = 3;
-              _iterator2 = _asyncIterator(input);
-            case 4:
-              _context25.next = 5;
-              return _iterator2.next();
-            case 5:
-              if (!(_iteratorAbruptCompletion2 = !(_step2 = _context25.sent).done)) {
-                _context25.next = 8;
-                break;
-              }
-              code = _step2.value;
-              _context25.next = 6;
-              return _evaluate(code, {
-                env: env,
-                dynamic_env: dynamic_env,
-                use_dynamic: use_dynamic
-              });
-            case 6:
-              value = _context25.sent;
-              results.push(collect_callback(code, value));
-            case 7:
-              _iteratorAbruptCompletion2 = false;
-              _context25.next = 4;
-              break;
-            case 8:
-              _context25.next = 10;
-              break;
-            case 9:
-              _context25.prev = 9;
-              _t14 = _context25["catch"](3);
-              _didIteratorError2 = true;
-              _iteratorError2 = _t14;
-            case 10:
-              _context25.prev = 10;
-              _context25.prev = 11;
-              if (!(_iteratorAbruptCompletion2 && _iterator2["return"] != null)) {
-                _context25.next = 12;
-                break;
-              }
-              _context25.next = 12;
-              return _iterator2["return"]();
-            case 12:
-              _context25.prev = 12;
-              if (!_didIteratorError2) {
-                _context25.next = 13;
-                break;
-              }
-              throw _iteratorError2;
-            case 13:
-              return _context25.finish(12);
-            case 14:
-              return _context25.finish(10);
-            case 15:
-              return _context25.abrupt("return", results);
-            case 16:
-            case "end":
-              return _context25.stop();
+      var env = options.env,
+        dynamic_env = options.dynamic_env,
+        use_dynamic = options.use_dynamic,
+        parser_args = _objectWithoutProperties(options, _excluded5);
+      if (!is_env(dynamic_env)) {
+        dynamic_env = env === true ? user_env : env || user_env;
+      }
+      if (env === true) {
+        env = user_env;
+      } else {
+        env = env || user_env;
+      }
+      var results = [];
+      if (is_pair(arg)) {
+        return [yield evaluate(arg, {
+          env,
+          dynamic_env,
+          use_dynamic
+        })];
+      }
+      var input = Array.isArray(arg) ? arg : _parse(arg, parser_args);
+      var _iteratorAbruptCompletion2 = false;
+      var _didIteratorError2 = false;
+      var _iteratorError2;
+      try {
+        for (var _iterator2 = _asyncIterator(input), _step2; _iteratorAbruptCompletion2 = !(_step2 = yield _iterator2.next()).done; _iteratorAbruptCompletion2 = false) {
+          var code = _step2.value;
+          {
+            var value = yield evaluate(code, {
+              env,
+              dynamic_env,
+              use_dynamic
+            });
+            results.push(collect_callback(code, value));
           }
-        }, _callee22, null, [[3, 9, 10, 15], [11,, 12, 14]]);
-      })();
+        }
+      } catch (err) {
+        _didIteratorError2 = true;
+        _iteratorError2 = err;
+      } finally {
+        try {
+          if (_iteratorAbruptCompletion2 && _iterator2.return != null) {
+            yield _iterator2.return();
+          }
+        } finally {
+          if (_didIteratorError2) {
+            throw _iteratorError2;
+          }
+        }
+      }
+      return results;
     });
-    function exec_lambda(_x25) {
+    function exec_lambda(_x20) {
       return _exec_lambda.apply(this, arguments);
     }
     return exec_lambda;
@@ -18089,42 +16280,29 @@ function balanced(code) {
       throw e;
     }
   } else {
-    tokens = code.map(function (x) {
-      return x && x.token ? x.token : x;
-    });
+    tokens = code.map(x => x && x.token ? x.token : x);
   }
   var open_tokens = Object.keys(maching_pairs);
   var brackets = Object.values(maching_pairs).concat(open_tokens);
-  tokens = tokens.filter(function (token) {
-    return brackets.includes(token);
-  });
+  tokens = tokens.filter(token => brackets.includes(token));
   var stack = new Stack();
-  var _iterator11 = _createForOfIteratorHelper(tokens),
-    _step11;
-  try {
-    for (_iterator11.s(); !(_step11 = _iterator11.n()).done;) {
-      var token = _step11.value;
-      if (open_tokens.includes(token)) {
-        stack.push(token);
-      } else if (!stack.is_empty()) {
-        // closing token
-        var last = stack.top();
-        // last on stack need to match
-        var closing_token = maching_pairs[last];
-        if (token === closing_token) {
-          stack.pop();
-        } else {
-          throw new Error("Syntax error: missing closing ".concat(closing_token));
-        }
+  for (var token of tokens) {
+    if (open_tokens.includes(token)) {
+      stack.push(token);
+    } else if (!stack.is_empty()) {
+      // closing token
+      var last = stack.top();
+      // last on stack need to match
+      var closing_token = maching_pairs[last];
+      if (token === closing_token) {
+        stack.pop();
       } else {
-        // closing bracket without opening
-        throw new Error("Syntax error: not matched closing ".concat(token));
+        throw new Error("Syntax error: missing closing ".concat(closing_token));
       }
+    } else {
+      // closing bracket without opening
+      throw new Error("Syntax error: not matched closing ".concat(token));
     }
-  } catch (err) {
-    _iterator11.e(err);
-  } finally {
-    _iterator11.f();
   }
   return stack.is_empty();
 }
@@ -18230,13 +16408,13 @@ function Worker(url) {
           var code = data.params[0];
           var use_dynamic = data.params[1];
           interpreter.exec(code, {
-            use_dynamic: use_dynamic
+            use_dynamic
           }).then(function (result) {
             result = result.map(function (value) {
               return value && value.valueOf();
             });
             send_result(result);
-          })["catch"](function (error) {
+          }).catch(error => {
             send_error(error);
           });
         });
@@ -18248,7 +16426,7 @@ function Worker(url) {
           importScripts("".concat(url, "/dist/lips.min.js"));
           interpreter = new lips.Interpreter('worker');
           init = bootstrap(url);
-          init.then(function () {
+          init.then(() => {
             send_result(true);
           });
         }
@@ -18280,12 +16458,12 @@ function Worker(url) {
       });
     };
   }();
-  this.rpc('init', [url])["catch"](function (error) {
+  this.rpc('init', [url]).catch(error => {
     console.error(error);
   });
-  this.exec = function (code, _ref38) {
-    var _ref38$use_dynamic = _ref38.use_dynamic,
-      use_dynamic = _ref38$use_dynamic === void 0 ? false : _ref38$use_dynamic;
+  this.exec = function (code, _ref49) {
+    var _ref49$use_dynamic = _ref49.use_dynamic,
+      use_dynamic = _ref49$use_dynamic === void 0 ? false : _ref49$use_dynamic;
     return this.rpc('eval', [code, use_dynamic]);
   };
 }
@@ -18294,10 +16472,10 @@ function Worker(url) {
 // :: Serialization
 // -------------------------------------------------------------------------
 var serialization_map = {
-  'pair': function pair(_ref39) {
-    var _ref40 = _slicedToArray(_ref39, 2),
-      car = _ref40[0],
-      cdr = _ref40[1];
+  'pair': _ref50 => {
+    var _ref51 = _slicedToArray(_ref50, 2),
+      car = _ref51[0],
+      cdr = _ref51[1];
     return Pair(car, cdr);
   },
   'number': function number(value) {
@@ -18306,10 +16484,10 @@ var serialization_map = {
     }
     return LNumber(value);
   },
-  'regex': function regex(_ref41) {
-    var _ref42 = _slicedToArray(_ref41, 2),
-      pattern = _ref42[0],
-      flag = _ref42[1];
+  'regex': function regex(_ref52) {
+    var _ref53 = _slicedToArray(_ref52, 2),
+      pattern = _ref53[0],
+      flag = _ref53[1];
     return new RegExp(pattern, flag);
   },
   'nil': function nil() {
@@ -18319,7 +16497,7 @@ var serialization_map = {
     if (LString.isString(value)) {
       return LSymbol(value);
     } else if (Array.isArray(value)) {
-      return LSymbol(Symbol["for"](value[0]));
+      return LSymbol(Symbol.for(value[0]));
     }
   },
   'string': LString,
@@ -18329,10 +16507,10 @@ var serialization_map = {
 // class mapping to create smaller JSON
 var available_class = Object.keys(serialization_map);
 var class_map = {};
-for (var _i5 = 0, _Object$entries2 = Object.entries(available_class); _i5 < _Object$entries2.length; _i5++) {
-  var _Object$entries2$_i = _slicedToArray(_Object$entries2[_i5], 2),
-    i = _Object$entries2$_i[0],
-    cls = _Object$entries2$_i[1];
+for (var _ref56 of Object.entries(available_class)) {
+  var _ref55 = _slicedToArray(_ref56, 2);
+  var i = _ref55[0];
+  var cls = _ref55[1];
   class_map[cls] = +i;
 }
 function mangle_name(name) {
@@ -18365,8 +16543,8 @@ function serialize(data) {
 }
 // -------------------------------------------------------------------------
 function unserialize(string) {
-  return JSON.parse(string, function (_, object) {
-    if (object && _typeof$1(object) === 'object') {
+  return JSON.parse(string, (_, object) => {
+    if (object && typeof object === 'object') {
       if (!is_undef(object['@'])) {
         var cls = resolve_name(object['@']);
         if (serialization_map[cls]) {
@@ -18394,31 +16572,31 @@ var cbor = function () {
   function serializer(Class, fn) {
     return {
       deserialize: fn,
-      Class: Class
+      Class
     };
   }
   var encoder = new Encoder();
   var cbor_serialization_map = {};
-  for (var _i6 = 0, _Object$entries3 = Object.entries(serialization_map); _i6 < _Object$entries3.length; _i6++) {
-    var _Object$entries3$_i = _slicedToArray(_Object$entries3[_i6], 2),
-      name = _Object$entries3$_i[0],
-      _fn2 = _Object$entries3$_i[1];
+  for (var _ref59 of Object.entries(serialization_map)) {
+    var _ref58 = _slicedToArray(_ref59, 2);
+    var name = _ref58[0];
+    var _fn2 = _ref58[1];
     var Class = types[name];
     cbor_serialization_map[name] = serializer(Class, _fn2);
   }
   // add CBOR data mapping
   var tag = 43311;
-  Object.keys(cbor_serialization_map).forEach(function (type) {
+  Object.keys(cbor_serialization_map).forEach(type => {
     var data = cbor_serialization_map[type];
     if (typeof data === 'function') {
       var _Class = data;
       addExtension({
         Class: _Class,
-        tag: tag,
-        encode: function encode(instance, _encode) {
-          _encode(instance.serialize());
+        tag,
+        encode(instance, encode) {
+          encode(instance.serialize());
         },
-        decode: function decode(data) {
+        decode(data) {
           return new _Class(data);
         }
       });
@@ -18427,14 +16605,14 @@ var cbor = function () {
         _Class2 = data.Class;
       addExtension({
         Class: _Class2,
-        tag: tag,
-        encode: function encode(instance, _encode2) {
+        tag,
+        encode(instance, encode) {
           if (instance instanceof RegExp) {
-            return _encode2([instance.source, instance.flags]);
+            return encode([instance.source, instance.flags]);
           }
-          _encode2(instance.serialize());
+          encode(instance.serialize());
         },
-        decode: function decode(data) {
+        decode(data) {
           return deserialize(data);
         }
       });
@@ -18450,12 +16628,10 @@ function merge_uint8_array() {
     args[_key45] = arguments[_key45];
   }
   if (args.length > 1) {
-    var len = args.reduce(function (acc, arr) {
-      return acc + arr.length;
-    }, 0);
+    var len = args.reduce((acc, arr) => acc + arr.length, 0);
     var result = new Uint8Array(len);
     var offset = 0;
-    args.forEach(function (item) {
+    args.forEach(item => {
       result.set(item, offset);
       offset += item.length;
     });
@@ -18522,9 +16698,7 @@ function unserialize_bin(data) {
 function execError(e) {
   console.error(e.message || e);
   if (Array.isArray(e.code)) {
-    console.error(e.code.map(function (line, i) {
-      return "[".concat(i + 1, "]: ").concat(line);
-    }));
+    console.error(e.code.map((line, i) => "[".concat(i + 1, "]: ").concat(line)));
   }
 }
 
@@ -18540,14 +16714,12 @@ function init() {
     return new Promise(function (resolve) {
       var src = script.getAttribute('src');
       if (src) {
-        return fetch(src).then(function (res) {
-          return res.text();
-        }).then(exec).then(resolve)["catch"](function (e) {
+        return fetch(src).then(res => res.text()).then(exec).then(resolve).catch(e => {
           execError(e);
           resolve();
         });
       } else {
-        return exec(script.innerHTML).then(resolve)["catch"](function (e) {
+        return exec(script.innerHTML).then(resolve).catch(e => {
           execError(e);
           resolve();
         });
@@ -18603,14 +16775,12 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Fri, 14 Aug 2026 19:56:03 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Fri, 14 Aug 2026 22:04:45 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Fri, 14 Aug 2026 19:56:03 +0000').valueOf();
+  var date = LString('Fri, 14 Aug 2026 22:04:45 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
-  var _format = function _format(x) {
-    return x.toString().padStart(2, '0');
-  };
+  var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
   var _build = [_year, _format(_date.getMonth() + 1), _format(_date.getDate())].join('-');
   var banner = "\n  __ __                          __\n / / \\ \\       _    _  ___  ___  \\ \\\n| |   \\ \\     | |  | || . \\/ __>  | |\n| |    > \\    | |_ | ||  _/\\__ \\  | |\n| |   / ^ \\   |___||_||_|  <___/  | |\n \\_\\ /_/ \\_\\                     /_/\n\nLIPS Interpreter DEV (".concat(_build, ") <https://lips.js.org>\nCopyright (c) 2018-").concat(_year, " Jakub T. Jankiewicz\n\nType (env) to see environment with functions macros and variables. You can also\nuse (help name) to display help for specific function or macro, (apropos name)\nto display list of matched names in environment and (dir object) to list\nproperties of an object.\n").replace(/^.*\n/, '');
@@ -18636,7 +16806,7 @@ read_only(InputStringPort, '__class__', 'input-string-port');
 read_only(InputFilePort, '__class__', 'input-file-port');
 read_only(OutputFilePort, '__class__', 'output-file-port');
 read_only(LipsError, '__class__', 'lips-error');
-[LNumber, LComplex, LRational, LFloat, LBigInteger].forEach(function (cls) {
+[LNumber, LComplex, LRational, LFloat, LBigInteger].forEach(cls => {
   read_only(cls, '__class__', 'number');
 });
 read_only(LCharacter, '__class__', 'character');
@@ -18647,72 +16817,72 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Fri, 14 Aug 2026 19:56:03 +0000';
+var date = 'Fri, 14 Aug 2026 22:04:45 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
 var lips = {
-  version: version,
-  banner: banner,
-  date: date,
-  exec: exec,
-  parse: parse,
-  tokenize: tokenize,
-  evaluate: _evaluate,
-  compile: compile,
-  type: type,
-  serialize: serialize,
-  unserialize: unserialize,
-  box: box,
-  unbox: unbox,
-  serialize_bin: serialize_bin,
-  unserialize_bin: unserialize_bin,
-  bootstrap: bootstrap,
-  Environment: Environment,
+  version,
+  banner,
+  date,
+  exec,
+  parse,
+  tokenize,
+  evaluate,
+  compile,
+  type,
+  serialize,
+  unserialize,
+  box,
+  unbox,
+  serialize_bin,
+  unserialize_bin,
+  bootstrap,
+  Environment,
   env: user_env,
-  Worker: Worker,
-  Interpreter: Interpreter,
+  Worker,
+  Interpreter,
   balanced_parenthesis: balanced,
   balancedParenthesis: balanced,
-  balanced: balanced,
-  Macro: Macro,
-  Syntax: Syntax,
-  Pair: Pair,
-  Values: Values,
-  QuotedPromise: QuotedPromise,
+  balanced,
+  Macro,
+  Syntax,
+  Pair,
+  Values,
+  QuotedPromise,
   Error: LipsError,
-  quote: quote,
-  InputPort: InputPort,
-  OutputPort: OutputPort,
-  BufferedOutputPort: BufferedOutputPort,
-  InputFilePort: InputFilePort,
-  OutputFilePort: OutputFilePort,
-  InputStringPort: InputStringPort,
-  OutputStringPort: OutputStringPort,
-  InputByteVectorPort: InputByteVectorPort,
-  OutputByteVectorPort: OutputByteVectorPort,
-  InputBinaryFilePort: InputBinaryFilePort,
-  OutputBinaryFilePort: OutputBinaryFilePort,
-  set_fs: set_fs,
-  Formatter: Formatter,
-  Parser: Parser,
-  Lexer: Lexer,
-  specials: specials,
-  repr: repr,
+  quote,
+  InputPort,
+  OutputPort,
+  BufferedOutputPort,
+  InputFilePort,
+  OutputFilePort,
+  InputStringPort,
+  OutputStringPort,
+  InputByteVectorPort,
+  OutputByteVectorPort,
+  InputBinaryFilePort,
+  OutputBinaryFilePort,
+  set_fs,
+  Formatter,
+  Parser,
+  Lexer,
+  specials,
+  repr,
   nil: _nil,
-  eof: eof,
-  LSymbol: LSymbol,
-  LNumber: LNumber,
-  LFloat: LFloat,
-  LComplex: LComplex,
-  LRational: LRational,
-  LBigInteger: LBigInteger,
-  LCharacter: LCharacter,
-  LString: LString,
-  Parameter: Parameter,
-  rationalize: rationalize
+  eof,
+  LSymbol,
+  LNumber,
+  LFloat,
+  LComplex,
+  LRational,
+  LBigInteger,
+  LCharacter,
+  LString,
+  Parameter,
+  rationalize
 };
 var lips_functions = Object.values(lips);
 global_env.set('lips', lips);
 
-export { BufferedOutputPort, Environment, LipsError as Error, Formatter, InputBinaryFilePort, InputByteVectorPort, InputFilePort, InputPort, InputStringPort, Interpreter, LBigInteger, LCharacter, LComplex, LFloat, LNumber, LRational, LString, LSymbol, Lexer, Macro, OutputBinaryFilePort, OutputByteVectorPort, OutputFilePort, OutputPort, OutputStringPort, Pair, Parameter, Parser, QuotedPromise, Syntax, Values, Worker, is_directive as _is_directive, balanced, balanced as balancedParenthesis, balanced as balanced_parenthesis, banner, bootstrap, box, compile, date, lips as default, user_env as env, eof, _evaluate as evaluate, exec, _nil as nil, parse, quote, rationalize, repr, serialize, serialize_bin, set_fs, specials, tokenize, type, unbox, unserialize, unserialize_bin, version };
+export { BufferedOutputPort, Environment, LipsError as Error, Formatter, InputBinaryFilePort, InputByteVectorPort, InputFilePort, InputPort, InputStringPort, Interpreter, LBigInteger, LCharacter, LComplex, LFloat, LNumber, LRational, LString, LSymbol, Lexer, Macro, OutputBinaryFilePort, OutputByteVectorPort, OutputFilePort, OutputPort, OutputStringPort, Pair, Parameter, Parser, QuotedPromise, Syntax, Values, Worker, is_directive as _is_directive, balanced, balanced as balancedParenthesis, balanced as balanced_parenthesis, banner, bootstrap, box, compile, date, lips as default, user_env as env, eof, evaluate, exec, _nil as nil, parse, quote, rationalize, repr, serialize, serialize_bin, set_fs, specials, tokenize, type, unbox, unserialize, unserialize_bin, version };

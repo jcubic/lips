@@ -26,7 +26,7 @@ async function get_files() {
     }
     var files = await fs.readdir('./tests');
     return files.filter(function(file) {
-        return file.match(/.scm$/) && !file.match(/^\.#|^_|~$/);
+        return file.match(/.scm$/) && !file.match(/^\.#|^_/);
     }).map(name => `./tests/${name}`);
 }
 

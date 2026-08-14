@@ -25,13 +25,20 @@ const base = {
       compact: false,
       babelHelpers: 'runtime',
       "plugins": [
-        "@babel/plugin-transform-async-to-generator",
         ["@babel/plugin-transform-runtime", {
           "helpers": true
         }],
       ],
+      // Target environments that support ES modules. They all support
+      // async/await natively, so preset-env no longer rewrites it into
+      // generators + the regenerator runtime (previously ~90 regenerator refs
+      // in the bundle). This keeps the output modern and much smaller. The
+      // explicit @babel/plugin-transform-async-to-generator was removed for the
+      // same reason - it forced the generator transform regardless of targets.
       "presets": [
-        "@babel/preset-env"
+        ["@babel/preset-env", {
+          "targets": { "esmodules": true }
+        }]
       ],
       "exclude": "node_modules/**"
     }),
