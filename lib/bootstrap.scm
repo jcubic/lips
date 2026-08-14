@@ -130,6 +130,7 @@
    with that many argument as number of list arguments. The return
    values of the fn calls are accumulated in a result list and
    returned by map."
+  (typecheck "map" function "function")
   (let loop ((lists lists) (k (lambda (x) x)))
     (if (%empty-lists lists)
         (k '())
@@ -163,6 +164,7 @@
    value of the argument. If you provide more than one list
    it will take each value from each list and call `fn` function
    with that many arguments as number of list arguments."
+  (typecheck "for-each" function "function")
   (let loop ((lists lists))
     (if (not (%empty-lists lists))
         (begin
