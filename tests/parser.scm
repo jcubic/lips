@@ -488,4 +488,6 @@
 
 (test "parser: syntax extension error"
       (lambda (t)
-        (t.snapshot (to.throw.error (load "./tests/files/parser-syntax-extension-error.scm")))))
+        (trace #t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-syntax-extension-error.scm")))
+        (trace #f)))

@@ -46,11 +46,8 @@ import os from 'os';
 import path from 'path';
 import { format } from 'util';
 import readline from 'readline';
-import highlight from 'prism-cli';
-import Prism from 'prismjs';
-import 'prismjs/components/prism-scheme.min.js';
+import scheme from '../lib/js/pprint.js';
 import { satisfies } from 'compare-versions';
-import '../lib/js/prism.js';
 
 import { createRequire } from 'module';
 
@@ -101,10 +98,15 @@ async function run(code, {
     interpreter,
     env = null,
     filename = null,
-    log_unterminated = true
+    log_unterminated = true,
+    // the standard library is written for lexical scope, so it must always be
+    // bootstrapped lexically - `-d`/--dynamic only applies to user code. Passing
+    // use_dynamic through to the bootstrap made the whole stdlib load under
+    // dynamic scope, which is pathological (see bootstrap()).
+    dynamic = use_dynamic
 }) {
     try {
-        return await interpreter.exec(code, { use_dynamic, env, filename });
+        return await interpreter.exec(code, { use_dynamic: dynamic, env, filename });
     } catch(e) {
         if (e instanceof Parser.Unterminated && !log_unterminated) {
             return;
@@ -149,10 +151,10 @@ function print_error(e, stack) {
     if (stack) {
         process.exit(1);
     } else {
-        console.error('Use (display exception.stack) or use -t/-trace option to display JS stack trace.');
+        console.error('Use (display exception.stack) or use -t/--trace option to display JS stack trace.');
     }
     if (!use_meta) {
-        console.error('Use -m/-meta option to display column and filename of the exception');
+        console.error('Use -m/--meta option to display column and filename of the exception');
     }
     global.exception = e;
 }
@@ -200,7 +202,8 @@ function bootstrap(interpreter) {
         return readCode(path);
     }
     const code = read(filename);
-    return run(code, { interpreter, filename, env: env.__parent__ });
+    // always lexical: the stdlib assumes lexical scope (see run())
+    return run(code, { interpreter, filename, env: env.__parent__, dynamic: false });
 }
 
 // -----------------------------------------------------------------------------
@@ -241,14 +244,6 @@ function doc(fn, doc) {
         return line.trim();
     }).join('\n');
     return fn;
-}
-
-// -----------------------------------------------------------------------------
-function scheme(str) {
-    return highlight(str, 'scheme', {
-        grammar: Prism.languages.scheme,
-        newlines: true
-    });
 }
 
 // -----------------------------------------------------------------------------
@@ -297,14 +292,6 @@ const interpreter = Interpreter('repl', {
     command_line,
     meta: use_meta,
     // -------------------------------------------------------------------------
-    'stack-trace': doc(function() {
-        if (strace) {
-            console.log(strace);
-        }
-    }, `(stack-trace)
-
-        Function display stack trace of last error`),
-    // -------------------------------------------------------------------------
     exit: doc(function(code) {
         process.exit(code);
     }, `(exit)
@@ -314,7 +301,6 @@ const interpreter = Interpreter('repl', {
     // -------------------------------------------------------------------------
     pprint: doc(function(arg) {
         if (arg instanceof Pair) {
-            arg = new Formatter(arg.toString(true)).break().format();
             this.get('display').call(this, scheme(arg));
         } else {
             this.get('write').call(this, scheme(arg));
@@ -323,7 +309,10 @@ const interpreter = Interpreter('repl', {
     }, env.get('pprint').__doc__),
     // -------------------------------------------------------------------------
     help: doc(new Macro('help', function(code, { error }) {
-        var new_code = new Pair(new LSymbol('__help'), code);
+        // a macro receives the whole form `(help <arg>)`, so forward the
+        // argument list (code.cdr) to __help - forwarding the whole form would
+        // make __help resolve `help` itself instead of <arg>.
+        var new_code = new Pair(new LSymbol('__help'), code.cdr);
         var doc = evaluate(new_code, { env: this, error });
         if (doc) {
             console.log(doc.toString());
@@ -612,9 +601,6 @@ function run_repl(err, rl) {
     // we use promise loop to fix issue when copy paste list of S-Expression
     const is_emacs = process.env.EMACS || process.env.INSIDE_EMACS;
     let prev_eval = Promise.resolve();
-    if (process.stdin.isTTY || is_emacs) {
-        rl.prompt();
-    }
     let prev_line;
     function is_brackets_mode() {
         return !!cmd.match(brackets_re);
@@ -725,6 +711,9 @@ function run_repl(err, rl) {
         }, 0);
     });
     bootstrap(interpreter).then(function() {
+        if (process.stdin.isTTY || is_emacs) {
+            rl.prompt();
+        }
         if (SUPPORTS_PASTE_BRACKETS) {
             // this make sure that the paste brackets ANSI escape
             // is added to cmd so they can be processed in 'line' event

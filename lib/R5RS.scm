@@ -24,17 +24,18 @@
 (define string-append concat)
 (define = ==)
 (define remainder %)
-(define procedure? function?)
 (define expt **)
 (define list->vector list->array)
 (define vector->list array->list)
 (define call-with-current-continuation call/cc)
+(define fold-right fold)
+(define fold-left reduce)
 
 ;; -----------------------------------------------------------------------------
 (define (procedure? obj)
-  "(procedure? expression)
+  "(procedure? obj)
 
-   Predicate that tests if value is a callable function or continuation."
+   Checks if object is callable function or continuation."
   (or (function? obj) (continuation? obj)))
 
 ;; -----------------------------------------------------------------------------
@@ -276,7 +277,7 @@
   (typecheck "number->string" x "number" 1)
   (let ((radix (if (null? rest) 10 (car rest))))
     (typecheck "number->string" radix "number" 2)
-    (--> x (toString (--> radix (valueOf))))))
+    (x.toString (radix.valueOf))))
 
 ;; -----------------------------------------------------------------------------
 (define (boolean? x)
@@ -470,7 +471,7 @@
 (define _this_env (current-environment))
 
 ;; -----------------------------------------------------------------------------
-(let iter ((fns _maths))
+(let loop ((fns _maths))
   (if (not (null? fns))
       (let* ((name (car fns))
              (op (. Math name))
@@ -479,7 +480,7 @@
         (set-object! fn '__doc__ (concat "(" name " n)\n\nFunction that calculates " name
                                   " math operation (it call JavaScript Math." name
                                   " function)"))
-        (iter (cdr fns)))))
+        (loop (cdr fns)))))
 
 ;; -----------------------------------------------------------------------------
 (define (sin n)
@@ -1133,10 +1134,6 @@
   (if (not (null? rest))
       (typecheck "write-char" (car rest) "output-port"))
   (apply display (cons (char.valueOf) rest)))
-
-;; -----------------------------------------------------------------------------
-(define fold-right reduce)
-(define fold-left fold)
 
 ;; -----------------------------------------------------------------------------
 (define (make-vector n . rest)

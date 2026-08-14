@@ -22,6 +22,7 @@ const base = {
     }),
     babel({
       babelrc: false,
+      compact: false,
       babelHelpers: 'runtime',
       "plugins": [
         "@babel/plugin-transform-async-to-generator",

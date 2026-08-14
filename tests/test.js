@@ -10,30 +10,29 @@
 // without this tests stop before running LIPS files
 import ava from 'ava';
 import lily from '@jcubic/lily';
-import { promisify } from 'util';
-import fs from 'fs';
-import util from 'util';
+import fs from 'fs/promises';
+import { glob } from 'glob';
+import { basename } from 'path';
 
 import { exec } from '../src/lips.js';
 
-const readDir = promisify(fs.readdir);
-const readFile = promisify(fs.readFile);
-
+const readDir = fs.readdir;
+const readFile = fs.readFile;
 
 async function get_files() {
     const options = lily(process.argv.slice(2));
     if (options.f) {
-        return [options.f];
+        return [...await glob(options.f)];
     }
-    var files = await readDir('./tests/');
+    var files = await fs.readdir('./tests');
     return files.filter(function(file) {
-        return file.match(/.scm$/) && !file.match(/^\.#|^_/);
-    });
+        return file.match(/.scm$/) && !file.match(/^\.#|^_|~$/);
+    }).map(name => `./tests/${name}`);
 }
 
 get_files().then(filenames => {
     return Promise.all(filenames.map(function(file) {
-        return readFile(`tests/${file}`, 'utf8');
+        return fs.readFile(file, 'utf8');
     })).then(async function (files) {
         await exec(`
           (let-env lips.env.__parent__

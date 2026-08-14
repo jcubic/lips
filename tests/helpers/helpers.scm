@@ -123,8 +123,10 @@
 
 (define-macro (with-meta . body)
   `(with-parser-internals (lambda (internals)
+                            (trace #t)
                             (set-object! internals 'meta #t))
                           (lambda ()
                             ,@body)
                           (lambda (internals)
+                            (trace #f)
                             (set-object! internals 'meta #f))))

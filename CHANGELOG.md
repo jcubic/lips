@@ -5,13 +5,23 @@
 * REPL -t/--trace will toggle only JavaScript stack, Scheme stack traces are now always on
 * stack trace in exceptions is now `Error::__stack__`
 * remove `..` macro [#500](https://github.com/jcubic/lips/issues/500)
+* `macroexpand` is now a function (like in Common Lisp) instead of a macro
+* remove `parent.frame` and `parent.frames`
+* remove `Symbol(__data__)` from quoted data
+* swap `fold-right` and `fold-left`
 ### Features
 * add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
 * `Environment:doc` now returns doc string for functions and macros additional to variables
-* Improve and unify Syntax Errors
-* Meta info from Runtime errors in REPL can be enabled with `-m`/`--meta`
+* improve and unify Syntax Errors
+* meta info from Runtime errors in REPL can be enabled with `-m`/`--meta`
 * implement simple regex based syntax-extension
+* recursion performance improvements
+* new interpreter with TCO and Continuations inspired by js-scheme [#127](https://github.com/jcubic/lips/issues/127)
+* new higher order function `matcher` that return function that check if object is the same
+* new `stack-trace` and `trace` functions
+* add core `^` bitwise xor function
+* add `generator` and `make-coroutine-generator` functions
 ### Bugfix
 * fix doc string for `make-rectangular`
 * `-inf.0`/`+inf.0` are now real lips numbers
@@ -23,6 +33,8 @@
 * fix overwriting internal state when using multiple Interpters [#495](https://github.com/jcubic/lips/issues/495)
 * fix syntax extension conflict with datum syntax
 * fix `unset-special!` not removing regex based syntax extensions
+* fix hygiene of named `let`
+* fix module path when load throw exception
 
 ## 1.0.0-beta.21
 ### Breaking
@@ -62,6 +74,7 @@
 * fix rounding on big int rationals
 * fix scope variables in `do` macro [#468](https://github.com/jcubic/lips/issues/468)
 * fix REPL for Node 24 [#466](https://github.com/jcubic/lips/issues/466)
+
 
 ## 1.0.0-beta.20
 ### Feature

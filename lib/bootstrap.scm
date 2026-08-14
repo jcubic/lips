@@ -62,6 +62,167 @@
        ,@rest)))
 
 ;; -----------------------------------------------------------------------------
+(define-macro (and . args)
+  "(and expr1 expr2 ...)
+
+   Macro that evaluates each expression in sequence and if any value returns false
+   it will stop and return false. If each value returns true it will return the
+   last value. If it's called without arguments it will return true."
+  (if (null? args)
+      #t
+      (if (null? (cdr args))
+          (car args)
+          `(if ,(car args) (and ,@(cdr args)) #f))))
+
+;; -----------------------------------------------------------------------------
+(define-macro (or . args)
+  "(or expr1 expr2 ...)
+
+   Macro that executes the values one by one and returns the first that is
+   a truthy value. If there are no expressions that evaluate to true it
+   returns false."
+  (if (null? args)
+      #f
+      (if (null? (cdr args))
+          (car args)
+          (let ((name (gensym)))
+            `(let ((,name ,(car args)))
+               (if ,name ,name (or ,@(cdr args))))))))
+
+;; -----------------------------------------------------------------------------
+;; map implementation based on https://stackoverflow.com/a/21629316/387194
+;; -----------------------------------------------------------------------------
+(define (%some? function list)
+  "(%some? function lst)
+
+   Help function that check if function predicate return true for every element
+   of the list. If argument is not a list it returns #f."
+  (and (pair? list)
+       (or (function (car list))
+           (%some? function (cdr list)))))
+
+;; -----------------------------------------------------------------------------
+(define (%map1 function list)
+  "(%map1 function list)
+
+   Helper single list map function, used by map."
+  (let loop ((list list) (result ()))
+    (if (null? list)
+        (reverse result)
+        (loop (cdr list)
+              (cons (function (car list))
+                    result)))))
+
+;; -----------------------------------------------------------------------------
+(define (%empty-lists lists)
+  "(%empty-lists lists)
+
+  helper function that checks if lists of lists is empty"
+  (or (null? lists) (%some? null? lists)))
+
+;; -----------------------------------------------------------------------------
+(define (map function . lists)
+  "(map fn list1 list2 ...)
+
+   Higher-order function that calls function `fn` with each
+   value of the list. If you provide more then one list as argument
+   it will take each value from each list and call `fn` function
+   with that many argument as number of list arguments. The return
+   values of the fn calls are accumulated in a result list and
+   returned by map."
+  (typecheck "map" function "function")
+  (let loop ((lists lists) (k (lambda (x) x)))
+    (if (%empty-lists lists)
+        (k '())
+        (let ((value (apply function (%map1 car lists))))
+          (loop (%map1 cdr lists)
+                (lambda (rest)
+                  (k (cons value rest))))))))
+
+;; -----------------------------------------------------------------------------
+(define (find object list)
+  "(find fn list)
+   (find regex list)
+   (find atom list)
+
+   Higher-order function that finds the first value for which fn return true.
+   If called with a regex or any atom it will create a matcher function."
+  (let ((fn (matcher object)))
+    (let loop ((list list))
+      (if (null? list)
+          #f
+          (let ((item (car list)))
+            (if (fn item)
+                item
+                (loop (cdr list))))))))
+
+;; -----------------------------------------------------------------------------
+(define (for-each function . lists)
+  "(for-each fn list1 list2 ...)
+
+   Higher-order function that calls function `fn` on each
+   value of the argument. If you provide more than one list
+   it will take each value from each list and call `fn` function
+   with that many arguments as number of list arguments."
+  (typecheck "for-each" function "function")
+  (let loop ((lists lists))
+    (if (not (%empty-lists lists))
+        (begin
+          (apply function (%map1 car lists))
+          (loop (%map1 cdr lists))))))
+
+;; -----------------------------------------------------------------------------
+(define (fold function init . lists)
+  "(fold fn init . lists)
+
+   Function fold is left-to-right reversal of reduce. It call `fn`
+   on each pair of elements of the list and returns a single value.
+   e.g. it computes (fn 'a 'x (fn 'b 'y (fn 'c 'z 'foo)))
+   for: (fold fn 'foo '(a b c) '(x y z))"
+  (typecheck "fold" function "function")
+  (let loop ((result init) (lists lists))
+    (if (%empty-lists lists)
+        result
+        (loop (apply function (append (%map1 car lists) (list result)))
+              (%map1 cdr lists)))))
+
+;; -----------------------------------------------------------------------------
+(define (reduce function init . lists)
+  "(reduce fn init list . lists)
+
+   Higher-order function that takes each element of the list and calls
+   the fn with result of previous call or init and the next element
+   of the list until each element is processed, and returns a single value
+   as result of last call to `fn` function.
+   e.g. it computes (fn 'c 'z (fn 'b 'y (fn 'a 'x 'foo)))
+   for: (reduce fn 'foo '(a b c) '(x y z))"
+  (typecheck "reduce" function "function")
+  (let loop ((result init) (lists lists))
+    (if (%empty-lists lists)
+        result
+        (loop (apply function result (%map1 car lists))
+              (%map1 cdr lists)))))
+
+;; -----------------------------------------------------------------------------
+(define (filter object list)
+  "(filter fn list)
+   (filter regex list)
+
+   Higher-order function that calls `fn` for each element of the list
+   and return a new list for only those elements for which fn returns
+   a truthy value. If called with a regex it will create a matcher function."
+  (typecheck "filter" object #("function" "regex"))
+  (let ((fn (matcher object)))
+    (let loop ((result '()) (list list))
+      (if (null? list)
+          (reverse result)
+          (let ((item (car list)))
+            (loop (if (fn item)
+                      (cons item result)
+                      result)
+                  (cdr list)))))))
+
+;; -----------------------------------------------------------------------------
 (define (quoted-symbol? x)
    "(quoted-symbol? code)
 
@@ -243,21 +404,6 @@
   (vector->list (--> (Object.entries object)
                      (map (lambda (arr)
                             (apply cons (vector->list arr)))))))
-
-;; -----------------------------------------------------------------------------
-(define (parent.frames)
-  "(parent.frames)
-
-   Returns the list of environments from parent frames (lambda function calls)"
-  (let iter ((result '()) (frame (parent.frame 1)))
-    (if (eq? frame (interaction-environment))
-        (cons frame result)
-        (if (null? frame)
-            result
-            (let ((parent.frame (--> frame (get 'parent.frame (object :throwError false)))))
-              (if (function? parent.frame)
-                  (iter (cons frame result) (parent.frame 0))
-                  result))))))
 
 ;; -----------------------------------------------------------------------------
 (define (pair-map fn seq-list)
@@ -642,9 +788,9 @@
 
    Returns the command line arguments, or an empty list if not running under Node.js."
   (let ((args (--> (%internal) (get 'command-line))))
-    (if (or (null? args) (zero? (length args)))
+    (if (or (null? args) (== (length args) 0))
         '("")
-        (vector->list args))))
+        (lips.Pair.from_array args))))
 
 ;; -----------------------------------------------------------------------------
 (define (flush-output . rest)
@@ -909,31 +1055,6 @@
 
    Returns a promise that will resolve with the expression after delay."
   `(promise (timer ,time (resolve (begin ,@expr)))))
-
-;; -----------------------------------------------------------------------------
-(define (await value)
-  "(await value)
-
-   Unquotes a quoted promise so it can be automagically evaluated (resolved
-   to its value)."
-  (if (instanceof lips.QuotedPromise value)
-      (value.valueOf)
-      value))
-
-;; -----------------------------------------------------------------------------
-(define-macro (quote-promise expr)
-  "(quote-promise expr) or '>expr
-
-  Macro used to escape automatic awaiting of the expression. It will be wrapped
-  with a JavaScript class that behaves like Promise but will not be automatically
-  resolved by LIPS like normal promises are."
-  `(let ((env))
-      (set! env (current-environment))
-      (env.set (Symbol.for "__promise__") true)
-      (let ((env))
-        (set! env (current-environment))
-        (env.set (Symbol.for "__promise__") false)
-        ,expr)))
 
 ;; -----------------------------------------------------------------------------
 (define (defmacro? obj)
@@ -1341,6 +1462,61 @@
     (array->list result)))
 
 ;; -----------------------------------------------------------------------------
+;; function inspired by make-coroutine-generator from SRFI-121 AND SRFI-158
+;; -----------------------------------------------------------------------------
+(define (generator proc)
+  "(generator function)
+
+   Higher order function that accepts a function with a single argument (usually yield).
+   Function returns JavaScript async generator that produce values for each call
+   to yield."
+  (define void (if #f #f))
+  (define return #f)
+  (define resume #f)
+  (define (yield v)
+    (call/cc (lambda (r)
+               (set! resume r)
+               (return v))))
+  (define (next)
+    (let ((value (call/cc
+                  (lambda (cc)
+                    (set! return cc)
+                    (if resume
+                        (resume void)
+                        (begin
+                          (proc yield)
+                          (set! resume
+                                (lambda (v)
+                                  (return (eof-object))))
+                          (return (eof-object))))))))
+      `&(:value ,value :done ,(eof-object? value))))
+
+  (let* ((iterator `((next . ,next)
+                     (,Symbol.asyncIterator . ,(lambda () this)))))
+    (alist->object iterator)))
+
+;; -----------------------------------------------------------------------------
+;; source https://github.com/scheme-requests-for-implementation/srfi-158
+;; -----------------------------------------------------------------------------
+(define (make-coroutine-generator proc)
+  (define void (if #f #f))
+  (define return #f)
+  (define resume #f)
+  (define yield (lambda (v)
+                  (call/cc (lambda (r)
+                             (set! resume r)
+                             (return v)))))
+  (lambda ()
+    (call/cc (lambda (cc)
+               (set! return cc)
+               (if resume
+                   (resume void)  ; void? or yield again?
+                   (begin
+                     (proc yield)
+                     (set! resume (lambda (v) (return (eof-object))))
+                     (return (eof-object))))))))
+
+;; -----------------------------------------------------------------------------
 (define-macro (do-iterator spec cond . body)
   "(do-iterator (var expr) (test result) body ...)
 
@@ -1367,20 +1543,20 @@
             (,iterator)
             (,next (lambda ()
                      ((. ,iterator "next")))))
-          (if (or (procedure? ,sync) (procedure? ,async))
-              (begin
-                 (set! ,iterator (if (procedure? ,sync) (,sync) (,async)))
-                 (let* ((,item (,next))
-                        (,stop #f)
-                        (,name (. ,item "value")))
-                   (while (not (or (eq? (. ,item "done") #t) ,stop))
-                     (if ,test
-                         (set! ,stop #t)
-                         (begin
-                           ,@body))
-                      (set! ,item (,next))
-                      (set! ,name (. ,item "value"))))
-                   ,result)))))
+       (if (or (procedure? ,sync) (procedure? ,async))
+           (begin
+             (set! ,iterator (if (procedure? ,sync) (,sync) (,async)))
+             (let* ((,item (,next))
+                    (,stop #f)
+                    (,name (. ,item "value")))
+               (while (not (or (eq? (. ,item "done") #t) ,stop))
+                 (if ,test
+                     (set! ,stop #t)
+                     (begin
+                       ,@body))
+                 (set! ,item (,next))
+                 (set! ,name (. ,item "value"))))
+             ,result)))))
 
 ;; -----------------------------------------------------------------------------
 (define (iterator->array object)
@@ -1396,8 +1572,12 @@
      (set! i (+ i 1)))))
 
 ;; -----------------------------------------------------------------------------
+;; map is recognized as #<iterator(Map)> we are adding repr for all classes
+;; -----------------------------------------------------------------------------
 (set-repr! Set (lambda () "#<Set>"))
 (set-repr! Map (lambda () "#<Map>"))
+(set-repr! WeakMap (lambda () "#<WeakMap>"))
+(set-repr! WeakSet (lambda () "#<WeakSet>"))
 
 ;; -----------------------------------------------------------------------------
 (define (native-symbol? x)
@@ -1678,6 +1858,34 @@
       (Uint8Array.from bin)))
 
 ;; -----------------------------------------------------------------------------
+(define-macro (or . args)
+  "(or expr1 expr2 ...)
+
+   Macro that executes the values one by one and returns the first that is
+   a truthy value. If there are no expressions that evaluate to true it
+   returns false."
+  (if (null? args)
+      #f
+      (if (null? (cdr args))
+          (car args)
+          (let ((name (gensym)))
+            `(let ((,name ,(car args)))
+               (if ,name ,name (or ,@(cdr args))))))))
+
+;; -----------------------------------------------------------------------------
+(define-macro (and . args)
+  "(and expr1 expr2 ...)
+
+   Macro that evaluates each expression in sequence and if any value returns false
+   it will stop and return false. If each value returns true it will return the
+   last value. If it's called without arguments it will return true."
+  (if (null? args)
+      #t
+      (if (null? (cdr args))
+          (car args)
+          `(if ,(car args) (and ,@(cdr args)) #f))))
+
+;; -----------------------------------------------------------------------------
 (define (complement fn)
   "(complement fn)
 
@@ -1817,4 +2025,3 @@
                                  (value port)))
                       lips.specials.SYMBOL)
         (unset-special! string))))
-

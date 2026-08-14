@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="https://github.com/jcubic/lips/blob/devel/assets/lips.svg?raw=true"
+  <img src="https://github.com/jcubic/lips/blob/continuations-2/assets/lips.svg?raw=true"
        alt="LIPS - Scheme Based Powerful Lisp Language" />
 </h1>
 
@@ -160,7 +160,7 @@ npm install -g lips@beta
 
 you can run the interpreter from the terminal:
 
-![LIPS: Scheme interactive terminal](https://github.com/jcubic/lips/blob/devel/assets/screencast.gif?raw=true)
+![LIPS: Scheme interactive terminal](https://github.com/jcubic/lips/blob/continuations-2/assets/screencast.gif?raw=true)
 
 
 You can also run code in a string with:
@@ -199,7 +199,7 @@ Executables also return a S-Expression according to SRFI-176 use `lips --version
 
 ## FOSDEM'23 Presentation [Video]
 
-[![FOSDEM 2023 - LIPS Scheme: Powerful introspection and extensibility](https://github.com/jcubic/lips/blob/devel/assets/fosdem-intro.png?raw=true)](https://fosdem.org/2023/schedule/event/lipsscheme/)
+[![FOSDEM 2023 - LIPS Scheme: Powerful introspection and extensibility](https://github.com/jcubic/lips/blob/continuations-2/assets/fosdem-intro.png?raw=true)](https://fosdem.org/2023/schedule/event/lipsscheme/)
 
 ## Limitations
 
@@ -208,7 +208,7 @@ Because LIPS is tree walking interpreter, sometimes it may be slow. Especially i
 process long arrays and use callback function. If the array is quite large each piece of code
 inside the callback may slow down the processing. For example see:
 
-script [reference.scm](https://github.com/jcubic/lips/blob/devel/scripts/reference.scm)
+script [reference.scm](https://github.com/jcubic/lips/blob/continuations-2/scripts/reference.scm)
 
 That generates reference documentation for all builtin functions and macros.
 The slow part is `(names.sort name-compare)` (`Array::sort`) that take quite time to calculate,
@@ -351,7 +351,9 @@ I would also love to see if you use the library, I may even share the links of p
 ## Acknowledgments
 * Font used in logo is [Telegrafico](https://www.dafont.com/telegrafico.font) by [ficod](https://www.deviantart.com/ficod).
 * The cover image for GitHub and Blog Posts use clipart by [Baptiste Gaultier](https://openclipart.org/artist/b.gaultier).
-* Part of the current Parser is inspired by implementation in [BiwaScheme](https://www.biwascheme.org/) by Yutaka HARA (yhara).
+* Part of the current Parser is inspired by [BiwaScheme](https://www.biwascheme.org/) by Yutaka HARA (yhara).
+* [TCO](https://lips.js.org/docs/scheme-intro/core#tail-call-optimization) and
+  [Continuations](https://lips.js.org/docs/scheme-intro/continuations) imeplementation inspired by [js-scheme](https://bluishcoder.co.nz/jsscheme/) by Alex Yakovlev
 * `fetch` polyfill use [unfetch](https://github.com/developit/unfetch) by Jason Miller.
 * Browser `init` function use [ContentLoaded](http://javascript.nwbox.com/ContentLoaded/).
 * The rationalize algorithm is based on [Kawa Scheme](https://www.gnu.org/software/kawa/index.html) by Per M.A. Bothner, Alan Bawden and Marc Feeley.

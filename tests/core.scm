@@ -1,3 +1,20 @@
+(trace #t)
+
+(define core/stack (let ((x 10))
+                     (let ((y 20))
+                       (stack-trace (call/cc (lambda (cc) cc))))))
+(trace #f)
+
+(test "core: trace"
+      (lambda (t)
+        (t.is core/stack
+              "[0]: (define core/stack (let ((x 10)) (let ((y 20)) (stack-trace (call/cc (lambda (cc) cc))))))
+               [1]: (let ((x 10)) (let ((y 20)) (stack-trace (call/cc (lambda (cc) cc)))))
+               [2]: (let ((y 20)) (stack-trace (call/cc (lambda (cc) cc))))
+               [3]: (stack-trace (call/cc (lambda (cc) cc)))
+               [4]: (call/cc (lambda (cc) cc))
+               [5]: (lambda (cc) cc)")))
+
 (test "core: it should set!/set-object! with this and prototype"
       (lambda (t)
         (let ()
@@ -14,6 +31,57 @@
           (set-object! foo.prototype 'sum (lambda (x) (+ this.x x)))
           (t.is (bar.square 10) 100)
           (t.is (bar.sum 5) 15))))
+
+(test "core: implicit begin in lambda body is hygienic"
+      (lambda (t)
+        ;; a multi-expression lambda body is wrapped in an implicit `begin`.
+        ;; that wrapper is cached per-lambda and must not be affected by the
+        ;; user rebinding `begin` in scope.
+        (let ()
+          (define begin 42)
+          (define (f x)
+            (define y (* x 2))
+            (+ x y))
+          (t.is begin 42)
+          (t.is (f 10) 30))
+        ;; distinct closures created from the same lambda expression keep
+        ;; independent cached bodies
+        (let ()
+          (define (make k)
+            (lambda (x)
+              (define t (+ x k))
+              t))
+          (define g1 (make 100))
+          (define g2 (make 200))
+          (t.is (list (g1 1) (g2 1) (g1 2) (g2 2))
+                (list 101 201 102 202)))))
+
+(test "core: help returns docs for the requested symbol"
+      (lambda (t)
+        ;; (help <name>) must return the documentation of <name>, never of
+        ;; `help` itself. Regression: a help wrapper that forwarded the whole
+        ;; `(help x)` form (instead of the argument list) made every query
+        ;; resolve `help`, so (help lambda) returned help's own documentation.
+        (t.is (string=? (help car)
+                        "(car pair)
+
+This function returns the car (item 1) of the list.")
+              #t)
+        (t.is (string=? (substring (help lambda) 0 19) "(lambda (a b) body)")
+              #t)
+        ;; the doc of a queried symbol must differ from help's own doc - proves
+        ;; we didn't fall back to documenting `help`
+        (t.is (string=? (help lambda) (help help)) #f)))
+
+(test "core: help resolves docstrings stored in __docs__ at runtime"
+      (lambda (t)
+        ;; a user function's docstring lives in the environment's __docs__ map
+        ;; (created lazily); help must read it back at runtime
+        (define (documented-fn x)
+          "documented-fn squares its argument"
+          (* x x))
+        (t.is (string=? (help documented-fn) "documented-fn squares its argument")
+              #t)))
 
 (test "core: let/letrect/let*"
       (lambda (t)
@@ -294,7 +362,9 @@
 
 (test "core: quoted promise of object with then method"
       (lambda (t)
-        (let ((p '>(object :then (lambda () 10))))
+        (let ((p '>(object :then (lambda (fn)
+                                   (fn 10)
+                                   this))))
           (--> p (then (lambda (result)
                          (t.is result 10))))
           (t.is (await p) 10))))
@@ -756,6 +826,145 @@
         (t.is (try (eval '(+ x x)) (catch (e) e.message))
               "Unbound variable `x'")))
 
+(test "core: auto bind/unbind"
+      (lambda (t)
+        (define obj (let ((o (Object)))
+                      (set-object! o "value" 42)
+                      (set-object! o "getValue" (lambda () this.value))
+                      o))
+        (t.is (obj.getValue) 42)              ; direct: method auto-bound to obj
+
+        (define getter obj.getValue)
+        (t.is (getter) 42)                    ; survives being stored in a var
+
+        (define (fetch o) o.getValue)
+        (t.is ((fetch obj)) 42)               ; survives being a function RESULT
+
+        (define arr (vector 3 1 2))
+        (define joiner arr.join)
+        (t.is (joiner "-") "3-1-2")           ; native this-dependent method
+
+        (define sorter arr.sort)
+        (sorter (lambda (a b) (- a b)))       ; LIPS lambda crossing into native
+        (t.is arr #(1 2 3))
+        (t.is (arr.map (lambda (x) (* x x))) #(1 4 9))
+
+        (t.is (eq? arr.push.valueOf Function.prototype.valueOf) #t)))  ; auto-unbind
+
+(test "core: bind/unbind"
+      (lambda (t)
+        (define arr (vector 1 2 3))
+        (define push arr.push)
+
+        (push 4)
+        (t.is arr #(1 2 3 4))
+
+        (t.is (eq? (unbind push) Array.prototype.push) #t)
+
+        (t.is (eq? (push.valueOf) (unbind push)) #t)
+
+        (define other (vector))
+        (t.is (eq? (unbind arr.push) (unbind other.push)) #t)
+
+        (t.is (eq? push (unbind push)) #t)
+
+        (define plain (lambda (x) (* x x)))
+        (t.is (eq? (unbind plain) plain) #t)
+        (t.is (eq? (unbind (unbind push)) (unbind push)) #t)
+
+        (define raw (unbind push))
+        (define hard (raw.bind arr))
+        (t.is (eq? (unbind hard) raw) #f)   ; unbind can't undo a hard bind
+        (t.is (eq? hard raw) #f)))          ; and it is opaque to eq?
+
+(test "core: parameterize base"
+      (lambda (t)
+        (define radix
+          (make-parameter
+           10
+           (lambda (x)
+             (if (and (exact-integer? x) (<= 2 x 16))
+                 x
+                 (error (string-append "invalid radix " (repr x)))))))
+
+        (define (f n) (number->string n (radix)))
+
+        (t.is (f 12) "12")
+        (t.is (parameterize ((radix 2))
+                (f 12))
+              "1100")))
+
+(test "core: parameterize dynamic scope through a procedure"
+      (lambda (t)
+        (define p (make-parameter 10))
+        (define (get) (p))
+        (t.is (get) 10)
+        (t.is (parameterize ((p 20)) (get)) 20)
+        (t.is (get) 10)))
+
+(test "core: parameterize nested"
+      (lambda (t)
+        (define p (make-parameter 0))
+        (t.is (parameterize ((p 1))
+                (parameterize ((p 2))
+                  (p)))
+              2)
+        (t.is (p) 0)))
+
+;; the following are based on
+;; https://docs.racket-lang.org/guide/parameterize.html
+
+(test "core: parameterize deeply nested restores outer value"
+      (lambda (t)
+        (define location (make-parameter "here"))
+        (t.is (location) "here")
+        (t.is (parameterize ((location "there")) (location)) "there")
+        (t.is (parameterize ((location "in a house"))
+                (list (location)
+                      (parameterize ((location "with a mouse"))
+                        (location))
+                      (location)))
+              '("in a house" "with a mouse" "in a house"))))
+
+(test "core: parameter closure does not capture dynamic binding"
+      (lambda (t)
+        ;; a procedure created inside parameterize reads the CURRENT dynamic
+        ;; value when called, not the one in effect when it was created
+        (define location (make-parameter "here"))
+        (define get
+          (parameterize ((location "with a fox"))
+            (lambda () (location))))
+        (t.is (get) "here")))
+
+(test "core: parameter setter changes value"
+      (lambda (t)
+        ;; calling a parameter with an argument mutates its value
+        (define location (make-parameter "here"))
+        (t.is (list (location)
+                    (begin (location "there")
+                           (location)))
+              '("here" "there"))))
+
+(test "core: parameter setter inside parameterize"
+      (lambda (t)
+        (define location (make-parameter "here"))
+        (define (try-again! where) (location where))
+        (t.is (parameterize ((location "on a train"))
+                (list (location)
+                      (begin (try-again! "in a boat")
+                             (location))))
+              '("on a train" "in a boat"))))
+
+(test "core: parameterize with force/delay"
+      (lambda (t)
+        ;; example taken from SRFI-155: the promise captures the value at
+        ;; creation time, so forcing it under parameterize still sees 1
+        (t.is (let ()
+                (define x (make-parameter 1))
+                (define p (delay (x)))
+                (define (g p) (parameterize ((x 2)) (force p)))
+                (+ (force p) (g p)))
+              2)))
 (test "core: quoted list mutation"
       (lambda (t)
         (let ((list '(1 2 3 4)))

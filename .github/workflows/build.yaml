@@ -3,7 +3,7 @@ name: Build and test
 on:
   push:
     paths:
-      - "template/Makefile"
+      - "templates/Makefile"
       - "package.json"
       - "package-lock.json"
       - "Makefile"
@@ -19,7 +19,7 @@ on:
       - devel
   pull_request:
     paths:
-      - "template/Makefile"
+      - "templates/Makefile"
       - "Makefile"
       - "scripts/*"
       - "tests/*"
@@ -41,14 +41,17 @@ jobs:
       - name: Install ImageMagick
         run: sudo apt-get -y install graphicsmagick
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
       - run: npm ci
       - run: make
       - run: make lint
+      # fast bootstrap + core-eval sanity check (lexical and dynamic scope)
+      # before the full suite; also guards against a dynamic-mode boot hang
+      - run: make smoke
       - run: make test
       - run: make coverage
       - name: Coveralls
@@ -56,50 +59,38 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-  # runs in parallel with `build`; measures evaluator speed with Benchmark.js.
-  # This is a stable metric independent of the number of tests (unlike the test
-  # wall-time). Results are tracked over commits with github-action-benchmark:
-  # on push to master/devel the numbers become the baseline, and on a PR the job
-  # comments the change vs that baseline (e.g. after merging continuations-2).
   benchmark:
     runs-on: ubuntu-latest
-    # only push to the data branch / comment on PRs
     permissions:
       contents: write
       pull-requests: write
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
       - run: npm ci
-      # run bin/lips.js directly (not `make benchmark`) so make's build echo can
-      # never leak into the parsed output; stdout is only the Benchmark.js lines
+      - name: build
+        run: make
       - name: run benchmark
         run: node bin/lips.js benchmarks/suite.scm | tee benchmark_output.txt
+      - name: clean uncommited files
+        run: git reset --hard
       - name: store / compare benchmark result
         uses: benchmark-action/github-action-benchmark@v1
-        # never let a benchmark bookkeeping issue (push/comment) fail the build
         continue-on-error: true
         with:
           name: LIPS interpreter benchmark
           tool: benchmarkjs
           output-file-path: benchmark_output.txt
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # Store the history on a DEDICATED branch so we never touch GitHub
-          # Pages (served from master:/docs) or the master branch. This branch
-          # only holds benchmark JSON - it is not a Pages source.
           gh-pages-branch: benchmark-data
           benchmark-data-dir-path: data
-          # append the baseline to that branch only on push to master/devel;
-          # on a PR just fetch it, compare and comment (no push)
           auto-push: ${{ github.event_name != 'pull_request' }}
-          # write the comparison table to the job summary and comment on PRs
           summary-always: true
           comment-always: true
-          # flag (but don't fail the build) if a benchmark gets >50% slower
           alert-threshold: '150%'
           fail-on-alert: false
           comment-on-alert: true

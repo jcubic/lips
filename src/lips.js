@@ -75,6 +75,10 @@ const type_constants = new Map([
     [NaN, 'NaN'],
     [null, 'null']
 ]);
+// precomputed once - `type` is called on every typecheck (hot path) and
+// Object.entries(type_mapping) would otherwise allocate a fresh array of
+// [key, class] pairs on every single call
+const type_mapping_entries = Object.entries(type_mapping);
 // -------------------------------------------------------------------------
 
 let fs, path, node_require;
@@ -129,22 +133,32 @@ function log(x, ...args) {
     }
 }
 
+
+// opt-in gate for stack-frame collection (state.stack). Off by default: pushing
+// every continuation seen during evaluation costs time and, in a long tail loop,
+// unbounded memory. Enable with (trace) when you need stack-trace / full error
+// stacks.
+let _collect_stack = false;
 // ----------------------------------------------------------------------
-/* c8 ignore next */
 // fast global gate: is_debug() runs in hot paths (every eval step, macros) and
 // its user_env.get('DEBUG') is a full env-chain walk. Keep a module flag that
 // mirrors whether DEBUG is set to a truthy value (updated by Environment.set)
 // so the common (debug-off) case is a single boolean test.
 let _debug_enabled = false;
+/* c8 ignore next */
 function is_debug(n = null) {
     if (!_debug_enabled) {
         return false;
     }
-    const debug = user_env?.get('DEBUG', { throwError: false });
+    let debug = user_env?.get('DEBUG', { throwError: false });
     if (n === null) {
         return debug === true;
     }
-    return debug?.valueOf() === n.valueOf();
+    debug = debug?.valueOf();
+    if (Array.isArray(n)) {
+        return n.includes(debug);
+    }
+    return debug === n;
 }
 
 // functions generate regexes to match number rational, integer, complex, complex+rational
@@ -790,7 +804,10 @@ LSymbol.is = function(symbol, name) {
     return symbol instanceof LSymbol &&
         ((name instanceof LSymbol && symbol.__name__ === name.__name__) ||
          (typeof name === 'string' && symbol.__name__ === name) ||
-         (name instanceof RegExp && name.test(symbol.__name__)));
+         // a gensym has a JS Symbol as __name__ which can't be coerced to a
+         // string - it can never match a textual pattern, so skip the test
+         (name instanceof RegExp && typeof symbol.__name__ === 'string' &&
+          name.test(symbol.__name__)));
 };
 // ----------------------------------------------------------------------
 LSymbol.prototype.toString = function(quote) {
@@ -874,16 +891,35 @@ const gensym = (function() {
         return with_props(count, Symbol(`#:g${count}`));
     };
 })();
+
 // ----------------------------------------------------------------------
 // :: helper function that make symbols in names array hygienic
 // ----------------------------------------------------------------------
 function hygienic_begin(envs, expr) {
-    const begin = global_env.get('begin');
-    const g_begin = gensym('begin');
+    return hygienic_expression(envs, 'begin', expr);
+}
+
+// ----------------------------------------------------------------------
+function hygienic_expression(envs, name, expr) {
+    const value = global_env.get(name);
+    const g_value = gensym(name);
     envs.forEach(env => {
-        env.set(g_begin, begin);
+        env.set(g_value, value);
     });
-    return new Pair(g_begin, expr);
+    return new Pair(g_value, expr);
+}
+
+// ----------------------------------------------------------------------
+// :: function map scope values (functions) into gensyms
+// ----------------------------------------------------------------------
+function hygiene(envs, names, callback) {
+    const args = names.map(gensym);
+    envs.forEach(env => {
+        args.forEach((gensym, i) => {
+            env.set(gensym, global_env.get(names[i]));
+        });
+    });
+    return callback(...args);
 }
 
 // ----------------------------------------------------------------------
@@ -1502,8 +1538,6 @@ class Lexer {
     }
 }
 // ----------------------------------------------------------------------
-// TODO: cache the rules creation or whole list
-// ----------------------------------------------------------------------
 // State rule for literal symbol
 // ----------------------------------------------------------------------
 Lexer.literal_rule = function literal_rule(string, symbol, p_re = null, n_re = null) {
@@ -1800,25 +1834,22 @@ class RuntimeError extends Error { }
 class PromiseRejection extends RuntimeError { }
 
 // -------------------------------------------------------------------------
-function augment_exception(e, code) {
+function augment_exception(e, object) {
     if (!is_object(e) || is_native(e)) {
         return e;
     }
-    if (code) {
-        // augment runtime errors
-        if (!is_augmented(e) && is_augmented(code)) {
-            read_only(e, '__col__', code.__col__);
-            read_only(e, '__offset__', code.__offset__);
-            read_only(e, '__line__', code.__line__);
-            if (code.__file__) {
-                read_only(e, '__file__', code.__file__);
-            }
+    // set the error location from the source form (only the innermost form to
+    // see the error wins). The LIPS stack trace (e.__stack__) is built
+    // separately from state.stack in tco_error_handler: with a single tco loop
+    // there is no per-level unwinding to push one frame at a time, and pushing
+    // here would duplicate the innermost frame that state.stack already holds.
+    if (object && !is_augmented(e) && is_augmented(object)) {
+        read_only(e, '__col__', object.__col__);
+        read_only(e, '__offset__', object.__offset__);
+        read_only(e, '__line__', object.__line__);
+        if (object.__file__) {
+            read_only(e, '__file__', object.__file__);
         }
-        // LIPS stack trace
-        if (!(e.__stack__ instanceof Array)) {
-            e.__stack__ = [];
-        }
-        e.__stack__.push(code.toString(true));
     }
     unify_error_message(e);
     return e;
@@ -2058,6 +2089,11 @@ class Parser {
     _is_comment(token) {
         return token.match(/^;/) || (token.match(/^#\|/) && token.match(/\|#$/));
     }
+    evaluate(code) {
+        return evaluate(code, { env: this.__env__, error: (e) => {
+            throw e;
+        } });
+    }
     async invoke_special(special, object, is_symbol) {
         if (typeof special.value === 'function') {
             let args;
@@ -2084,12 +2120,12 @@ class Parser {
             if (is_literal(special)) {
                 code = Pair(code, nil);
             }
-            if (special.value instanceof Syntax) {
-                code = Pair(
-                    LSymbol('Extension'),
-                    code
-                );
-            }
+            // macros needs full source code with function call
+            // we recreate the call with fake symbol
+            code = Pair(
+                LSymbol('Extension'),
+                code
+            );
             const eval_args = {
                 env: this.__env__,
                 error: (e) => {
@@ -2098,11 +2134,9 @@ class Parser {
                 }
             };
             const result = await this._with_syntax_scope(() => {
-                if (special.value instanceof Syntax) {
-                    return evaluate_syntax(special.value, code, eval_args);
-                } else if (special.value  instanceof Macro) {
-                    return evaluate_macro(special.value, code, eval_args);
-                }
+                // Syntax and Macro share the public invoke(), which drives the
+                // macro to a value (never leaking an internal State).
+                return special.value.invoke(code, eval_args);
             });
             // We need literal quotes to make that macro's return pairs works
             // because after the parser returns the value it will be evaluated
@@ -2422,6 +2456,7 @@ function read_only(object, property, value, { hidden = false } = {}) {
         configurable: true,
         enumerable: !hidden
     });
+    return value;
 }
 // ----------------------------------------------------------------------
 // :: Function similar to Array.from that work on async iterators
@@ -2438,7 +2473,7 @@ async function uniterate_async(object) {
 // :: the function is used in find Scheme function to find an item
 // :: in the list
 // ----------------------------------------------------------------------
-function matcher(name, arg) {
+function matcher(arg) {
     if (arg instanceof RegExp) {
         return x => String(x).match(arg);
     } else if (is_function(arg)) {
@@ -3605,7 +3640,7 @@ Pair.prototype.to_array = function(deep = true) {
 // :: TODO: change to Pair.from_array
 // ----------------------------------------------------------------------
 Pair.from_array = function(array, deep = true, quote = false) {
-    if (is_pair(array) || quote && array instanceof Array && array[__data__]) {
+    if (is_pair(array)) {
         return array;
     }
     if (deep === false) {
@@ -3754,6 +3789,7 @@ Pair.prototype.map = function(fn) {
         return nil;
     }
 };
+
 const repr = new Map();
 
 // ----------------------------------------------------------------------
@@ -3762,22 +3798,6 @@ var array_methods = [];
 props.forEach(x => {
     array_methods.push(Array[x], Array.prototype[x]);
 });
-// ----------------------------------------------------------------------
-function is_array_method(x) {
-    x = unbind(x);
-    return array_methods.includes(x);
-}
-// ----------------------------------------------------------------------
-function is_lips_function(x) {
-    if (!is_function(x)) {
-        return false;
-    }
-    if (is_lambda(x) || x.__doc__) {
-        return true;
-    }
-    x = unbind(x);
-    return lips_functions.includes(x);
-}
 // ----------------------------------------------------------------------
 function user_repr(obj) {
     const constructor = obj.constructor || Object;
@@ -4059,7 +4079,52 @@ function is_cycle(pair) {
 }
 
 // ----------------------------------------------------------------------------
+// Fast O(n) acyclicity check used to short-circuit mark_cycles. mark_cycles is
+// called on essentially every pair value that flows through the interpreter
+// (Environment.get, macro output, printing, ...) and its label-assigning DFS
+// copies the ancestor path on every step (parents.slice()) - O(n^2) - and
+// allocates a Thunk per node. The overwhelming majority of structures are
+// acyclic, so we first run a cheap 3-colour DFS (gray = on the current path,
+// black = fully processed); if it finds no back-edge we are done and skip the
+// expensive labelling pass entirely. The cdr spine (the deep direction for
+// lists) is walked iteratively so long lists don't overflow the stack - cars
+// are recursed exactly like the original algorithm. It also clears any stale
+// __ref__/__cycles__ marks so a structure whose cycle was later broken by
+// mutation prints correctly.
+function has_cycle(root) {
+    const gray = new Set();
+    const black = new Set();
+    function visit(node) {
+        const spine = [];
+        let cycle = false;
+        while (is_pair(node)) {
+            if (gray.has(node)) { cycle = true; break; }
+            if (black.has(node)) { break; }
+            gray.add(node);
+            spine.push(node);
+            if (node[__ref__] !== undefined) { delete node[__ref__]; }
+            if (node[__cycles__] !== undefined) { delete node[__cycles__]; }
+            if (is_pair(node.car) && visit(node.car)) { cycle = true; break; }
+            node = node.cdr;
+        }
+        // the spine is fully explored (or we bailed on a cycle): retire its
+        // pairs from the current path so sibling branches see them as shared
+        // (black), not as ancestors (gray)
+        for (let i = 0; i < spine.length; i++) {
+            gray.delete(spine[i]);
+            black.add(spine[i]);
+        }
+        return cycle;
+    }
+    return visit(root);
+}
+// ----------------------------------------------------------------------------
 function mark_cycles(pair) {
+    // acyclic fast path: nothing to label (has_cycle already cleared any stale
+    // marks). Only real cycles need the O(n^2) labelling DFS below.
+    if (!has_cycle(pair)) {
+        return;
+    }
     var seen_pairs = [];
     var cycles = [];
     var refs = [];
@@ -4390,6 +4455,40 @@ var truncate = (function() {
     }
 })();
 // ----------------------------------------------------------------------
+// :: function that run through a generator that use yield as a replacement
+// :: for await, if there is any async call it will return a promise
+// :: but the promise is optional same as with unpromise
+// ----------------------------------------------------------------------
+function uniterate(object, error = (e) => { throw e; }) {
+    if (!(object && is_function(object[Symbol.iterator]))) {
+        return object;
+    }
+    const iterator = object[Symbol.iterator]();
+    // drive the generator; `action` either resumes it with a value
+    // (iterator.next) or injects an exception at the current yield
+    // (iterator.throw) - the latter lets a rejected promise propagate through
+    // try/catch inside the generator instead of escaping asynchronously.
+    return (function drive(action) {
+        try {
+            let object = action();
+            while (!object.done) {
+                const value = object.value;
+                if (is_promise(value)) {
+                    return unpromise(
+                        value,
+                        (v) => drive(() => iterator.next(v)),
+                        (e) => drive(() => iterator.throw(e))
+                    );
+                }
+                object = iterator.next(value);
+            }
+            return object.value;
+        } catch(e) {
+            error(e);
+        }
+    })(() => iterator.next());
+}
+// ----------------------------------------------------------------------
 // :: Macro constructor
 // ----------------------------------------------------------------------
 function Macro(name, fn, doc, dump) {
@@ -4401,13 +4500,13 @@ function Macro(name, fn, doc, dump) {
     typecheck('Macro', fn, 'function', 2);
     if (doc) {
         if (dump) {
-            this.__doc__ = doc;
+            read_only(this, '__doc__', doc);
         } else {
-            this.__doc__ = trim_lines(doc);
+            read_only(this, '__doc__', trim_lines(doc));
         }
     }
-    this.__name__ = name;
-    this.__fn__ = fn;
+    read_only(this, '__name__', name);
+    read_only(this, '__fn__', fn);
 }
 // ----------------------------------------------------------------------
 Macro.defmacro = function(name, fn, doc, dump) {
@@ -4416,19 +4515,47 @@ Macro.defmacro = function(name, fn, doc, dump) {
     return macro;
 };
 // ----------------------------------------------------------------------
-Macro.prototype.invoke = function(code, { env, ...rest }, macro_expand) {
-    var args = {
-        ...rest,
-        macro_expand
-    };
-    var result = this.__fn__.call(env, code, args, this.__name__);
-    return result;
-    //return macro_expand ? quote(result) : result;
+// in-loop primitive: run the macro function. Scheme macros mutate `state` and
+// return it so their body runs in the enclosing tco loop; builtins may return
+// code/value/SyntaxExpansion directly. Used by evaluate_code (which continues
+// in its own loop) - it must NOT drive a nested loop.
+Macro.prototype._invoke_state = function(code, state, macro_expand) {
+    return this.__fn__.call(state.env, code, state, this.__name__, macro_expand);
+};
+// public API: fully evaluate the macro and return the resulting code/value
+// (never an internal State). When called outside a tco loop (the parser's
+// syntax extensions, or the legacy evaluate()) `options` is a plain
+// {env, dynamic_env, error} bag - we build a fresh State delimited by top_cc and
+// drive it to completion with tco_resolve.
+Macro.prototype.invoke = function(code, options = {}) {
+    const state = options instanceof State ? options : new State(code, top_cc, {
+        env: options.env || global_env,
+        dynamic_env: options.dynamic_env || options.env || global_env,
+        use_dynamic: options.use_dynamic,
+        error: options.error
+    });
+    return unpromise(this._invoke_state(code, state), function(result) {
+        return unpromise(macro_result_value(result, state), function(value) {
+            if (is_pair(value)) {
+                value.mark_cycles();
+            }
+            return quote(value);
+        });
+    });
 };
 // ----------------------------------------------------------------------
 Macro.prototype.toString = function() {
     return `#<macro:${this.__name__}>`;
 };
+Macro.internal = function(name) {
+    return new Macro(name, invalid_macro);
+};
+
+// ----------------------------------------------------------------------
+function invalid_macro(code, args, name) {
+    throw new Error(`${name} is internal macro, you can't invoke it manually!`);
+}
+
 // ----------------------------------------------------------------------
 const macro = 'define-macro';
 // ----------------------------------------------------------------------
@@ -4445,35 +4572,35 @@ function is_named_macro(macro) {
     return is_pair(macro.car) && macro.car.car instanceof LSymbol;
 }
 // ----------------------------------------------------------------------
-function define_macro(name, args, body, __doc__, { use_dynamic, error }) {
-    const makro_instance = Macro.defmacro(name, function(code) {
-        const env = macro_args_env(args, code, this);
-        const eval_args = {
-            env,
-            dynamic_env: env,
-            use_dynamic,
-            error
-        };
-        // evaluate macro
+function define_macro(name, args, body, source, __doc__, state) {
+    const define_env = state.env;
+    const makro_instance = Macro.defmacro(name, function(source, state) {
+        const code = source.cdr;
+        const env = macro_args_env(args, code, define_env);
         if (is_pair(body)) {
-            // this eval will return lips code
-            const result = body.reduce(function(result, node) {
-                return evaluate(node, eval_args);
-            });
-            return unpromise(result, function(result) {
-                if (typeof result === 'object') {
-                    delete result[__data__];
-                }
-                return result;
-            });
+            if (state.macro_expand) {
+                // expansion-only (macroexpand): evaluate the macro body in
+                // normal mode to obtain the expansion code, but do NOT evaluate
+                // the expansion itself - the caller re-expands it. May be a
+                // promise (macro bodies can produce code asynchronously).
+                return evaluate(hygienic_begin([env], body), {
+                    env,
+                    error: state.error
+                });
+            }
+            // using continuation to evaluate the result of the macro
+            state.cc = new Continuation(`macro[${name}]`, null, source, state, next_defmaro);
+            state.env = env;
+            state.object = hygienic_begin([env], body);
+            return state;
         }
     }, __doc__, true);
-    makro_instance.__code__ = new Pair(new LSymbol('define-macro'), macro);
+    makro_instance.__code__ = source;
     return makro_instance;
 }
 // ----------------------------------------------------------------------
 function macro_args_env(params, code, scope) {
-    const env = new Environment({}, scope, 'defmacro');
+    const env = scope.inherit('defmacro');
     let arg = code;
     while (true) {
         if (is_nil(params)) {
@@ -4486,9 +4613,6 @@ function macro_args_env(params, code, scope) {
             if (is_nil(arg)) {
                 env.__env__[params.car.__name__] = nil;
             } else {
-                if (is_pair(arg.car)) {
-                    arg.car[__data__] = true;
-                }
                 env.__env__[params.car.__name__] = arg.car;
             }
         }
@@ -4503,159 +4627,22 @@ function macro_args_env(params, code, scope) {
     return env;
 }
 // ----------------------------------------------------------------------
-const recur_guard = -10000;
-function macro_expand(single) {
-    return async function(code, args) {
-        const env = args['env'] = this;
-        let bindings = [];
-        const let_names = ['let', 'let*', 'letrec', 'letrec*'];
-        const let_macros = let_names.map(name => {
-            return global_env.get(name);
-        });
-        var lambda = global_env.get('lambda');
-        var define = global_env.get('define');
-        function is_let_macro(name) {
-            return let_names.includes(name);
-        }
-        function builtin_let(name) {
-            if (!is_let_macro(name)) {
-                return false;
-            }
-            return let_macros.includes(env.get(name));
-        }
-        function is_procedure(value, node) {
-            return value === define && is_pair(node.cdr.car);
-        }
-        function is_lambda(value) {
-            return value === lambda;
-        }
-        function proc_bindings(node) {
-            var names = [];
-            while (true) {
-                if (!is_nil(node)) {
-                    if (node instanceof LSymbol) {
-                        names.push(node.valueOf());
-                        break;
-                    }
-                    names.push(node.car.valueOf());
-                    node = node.cdr;
-                } else {
-                    break;
-                }
-            }
-            return [...bindings, ...names];
-        }
-        function let_binding(node) {
-            return [...bindings, ...node.to_array(false).map(function(node) {
-                if (is_pair(node)) {
-                    return node.car.valueOf();
-                }
-                const t = type(node);
-                const msg = `macroexpand: Invalid let binding expectig pair got ${t}`;
-                throw new Error(msg);
-            })];
-        }
-        function is_macro(name, value) {
-            return value instanceof Macro &&
-                value.__defmacro__ &&
-                !bindings.includes(name);
-        }
-        async function expand_let_binding(node, n) {
-            if (is_nil(node)) {
-                return nil;
-            }
-            var pair = node.car;
-            return new Pair(
-                new Pair(
-                    pair.car,
-                    await traverse(pair.cdr, n, env)
-                ),
-                await expand_let_binding(node.cdr)
-            );
-        }
-        async function traverse(node, n, env) {
-            if (is_pair(node) && node.car instanceof LSymbol) {
-                if (node[__data__]) {
-                    return node;
-                }
-                var name = node.car.valueOf();
-                var value = env.get(node.car, { throwError: false });
-                var is_let = is_let_macro(name);
-
-                var is_binding = is_let ||
-                    is_procedure(value, node) ||
-                    is_lambda(value);
-
-                if (is_macro(name, value) && !builtin_let(name)) {
-                    var code = value instanceof Syntax ? node : node.cdr;
-                    var result = await value.invoke(code, { ...args, env }, true);
-                    if (value instanceof Syntax) {
-                        const { expr, scope } = result;
-                        if (is_pair(expr)) {
-                            if (n !== -1 && n <= 1 || n < recur_guard) {
-                                return expr;
-                            }
-                            if (n !== -1) {
-                                n = n - 1;
-                            }
-                            return traverse(expr, n, scope);
-                        }
-                        result = expr;
-                    }
-                    if (result instanceof LSymbol) {
-                        return quote(result);
-                    }
-                    if (is_pair(result)) {
-                        if (n !== -1 && n <= 1 || n < recur_guard) {
-                            return result;
-                        }
-                        if (n !== -1) {
-                            n = n - 1;
-                        }
-                        return traverse(result, n, env);
-                    }
-                    if (is_atom(result)) {
-                        return result;
-                    }
-                } else if (is_binding && is_pair(node.cdr.car)) {
-                    var second;
-                    if (is_let) {
-                        bindings = let_binding(node.cdr.car);
-                        second = await expand_let_binding(node.cdr.car, n);
-                    } else {
-                        bindings = proc_bindings(node.cdr.car);
-                        second = node.cdr.car;
-                    }
-                    return new Pair(
-                        node.car,
-                        new Pair(
-                            second,
-                            await traverse(node.cdr.cdr, n, env)
-                        )
-                    );
-                }
-            }
-            // TODO: CYCLE DETECT
-            var car = node.car;
-            if (is_pair(car)) {
-                car = await traverse(car, n, env);
-            }
-            var cdr = node.cdr;
-            if (is_pair(cdr)) {
-                cdr = await traverse(cdr, n, env);
-            }
-            var pair = new Pair(car, cdr);
-            return pair;
-        }
-        //var this.__code__ = code;
-        if (is_pair(code.cdr) && LNumber.isNumber(code.cdr.car)) {
-            return quote((await traverse(code, code.cdr.car.valueOf(), env)).car);
-        }
-        if (single) {
-            return quote((await traverse(code, 1, env)).car);
-        }
-        return quote((await traverse(code, -1, env)).car);
-    };
+// :: Quasiquote helpers
+// ----------------------------------------------------------------------
+function unquoted_arr(arr) {
+    return !!arr.filter(value => {
+        return is_pair(value) &&
+            LSymbol.is(value.car, /^(unquote|unquote-splicing)$/);
+    }).length;
+}
+// ----------------------------------------------------------------------
+function plain_quasiquote(code) {
+    return (is_plain_object(code) && !unquoted_arr(Object.values(code))) ||
+        (Array.isArray(code) && !unquoted_arr(code)) ||
+        (is_pair(code) &&
+         !code.find('unquote') &&
+         !code.find('unquote-splicing') &&
+         !code.find('quasiquote'));
 }
 // ----------------------------------------------------------------------
 // TODO: Don't put Syntax as Macro they are not runtime
@@ -4669,7 +4656,7 @@ function Syntax(fn, env) {
 Syntax.__merge_env__ = Symbol.for('merge');
 // ----------------------------------------------------------------------
 Syntax.prototype = Object.create(Macro.prototype);
-Syntax.prototype.invoke = function(code, { error, env, use_dynamic }, macro_expand) {
+Syntax.prototype._invoke_state = function(code, { error, env, use_dynamic }, macro_expand) {
     var args = {
         error,
         env,
@@ -4687,12 +4674,39 @@ Syntax.prototype.toString = function() {
     return '#<syntax>';
 };
 // ----------------------------------------------------------------------
+// :: The result of expanding a syntax-rules macro: the transcribed
+// :: expression, the hygienic scope it must be evaluated in, and the
+// :: gensym->name map used to un-rename literal symbols in the produced
+// :: value. The transformer returns this instead of evaluating the
+// :: expansion itself, so the caller can evaluate it in the MAIN evaluate
+// :: loop (same continuation chain) - otherwise a continuation captured
+// :: inside, or re-entering, a macro body cannot cross the macro boundary.
+// ----------------------------------------------------------------------
+class SyntaxExpansion {
+    constructor(expr, env, names) {
+        this.expr = expr;
+        this.env = env;
+        this.names = names;
+    }
+    // eager evaluation, used by the legacy evaluate()/evaluate_syntax path
+    eval(eval_args) {
+        const result = evaluate(this.expr, { ...eval_args, env: this.env });
+        return clear_gensyms(result, this.names);
+    }
+}
+// ----------------------------------------------------------------------
 // :: SRFI-139
 // ----------------------------------------------------------------------
 class SyntaxParameter {
     constructor(syntax) {
         read_only(this, '_syntax', syntax, { hidden: true });
         read_only(this._syntax, '_param', true, { hidden: true });
+    }
+    _invoke_state(code, state, macro_expand) {
+        return this._syntax._invoke_state(code, state, macro_expand);
+    }
+    invoke(code, options) {
+        return this._syntax.invoke(code, options);
     }
 }
 Syntax.Parameter = SyntaxParameter;
@@ -5690,6 +5704,22 @@ function is_parameter(o) {
     return o instanceof Parameter;
 }
 // ----------------------------------------------------------------------
+function is_array_method(x) {
+    x = unbind(x);
+    return array_methods.includes(x);
+}
+// ----------------------------------------------------------------------
+function is_lips_function(x) {
+    if (!is_function(x)) {
+        return false;
+    }
+    if (is_lambda(x) || x.__doc__) {
+        return true;
+    }
+    x = unbind(x);
+    return lips_functions.includes(x);
+}
+// ----------------------------------------------------------------------
 function is_pair(o) {
     return o instanceof Pair;
 }
@@ -5699,7 +5729,7 @@ function is_env(o) {
 }
 // ----------------------------------------------------------------------
 function is_callable(o) {
-    return is_function(o) || is_continuation(o) || is_parameter(o) || is_macro(o);s
+    return is_function(o) || is_continuation(o) || is_parameter(o) || is_macro(o);
 }
 // ----------------------------------------------------------------------
 function is_macro(o) {
@@ -5924,7 +5954,6 @@ function lips_context(obj) {
 // ----------------------------------------------------------------------
 const __context__ = Symbol.for('__context__');
 const __fn__ = Symbol.for('__fn__');
-const __data__ = Symbol.for('__data__');
 const __ref__ = Symbol.for('__ref__');
 const __cycles__ = Symbol.for('__cycles__');
 const __class__ = Symbol.for('__class__');
@@ -5943,6 +5972,7 @@ function filter_fn_names(name) {
 function enumerable(object, name, value) {
     Object.defineProperty(object, name, {
         value,
+        configurable: true,
         enumerable: true
     });
 }
@@ -5977,32 +6007,14 @@ function set_fn_length(fn, length) {
 // ----------------------------------------------------------------------
 // :: function that return macro for let, let* and letrec
 // ----------------------------------------------------------------------
-function let_macro(symbol) {
-    var name;
-    switch (symbol) {
-        case Symbol.for('letrec'):
-            name = 'letrec';
-            break;
-        case Symbol.for('let'):
-            name = 'let';
-            break;
-        case Symbol.for('let*'):
-            name = 'let*';
-            break;
-        default:
-            throw new Error('Invalid let_macro value');
-    }
-    return Macro.defmacro(name, function(code, options) {
-        let { dynamic_env } = options;
-        const { error, macro_expand, use_dynamic } = options
-        var args;
-        // named let:
-        // (let loop ((x 10)) (iter (- x 1))) -> (letrec ((loop (lambda (x) ...
+function let_macro(name) {
+    return Macro.defmacro(name, function(source, state) {
+        const code = source.cdr;
         if (code.car instanceof LSymbol) {
             if (!(is_pair(code.cdr.car) || is_nil(code.cdr.car))) {
                 throw new Error('let require list of pairs');
             }
-            var params;
+            let params, args;
             if (is_nil(code.cdr.car)) {
                 args = nil;
                 params = nil;
@@ -6010,104 +6022,93 @@ function let_macro(symbol) {
                 params = code.cdr.car.map(pair => pair.car);
                 args = code.cdr.car.map(pair => pair.cdr.car);
             }
-            return new Pair(
-                Pair.from_array([
-                    LSymbol('letrec'),
-                    [[code.car, Pair(
-                        LSymbol('lambda'),
-                        Pair(params, code.cdr.cdr))]],
-                    code.car]),
-                args);
-        } else if (macro_expand) {
-            // Macro.defmacro are special macros that should return lips code
-            // here we use evaluate, so we need to check special flag set by
-            // macroexpand to prevent evaluation of code in normal let
-            return;
-        }
-        var self = this;
-        args = global_env.get('list->array')(code.car);
-        var env = self.inherit(name);
-        var values, var_body_env;
-        if (name === 'let*') {
-            var_body_env = env;
-        } else if (name === 'let') {
-            values = []; // collect potential promises
-        }
-        var i = 0;
-        function exec() {
-            var output = hygienic_begin([env], code.cdr);
-            return evaluate(output, {
-                env,
-                dynamic_env: env,
-                use_dynamic,
-                error
+            const env = state.env = state.env.inherit('let');
+            state.object = hygiene([env], ['letrec', 'lambda'], function(letrec, lambda) {
+                return Pair(
+                    Pair.from_array([
+                        letrec,
+                        [[code.car, Pair(
+                            lambda,
+                            Pair(params, code.cdr.cdr))]],
+                        code.car
+                    ]),
+                    args
+                );
             });
+            return state;
         }
-        function check_duplicates(name) {
-            if (name in env.__env__) {
-                throw new Error(`Duplicated let variable ${name}`);
-            }
+        let i = 0;
+        const star = name.endsWith('*');
+        function new_env(env) {
+            return env.inherit(star ? `${name} [${i++}]` : name);
         }
-        function set_variables(arr) {
-            for (var i = 0, len = arr.length; i < len; ++i) {
-                const name = values[i].name;
-                check_duplicates(name);
-                env.set(name, arr[i]);
-            }
-        }
-        function done() {
-            if (values && values.length) {
-                var v = values.map(x => x.value);
-                if (v.find(is_promise)) {
-                    // resolve all promises
-                    return promise_all(v).then((arr) => {
-                        set_variables(arr);
-                    }).then(exec);
-                } else {
-                    set_variables(v);
+        // the environment where init expressions are evaluated: `let` uses the
+        // outer/enclosing env, `letrec`/`let*` use the let scope.
+        const outer_env = state.env;
+        let env = new_env(state.env);
+        const vars = code.car;
+        let value = nil;
+        const body = code.cdr;
+        // reject duplicate binding names statically. This must NOT be done while
+        // binding in the continuation below: a re-entrant continuation re-runs
+        // the bindings and the (shared) env already holds them, which would
+        // false-positive as a duplicate.
+        const seen = new Set();
+        for (let node = vars; is_pair(node); node = node.cdr) {
+            if (is_pair(node.car)) {
+                const vname = node.car.car.valueOf();
+                if (seen.has(vname)) {
+                    throw new Error(`Duplicated let variable ${node.car.car}`);
                 }
+                seen.add(vname);
             }
-            return exec();
         }
-        dynamic_env = self;
-        return (function loop() {
-            var pair = args[i++];
-            if (name === 'let*') {
-                dynamic_env = env;
-            }
-            if (!pair) {
-                return done();
+        if (is_pair(vars) && is_pair(vars.car)) {
+            value = vars.car.cdr.car;
+        }
+        state.cc = new Continuation(name, vars, source, state, function(state) {
+            if (is_nil(this.__object__)) {
+                state.cc = this.__continuation__;
+                state.env = env;
+                // dynamic scope: the bindings must be visible to functions
+                // called from the body, so keep the dynamic env in sync
+                if (state.use_dynamic) {
+                    state.dynamic_env = env;
+                }
+                state.object = hygienic_begin([state.env], code.cdr);
             } else {
-                if (name === 'let') {
-                    var_body_env = self;
-                } else if (name === 'letrec') {
-                    var_body_env = env;
-                }
-                var value = evaluate(pair.cdr.car, {
-                    env: var_body_env,
-                    dynamic_env,
-                    use_dynamic,
-                    error
-                });
                 if (name === 'let*') {
-                    var_body_env = env = var_body_env.inherit('let*[' + i + ']');
+                    env = new_env(env);
                 }
-                if (values) {
-                    values.push({ name: pair.car, value });
-                    return loop();
+                const scope = env;
+                const variable = this.__object__.car.car;
+                scope.set(variable, state.object);
+                const next = this.__object__.cdr;
+                if (is_nil(next)) {
+                    delete state.object;
                 } else {
-                    return unpromise(value, function(value) {
-                        env.set(pair.car, value);
-                        return loop();
-                    });
+                    state.object = next.car.cdr.car;
+                    // restore the env for the next init expression - evaluating
+                    // the previous one may have left state.env in a called
+                    // lambda's scope.
+                    state.env = (name === 'let') ? outer_env : env;
                 }
+                this.__object__ = next;
             }
-        })();
+            state.ready = false;
+        });
+        if (name.startsWith('letrec')) {
+            state.env = env;
+        }
+        state.object = value;
+        state.ready = false;
+        return state;
     });
 }
 // -------------------------------------------------------------------------
 function parallel(name, fn) {
-    return new Macro(name, function(code, { use_dynamic, error } = {}) {
+    return new Macro(name, function(source, { use_dynamic, error } = {}) {
+        const code = source;
         const env = this;
         const dynamic_env = this;
         const results = [];
@@ -6148,39 +6149,43 @@ function compose(...fns) {
     return pipe(...fns.reverse());
 }
 // -------------------------------------------------------------------------
-// :: fold functions generator
-// -------------------------------------------------------------------------
-function fold(name, fold) {
-    var self = this;
-    return function recur(fn, init, ...lists) {
-        typecheck(name, fn, 'function');
-        if (lists.some(is_null)) {
-            if (typeof init === 'number') {
-                return LNumber(init);
-            }
-            return init;
-        } else {
-            return fold.call(self, recur, fn, init, ...lists);
-        }
-    };
-}
-// -------------------------------------------------------------------------
 function limit_math_op(n, fn) {
-    // + 1 so it include function in guard_math_call
-    return limit(n + 1, curry(guard_math_call, fn));
+    // Direct wrapper instead of limit(n+1, curry(guard_math_call, fn)): the
+    // math ops are only ever applied with all n args at once (variadic ops go
+    // through reduce_math_op, which feeds the reducer exactly 2 values), so the
+    // currying/partial-application machinery was never exercised - it just
+    // allocated two closures + several arrays on every single arithmetic call
+    // (a very hot path). This keeps the same behaviour (clamp to n args,
+    // typecheck each as a number) with no per-call allocation.
+    return function(...args) {
+        if (args.length > n) {
+            args.length = n;
+        }
+        for (let i = 0; i < args.length; i++) {
+            typecheck('', args[i], 'number');
+        }
+        return fn(...args);
+    };
 }
 // -------------------------------------------------------------------------
 // :: some functional magic
 // -------------------------------------------------------------------------
-var single_math_op = curry(limit_math_op, 1);
-var binary_math_op = curry(limit_math_op, 2);
+// plain arrows instead of curry(...): these are called once per operator
+// definition, but currying them added no value and made binary_math_op(fn)
+// (called per arithmetic op inside reduce_math_op / - / /) go through the
+// allocation-heavy curry machinery
+var single_math_op = fn => limit_math_op(1, fn);
+var binary_math_op = fn => limit_math_op(2, fn);
 // -------------------------------------------------------------------------
 function reduce_math_op(fn, init = null) {
+    // build the 2-arg reducer ONCE at operator-definition time instead of on
+    // every call (this function is only called to define +, *, etc.)
+    const reducer = binary_math_op(fn);
     return function(...args) {
         if (init !== null) {
             args = [init, ...args];
         }
-        return args.reduce(binary_math_op(fn));
+        return args.reduce(reducer);
     };
 }
 // -------------------------------------------------------------------------
@@ -6474,10 +6479,40 @@ function LNumber(n, force = false) {
     }
 }
 
+LNumber._registry = new FinalizationRegistry(value => {
+  LNumber._cache.delete(value);
+});
+LNumber._cache = new Map();
+
+LNumber.get = function (value) {
+    if (LNumber._cache.has(value)) {
+        const ref = LNumber._cache.get(value);
+        const obj = ref.deref();
+        if (obj) {
+            return obj;
+        }
+    }
+
+    const obj = new LNumber(value);
+    LNumber._cache.set(value, new WeakRef(obj));
+
+    LNumber._registry.register(obj, value);
+    return obj;
+};
+
+LNumber.prototype.dec = function(n) {
+    this.constant(this.__value__ - n.__value__, this.__type__);
+};
+
 // -------------------------------------------------------------------------
 LNumber.prototype.constant = function(value, type) {
-    enumerable(this, '__value__', value);
-    enumerable(this, '__type__', type);
+    // plain assignment instead of enumerable()/defineProperty: this runs on
+    // EVERY number constructed (every arithmetic result), and two
+    // Object.defineProperty calls per number were ~6% of the recursion
+    // benchmark. Numbers are still treated as immutable by convention - nothing
+    // writes these fields except constant()/dec().
+    this.__value__ = value;
+    this.__type__ = type;
 };
 // -------------------------------------------------------------------------
 LNumber.types = {
@@ -6800,6 +6835,9 @@ LNumber._ops = {
     '&': function(a, b) {
         return a & b;
     },
+    '^': function(a, b) {
+        return a ^ b;
+    },
     '~': function(a) {
         return ~a;
     },
@@ -6950,9 +6988,9 @@ LComplex.prototype = Object.create(LNumber.prototype);
 LComplex.prototype.constructor = LComplex;
 // -------------------------------------------------------------------------
 LComplex.prototype.constant = function(im, re) {
-    enumerable(this, '__im__', im);
-    enumerable(this, '__re__', re);
-    enumerable(this, '__type__', 'complex');
+    this.__im__ = im;
+    this.__re__ = re;
+    this.__type__ = 'complex';
 };
 // -------------------------------------------------------------------------
 LComplex.prototype.abs = function() {
@@ -7392,9 +7430,9 @@ LRational.prototype = Object.create(LNumber.prototype);
 LRational.prototype.constructor = LRational;
 // -------------------------------------------------------------------------
 LRational.prototype.constant = function(num, denom) {
-    enumerable(this, '__num__', num);
-    enumerable(this, '__denom__', denom);
-    enumerable(this, '__type__', 'rational');
+    this.__num__ = num;
+    this.__denom__ = denom;
+    this.__type__ = 'rational';
 };
 // -------------------------------------------------------------------------
 LRational.prototype.serialize = function() {
@@ -7671,6 +7709,7 @@ LBigInteger.bn_op = {
     '%': 'imod',
     '|': 'ior',
     '&': 'iand',
+    '^': 'ixor',
     '~': 'inot',
     '<<': 'ishrn',
     '>>': 'ishln'
@@ -8218,9 +8257,6 @@ function Interpreter(name, {
     }
     read_only(this, '__env__', user_env.inherit(name, obj));
     read_only(this, '__parser__', new Parser({ env: this.__env__, filename, meta }));
-    this.__env__.set('parent.frame', doc('parent.frame', () => {
-        return this.__env__;
-    }, global_env.__env__['parent.frame'].__doc__));
     const defaults_name = '**interaction-environment-defaults**';
     this.set(defaults_name, get_props(obj).concat(defaults_name));
     var inter = internal_env.inherit(`internal-${name}`);
@@ -8304,15 +8340,34 @@ function Environment(obj, parent, name) {
             name = arguments[0];
         }
     }
-    this.__docs__ = new Map();
+    // __docs__ is created lazily (only when a doc string is actually set) —
+    // lambda frames created on every call never carry docs, so this keeps their
+    // retained size smaller during tight tail-recursive loops.
+    this.__docs__ = null;
     this.__env__ = obj;
     this.__parent__ = parent;
     this.__name__ = name || 'anonymous';
 }
 // -------------------------------------------------------------------------
+Environment.prototype.clone = function() {
+    const copy = new Environment({...this.__env__}, this.__parent__, this.__name__);
+    copy.__doc__ = new Map(this.__doc__);
+    return copy;
+};
+// -------------------------------------------------------------------------
 Environment.prototype.list = function() {
     return get_props(this.__env__);
 };
+// -------------------------------------------------------------------------
+Environment.prototype.names = function() {
+    let env = this;
+    const result = [];
+    while (env !== user_env) {
+        result.push(...Object.keys(env.__env__));
+        env = env.__parent__;
+    }
+    return result;
+}
 // -------------------------------------------------------------------------
 Environment.prototype.fs = function() {
     return this.get('**fs**');
@@ -8340,12 +8395,15 @@ Environment.prototype.doc = function(name, value = null, dump = false) {
         if (!dump) {
             value = trim_lines(value);
         }
+        if (this.__docs__ === null) {
+            this.__docs__ = new Map();
+        }
         this.__docs__.set(name, value);
         return this;
     }
     const ref = this.ref(name);
     if (ref) {
-        if (ref.__docs__.has(name)) {
+        if (ref.__docs__ !== null && ref.__docs__.has(name)) {
             return ref.__docs__.get(name);
         }
         const value = ref.get(name);
@@ -8361,18 +8419,6 @@ Environment.prototype.doc = function(name, value = null, dump = false) {
 // -------------------------------------------------------------------------
 Environment.prototype.new_frame = function(fn, args) {
     var frame = this.inherit('__frame__');
-    frame.set('parent.frame', doc('parent.frame', function(n = 1) {
-        n = n.valueOf();
-        var scope = frame.__parent__;
-        if (!is_env(scope)) {
-            return nil;
-        }
-        if (n <= 0) {
-            return scope;
-        }
-        var parent_frame = scope.get('parent.frame');
-        return parent_frame(n - 1);
-    }, global_env.__env__['parent.frame'].__doc__));
     args.callee = fn;
     frame.set('arguments', args);
     return frame;
@@ -8583,9 +8629,6 @@ Environment.prototype.parents = function() {
 function quote(value) {
     if (is_promise(value)) {
         return value.then(quote);
-    }
-    if (is_pair(value) || value instanceof LSymbol) {
-        value[__data__] = true;
     }
     return value;
 }
@@ -8810,6 +8853,26 @@ var global_env = new Environment({
         console but it can be defined in user code). This function
         calls \`(newline)\` after printing each input.`),
     // ------------------------------------------------------------------
+    'trace': doc(function(enable = true) {
+        _collect_stack = !is_false(enable);
+        return _collect_stack;
+    }, `(trace)
+        (trace enabled)
+
+        Enable (or disable with (trace #f)) collection of stack frames so that
+        stack-trace and full error stack traces work. Collecting has a runtime
+        and memory cost, so it is disabled by default.`),
+    // ------------------------------------------------------------------
+    'stack-trace': doc(function(cc) {
+        typecheck('stack-trace', cc, 'continuation');
+        return cc.trace((cc, i) => {
+            return `[${i}]: ${to_string(cc.__code__)}`;
+        }).join('\n');
+    }, `(stack-trace <continuation>)
+
+        Function return stack trace if given continuation as a string.
+        You first need to enable collecting stack frames using (trace).`),
+    // ------------------------------------------------------------------
     format: doc('format', function format(str, ...args) {
         typecheck('format', str, 'string');
         const re = /(~[as%~])/g;
@@ -8906,17 +8969,18 @@ var global_env = new Environment({
         A helper function that checks if the two input functions are
         the same.`),
     // ------------------------------------------------------------------
-    help: doc(new Macro('help', function(code, { dynamic_env, use_dynamic, error }) {
-        var symbol;
+    help: doc(new Macro('help', function(source, { dynamic_env, use_dynamic, error }) {
+        const code = source.cdr;
+        let symbol;
         if (code.car instanceof LSymbol) {
             symbol = code.car;
         } else if (is_pair(code.car) && code.car.car instanceof LSymbol) {
             // 'name same as (quote name) according to macro
             symbol = code.car.car;
         } else {
-            var env = this;
+            const env = this;
             dynamic_env = this;
-            var ret = evaluate(code.car, { env, error, dynamic_env, use_dynamic });
+            const ret = evaluate(code.car, { env, error, dynamic_env, use_dynamic });
             if (ret && ret.__doc__) {
                 return ret.__doc__;
             }
@@ -8949,64 +9013,15 @@ var global_env = new Environment({
 
         This function returns the cdr (all but first) of the list.`),
     // ------------------------------------------------------------------
-    'set!': doc(new Macro('set!', function(code, { use_dynamic, ...rest } = {}) {
-        const dynamic_env = this;
-        const env = this;
-        let ref;
-        const eval_args = { ...rest, env: this, dynamic_env, use_dynamic };
-        let value = evaluate(code.cdr.car, eval_args);
-        value = resolve_promises(value);
-        function set(object, key, value) {
-            if (is_promise(object)) {
-                return object.then(key => set(object, key, value));
-            }
-            if (is_promise(key)) {
-                return key.then(key => set(object, key, value));
-            }
-            if (is_promise(value)) {
-                return value.then(value => set(object, key, value));
-            }
-            env.get('set-object!').call(env, object, key, value);
-            return value;
-        }
-        if (is_pair(code.car) && LSymbol.is(code.car.car, '.')) {
-            var second = code.car.cdr.car;
-            var third = code.car.cdr.cdr.car;
-            var object = evaluate(second, eval_args);
-            var key = evaluate(third, eval_args);
-            return set(object, key, value);
-        }
-        if (!(code.car instanceof LSymbol)) {
-            throw new Error('set! first argument need to be a symbol or ' +
-                            'dot accessor that evaluate to object.');
-        }
-        var symbol = code.car.valueOf();
-        ref = this.ref(code.car.__name__);
-        // we don't return value because we only care about sync of set value
-        // when value is a promise
-        return unpromise(value, value => {
-            if (!ref) {
-                // case (set! fn.toString (lambda () "xxx"))
-                var parts = symbol.split('.');
-                if (parts.length > 1) {
-                    var key = parts.pop();
-                    var name = parts.join('.');
-                    var obj = this.get(name, { throwError: false });
-                    if (obj) {
-                        set(obj, key, value);
-                        return;
-                    }
-                }
-                throw new Error('Unbound variable `' + symbol + '\'');
-            }
-            ref.set(symbol, value);
-        });
-    }), `(set! name value)
+    'set!': doc(
+        Macro.internal('set!'),
+        `(set! name value)
 
          Macro that can be used to set the value of the variable or slot (mutate it).
          set! searches the scope chain until it finds first non empty slot and sets it.`),
     // ------------------------------------------------------------------
-    'unset!': doc(new Macro('set!', function(code) {
+    'unset!': doc(new Macro('set!', function(source) {
+        const code = source.cdr;
         if (!(code.car instanceof LSymbol)) {
             throw new Error('unset! first argument need to be a symbol or ' +
                             'dot accessor that evaluate to object.');
@@ -9070,7 +9085,7 @@ var global_env = new Environment({
         const has_package = file.startsWith(package_name);
         // TODO: move **module-path** to internal env
         const PATH = '**module-path**';
-        var module_path = global_env.get(PATH, { throwError: false });
+        let module_path = global_env.get(PATH, { throwError: false });
         file = file.valueOf();
         if (!file.match(/.[^.]+$/)) {
             file += '.scm';
@@ -9139,18 +9154,18 @@ var global_env = new Environment({
                         }
                     }
                     global_env.set(PATH, path.dirname(file));
-                    fs.readFile(file, function(err, data) {
+                    fs.readFile(file, async function(err, data) {
                         if (err) {
-                            reject(err);
                             global_env.set(PATH, module_path);
+                            reject(err);
                         } else {
                             try {
-                                run(data).then(() => {
-                                    resolve();
-                                    global_env.set(PATH, module_path);
-                                }).catch(reject);
+                                await run(data)
+                                resolve();
                             } catch (e) {
                                 reject(e);
+                            } finally {
+                                global_env.set(PATH, module_path);
                             }
                         }
                     });
@@ -9184,68 +9199,87 @@ var global_env = new Environment({
         If the second argument is provided and it's an environment the evaluation
         will happen in that environment.`),
     // ------------------------------------------------------------------
-    'while': doc(new Macro('while', function(code, args) {
-        const test = code.car;
-        const eval_args = { ...args, env: this };
-        const body = new Pair(new LSymbol('begin'), code.cdr);
-        return (function loop() {
-            return unpromise(evaluate(test, eval_args), test => {
-                if (test) {
-                    return unpromise(evaluate(body, eval_args), loop);
-                }
-            });
-        })();
+    'while': doc(new Macro('while', function(source, state) {
+        const code = source.cdr;
+        const loop = gensym('loop');
+        const env = state.env.inherit('while');
+        state.env = env;
+        state.object = hygiene([env], ['if', 'begin', 'let'], function(_if, _begin, _let) {
+            return Pair.from_array([
+                _let,
+                loop,
+                [],
+                [
+                    _if,
+                    code.car,
+                    Pair(
+                        _begin,
+                        code.cdr.clone().append(
+                            Pair(
+                                Pair(
+                                    loop,
+                                    nil
+                                ),
+                                nil
+                            )
+                        )
+                    )
+                ]
+            ]);
+        });
+        state.ready = false;
+        return state;
     }), `(while cond body)
 
          Creates a loop, it executes cond and body until cond expression is false.`),
     // ------------------------------------------------------------------
-    'do': doc(new Macro('do', async function(code, { use_dynamic, error }) {
-        const self = this;
-        const dynamic_env = self;
-        let scope = self.inherit('do');
-        const vars = code.car;
-        const test = code.cdr.car;
-        let body = code.cdr.cdr;
-        if (!is_nil(body)) {
-            body = new Pair(LSymbol('begin'), body);
-        }
-        let eval_args = { env: self, dynamic_env, use_dynamic, error };
-        let node = vars;
-        // init variables
-        while (!is_nil(node)) {
-            const item = node.car;
-            scope.set(item.car, await evaluate(item.cdr.car, eval_args));
-            node = node.cdr;
-        }
-        eval_args = { env: scope, dynamic_env, error };
-        while ((await evaluate(test.car, eval_args)) === false) {
-            if (!is_nil(body)) {
-                await lips.evaluate(body, eval_args);
-            }
-            let node = vars;
-            const next = {};
-            // next value of variables
-            while (!is_nil(node)) {
-                const item = node.car;
-                const name = item.car.valueOf();
-                if (!is_nil(item.cdr.cdr)) {
-                    const value = await evaluate(item.cdr.cdr.car, eval_args);
-                    next[name] = value;
-                } else {
-                    next[name] = scope.get(name);
-                }
-                node = node.cdr;
-            }
-            const symbols = Object.getOwnPropertySymbols(next);
-            // new scope for new iteration
-            eval_args.env = scope = self.inherit('do');
-            Object.keys(next).concat(symbols).forEach(key => {
-                scope.set(key, next[key]);
-            });
-        }
-        if (!is_nil(test.cdr)) {
-            return await evaluate(test.cdr.car, eval_args);
-        }
+    'do': doc(new Macro('do', async function(source, state) {
+        const code = source.cdr;
+        state.env = state.env.inherit('do');
+        const loop = gensym('loop');
+        const names = ['let', 'if', 'begin'];
+        const result = is_nil(code.cdr.car.cdr) ? undefined : code.cdr.car.cdr.car;
+        const body = Pair(
+            Pair(
+                loop,
+                code.car.map(list => {
+                    if (!is_pair(list.cdr.cdr)) {
+                        return list.car;
+                    }
+                    return list.cdr.cdr.car;
+                })
+            ),
+            nil
+        );
+        const rest = is_nil(code.cdr.cdr) ? nil : code.cdr.cdr.clone();
+        state.object = hygiene([state.env], names, function(_let, _if, _begin) {
+            return Pair.from_array([
+                _let,
+                loop,
+                code.car.map(list => {
+                    return Pair(
+                        list.car,
+                        Pair(
+                            list.cdr.car,
+                            nil
+                        )
+                    );
+                }),
+                [
+                    _if,
+                    code.cdr.car.car,
+                    result,
+                    Pair(
+                        _begin,
+                        is_nil(code.cdr.cdr)
+                            ? body
+                            : code.cdr.cdr.clone().append(body)
+                    )
+                ]
+            ]);
+        });
+        state.ready = false;
+        return state;
     }), `(do ((<var> <init> <next>)) (test return) . body)
 
          Iteration macro that evaluates the expression body in scope of the variables.
@@ -9254,29 +9288,16 @@ var global_env = new Environment({
          will return undefined. If the test is a pair of expressions the macro will
          evaluate and return the second expression after the loop exits.`),
     // ------------------------------------------------------------------
-    'if': doc(new Macro('if', function(code, { error, use_dynamic }) {
-        const dynamic_env = this;
-        const env = this;
-        const eval_args = { env, dynamic_env, use_dynamic, error };
-        const resolve = (cond) => {
-            if (is_false(cond)) {
-                return evaluate(code.cdr.cdr.car, eval_args);
-            } else {
-                return evaluate(code.cdr.car, eval_args);
-            }
-        };
-        if (is_nil(code)) {
-            throw new Error('too few expressions for `if`');
-        }
-        const cond = evaluate(code.car, eval_args);
-        return unpromise(cond, resolve);
-    }), `(if cond true-expr false-expr)
+    'if': doc(
+        Macro.internal('if'),
+        `(if cond true-expr false-expr)
 
          Macro that evaluates cond expression and if the value is true, it
          evaluates and returns true-expression, if not it evaluates and returns
          false-expression.`),
     // ------------------------------------------------------------------
-    'let-env': new Macro('let-env', function(code, options = {}) {
+    'let-env': new Macro('let-env', function(source, options = {}) {
+        const code = source.cdr;
         const { dynamic_env, use_dynamic, error } = options;
         typecheck('let-env', code, 'pair');
         const ret = evaluate(code.car, { env: this, dynamic_env, error, use_dynamic });
@@ -9292,7 +9313,7 @@ var global_env = new Environment({
         object.`),
     // ------------------------------------------------------------------
     'letrec': doc(
-        let_macro(Symbol.for('letrec')),
+        let_macro('letrec'),
         `(letrec ((a value-a) (b value-b) ...) . body)
 
          Macro that creates a new environment, then evaluates and assigns values to
@@ -9301,7 +9322,7 @@ var global_env = new Environment({
          previous values/names.`),
     // ---------------------------------------------------------------------
     'letrec*': doc(
-        let_macro(Symbol.for('letrec')),
+        let_macro('letrec*'),
         `(letrec* ((a value-a) (b value-b) ...) . body)
 
          Same as letrec but the order of execution of the binding is guaranteed,
@@ -9310,7 +9331,7 @@ var global_env = new Environment({
          In LIPS both letrec and letrec* behave the same.`),
     // ---------------------------------------------------------------------
     'let*': doc(
-        let_macro(Symbol.for('let*')),
+        let_macro('let*'),
         `(let* ((a value-a) (b value-b) ...) . body)
 
          Macro similar to \`let\`, but the subsequent bindings after the first
@@ -9318,7 +9339,7 @@ var global_env = new Environment({
          so you can define one variable, and use it in the next's definition.`),
     // ---------------------------------------------------------------------
     'let': doc(
-        let_macro(Symbol.for('let')),
+        let_macro('let'),
         `(let ((a value-a) (b value-b) ...) . body)
 
          Macro that creates a new environment, then evaluates and assigns values to names,
@@ -9353,94 +9374,105 @@ var global_env = new Environment({
 
         Order items in vector or list in random order.`),
     // ------------------------------------------------------------------
-    begin: doc(new Macro('begin', function(code, options) {
-        const eval_args = {...options, env: this };
-        const arr = global_env.get('list->array')(code);
-        let result;
-        return (function loop() {
-            if (arr.length) {
-                const code = arr.shift();
-                const ret = evaluate(code, eval_args);
-                return unpromise(ret, value => {
-                    result = value;
-                    return loop();
-                });
-            } else {
-                return result;
-            }
-        })();
-    }), `(begin . args)
+    begin: doc(
+        Macro.internal('begin'),
+        `(begin . args)
 
          Macro that runs a list of expressions in order and returns the value
          of the last one. It can be used in places where you can only have a
          single expression, like (if).`),
     // ------------------------------------------------------------------
-    'ignore': new Macro('ignore', function(code, options) {
-        const eval_args = { ...options, env: this, dynamic_env: this };
-        evaluate(new Pair(new LSymbol('begin'), code), eval_args);
+    ignore: new Macro('ignore', function(source, state) {
+        const code = source.cdr;
+        const env = this.inherit('ignore');
+        const eval_args = { ...state, env, dynamic_env: env, cc: top_cc };
+        evaluate(hygienic_begin([env], code), eval_args);
     }, `(ignore . body)
 
         Macro that will evaluate the expression and swallow any promises that may
         be created. It will discard any value that may be returned by the last body
         expression. The code should have side effects and/or when it's promise
-        it should resolve to undefined.`),
+        it should resolve to undefined. Macro ignore don't capture any continuations,
+        so it work like top level expression.
+
+        You can use call/cc inside ignore, but capturing continuations and
+        using it outside of ignore can give unspecified results.`),
     // ------------------------------------------------------------------
-    'call/cc': doc(Macro.defmacro('call/cc', function(code, eval_args = {}) {
-        const args = {
-            env: this,
-            ...eval_args
-        };
-        return unpromise(evaluate(code.car, args), (result) => {
-            if (is_function(result)) {
-                return result(new Continuation(null));
-            }
+    'call/cc': doc(new Macro('call/cc', function(source, state) {
+        const cc = state.cc.clone();
+        // snapshot the active try handlers so invoking this continuation
+        // restores the exact set that was in effect here - escaping a `try`
+        // drops its handler, re-entering one re-arms it.
+        cc._state.handlers = state.handlers.slice();
+        state.cc = new Continuation('call/cc', null, source, state, function(state) {
+            state.env = this.__env__;
+            state.cc = this.__continuation__;
+            state.object = Pair(state.object, Pair(cc, nil));
+            read_only(state.object, '_ignore', true, { hidden: true });
+            state.ready = false;
         });
+        state.object = source.cdr.car;
+        state.ready = false;
+        return state;
     }), `(call/cc proc)
+         (call-with-current-continuation proc)
 
-         Call-with-current-continuation.
-
-         NOT SUPPORTED BY LIPS RIGHT NOW`),
+         Function capture current continuation and call a procedure with
+          that continuation passed as the only argument. The continuation act
+         like a procedure that can be called to jump back into the place where
+         continuation was captured.`),
     // ------------------------------------------------------------------
-    parameterize: doc(new Macro('parameterize', function(code, options) {
-        const { dynamic_env } = options;
-        const env = dynamic_env.inherit('parameterize').new_frame(null, {});
-        const eval_args = { ...options, env: this };
+    parameterize: doc(new Macro('parameterize', function(source, state) {
+        const code = source.cdr;
+        const outer_dynamic = state.dynamic_env;
+        const env = outer_dynamic.inherit('parameterize').new_frame(null, {});
         let params = code.car;
         if (!is_pair(params)) {
             const t = type(params);
             throw new Error(`Invalid syntax for parameterize expecting pair got ${t}`);
         }
-        function next() {
-            const body = new Pair(new LSymbol('begin',), code.cdr);
-            return evaluate(body, { ...eval_args, dynamic_env: env });
-        }
-        return (function loop() {
-            const pair = params.car;
+        // evaluate the binding values and install the inherited parameters into
+        // a fresh dynamic frame. Values are evaluated in isolation (cc:top_cc);
+        // the BODY, however, is evaluated in the SAME tco loop (below) so that a
+        // continuation captured inside - or an escape out of - the body works.
+        let p = params;
+        while (is_pair(p)) {
+            const pair = p.car;
             const name = pair.car.valueOf();
-            return unpromise(evaluate(pair.cdr.car, eval_args), function(value) {
-                const param = dynamic_env.get(name, { throwError: false });
-                if (!is_parameter(param)) {
-                    throw new Error(`Unknown parameter ${name}`);
-                }
-                env.set(name, param.inherit(value));
-                if (!is_null(params.cdr)) {
-                    params = params.cdr;
-                    return loop();
-                } else {
-                    return next();
-                }
-            });
-        })();
+            const value = evaluate(pair.cdr.car, { ...state, cc: top_cc });
+            // the parameter object is an ordinary binding - resolve it in the
+            // lexical environment; only its dynamic binding lives in `env`.
+            const param = state.env.get(name, { throwError: false });
+            if (!is_parameter(param)) {
+                throw new Error(`Unknown parameter ${name}`);
+            }
+            env.set(name, param.inherit(value));
+            p = p.cdr;
+        }
+        // continue in the current loop: evaluate (begin . body) with the new
+        // dynamic environment, then restore the outer one via next_parameterize.
+        const body = new Pair(new LSymbol('begin'), code.cdr);
+        state.cc = new Continuation('parameterize', null, source, state, next_parameterize, {
+            dynamic_env: outer_dynamic
+        });
+        state.dynamic_env = env;
+        state.object = body;
+        state.ready = false;
+        return state;
     }), `(parameterize ((name value) ...)
 
          Macro that change the dynamic variable created by make-parameter.`),
     // ------------------------------------------------------------------
-    'make-parameter': doc(new Macro('make-parameter', function(code, eval_args) {
-        const dynamic_env = eval_args.dynamic_env;
-        const init = evaluate(code.car, eval_args);
+    'make-parameter': doc(new Macro('make-parameter', function(source, eval_args) {
+        const code = source.cdr;
+        // isolate the nested evaluate from the outer continuation (cc), the
+        // same way the lambda wrapper does - otherwise `eval_args.cc` leaks and
+        // the evaluated value comes back as void/promise instead of the datum.
+        const args = { ...eval_args, cc: top_cc };
+        const init = evaluate(code.car, args);
         let fn;
         if (is_pair(code.cdr.car)) {
-            fn = evaluate(code.cdr.car, eval_args);
+            fn = evaluate(code.cdr.car, args);
         }
         return new Parameter(init, fn);
     }), `(make-parameter init converter)
@@ -9452,13 +9484,16 @@ var global_env = new Environment({
 
     The result value is a procedure that return the value of dynamic variable.`),
     // ------------------------------------------------------------------
-    'define-syntax-parameter': doc(new Macro('define-syntax-parameter', function(code, eval_args) {
+    'define-syntax-parameter': doc(new Macro('define-syntax-parameter', function(source, eval_args) {
+        const code = source.cdr;
         const name = code.car;
         const env = this;
         if (!(name instanceof LSymbol)) {
             throw new Error(`define-syntax-parameter: invalid syntax expecting symbol got ${type(name)}`);
         }
-        const syntax = evaluate(code.cdr.car, { env, ...eval_args });
+        // cc: top_cc isolates this nested eval - without it the outer
+        // continuation leaks in and the result comes back as a promise
+        const syntax = evaluate(code.cdr.car, { env, ...eval_args, cc: top_cc });
         typecheck('define-syntax-parameter', syntax, 'syntax', 2);
         syntax.__name__ = name.valueOf();
         if (syntax.__name__ instanceof LString) {
@@ -9477,7 +9512,8 @@ var global_env = new Environment({
          and in the absence of syntax-parameterize, is functionally equivalent to
          define-syntax.`),
     // ------------------------------------------------------------------
-    'syntax-parameterize': doc(new Macro('syntax-parameterize', function(code, eval_args) {
+    'syntax-parameterize': doc(new Macro('syntax-parameterize', function(source, eval_args) {
+        const code = source.cdr;
         const args = global_env.get('list->array')(code.car);
         const env = this.inherit('syntax-parameterize');
         while (args.length) {
@@ -9486,7 +9522,7 @@ var global_env = new Environment({
                 const msg = `invalid syntax for syntax-parameterize: ${repr(code, true)}`;
                 throw new Error(`syntax-parameterize: ${msg}`);
             }
-            let syntax = evaluate(pair.cdr.car, { ...eval_args, env: this });
+            let syntax = evaluate(pair.cdr.car, { ...eval_args, env: this, cc: top_cc });
             const name = pair.car;
             typecheck('syntax-parameterize', syntax, ['syntax']);
             typecheck('syntax-parameterize', name, 'symbol');
@@ -9509,67 +9545,21 @@ var global_env = new Environment({
         const expr = hygienic_begin([
             env, eval_args.dynamic_env
         ], code.cdr);
-        return evaluate(expr, { ...eval_args, env });
+        // evaluate the body in the enclosing continuation (in `env` with the
+        // parameterized syntax) instead of a nested evaluate - avoids leaking
+        // the outer continuation and re-evaluating the result.
+        eval_args.env = env;
+        eval_args.object = expr;
+        eval_args.ready = false;
+        return eval_args;
     }), `(syntax-parameterize (bindings) body)
 
          Macro work similar to let-syntax but the the bindnds will be exposed to the user.
          With syntax-parameterize you can define anaphoric macros.`),
     // ------------------------------------------------------------------
-    define: doc(Macro.defmacro('define', function(code, eval_args) {
-        var env = this;
-        if (is_pair(code.car) &&
-            code.car.car instanceof LSymbol) {
-            var new_code = new Pair(
-                new LSymbol("define"),
-                new Pair(
-                    code.car.car,
-                    new Pair(
-                        new Pair(
-                            new LSymbol("lambda"),
-                            new Pair(
-                                code.car.cdr,
-                                code.cdr
-                            )
-                        )
-                    )
-                )
-            );
-            return new_code;
-        } else if (eval_args.macro_expand) {
-            // prevent evaluation in macroexpand
-            return;
-        }
-        eval_args.dynamic_env = this;
-        eval_args.env = env;
-        var value = code.cdr.car;
-        let new_expr;
-        if (is_pair(value)) {
-            value = evaluate(value, eval_args);
-            new_expr = true;
-        } else if (value instanceof LSymbol) {
-            value = env.get(value);
-        }
-        typecheck('define', code.car, 'symbol');
-        return unpromise(value, value => {
-            if (env.__name__ === Syntax.__merge_env__) {
-                env = env.__parent__;
-            }
-            if (new_expr &&
-                ((is_function(value) && is_lambda(value)) ||
-                 (value instanceof Syntax) || is_parameter(value))) {
-                value.__name__ = code.car.valueOf();
-                if (value.__name__ instanceof LString) {
-                    value.__name__ = value.__name__.valueOf();
-                }
-            }
-            let __doc__;
-            if (is_pair(code.cdr.cdr) &&
-                LString.isString(code.cdr.cdr.car)) {
-                __doc__ = code.cdr.cdr.car.valueOf();
-            }
-            env.set(code.car, value, __doc__, true);
-        });
-    }), `(define name expression)
+    define: doc(
+        Macro.internal('define'),
+        `(define name expression)
          (define name expression "doc string")
          (define (function-name . args) . body)
 
@@ -9597,7 +9587,7 @@ var global_env = new Environment({
         } else {
             obj[key] = value && !is_prototype(value) ? value.valueOf() : value;
         }
-        if (props) {
+        if (options) {
             const value = obj[key];
             Object.defineProperty(obj, key, { ...options, value });
         }
@@ -9644,29 +9634,18 @@ var global_env = new Environment({
 
         Function that returns the current environment (they're first-class objects!)`),
     // ------------------------------------------------------------------
-    'parent.frame': doc('parent.frame', function() {
-        return user_env;
-    }, `(parent.frame)
-
-        Returns the parent environment if called from inside a function.
-        If no parent frame can be found it returns nil.`),
-    // ------------------------------------------------------------------
     'eval': doc('eval', function(code, env) {
         env = env || this.get('interaction-environment').call(this);
-        return new Promise((resolve, reject) => {
-            const result = evaluate(code, {
-                env,
-                dynamic_env: env,
-                error: reject
-            });
-            resolve(result);
+        return evaluate(code, {
+            env,
+            dynamic_env: env,
+            error: (e) => { throw e; }
         });
     }, `(eval expr)
         (eval expr environment)
 
         Function that evaluates LIPS Scheme code. If the second argument is provided
         it will be the environment that the code is evaluated in.`),
-    // ------------------------------------------------------------------
     'set-debug!': doc(
         function set_debug(x = null) {
             if (x === null) {
@@ -9698,7 +9677,9 @@ var global_env = new Environment({
          Debug function, which checks if internal debug state is set to
          a given value or true.`),
     // ------------------------------------------------------------------
-    lambda: new Macro('lambda', function(code, { use_dynamic, error } = {}) {
+    lambda: new Macro('lambda', function(source, state) {
+        const code = source.cdr;
+        delete state.object;
         var self = this;
         var __doc__;
         if (is_pair(code.cdr) &&
@@ -9706,78 +9687,50 @@ var global_env = new Environment({
             !is_nil(code.cdr.cdr)) {
             __doc__ = code.cdr.car.valueOf();
         }
+        const rest = __doc__ ? code.cdr.cdr : code.cdr;
         function lambda(...args) {
-            // lambda got scopes as context in apply
-            let { dynamic_env } = is_context(this) ? this : { dynamic_env: self };
-            const env = self.inherit('lambda');
-            dynamic_env = dynamic_env.inherit('lambda');
-            if (this && !is_context(this)) {
-                if (this && !this.__instance__) {
-                    Object.defineProperty(this, '__instance__', {
-                        enumerable: false,
-                        get: () => true,
-                        set: () => {},
-                        configurable: false
-                    });
-                }
-                env.set('this', this);
+            const eval_args = lambda_scope.call(this, self, lambda, code, args, state);
+            const { dynamic_env, use_dynamic } = eval_args;
+            // Cache the hygienic (begin . body) wrapper and bind its gensym once
+            // in the definition env (`self`) instead of minting a gensym +
+            // allocating a Pair on every call. `eval_args.env` inherits from
+            // `self`, so the gensym resolves through the lexical chain. Mirrors
+            // evaluate_lambda (shares the same _hygienic_body/_begin_gensym
+            // fields) - hot when a scheme lambda is used as a JS callback, e.g.
+            // array .map over a big array.
+            let body = lambda._hygienic_body;
+            if (is_undef(body)) {
+                const g = gensym('begin');
+                lambda._begin_gensym = g;
+                body = lambda._hygienic_body = new Pair(g, rest);
+                self.set(g, global_env.get('begin'));
             }
-            // arguments and arguments.callee inside lambda function
-            if (this instanceof LambdaContext) {
-                const options = { throwError: false };
-                env.set('arguments', this.env.get('arguments', options));
-                env.set('parent.frame', this.env.get('parent.frame', options));
-            } else {
-                // this case is for lambda as callback function in JS; e.g. setTimeout
-                var _args = args.slice();
-                _args.callee = lambda;
-                _args.env = env;
-                env.set('arguments', _args);
+            // dynamic-scope mode evaluates the body with dynamic_env (which does
+            // not chain to `self`), so rebind the gensym there per call.
+            if (use_dynamic) {
+                dynamic_env.set(lambda._begin_gensym, global_env.get('begin'));
             }
-            function set(name, value) {
-                env.__env__[name.__name__] = value;
-                dynamic_env.__env__[name.__name__] = value;
-            }
-            let name = code.car;
-            let i = 0;
-            if (name instanceof LSymbol || !is_nil(name)) {
-                while (true) {
-                    if (!is_nil(name.car)) {
-                        if (name instanceof LSymbol) {
-                            // rest argument,  can also be first argument
-                            const value = quote(Pair.from_array(args.slice(i), false));
-                            set(name, value);
-                            break;
-                        } else if (is_pair(name)) {
-                            const value = args[i];
-                            set(name.car, value);
-                        }
-                    }
-                    if (is_nil(name.cdr)) {
-                        break;
-                    }
-                    i++;
-                    name = name.cdr;
-                }
-            }
-            var rest = __doc__ ? code.cdr.cdr : code.cdr;
-            var output = hygienic_begin([env, dynamic_env], rest);
-            const eval_args = {
-                env,
-                dynamic_env,
-                use_dynamic,
-                error
-            }
-            return evaluate(output, eval_args);
+            return evaluate(body, { ...eval_args, cc: top_cc });
         }
         var length = is_pair(code.car) ? code.car.length() : null;
-        lambda.__code__ = new Pair(new LSymbol('lambda'), code);
+        read_only(lambda, '_env', self, { hidden: true });
+        read_only(lambda, '_body', rest, { hidden: true });
+        read_only(lambda, '_code', code, { hidden: true });
+        lambda.__code__ = source;
         lambda[__lambda__] = true;
-        if (!is_pair(code.car)) {
-            return doc(lambda, __doc__, true); // variable arguments
+        if (is_pair(code.car)) {
+            // lambda have list of arguments
+            lambda = set_fn_length(lambda, length);
         }
-        // wrap and decorate with __doc__
-        return doc(set_fn_length(lambda, length), __doc__, true);
+        lambda = doc(lambda, __doc__, true);
+        // continuation for stack trace
+        state.cc = new Continuation('lambda', null, source, state, function(state) {
+            state.object = lambda;
+            state.env = this.__env__;
+            state.cc = this.__continuation__;
+            state.ready = true;
+        });
+        return state;
     }, `(lambda (a b) body)
         (lambda args body)
         (lambda (a b . rest) body)
@@ -9786,20 +9739,43 @@ var global_env = new Environment({
         the body is a string and there is more elements the string is used as the
         documentation string, that can be read using (help fn).`),
     // ------------------------------------------------------------------
-    'macroexpand': doc(
-        new Macro('macroexpand', macro_expand()),
-        `(macroexpand expr)
+    macroexpand: doc(async function(code) {
+        // macroexpand is a function (like Common Lisp), NOT a macro, so its
+        // argument is already evaluated - quote the code you want expanded:
+        // (macroexpand '(when test body)). The expansion is produced in the tco
+        // loop in macro_expand mode (see evaluate_code and macroexpand_code).
+        return evaluate(code, {
+            macro_expand: true,
+            env: this.env,
+            error: (e) => {
+                throw e;
+            }
+        });
+    }, `(macroexpand expr)
 
-         Macro that expand all macros inside and return single expression as output.`),
+        Function that expands all macros in the quoted expression and returns
+        the expanded code. Being a function, its argument is evaluated, so pass
+        quoted code: (macroexpand '(when x y)).`),
     // ------------------------------------------------------------------
-    'macroexpand-1': doc(
-        new Macro('macroexpand-1', macro_expand(true)),
-        `(macroexpand-1 expr)
+    'macroexpand-1': doc(async function(code) {
+        // like macroexpand but expands only the outermost macro use one step
+        // (does not recurse into the result or subforms). Also a function, so
+        // pass quoted code: (macroexpand-1 '(when x y)).
+        if (is_pair(code) && code.car instanceof LSymbol) {
+            const value = this.env.get(code.car, { throwError: false });
+            if (value && is_macro(value) && !is_internal_macro(value)) {
+                return macroexpand_once(value, code, this.env);
+            }
+        }
+        return code;
+    }, `(macroexpand-1 expr)
 
-         Macro similar to macroexpand but it expand macros only one level
-         and return single expression as output.`),
+         Function similar to macroexpand but it expands the outermost macro only
+         one level and returns the resulting code. Being a function, its argument
+         is evaluated, so pass quoted code: (macroexpand-1 '(when x y)).`),
     // ------------------------------------------------------------------
-    'define-macro': doc(new Macro(macro, function(macro, { use_dynamic, error }) {
+    'define-macro': doc(new Macro(macro, function(source, state) {
+        const macro = source.cdr;
         let name, __doc__, body, args;
         if (is_named_macro(macro)) {
             name = macro.car.car.__name__;
@@ -9816,9 +9792,7 @@ var global_env = new Environment({
                 __doc__ = body.car.valueOf();
                 body = body.cdr;
             }
-            const macro_instance = define_macro(name, args, body, __doc__, {
-                use_dynamic, error
-            });
+            const macro_instance = define_macro(name, args, body, source, __doc__, state);
             this.set(name, macro_instance);
         } else {
             throw new Error('Syntax Error: Invalid `define-macro` expression');
@@ -9833,8 +9807,9 @@ var global_env = new Environment({
          calls (eval) on it. Because of this a macro can manipulate the expression
          (arguments) as lists.`),
     // ------------------------------------------------------------------
-    'syntax-rules': new Macro('syntax-rules', function(macro, options) {
+    'syntax-rules': new Macro('syntax-rules', function(source, options) {
         var { use_dynamic, error } = options;
+        const macro = source.cdr;
         // TODO: find identifiers and freeze the scope when defined #172
         var env = this;
         function get_identifiers(node) {
@@ -9898,7 +9873,7 @@ var global_env = new Environment({
                     });
                     if (bindings) {
                         /* c8 ignore next 5 */
-                        if (is_debug()) {
+                        if (is_debug('syntax-rules')) {
                             console.log(JSON.stringify(symbolize(bindings), true, 2));
                             console.log('PATTERN: ' + rule.toString(true));
                             console.log('MACRO: ' + code.toString(true));
@@ -9923,12 +9898,12 @@ var global_env = new Environment({
                         if (macro_expand) {
                             return { expr, scope: new_env };
                         }
-                        var result = evaluate(expr, { ...eval_args, env: new_env });
-                        // Hack: update the result if there are generated
-                        //       gensyms that should be literal symbols
-                        // TODO: maybe not the part move when literal elisps may
-                        //       be generated, maybe they will need to be mark somehow
-                        return clear_gensyms(result, names);
+                        // Return the expansion instead of evaluating it here in
+                        // a nested evaluate - the caller evaluates it in the main
+                        // loop so continuations work across the macro boundary.
+                        // The gensym->literal fixup (clear_gensyms) is applied to
+                        // the produced value by whoever evaluates the expansion.
+                        return new SyntaxExpansion(expr, new_env, names);
                     }
                     rules = rules.cdr;
                 }
@@ -9948,14 +9923,54 @@ var global_env = new Environment({
         Base of hygienic macros, it will return a new syntax expander
         that works like Lisp macros.`),
     // ------------------------------------------------------------------
-    quote: doc(new Macro('quote', function(arg) {
-        return quote(arg.car);
-    }), `(quote expression) or 'expression
+    'quote-promise': doc(new Macro('quote-promise', function(source, state) {
+        const code = source.cdr;
+        // Only the OUTERMOST result of the body is quoted - promises used
+        // inside the body (let bindings, arguments, ...) are awaited normally.
+        // evaluate_code detects "outermost result" as a promise reaching this
+        // continuation (marked with quote_promise), and this continuation wraps
+        // whatever the body produced in a QuotedPromise.
+        state.cc = new Continuation('quote-promise', null, source, state, function(state) {
+            state.cc = this.__continuation__;
+            state.env = this.__env__;
+            const result = state.object;
+            if (result instanceof QuotedPromise) {
+                state.object = result;
+            } else if (is_promise(result)) {
+                state.object = new QuotedPromise(result);
+            } else {
+                state.object = new QuotedPromise(Promise.resolve(result));
+            }
+            state.ready = true;
+        }, { quote_promise: true });
+        state.object = code.car;
+        state.ready = false;
+        return state;
+    }), `(quote-promise expr) or '>expr
+
+         Macro used to escape automatic awaiting of the expression. It will be wrapped
+         with a JavaScript class that behaves like Promise but will not be automatically
+         resolved by LIPS like normal promises are.`),
+    // ------------------------------------------------------------------
+    'await': doc(function(object) {
+        if (object instanceof QuotedPromise) {
+            return object.valueOf();
+        }
+        return object;
+    }, `(await value)
+
+        Unquotes a quoted promise so it can be automagically evaluated (resolved
+        to its value).`),
+    // ------------------------------------------------------------------
+    quote: doc(
+        Macro.internal('quote'),
+        `(quote expression) or 'expression
 
          Macro that returns a single LIPS expression as data (it won't evaluate the
          argument). It will return a list if put in front of LIPS code.
          And if put in front of a symbol it will return the symbol itself, not the value
          bound to that name.`),
+    // ------------------------------------------------------------------
     'unquote-splicing': doc('unquote-splicing', function() {
         throw new Error(`You can't call \`unquote-splicing\` outside of quasiquote`);
     }, `(unquote-splicing code) or ,@code
@@ -9963,6 +9978,7 @@ var global_env = new Environment({
         Special form used in the quasiquote macro. It evaluates the expression inside and
         splices the list into quasiquote's result. If it is not the last element of the
         expression, the computed value must be a pair.`),
+    // ------------------------------------------------------------------
     'unquote': doc('unquote', function() {
         throw new Error(`You can't call \`unquote\` outside of quasiquote`);
     }, `(unquote code) or ,code
@@ -9970,353 +9986,202 @@ var global_env = new Environment({
         Special form used in the quasiquote macro. It evaluates the expression inside and
         substitutes the value into quasiquote's result.`),
     // ------------------------------------------------------------------
-    quasiquote: Macro.defmacro('quasiquote', function(arg, env) {
-        const { use_dynamic, error } = env;
-        const self = this;
-        //var max_unquote = 1;
-        const dynamic_env = self;
-        // -----------------------------------------------------------------
-        function is_struct(value) {
-            return is_pair(value) ||
-                is_plain_object(value) ||
-                Array.isArray(value);
+    looper: function(num) {
+        var x = [];
+        while (num.cmp(0) != 0) {
+            x.push(num);
+            num = num.sub(1);
         }
+    },
+    // ------------------------------------------------------------------
+    quasiquote: (function() {
         // -----------------------------------------------------------------
-        function resolve_pair(pair, fn, test = is_struct) {
-            if (is_pair(pair)) {
-                var car = pair.car;
-                var cdr = pair.cdr;
-                if (test(car)) {
-                    car = fn(car);
-                }
-                if (test(cdr)) {
-                    cdr = fn(cdr);
-                }
-                if (is_promise(car) || is_promise(cdr)) {
-                    return promise_all([car, cdr]).then(([car, cdr]) => {
-                        return new Pair(car, cdr);
-                    });
-                } else {
-                    return new Pair(car, cdr);
-                }
+        // :: New quasiquote based on Alan Bawden's paper
+        // :: "Quasiquotation in Lisp". Instead of building the result inline
+        // :: the macro expands into code (append/cons/list/quote/...) that is
+        // :: then evaluated by the main evaluate loop. Because the unquoted
+        // :: expressions become ordinary sub-expressions they compose with
+        // :: continuations, promises and tail calls for free.
+        // -----------------------------------------------------------------
+        function symbol(name) {
+            return new LSymbol(name);
+        }
+        // Resolve builtin operators to their function values so the generated
+        // builder code is hygienic: a local binding that shadows an operator
+        // name - e.g. `(define-macro (cond . list) ...)` shadows `list`, or a
+        // rest arg named `append`/`cons` - must not break the expansion. By
+        // embedding the function value (not a symbol) the call bypasses lexical
+        // lookup entirely. Looked up lazily because global_env is still being
+        // populated when this macro is created.
+        const op_cache = {};
+        function op(name) {
+            if (!(name in op_cache)) {
+                op_cache[name] = global_env.get(name);
             }
-            return pair;
+            return op_cache[name];
         }
-        // -----------------------------------------------------------------
-        function join(eval_pair, value) {
-            if (is_nil(eval_pair) && is_nil(value)) {
-                //return nil;
+        function make_list(...items) {
+            return Pair.from_array(items, false);
+        }
+        function quote(x) {
+            return make_list(symbol('quote'), x);
+        }
+        function make_cons(a, b) {
+            return make_list(op('cons'), a, b);
+        }
+        // (quote ()) - an expression that evaluates to the empty list
+        function is_quote_nil(x) {
+            return is_pair(x) &&
+                LSymbol.is(x.car, 'quote') &&
+                is_pair(x.cdr) &&
+                is_nil(x.cdr.car);
+        }
+        // build (append a b) with a couple of algebraic simplifications so
+        // that the common cases produce clean code and splicing an atom in
+        // tail position (e.g. `(a . ,@x)) creates a proper improper list.
+        function make_append(a, b) {
+            if (is_quote_nil(b)) {
+                return a;
             }
-            if (is_pair(eval_pair)) {
-                if (!is_nil(value)) {
-                    eval_pair.append(value);
-                }
-            } else {
-                eval_pair = new Pair(
-                    eval_pair,
-                    value
-                );
+            if (is_quote_nil(a)) {
+                return b;
             }
-            return eval_pair;
+            return make_list(op('append'), a, b);
         }
-        // -----------------------------------------------------------------
-        function unquoted_arr(arr) {
-            return !!arr.filter(value => {
-                return is_pair(value) &&
-                    LSymbol.is(value.car, /^(unquote|unquote-splicing)$/);
-            }).length;
+        function vector_to_list(vector) {
+            return Pair.from_array(vector, false);
         }
-        // -----------------------------------------------------------------
-        function quote_vector(arr, unquote_cnt, max_unq) {
-            return arr.reduce((acc, x) => {
-                if (!is_pair(x)) {
-                    acc.push(x);
-                    return acc;
+        // expand code in "value" position - result is code producing the value.
+        // A passive unquote/unquote-splicing (depth > 1) is rebuilt with `cons`
+        // so that a nested active splice inside it (e.g. `,,@x`) can add several
+        // operands to the marker: (unquote a b c).
+        function qq_expand(x, depth) {
+            if (is_pair(x)) {
+                if (LSymbol.is(x.car, 'unquote')) {
+                    if (depth === 1) {
+                        return x.cdr.car;
+                    }
+                    return make_cons(quote(symbol('unquote')),
+                                     qq_expand(x.cdr, depth - 1));
                 }
                 if (LSymbol.is(x.car, 'unquote-splicing')) {
-                    let result;
-                    if (unquote_cnt + 1 < max_unq) {
-                        result = recur(x.cdr, unquote_cnt + 1, max_unq);
-                    } else {
-                        result = evaluate(x.cdr.car, {
-                            env: self,
-                            use_dynamic,
-                            dynamic_env,
-                            error
-                        });
+                    if (depth === 1) {
+                        // tail splice, e.g. `(a . ,@x)
+                        return x.cdr.car;
                     }
-                    if (!is_pair(result)) {
-                        throw new Error(`Expecting list ${type(x)} found`);
-                    }
-                    return acc.concat(result.to_array());
+                    return make_cons(quote(symbol('unquote-splicing')),
+                                     qq_expand(x.cdr, depth - 1));
                 }
-                acc.push(recur(x, unquote_cnt, max_unq));
-                return acc;
-            }, []);
+                if (LSymbol.is(x.car, 'quasiquote')) {
+                    return make_list(op('list'), quote(symbol('quasiquote')),
+                                     qq_expand(x.cdr.car, depth + 1));
+                }
+                return make_append(qq_expand_list(x.car, depth),
+                                   qq_expand(x.cdr, depth));
+            }
+            if (Array.isArray(x)) {
+                return make_list(op('list->array'),
+                                 qq_expand(vector_to_list(x), depth));
+            }
+            if (is_plain_object(x)) {
+                return qq_expand_object(x, depth);
+            }
+            return quote(x);
         }
-        // -----------------------------------------------------------------
-        function quote_object(object, unquote_cnt, max_unq) {
-            const result = {};
-            unquote_cnt++;
-            Object.keys(object).forEach(key => {
+        // expand code in "list element" position - result is code producing a
+        // list that is spliced (via append) into the surrounding list
+        function qq_expand_list(x, depth) {
+            if (is_pair(x)) {
+                if (LSymbol.is(x.car, 'unquote')) {
+                    if (depth === 1) {
+                        // (unquote a b ...) with several operands splices them
+                        // all: ,a -> (list a), (unquote a b) -> (list a b)
+                        return new Pair(op('list'), x.cdr);
+                    }
+                    return make_list(op('list'),
+                        make_cons(quote(symbol('unquote')),
+                                  qq_expand(x.cdr, depth - 1)));
+                }
+                if (LSymbol.is(x.car, 'unquote-splicing')) {
+                    if (depth === 1) {
+                        // (unquote-splicing a b ...) -> (append a b ...)
+                        return new Pair(op('append'), x.cdr);
+                    }
+                    return make_list(op('list'),
+                        make_cons(quote(symbol('unquote-splicing')),
+                                  qq_expand(x.cdr, depth - 1)));
+                }
+                if (LSymbol.is(x.car, 'quasiquote')) {
+                    return make_list(op('list'),
+                        make_list(op('list'), quote(symbol('quasiquote')),
+                                  qq_expand(x.cdr.car, depth + 1)));
+                }
+                return make_list(op('list'),
+                    make_append(qq_expand_list(x.car, depth),
+                                qq_expand(x.cdr, depth)));
+            }
+            if (Array.isArray(x)) {
+                return make_list(op('list'),
+                    make_list(op('list->array'),
+                              qq_expand(vector_to_list(x), depth)));
+            }
+            if (is_plain_object(x)) {
+                return make_list(op('list'), qq_expand_object(x, depth));
+            }
+            return quote(make_list(x));
+        }
+        // objects (&(...)) have no splicing; expand into code that builds a
+        // fresh object and assigns each value with set-object! (so that
+        // list/pair values are stored verbatim rather than recursively
+        // converted):
+        //
+        //   (let ((obj (Object.fromEntries (Array))))
+        //     (set-object! obj "key" <value>)
+        //     ...
+        //     obj)
+        function qq_expand_object(object, depth) {
+            const obj = gensym('obj');
+            const setters = Object.keys(object).map(key => {
                 const value = object[key];
-                if (is_pair(value)) {
-                    if (LSymbol.is(value.car, 'unquote-splicing')) {
-                        throw new Error("You can't call `unquote-splicing` " +
-                                        "inside object");
-                    }
-                    let output;
-                    if (unquote_cnt < max_unq) {
-                        output = recur(value.cdr.car, unquote_cnt, max_unq);
-                    } else {
-                        output = evaluate(value.cdr.car, {
-                            env: self,
-                            dynamic_env,
-                            use_dynamic,
-                            error
-                        });
-                    }
-                    result[key] = output;
-                } else {
-                    result[key] = value;
+                if (is_pair(value) && LSymbol.is(value.car, 'unquote-splicing')) {
+                    throw new Error("You can't call `unquote-splicing` inside an object");
                 }
+                return make_list(op('set-object!'), obj, LString(key),
+                                 qq_expand(value, depth));
             });
-            if (Object.isFrozen(object)) {
-                Object.freeze(result);
+            const bindings = make_list(
+                make_list(obj, make_list(symbol('Object.fromEntries'),
+                                         make_list(symbol('Array'))))
+            );
+            return Pair.from_array([symbol('let'), bindings, ...setters, obj], false);
+        }
+        return Macro.defmacro('quasiquote', function(source, state) {
+            const arg = source.cdr;
+            let result;
+            log('>> QUASIQUOTE');
+            log(arg.car);
+            if (plain_quasiquote(arg.car)) {
+                // fully literal quasiquote behaves like quote (shared constant)
+                result = quote(arg.car);
+            } else {
+                result = qq_expand(arg.car, 1);
             }
+            log('<< QUASIQUOTE OUTPUT');
+            log(result);
+            // returning something other than `state` makes evaluate_code set
+            // it as the object to evaluate next, so the generated builder code
+            // runs through the normal evaluate loop.
+            state.object = result;
+            state.ready = false;
             return result;
-        }
-        // -----------------------------------------------------------------
-        function unquote_splice(pair, unquote_cnt, max_unq) {
-            if (unquote_cnt < max_unq) {
-                let cdr = nil;
-                if (!is_nil(pair.cdr)) {
-                    cdr = recur(pair.cdr, unquote_cnt - 1, max_unq);
-                }
-                return new Pair(
-                    new Pair(
-                        pair.car.car,
-                        recur(pair.car.cdr, unquote_cnt, max_unq)
-                    ),
-                    cdr
-                );
-            }
-            var lists = [];
-            return (function next(node) {
-                var value = evaluate(node.car, {
-                    env: self,
-                    dynamic_env,
-                    use_dynamic,
-                    error
-                });
-                lists.push(value);
-                if (is_pair(node.cdr)) {
-                    return next(node.cdr);
-                }
-                return unpromise(lists, function(arr) {
-                    if (arr.some(x => !is_pair(x))) {
-                        if (is_pair(pair.cdr) &&
-                            LSymbol.is(pair.cdr.car, '.') &&
-                            is_pair(pair.cdr.cdr) &&
-                            is_nil(pair.cdr.cdr.cdr)) {
-                            return pair.cdr.cdr.car;
-                        }
-                        if (!(is_nil(pair.cdr) || is_pair(pair.cdr))) {
-                            const msg = "You can't splice atom inside list";
-                            throw new Error(msg);
-                        }
-                        if (arr.length > 1) {
-                            const msg = "You can't splice multiple atoms inside list";
-                            throw new Error(msg);
-                        }
-                        if (!(is_pair(pair.cdr) && is_nil(arr[0]))) {
-                            return arr[0];
-                        }
-                    }
-                    // don't create Cycles
-                    arr = arr.map(eval_pair => {
-                        if (splices.has(eval_pair)) {
-                            return eval_pair.clone();
-                        } else {
-                            splices.add(eval_pair);
-                            return eval_pair;
-                        }
-                    });
-                    const value = recur(pair.cdr, 0, 1);
-                    if (is_nil(value) && is_nil(arr[0])) {
-                        return undefined;
-                    }
-                    return unpromise(value, value => {
-                        if (is_nil(arr[0])) {
-                            return value;
-                        }
-                        if (arr.length === 1) {
-                            return join(arr[0], value);
-                        }
-                        var result = arr.reduce((result, eval_pair) => {
-                            return join(result, eval_pair);
-                        });
-                        return join(result, value);
-                    });
-                });
-            })(pair.car.cdr);
-        }
-        // -----------------------------------------------------------------
-        var splices = new Set();
-        function recur(pair, unquote_cnt, max_unq) {
-            if (is_pair(pair)) {
-                if (is_pair(pair.car)) {
-                    if (LSymbol.is(pair.car.car, 'unquote-splicing')) {
-                        return unquote_splice(pair, unquote_cnt + 1, max_unq);
-                    }
-                    if (LSymbol.is(pair.car.car, 'unquote')) {
-                        // + 2 - one for unquote and one for unquote splicing
-                        if (unquote_cnt + 2 === max_unq &&
-                            is_pair(pair.car.cdr) &&
-                            is_pair(pair.car.cdr.car) &&
-                            LSymbol.is(pair.car.cdr.car.car, 'unquote-splicing')) {
-                            const rest = pair.car.cdr;
-                            return new Pair(
-                                new Pair(
-                                    new LSymbol('unquote'),
-                                    unquote_splice(rest, unquote_cnt + 2, max_unq)
-                                ),
-                                nil
-                            );
-                        } else if (is_pair(pair.car.cdr) &&
-                                   !is_nil(pair.car.cdr.cdr)) {
-                            if (is_pair(pair.car.cdr.car)) {
-                                // values inside unquote are lists
-                                const result = [];
-                                return (function recur(node) {
-                                    if (is_nil(node)) {
-                                        return Pair.from_array(result);
-                                    }
-                                    return unpromise(evaluate(node.car, {
-                                        env: self,
-                                        dynamic_env,
-                                        use_dynamic,
-                                        error
-                                    }), function(next) {
-                                        result.push(next);
-                                        return recur(node.cdr);
-                                    });
-                                })(pair.car.cdr);
-                            } else {
-                                // same as in guile if (unquote 1 2 3) it should be
-                                // spliced - scheme spec say it's unspecify but it
-                                // work like in CL
-                                return pair.car.cdr;
-                            }
-                        }
-                    }
-                }
-                if (LSymbol.is(pair.car, 'quasiquote')) {
-                    var cdr = recur(pair.cdr, unquote_cnt, max_unq + 1);
-                    return new Pair(pair.car, cdr);
-                }
-                if (LSymbol.is(pair.car, 'quote')) {
-                    return new Pair(
-                        pair.car,
-                        recur(pair.cdr, unquote_cnt, max_unq)
-                    );
-                }
-                if (LSymbol.is(pair.car, 'unquote')) {
-                    unquote_cnt++;
-                    if (unquote_cnt < max_unq) {
-                        return new Pair(
-                            new LSymbol('unquote'),
-                            recur(pair.cdr, unquote_cnt, max_unq)
-                        );
-                    }
-                    if (unquote_cnt > max_unq) {
-                        throw new Error("You can't call `unquote` outside " +
-                                        "of quasiquote");
-                    }
-                    if (is_pair(pair.cdr)) {
-                        if (!is_nil(pair.cdr.cdr)) {
-                            if (is_pair(pair.cdr.car)) {
-                                // TODO: test if this part is needed
-                                // this part was duplicated in previous section
-                                // if (LSymbol.is(pair.car.car, 'unquote')) {
-                                // so this probably can be removed
-                                const result = [];
-                                // evaluate all values in unquote
-                                return (function recur(node) {
-                                    if (is_nil(node)) {
-                                        return Pair.from_array(result);
-                                    }
-                                    return unpromise(evaluate(node.car, {
-                                        env: self,
-                                        dynamic_env,
-                                        use_dynamic,
-                                        error
-                                    }), function(next) {
-                                        result.push(next);
-                                        return recur(node.cdr);
-                                    });
-                                })(pair.cdr);
-                            } else {
-                                return pair.cdr;
-                            }
-                        } else {
-                            return evaluate(pair.cdr.car, {
-                                env: self,
-                                dynamic_env,
-                                error
-                            });
-                        }
-                    } else {
-                        return pair.cdr;
-                    }
-                }
-                return resolve_pair(pair, (pair) => {
-                    return recur(pair, unquote_cnt, max_unq);
-                });
-            } else if (is_plain_object(pair)) {
-                return quote_object(pair, unquote_cnt, max_unq);
-            } else if (pair instanceof Array) {
-                return quote_vector(pair, unquote_cnt, max_unq);
-            }
-            return pair;
-        }
-        // -----------------------------------------------------------------
-        function clear(node) {
-            if (is_pair(node)) {
-                delete node[__data__];
-                if (!node.have_cycles('car')) {
-                    clear(node.car);
-                }
-                if (!node.have_cycles('cdr')) {
-                    clear(node.cdr);
-                }
-            }
-        }
-        // -----------------------------------------------------------------
-        if (is_plain_object(arg.car) && !unquoted_arr(Object.values(arg.car))) {
-            return quote(arg.car);
-        }
-        if (Array.isArray(arg.car) && !unquoted_arr(arg.car)) {
-            return quote(arg.car);
-        }
-        if (is_pair(arg.car) &&
-            !arg.car.find('unquote') &&
-            !arg.car.find('unquote-splicing') &&
-            !arg.car.find('quasiquote')) {
-            return quote(arg.car);
-        }
-        var x = recur(arg.car, 0, 1);
-        return unpromise(x, value => {
-            // clear nested data for tests
-            clear(value);
-            return quote(value);
-        });
-    }, `(quasiquote list)
+        }, `(quasiquote list)
 
-        Similar macro to \`quote\` but inside it you can use special expressions (unquote
-        x) abbreviated to ,x that will evaluate x and insert its value verbatim or
-        (unquote-splicing x) abbreviated to ,@x that will evaluate x and splice the value
-        into the result. Best used with macros but it can be used outside.`),
+            Similar macro to \`quote\` but inside it you can use special expressions
+            (unquote x) abbreviated to ,x that will evaluate x and insert its value
+            verbatim or (unquote-splicing x) abbreviated to ,@x that will evaluate x
+            and splice the value into the result. Best used with macros but it
+            can be used outside.`);
+    })(),
     // ------------------------------------------------------------------
     clone: doc('clone', function clone(list) {
         typecheck('clone', list, 'pair');
@@ -10341,9 +10206,13 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'append!': doc('append!', function(...items) {
         var is_list = global_env.get('list?');
-        return items.reduce((acc, item) => {
+        const last = items.length - 1;
+        return items.reduce((acc, item, i) => {
             typecheck('append!', acc, ['nil', 'pair']);
-            if ((is_pair(item) || is_nil(item)) && !is_list(item)) {
+            // only the non-last arguments must be proper lists; the last
+            // argument may be an improper list or any object (R7RS append) so
+            // that e.g. `(append '(a) '(b . c)) => (a b . c) works.
+            if (i < last && (is_pair(item) || is_nil(item)) && !is_list(item)) {
                 throw new Error('append!: Invalid argument, value is not a list');
             }
             if (is_nil(acc)) {
@@ -10369,8 +10238,13 @@ var global_env = new Environment({
             return nil;
         }
         if (is_pair(arg)) {
-            var arr = global_env.get('list->array')(arg).reverse();
-            return global_env.get('array->list')(arr);
+            let result = nil;
+            let node = arg;
+            while (is_pair(node)) {
+                result = new Pair(node.car, result);
+                node = node.cdr;
+            }
+            return result;
         } else if (Array.isArray(arg)) {
             return arg.reverse();
         } else {
@@ -10742,7 +10616,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'array->list': doc('array->list', function(array) {
         typecheck('array->list', array, 'array');
-        return Pair.from_array(array);
+        return Pair.from_array(array, false);
     }, `(array->list array)
 
         Function that converts a JavaScript array to a LIPS cons list.`),
@@ -10763,7 +10637,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     apply: doc('apply', function apply(fn, ...args) {
         typecheck('apply', fn, 'function', 1);
-        var last = args.pop();
+        const last = args.pop();
         typecheck('apply', last, ['pair', 'nil'], args.length + 2);
         args = args.concat(global_env.get('list->array').call(this, last));
         return fn.apply(this, prepare_fn_args(fn, args));
@@ -10810,91 +10684,57 @@ var global_env = new Environment({
 
         Function that parses a string into a number.`),
     // ------------------------------------------------------------------
-    'try': doc(new Macro('try', function(code, { use_dynamic, error, ...rest }) {
-        return new Promise((resolve, reject) => {
-            let catch_clause, finally_clause, body_error;
-            if (LSymbol.is(code.cdr.car.car, 'catch')) {
-                catch_clause = code.cdr.car;
-                if (is_pair(code.cdr.cdr) &&
-                    LSymbol.is(code.cdr.cdr.car.car, 'finally')) {
-                    finally_clause = code.cdr.cdr.car;
-                }
-            } else if (LSymbol.is(code.cdr.car.car, 'finally')) {
-                finally_clause = code.cdr.car;
+    'try': doc(new Macro('try', function(source, state) {
+        const code = source.cdr;
+        let catch_clause = null, finally_clause = null;
+        let rest = code.cdr;
+        if (is_pair(rest) && is_pair(rest.car) &&
+            LSymbol.is(rest.car.car, 'catch')) {
+            catch_clause = rest.car;
+            rest = rest.cdr;
+        }
+        if (is_pair(rest) && is_pair(rest.car) &&
+            LSymbol.is(rest.car.car, 'finally')) {
+            finally_clause = rest.car;
+        }
+        if (!catch_clause && !finally_clause) {
+            throw new Error('try: invalid syntax');
+        }
+        let catch_var = null;
+        if (catch_clause) {
+            if (!is_pair(catch_clause.cdr) || !is_pair(catch_clause.cdr.car)) {
+                throw new Error('try: invalid syntax: catch require variable name');
             }
-            if (!(finally_clause || catch_clause)) {
-                throw new Error('try: invalid syntax');
+            catch_var = catch_clause.cdr.car.car;
+            if (!(catch_var instanceof LSymbol)) {
+                throw new Error('try: invalid syntax: catch require variable name');
             }
-            function finalize(result) {
-                resolve(result);
-                throw new IgnoreException('[CATCH]');
-            }
-            let next = (result, next) => {
-                next(result);
-            }
-            if (finally_clause) {
-                next = function(result, cont) {
-                    // prevent infinite loop when finally throw exception
-                    next = reject;
-                    args.error = (e) => {
-                        throw e;
-                    };
-                    unpromise(evaluate_with_stacktrace(new Pair(
-                        new LSymbol('begin'),
-                        finally_clause.cdr
-                    ), args), function() {
-                        cont(result);
-                    });
-                };
-            }
-            const args = {
-                env: this,
-                use_dynamic,
-                dynamic_env: this,
-                error: (e) => {
-                    if (e instanceof IgnoreException) {
-                        throw e;
-                    }
-                    body_error = true;
-                    if (catch_clause) {
-                        var env = this.inherit('try');
-                        const name = catch_clause.cdr.car.car;
-                        if (!(name instanceof LSymbol)) {
-                            throw new Error('try: invalid syntax: catch require variable name');
-                        }
-                        env.set(name, e);
-                        let catch_error;
-                        var catch_args = {
-                            env,
-                            use_dynamic,
-                            dynamic_env: this,
-                            error: (e) => {
-                                catch_error = true;
-                                reject(e);
-                                throw new IgnoreException('[CATCH]');
-                            }
-                        };
-                        const value = evaluate_with_stacktrace(new Pair(
-                            new LSymbol('begin'),
-                            catch_clause.cdr.cdr
-                        ), catch_args);
-                        unpromise(value, function handler(result) {
-                            if (!catch_error) {
-                                next(result, finalize);
-                            }
-                        });
-                    } else {
-                        next(undefined, () => {
-                            reject(e);
-                        });
-                    }
-                }
-            };
-            const value = evaluate_with_stacktrace(code.car, args);
-            unpromise(value, function(result) {
-                next(result, resolve);
-            }, args.error);
+        }
+        // Register an exception handler for the dynamic extent of the body.
+        // The main tco_generator loop dispatches to it (running the catch
+        // and/or finally clause) when an exception is thrown while evaluating
+        // the body - see the loop in tco_generator.
+        const handler = {
+            env: this,
+            use_dynamic: state.use_dynamic,
+            dynamic_env: state.dynamic_env,
+            catch_var,
+            catch_body: catch_clause ? catch_clause.cdr.cdr : null,
+            finally_body: finally_clause ? finally_clause.cdr : null,
+            return_cc: state.cc,
+            source
+        };
+        state.handlers.push(handler);
+        // normal completion of the body: unregister the handler, run finally
+        // (if any) and continue with the body's value.
+        state.cc = new Continuation('try', null, source, state, function(st) {
+            const result = st.object;
+            unregister_handler(st, handler);
+            finish_try(st, handler, 'return', result);
         });
+        state.object = code.car;
+        state.ready = false;
+        return state;
     }), `(try expr (catch (e) code))
          (try expr (catch (e) code) (finally code))
          (try expr (finally code))
@@ -10908,82 +10748,19 @@ var global_env = new Environment({
     }, `(raise obj)
 
         Throws the object verbatim (no wrapping an a new Error).`),
+    // ------------------------------------------------------------------
     'throw': doc('throw', function(message) {
         throw new Error(message);
     }, `(throw string)
 
         Throws a new exception.`),
     // ------------------------------------------------------------------
-    find: doc('find', function find(arg, list) {
-        typecheck('find', list, ['pair', 'nil']);
-        if (is_null(list)) {
-            return false;
-        }
-        var fn = matcher('find', arg);
-        return unpromise(fn(list.car), function(value) {
-            if (value && !is_nil(value)) {
-                return list.car;
-            }
-            return find(arg, list.cdr);
-        });
-    }, `(find fn list)
-        (find regex list)
-        (find atom list)
+    matcher: doc(
+        'matcher',
+        matcher,
+        `(matcher object)
 
-        Higher-order function that finds the first value for which fn return true.
-        If called with a regex or any atom it will create a matcher function.`),
-    // ------------------------------------------------------------------
-    'for-each': doc('for-each', function(fn, ...lists) {
-        typecheck('for-each', fn, 'function');
-        lists.forEach((arg, i) => {
-            typecheck('for-each', arg, ['pair', 'nil'], i + 1);
-        });
-        // we need to use call(this because babel transpile this code into:
-        // var ret = map.apply(void 0, [fn].concat(lists));
-        // it don't work with weakBind
-        var ret = global_env.get('map').call(this, fn, ...lists);
-        if (is_promise(ret)) {
-            return ret.then(() => {});
-        }
-    }, `(for-each fn . lists)
-
-        Higher-order function that calls function \`fn\` on each
-        value of the argument. If you provide more than one list
-        it will take each value from each list and call \`fn\` function
-        with that many arguments as number of list arguments.`),
-    // ------------------------------------------------------------------
-    map: doc('map', function map(fn, ...lists) {
-        typecheck('map', fn, 'function');
-        var is_list = global_env.get('list?');
-        lists.forEach((arg, i) => {
-            typecheck('map', arg, ['pair', 'nil'], i + 1);
-            // detect cycles
-            if (is_pair(arg) && !is_list.call(this, arg)) {
-                throw new Error(`map: argument ${i + 1} is not a list`);
-            }
-        });
-        if (lists.length === 0) {
-            return nil;
-        }
-        if (lists.some(is_nil)) {
-            return nil;
-        }
-        var args = lists.map(l => l.car);
-        const { env, dynamic_env, use_dynamic } = this;
-        const result = call_function(fn, args, { env, dynamic_env, use_dynamic });
-        return unpromise(result, (head) => {
-            return unpromise(map.call(this, fn, ...lists.map(l => l.cdr)), (rest) => {
-                return new Pair(head, rest);
-            });
-        });
-    }, `(map fn . lists)
-
-        Higher-order function that calls function \`fn\` with each
-        value of the list. If you provide more then one list as argument
-        it will take each value from each list and call \`fn\` function
-        with that many argument as number of list arguments. The return
-        values of the fn calls are accumulated in a result list and
-        returned by map.`),
+         Higher order function return function that compares argument to object`),
     // ------------------------------------------------------------------
     'list?': doc('list?', function(obj) {
         var node = obj;
@@ -11003,25 +10780,6 @@ var global_env = new Environment({
 
         Predicate that tests if value is a proper linked list structure.
         The car of each pair can be any value. It returns false on cyclic lists."`),
-    // ------------------------------------------------------------------
-    fold: doc('fold', fold('fold', function(fold, fn, init, ...lists) {
-        typecheck('fold', fn, 'function');
-        lists.forEach((arg, i) => {
-            typecheck('fold', arg, ['pair', 'nil'], i + 1);
-        });
-        if (lists.some(is_nil)) {
-            return init;
-        }
-        const value = fold.call(this, fn, init, ...lists.map(l => l.cdr));
-        return unpromise(value, value => {
-            return fn(...lists.map(l => l.car), value);
-        });
-    }), `(fold fn init . lists)
-
-         Function fold is left-to-right reversal of reduce. It call \`fn\`
-         on each pair of elements of the list and returns a single value.
-         e.g. it computes (fn 'a 'x (fn 'b 'y (fn 'c 'z 'foo)))
-         for: (fold fn 'foo '(a b c) '(x y z))`),
     // ------------------------------------------------------------------
     pluck: doc('pluck', function pluck(...keys) {
         return function(obj) {
@@ -11044,52 +10802,6 @@ var global_env = new Environment({
         called with an object will return that key from the object.
         If called with more then one string the returned function will
         create a new object by copying all properties from the given object.`),
-    // ------------------------------------------------------------------
-    reduce: doc('reduce', fold('reduce', function(reduce, fn, init, ...lists) {
-        typecheck('reduce', fn, 'function');
-        lists.forEach((arg, i) => {
-            typecheck('reduce', arg, ['pair', 'nil'], i + 1);
-        });
-        if (lists.some(is_nil)) {
-            return init;
-        }
-        return unpromise(fn(...lists.map(l => l.car), init), (value) => {
-            return reduce.call(this, fn, value, ...lists.map(l => l.cdr));
-        });
-    }), `(reduce fn init list . lists)
-
-         Higher-order function that takes each element of the list and calls
-         the fn with result of previous call or init and the next element
-         of the list until each element is processed, and returns a single value
-         as result of last call to \`fn\` function.
-         e.g. it computes (fn 'c 'z (fn 'b 'y (fn 'a 'x 'foo)))
-         for: (reduce fn 'foo '(a b c) '(x y z))`),
-    // ------------------------------------------------------------------
-    filter: doc('filter', function filter(arg, list) {
-        typecheck('filter', arg, ['regex', 'function']);
-        typecheck('filter', list, ['pair', 'nil']);
-        var array = global_env.get('list->array')(list);
-        var result = [];
-        var fn = matcher('filter', arg);
-        return (function loop(i) {
-            function next(value) {
-                if (value && !is_nil(value)) {
-                    result.push(item);
-                }
-                return loop(++i);
-            }
-            if (i === array.length) {
-                return Pair.from_array(result);
-            }
-            var item = array[i];
-            return unpromise(fn(item), next);
-        })(0);
-    }, `(filter fn list)
-        (filter regex list)
-
-        Higher-order function that calls \`fn\` for each element of the list
-        and return a new list for only those elements for which fn returns
-        a truthy value. If called with a regex it will create a matcher function.`),
     // ------------------------------------------------------------------
     compose: doc(
         compose,
@@ -11372,101 +11084,43 @@ var global_env = new Environment({
 
          Function that compares two values if they are identical.`),
     // ------------------------------------------------------------------
-    or: doc(new Macro('or', function(code, { use_dynamic, error }) {
-        var args = global_env.get('list->array')(code);
-        var self = this;
-        const dynamic_env = self;
-        if (!args.length) {
-            return false;
-        }
-        var result;
-        return (function loop() {
-            function next(value) {
-                result = value;
-                if (!is_false(result)) {
-                    return result;
-                } else {
-                    return loop();
-                }
-            }
-            if (!args.length) {
-                if (!is_false(result)) {
-                    return result;
-                } else {
-                    return false;
-                }
-            } else {
-                var arg = args.shift();
-                var value = evaluate(arg, { env: self, dynamic_env, use_dynamic, error });
-                return unpromise(value, next);
-            }
-        })();
-    }), `(or . expressions)
-
-         Macro that executes the values one by one and returns the first that is
-         a truthy value. If there are no expressions that evaluate to true it
-         returns false.`),
-    // ------------------------------------------------------------------
-    and: doc(new Macro('and', function(code, { use_dynamic, error } = {}) {
-        const args = global_env.get('list->array')(code);
-        const self = this;
-        const dynamic_env = self;
-        if (!args.length) {
-            return true;
-        }
-        let result;
-        const eval_args = { env: self, dynamic_env, use_dynamic, error };
-        return (function loop() {
-            function next(value) {
-                result = value;
-                if (is_false(result)) {
-                    return result;
-                } else {
-                    return loop();
-                }
-            }
-            if (!args.length) {
-                if (!is_false(result)) {
-                    return result;
-                } else {
-                    return false;
-                }
-            } else {
-                const arg = args.shift();
-                return unpromise(evaluate(arg, eval_args), next);
-            }
-        })();
-    }), `(and . expressions)
-
-         Macro that evaluates each expression in sequence and if any value returns false
-         it will stop and return false. If each value returns true it will return the
-         last value. If it's called without arguments it will return true.`),
     // bit operations
     '|': doc('|', function(a, b) {
         return LNumber(a).or(b);
     }, `(| a b)
 
         Function that calculates the bitwise or operation.`),
+    // ------------------------------------------------------------------
     '&': doc('&', function(a, b) {
         return LNumber(a).and(b);
     }, `(& a b)
 
         Function that calculates the bitwise and operation.`),
+    // ------------------------------------------------------------------
     '~': doc('~', function(a) {
         return LNumber(a).neg();
     }, `(~ number)
 
         Function that calculates the bitwise inverse (flip all the bits).`),
+    // ------------------------------------------------------------------
+    '^': doc('^', function(a, b) {
+        return LNumber(a).op('^', b);
+    }, `(^ a b)
+
+        Function that calculates the bitwise xor (exclusive or) operation.`),
+    // ------------------------------------------------------------------
     '>>': doc('>>', function(a, b) {
         return LNumber(a).shr(b);
     }, `(>> a b)
 
         Function that right shifts the value a by value b bits.`),
+    // ------------------------------------------------------------------
     '<<': doc('<<', function(a, b) {
         return LNumber(a).shl(b);
     }, `(<< a b)
 
         Function that left shifts the value a by value b bits.`),
+    // ------------------------------------------------------------------
     not: doc('not', function not(value) {
         return !value;
     }, `(not object)
@@ -11726,6 +11380,12 @@ function typecheck_text_port(fn, arg, type) {
 }
 // -------------------------------------------------------------------------
 function typecheck(fn, arg, expected, position = null) {
+    // fast path: the numeric typecheck done by every math op is the single most
+    // frequent call - short-circuit it before the (memoized-but-still-costly)
+    // type() lookup + toLowerCase. LNumber is exactly type 'number'.
+    if (expected === 'number' && arg instanceof LNumber) {
+        return;
+    }
     fn = fn.valueOf();
     const arg_type = type(arg).toLowerCase();
     if (is_function(expected)) {
@@ -11774,7 +11434,7 @@ function type(obj) {
         return t;
     }
     if (typeof obj === 'object') {
-        for (let [key, value] of Object.entries(type_mapping)) {
+        for (let [key, value] of type_mapping_entries) {
             if (obj instanceof value) {
                 return key;
             }
@@ -11838,9 +11498,6 @@ function resolve_promises(arg) {
             node.have_cycles('car') ? node.car : await resolve(node.car),
             node.have_cycles('cdr') ? node.cdr : await resolve(node.cdr)
         );
-        if (node[__data__]) {
-            pair[__data__] = true;
-        }
         return pair;
     }
     function resolve(node) {
@@ -11890,40 +11547,6 @@ function evaluate_args(rest, { use_dynamic, ...options }) {
 }
 
 // -------------------------------------------------------------------------
-function invoke_macro(macro, code, eval_args) {
-    return resolve_promises(macro.invoke(code, eval_args));
-}
-
-// -------------------------------------------------------------------------
-function evaluate_syntax(macro, code, eval_args) {
-    return unpromise(invoke_macro(macro, code, eval_args), function(value) {
-        if (is_pair(value)) {
-            value.mark_cycles();
-        }
-        return quote(value);
-    });
-}
-// -------------------------------------------------------------------------
-function evaluate_macro(macro, code, eval_args) {
-    function finalize(result) {
-        if (is_pair(result)) {
-            result.mark_cycles();
-            return result;
-        }
-        return quote(result);
-    }
-    return unpromise(invoke_macro(macro, code, eval_args), function ret(value) {
-        if (!value || value && value[__data__] || self_evaluated(value)) {
-            return value;
-        } else {
-            return unpromise(evaluate(value, eval_args), finalize);
-        }
-    }, error => {
-        throw error;
-    });
-}
-
-// -------------------------------------------------------------------------
 function prepare_fn_args(fn, args) {
     const js_function = is_bound(fn) && !is_lips_function(fn);
     if (js_function && !is_object_bound(fn) &&
@@ -11963,37 +11586,27 @@ function prepare_fn_args(fn, args) {
 
 // -------------------------------------------------------------------------
 function call_function(fn, args, { env, dynamic_env, use_dynamic } = {}) {
-    const scope = env?.new_frame(fn, args);
-    const dynamic_scope = dynamic_env?.new_frame(fn, args);
-    const context = new LambdaContext({
-        env: scope,
-        use_dynamic,
-        dynamic_env: dynamic_scope
-    });
-    return resolve_promises(fn.apply(context, args));
+    if (!fn._context) {
+        read_only(fn, '_context', new LambdaContext({}), { hidden: true });
+    }
+    // refresh the context each call so functions that read `this.env`
+    // (env, current-environment, ...) see the CURRENT scope
+    // and `arguments` reflect this call - not the first call's (perf #127).
+    // Store the raw scope + args; the per-call env frames (new_frame) are built
+    // LAZILY on first access to this.env / this.dynamic_env. Native builtins
+    // (arithmetic, predicates, ...) never read them, so they allocate nothing -
+    // this was ~2 Environments per builtin call in hot arithmetic code.
+    const ctx = fn._context;
+    ctx._raw_env = env;
+    ctx._raw_dyn = dynamic_env;
+    ctx._fn = fn;
+    ctx._args = args;
+    ctx._env_computed = false;
+    ctx._dyn_computed = false;
+    ctx.use_dynamic = use_dynamic;
+    return resolve_promises(fn.apply(ctx, args));
 }
 
-// -------------------------------------------------------------------------
-function apply(fn, args, { env, dynamic_env, use_dynamic, error = () => {} } = {}) {
-    args = evaluate_args(args, { env, dynamic_env, error, use_dynamic });
-    return unpromise(args, function(args) {
-        if (is_raw_lambda(fn)) {
-            // lambda need environment as context
-            // normal functions are bound to their contexts
-            fn = unbind(fn);
-        }
-        args = prepare_fn_args(fn, args);
-        const _args = args.slice();
-        const result = call_function(fn, _args, { env, dynamic_env, use_dynamic });
-        return unpromise(result, (result) => {
-            if (is_pair(result)) {
-                result.mark_cycles();
-                return quote(result);
-            }
-            return box(result);
-        }, error);
-    });
-}
 // -------------------------------------------------------------------------
 // :: Parameters for make-parameter and parametrize
 // -------------------------------------------------------------------------
@@ -12035,11 +11648,35 @@ class Parameter {
 }
 // -------------------------------------------------------------------------
 class LambdaContext {
-    env;
-    dynamic_env;
     use_dynamic;
     constructor(payload) {
         Object.assign(this, payload);
+    }
+    // env / dynamic_env frames are created lazily (see call_function): a native
+    // builtin that never reads them pays no allocation.
+    get env() {
+        if (!this._env_computed) {
+            this._env_frame = this._raw_env
+                ? this._raw_env.new_frame(this._fn, this._args) : this._raw_env;
+            this._env_computed = true;
+        }
+        return this._env_frame;
+    }
+    set env(v) {
+        this._env_frame = v;
+        this._env_computed = true;
+    }
+    get dynamic_env() {
+        if (!this._dyn_computed) {
+            this._dyn_frame = this._raw_dyn
+                ? this._raw_dyn.new_frame(this._fn, this._args) : this._raw_dyn;
+            this._dyn_computed = true;
+        }
+        return this._dyn_frame;
+    }
+    set dynamic_env(v) {
+        this._dyn_frame = v;
+        this._dyn_computed = true;
     }
     get __name__() {
         return this.env.__name__;
@@ -12053,23 +11690,17 @@ class LambdaContext {
 }
 // -------------------------------------------------------------------------
 function search_param(env, param) {
-    let candidate = env.get(param.__name__, { throwError: false });
-    if (is_parameter(candidate) && candidate !== param) {
-        return candidate;
-    }
-    let is_first_env = true;
+    // Walk the dynamic environment chain looking for a shadowing parameter
+    // installed by `parameterize` (a binding of the same name whose value is a
+    // different parameter object). env.get resolves through the whole chain, so
+    // stepping via __parent__ finds the nearest shadow.
     const top_env = user_env.get('**interaction-environment**');
-    while (true) {
-        const parent = env.get('parent.frame', { throwError: false });
-        env = parent(0);
-        if (env === top_env) {
-            break;
-        }
-        is_first_env = false;
-        candidate = env.get(param.__name__, { throwError: false });
+    while (is_env(env) && env !== top_env) {
+        const candidate = env.get(param.__name__, { throwError: false });
         if (is_parameter(candidate) && candidate !== param) {
             return candidate;
         }
+        env = env.__parent__;
     }
     return param;
 }
@@ -12078,116 +11709,998 @@ function search_param(env, param) {
 // :: Continuations object from call/cc
 // -------------------------------------------------------------------------
 class Continuation {
-    __value__;
-    constructor(k) {
-        this.__value__ = k;
+    constructor(name, object, code, state, next, data) {
+        const { env = null, cc = null } = state;
+        // plain assignments (not read_only/defineProperty): a Continuation is
+        // allocated on nearly every evaluation step, so 6 Object.defineProperty
+        // calls per instance dominated the profile. `__object__` is anyway
+        // reassigned in next_pair/next_begin, so write-protection was moot.
+        this.__env__ = env;
+        this.__code__ = code;
+        this.__object__ = object;
+        this.__continuation__ = cc;
+        this.__next__ = next;
+        const n = state.cc ? state.cc._state.n + 1 : 0;
+        // plain assignment (was read_only/defineProperty): this ran on every
+        // Continuation and was the single biggest defineProperty cost left in
+        // the profile. The sibling fields above are already plain, so _state
+        // being enumerable too is consistent (repr of a continuation does not
+        // enumerate its fields).
+        this._state = {
+            ...data,
+            i: 0,
+            n,
+            args: [],
+            state,
+            name,
+            count: 0
+        };
     }
-    invoke() {
-        if (this.__value__ === null) {
-            throw new Error('Continuations are not implemented yet');
+    get __name__() {
+        if (this._state.count === 0) {
+            return this._state.name;
+        }
+        let result = `clone(${this._state.name})`;
+        if (this._state.count > 1) {
+            result += `[${this._state.count}]`;
+        }
+        return result;
+    }
+    hidden() {
+        // we ignore top continuations that have no data
+        // and _ignore that is added in call/cc when invoking argument
+        return this._state.name === 'top' || this.__code__._ignore;
+    }
+    trace(callback) {
+        // the state records every (non-hidden) continuation seen during
+        // evaluation, outermost first - this is the call stack (the cc chain
+        // alone loses tail frames to TCO).
+        const state = this._state.state;
+        if (!state.stack) {
+            return [];
+        }
+        return state.stack.map(callback);
+    }
+    clone(mark = true) {
+        let cc = this.__continuation__;
+        if (cc) {
+            cc = cc.clone(mark);
+        }
+        const env = this.__env__;
+        const copy = new Continuation(
+            this.__name__,
+            this.__object__,
+            this.__code__,
+            { env, cc },
+            this.__next__
+        );
+        let count = this._state.count;
+        if (mark) {
+            count++;
+        }
+        copy._state = { ...this._state, count, args: [...this._state.args] };
+        return copy;
+    }
+}
+
+// -------------------------------------------------------------------------
+// :: code based on ideas from jsScheme by Alex Yakovlev
+// -------------------------------------------------------------------------
+class State {
+    constructor(object, cc, { env, dynamic_env, use_dynamic, error, macro_expand }) {
+        if (is_debug('continuations')) {
+            console.log('[STATE] ' + macro_expand);
+            console.trace();
+        }
+        this.env = env;
+        this.object = object;
+        this.cc = cc;
+        this.dynamic_env = dynamic_env;
+        this.error = error;
+        this.use_dynamic = use_dynamic;
+        this.ready = false;
+        this.macro_expand = macro_expand;
+        this.promise_quote = false;
+        // exception handlers registered by `try` in THIS eval loop. Kept per
+        // state (not global) so they survive async suspension at an `await`
+        // and can't be clobbered by other interleaving eval loops.
+        this.handlers = [];
+        // ordered list of continuations seen during evaluation (outermost
+        // first). Records the call stack for stack-trace/error augmentation -
+        // needed because TCO drops tail frames from the continuation chain.
+        // `_stack_set` gives O(1) dedup (Array.includes per step is O(n^2)).
+        // Allocated lazily (only when stack collection is enabled with -t/trace)
+        // - otherwise this is a bare array + Set wasted on every eval step, and
+        // a scheme lambda called from JS (.map callback) builds one State each.
+        this.stack = null;
+        this._stack_set = null;
+    }
+    cont() {
+        if (is_debug('continuations')) {
+            if (this.cc._state.name == 'top') {
+                console.log('[CONTINUE] => top');
+            } else {
+                console.log('[CONTINUE] => ' + to_string(this.cc.__code__));
+                console.log('              ' + to_string(this.cc.__object__));
+            }
+        }
+        // we use uniterate because ignore need to be generator but all other
+        // callbacks are normal functions, so yield* will not work
+        return uniterate(this.cc.__next__(this));
+    }
+    *eval() {
+        if (this.object === null) {
+            this.ready = false;
+        }
+        if (this.object === undefined) {
+            this.ready = true;
+        }
+        // record the current continuation for the stack trace (TCO removes tail
+        // frames from the cc chain, so we accumulate them here as they're seen).
+        // The stack/_stack_set are created lazily on first use so the common
+        // (no-trace) path allocates neither.
+        if (_collect_stack) {
+            if (this._stack_set === null) {
+                this.stack = [];
+                this._stack_set = new Set();
+            }
+            const cc = this.cc;
+            if (!this._stack_set.has(cc) && !cc.hidden()) {
+                this._stack_set.add(cc);
+                this.stack.push(cc);
+            }
+        }
+        if (!this.ready) {
+            if (is_debug(['eval', 'macro'])) {
+                console.log(`eval: ` + to_string(this.object, true));
+                console.log('scope: ' + JSON.stringify(this.env.names()));
+            }
+            yield* evaluate_code(this);
+            if (is_debug(['eval', 'macro'])) {
+                console.log('result: ' + to_string(this.object, true));
+            }
+        }
+        return this.ready;
+    }
+}
+// -------------------------------------------------------------------------
+const top_cc = new Continuation('top', null, null, {}, (state) => {
+    throw state;
+});
+
+// -------------------------------------------------------------------------
+// :: Exception handler stack used by the `try` macro. Instead of running the
+// :: body in a nested eval, `try` pushes a handler here and lets the main
+// :: tco_generator loop dispatch to it when an exception is thrown. This makes
+// :: try/catch/finally cooperate with the continuation machinery (call/cc can
+// :: be captured inside the body or the catch clause and re-entered).
+// -------------------------------------------------------------------------
+function unregister_handler(state, handler) {
+    const i = state.handlers.indexOf(handler);
+    if (i !== -1) {
+        state.handlers.splice(i, 1);
+    }
+}
+// -------------------------------------------------------------------------
+// After a try body or catch clause finishes, run the finally clause (if any)
+// and then either continue with a value (kind === 'return') or re-throw the
+// exception (kind === 'raise'). Everything is expressed as continuations so it
+// flows through the normal loop.
+function finish_try(state, handler, kind, payload) {
+    function done(st) {
+        if (kind === 'return') {
+            st.env = handler.env;
+            st.dynamic_env = handler.dynamic_env;
+            st.use_dynamic = handler.use_dynamic;
+            st.cc = handler.return_cc;
+            st.object = payload;
+            st.ready = true;
+        } else {
+            // re-throw after finally - caught by an outer handler or the loop
+            throw payload;
+        }
+    }
+    if (handler.finally_body) {
+        state.env = handler.env;
+        state.dynamic_env = handler.dynamic_env;
+        state.use_dynamic = handler.use_dynamic;
+        state.cc = new Continuation('finally', null, handler.source, state, done);
+        state.object = new Pair(new LSymbol('begin'), handler.finally_body);
+        state.ready = false;
+    } else {
+        done(state);
+    }
+}
+
+function evaluate(...args) {
+    return uniterate(tco_generator(...args));
+}
+// -------------------------------------------------------------------------
+// :: Tail Call Optimized eval
+// -------------------------------------------------------------------------
+function* tco_generator(code, { env, cc, dynamic_env, use_dynamic, macro_expand = false } ) {
+    if (!is_env(dynamic_env)) {
+        dynamic_env = env === true ? user_env : (env || user_env);
+    }
+    if (use_dynamic) {
+        env = dynamic_env;
+    } else if (env === true) {
+        env = user_env;
+    } else {
+        env = env || user_env;
+    }
+    const state = new State(code, cc || top_cc, { env, cc, dynamic_env, use_dynamic, macro_expand });
+    // handlers registered by an enclosing eval don't belong to this loop - only
+    // dispatch to handlers pushed while running this generator.
+    while (true) {
+        try {
+            if (yield* state.eval()) {
+                state.ready = false;
+                yield state.cont();
+            }
+        } catch(e) {
+            const ret = tco_error_handler(e, state, code);
+            if (ret === __continue__) {
+                continue;
+            }
+            return ret;
+        }
+    }
+}
+
+const __continue__ = Symbol.for('__continue__');
+
+// -------------------------------------------------------------------------
+function tco_error_handler(e, state, code) {
+    if (e instanceof State) {
+        return e.object;
+    }
+    // an active `try` in this loop? redirect to its catch/finally.
+    // state.handlers is per-loop, so a handler survives an `await`
+    // suspension and is never wiped by another eval loop.
+    if (!(e instanceof IgnoreException) && state?.handlers?.length) {
+        const handler = state.handlers.pop();
+        if (handler.catch_body) {
+            const catch_env = handler.env.inherit('catch');
+            catch_env.set(handler.catch_var, e);
+            state.env = catch_env;
+            state.dynamic_env = handler.dynamic_env;
+            state.use_dynamic = handler.use_dynamic;
+            // after the catch clause: run finally, continue with value
+            const code = handler.source;
+            state.cc = new Continuation('catch', null, code, state, function(st) {
+                finish_try(st, handler, 'return', st.object);
+            });
+            state.object = new Pair(new LSymbol('begin'), handler.catch_body);
+            state.ready = false;
+        } else {
+            // finally-only: run finally then re-throw the exception
+            finish_try(state, handler, 'raise', e);
+        }
+        return __continue__;
+    }
+    // exception unwinds past this loop - let it propagate. Use THIS loop's own
+    // stack (state.cc is now the outer `top`, whose _state.state is a different
+    // loop). Recorded outermost-first, reported innermost-first. We APPEND to
+    // e.__stack__ (deduped) rather than overwrite so that as the error unwinds
+    // through nested loops (e.g. `load`) each loop contributes its frames,
+    // innermost first.
+    const frames = (state.stack || []).slice().reverse();
+    // the failing (innermost) expression drives the error's location metadata
+    const inner = frames.length ? frames[0].__code__ : code;
+    if (!(e.__stack__ instanceof Array)) {
+        e.__stack__ = [];
+    }
+    const seen = new Set(e.__stack__);
+    for (const cc of frames) {
+        const str = to_string(cc.__code__, true);
+        if (!seen.has(str)) {
+            seen.add(str);
+            e.__stack__.push(str);
+        }
+    }
+    if (!e.__stack__.length && code) {
+        e.__stack__.push(to_string(code, true));
+    }
+    // location metadata from the innermost frame (only the first, innermost
+    // loop to see the error sets it)
+    augment_exception(e, inner);
+    state.error && state.error(e);
+    if (!(e instanceof IgnoreException)) {
+        throw e;
+    }
+}
+
+// -------------------------------------------------------------------------
+function* tco_resolve(state) {
+    // handlers registered by an enclosing eval don't belong to this loop - only
+    // dispatch to handlers pushed while running this generator.
+    while (true) {
+        try {
+            if (yield* state.eval()) {
+                state.ready = false;
+                yield state.cont();
+            }
+        } catch(e) {
+            const ret = tco_error_handler(e, state);
+            if (ret === __continue__) {
+                continue;
+            }
+            return ret;
         }
     }
 }
 
 // -------------------------------------------------------------------------
-function evaluate(code, { env, dynamic_env, use_dynamic, error = noop, ...rest } = {}) {
-    try {
-        if (!is_env(dynamic_env)) {
-            dynamic_env = env === true ? user_env : (env || user_env);
-        }
-        if (use_dynamic) {
-            env = dynamic_env;
-        } else if (env === true) {
-            env = user_env;
-        } else {
-            env = env || global_env;
-        }
-        var eval_args = { env, dynamic_env, use_dynamic, error };
-        var value;
-        if (is_null(code)) {
-            return code;
-        }
-        if (code instanceof LSymbol) {
-            return env.get(code);
-        }
-        if (!is_pair(code)) {
-            return code;
-        }
-        var first = code.car;
-        var rest = code.cdr;
-        if (is_pair(first)) {
-            value = resolve_promises(evaluate(first, eval_args));
-            if (is_promise(value)) {
-                return value.then((value) => {
-                    if (!is_callable(value)) {
-                        throw new Error(
-                            type(value) + ' ' + env.get('repr')(value) +
-                                ' is not callable while evaluating ' + code.toString()
-                        );
-                    }
-                    return evaluate(new Pair(value, code.cdr), eval_args);
-                });
-                // else is later in code
-            } else if (!is_callable(value)) {
-                throw new Error(
-                    type(value) + ' ' + env.get('repr')(value) +
-                        ' is not callable while evaluating ' + code.toString()
-                );
-            }
-        }
-        if (first instanceof LSymbol) {
-            value = env.get(first);
-        } else if (is_function(first)) {
-            value = first;
-        }
-        let result;
-        if (value instanceof Syntax) {
-            result = evaluate_syntax(value, code, eval_args);
-        } else if (value instanceof Macro) {
-            result = evaluate_macro(value, rest, eval_args);
-        } else if (is_function(value)) {
-            result = apply(value, rest, eval_args);
-        } else if (value instanceof SyntaxParameter) {
-            result = evaluate_syntax(value._syntax, code, eval_args);
-        } else if (is_parameter(value)) {
-            const param = search_param(dynamic_env, value);
-            if (is_null(code.cdr)) {
-                result = param.invoke();
-            } else {
-                return unpromise(evaluate(code.cdr.car, eval_args), function(value) {
-                    param.__value__ = value;
-                });
-            }
-        } else if (is_continuation(value)) {
-            result = value.invoke();
-        } else if (is_pair(code)) {
-            value = first && first.toString();
-            throw new Error(`${type(first)} ${value} is not a function`);
-        } else {
-            return code;
-        }
-        // escape promise feature #54
-        var __promise__ = env.get(Symbol.for('__promise__'), { throwError: false });
-        if (is_promise(result)) {
-            if (__promise__ === true) {
-                // fix #139 evaluate the code inside the promise that is not data.
-                // When promise is not quoted it happen automatically, when returning
-                // promise from evaluate.
-                result = result.then(result => {
-                    if (is_pair(result) && !value[__data__]) {
-                        return evaluate(result, eval_args);
-                    }
-                    return result;
-                });
-                return new QuotedPromise(result);
-            }
-            return result.catch(e => {
-                error && error.call(env, e, code);
+// extract the final value from what a macro's _invoke_state returned: a
+// SyntaxExpansion is evaluated, a State (the macro set it up to run in the loop)
+// is driven to completion, anything else is already a value/code.
+function macro_result_value(result, state) {
+    if (result instanceof SyntaxExpansion) {
+        return result.eval(state);
+    }
+    if (result === state || result instanceof State) {
+        return resolve_promises(uniterate(tco_resolve(state)));
+    }
+    return result;
+}
+
+// -------------------------------------------------------------------------
+function lambda_scope(self, fn, code, args, { use_dynamic, error, cc, dynamic_env: call_dynamic_env }) {
+    // lambda got scopes as context in apply
+    let dynamic_env;
+    if (is_context(this)) {
+        // called as a JS function (apply/map/callback) - the LambdaContext
+        // carries the caller's dynamic environment.
+        ({ dynamic_env } = this);
+    } else if (is_continuation(this) && call_dynamic_env) {
+        // tco fast path (evaluate_lambda): inherit the dynamic environment from
+        // the call site so dynamic bindings (parameterize) stay visible.
+        dynamic_env = call_dynamic_env;
+    } else {
+        dynamic_env = self;
+    }
+    const env = self.inherit('lambda');
+    // only extend the dynamic environment (and bind params into it, below) in
+    // dynamic-scope mode. Lexical calls never read the per-lambda dynamic frame
+    // (parameterize makes its own), so this saves an Environment allocation per
+    // call and avoids the O(n) dynamic_env chain in tail recursion.
+    if (use_dynamic) {
+        dynamic_env = dynamic_env.inherit('lambda');
+    }
+    if (this && !is_context(this) && !is_continuation(this)) {
+        if (this && !this.__instance__) {
+            Object.defineProperty(this, '__instance__', {
+                enumerable: false,
+                get: () => true,
+                set: () => {},
+                configurable: false
             });
         }
-        return result;
-    } catch (e) {
-        error && error.call(env, e, code);
+        env.set('this', this);
+    }
+    // arguments and arguments.callee inside lambda function
+    if (this instanceof LambdaContext) {
+        const options = { throwError: false };
+        env.set('arguments', this.env.get('arguments', options));
+    } else {
+        // this case is for lambda as callback function in JS; e.g. setTimeout
+        var _args = args.slice();
+        _args.callee = fn;
+        _args.env = env;
+        env.set('arguments', _args);
+    }
+    function set(name, value) {
+        env.__env__[name.__name__] = value;
+        if (use_dynamic) {
+            dynamic_env.__env__[name.__name__] = value;
+        }
+    }
+    let name = code.car;
+    let i = 0;
+    if (name instanceof LSymbol || !is_nil(name)) {
+        while (true) {
+            if (!is_nil(name.car)) {
+                if (name instanceof LSymbol) {
+                    // rest argument,  can also be first argument
+                    const value = Pair.from_array(args.slice(i), false);
+                    set(name, value);
+                    break;
+                } else if (is_pair(name)) {
+                    const value = args[i];
+                    set(name.car, value);
+                }
+            }
+            if (is_nil(name.cdr)) {
+                break;
+            }
+            i++;
+            name = name.cdr;
+        }
+    }
+    return {
+        env,
+        cc,
+        dynamic_env,
+        use_dynamic,
+        error
+    };
+}
+
+// -------------------------------------------------------------------------
+const __if__ = global_env.get('if');
+const __begin__ = global_env.get('begin');
+const __quote__ = global_env.get('quote');
+const __set__ = global_env.get('set!');
+const __define__ = global_env.get('define');
+const __apply__ = global_env.get('apply');
+
+const iternal_macros = [
+    __if__,
+    __begin__,
+    __set__,
+    __define__,
+    global_env.get('let')
+];
+
+function is_internal_macro(macro) {
+    return iternal_macros.includes(macro);
+}
+// -------------------------------------------------------------------------
+// :: macro expansion (macroexpand). Walks code like the evaluator but never
+// :: calls functions and never evaluates macro output - the fully expanded
+// :: code is returned as data. Binding forms (lambda/let/letrec/define) shadow
+// :: their bound names in the relevant scope, so a macro name that is rebound
+// :: by the user is left untouched. Macros may return a promise of the code so
+// :: this walk is async throughout.
+// -------------------------------------------------------------------------
+function macroexpand_special_forms() {
+    // resolved lazily - let*/letrec/quasiquote come from the stdlib which is
+    // loaded after this module. throwError:false so a missing form is undefined.
+    const get = name => global_env.get(name, { throwError: false });
+    return {
+        lambda: get('lambda'),
+        let: get('let'),
+        let_star: get('let*'),
+        letrec: get('letrec'),
+        letrec_star: get('letrec*'),
+        quasiquote: get('quasiquote')
+    };
+}
+// -------------------------------------------------------------------------
+function macroexpand_names(params) {
+    // collect the bound symbols from a lambda parameter list, a dotted list, or
+    // a single rest symbol
+    const names = [];
+    let node = params;
+    while (is_pair(node)) {
+        if (node.car instanceof LSymbol) {
+            names.push(node.car);
+        }
+        node = node.cdr;
+    }
+    if (node instanceof LSymbol) {
+        names.push(node);
+    }
+    return names;
+}
+// -------------------------------------------------------------------------
+function macroexpand_binding_names(bindings) {
+    // names from ((name value) ...) let bindings
+    const names = [];
+    let node = bindings;
+    while (is_pair(node)) {
+        const binding = node.car;
+        if (is_pair(binding) && binding.car instanceof LSymbol) {
+            names.push(binding.car);
+        } else if (binding instanceof LSymbol) {
+            names.push(binding);
+        }
+        node = node.cdr;
+    }
+    return names;
+}
+// -------------------------------------------------------------------------
+function macroexpand_shadow(env, names) {
+    if (!names.length) {
+        return env;
+    }
+    const scope = env.inherit('macroexpand');
+    names.forEach(name => scope.set(name, true));
+    return scope;
+}
+// -------------------------------------------------------------------------
+async function macroexpand_list(code, env) {
+    // expand every element of a (possibly improper) list, preserving structure
+    const items = [];
+    let node = code;
+    while (is_pair(node)) {
+        items.push(await macroexpand_code(node.car, env));
+        node = node.cdr;
+    }
+    let result = node; // improper tail or nil, left untouched
+    for (let i = items.length - 1; i >= 0; i--) {
+        result = new Pair(items[i], result);
+    }
+    return result;
+}
+// -------------------------------------------------------------------------
+async function macroexpand_bindings(bindings, env) {
+    // ((name value) ...) - keep names, expand values
+    const items = [];
+    let node = bindings;
+    while (is_pair(node)) {
+        const binding = node.car;
+        if (is_pair(binding) && is_pair(binding.cdr)) {
+            const value = await macroexpand_code(binding.cdr.car, env);
+            items.push(new Pair(binding.car, new Pair(value, binding.cdr.cdr)));
+        } else {
+            items.push(binding);
+        }
+        node = node.cdr;
+    }
+    let result = node;
+    for (let i = items.length - 1; i >= 0; i--) {
+        result = new Pair(items[i], result);
+    }
+    return result;
+}
+// -------------------------------------------------------------------------
+async function macroexpand_once(macro, code, env) {
+    // one-step expansion of a macro use into its output code (never evaluated)
+    const state = { env, error: e => { throw e; }, macro_expand: true };
+    let result = macro._invoke_state(code, state, true);
+    if (is_promise(result)) {
+        result = await result;
+    }
+    if (result instanceof SyntaxExpansion) {
+        return result.expr;
+    }
+    // syntax-rules in macro_expand mode returns a plain { expr, scope } bag
+    if (result && typeof result === 'object' && !is_pair(result) && 'expr' in result) {
+        return result.expr;
+    }
+    return result;
+}
+// -------------------------------------------------------------------------
+async function macroexpand_code(code, env) {
+    // atoms (symbols, numbers, strings, ...) are returned unchanged - crucially
+    // symbols are NOT looked up, they stay as symbols in the expanded code
+    if (!is_pair(code)) {
+        return code;
+    }
+    const { car } = code;
+    if (car instanceof LSymbol) {
+        const value = env.get(car, { throwError: false });
+        if (value) {
+            const sf = macroexpand_special_forms();
+            // quote/quasiquote: keep the form, do not expand inside
+            if (value === __quote__ || value === sf.quasiquote) {
+                return code;
+            }
+            // (lambda params . body): keep params, expand body with params bound
+            if (value === sf.lambda) {
+                const params = code.cdr.car;
+                const scope = macroexpand_shadow(env, macroexpand_names(params));
+                const body = await macroexpand_list(code.cdr.cdr, scope);
+                return new Pair(car, new Pair(params, body));
+            }
+            // (let/let* bindings . body): expand values in the outer scope,
+            // expand body with the bound names shadowing macros
+            if (value === sf.let || value === sf.let_star) {
+                let rest = code.cdr;
+                let name = null;
+                if (rest.car instanceof LSymbol) { // named let
+                    name = rest.car;
+                    rest = rest.cdr;
+                }
+                const bindings = rest.car;
+                const names = macroexpand_binding_names(bindings);
+                const new_bindings = await macroexpand_bindings(bindings, env);
+                const body_names = name ? [name, ...names] : names;
+                const body = await macroexpand_list(rest.cdr, macroexpand_shadow(env, body_names));
+                let tail = new Pair(new_bindings, body);
+                if (name) {
+                    tail = new Pair(name, tail);
+                }
+                return new Pair(car, tail);
+            }
+            // (letrec bindings . body): bound names are visible in values too
+            if (value === sf.letrec || value === sf.letrec_star) {
+                const bindings = code.cdr.car;
+                const scope = macroexpand_shadow(env, macroexpand_binding_names(bindings));
+                const new_bindings = await macroexpand_bindings(bindings, scope);
+                const body = await macroexpand_list(code.cdr.cdr, scope);
+                return new Pair(car, new Pair(new_bindings, body));
+            }
+            // (define name value) or (define (name . args) . body)
+            if (value === __define__) {
+                const target = code.cdr.car;
+                if (is_pair(target)) {
+                    const names = [target.car, ...macroexpand_names(target.cdr)];
+                    const body = await macroexpand_list(code.cdr.cdr, macroexpand_shadow(env, names));
+                    return new Pair(car, new Pair(target, body));
+                }
+                const scope = macroexpand_shadow(env, [target]);
+                const rest = await macroexpand_list(code.cdr.cdr, scope);
+                return new Pair(car, new Pair(target, rest));
+            }
+            // a real macro (syntax-rules or define-macro) that isn't shadowed:
+            // expand one step then re-expand the result (fixpoint)
+            if (is_macro(value) && !is_internal_macro(value)) {
+                const expansion = await macroexpand_once(value, code, env);
+                return macroexpand_code(expansion, env);
+            }
+        }
+    }
+    // application / if / begin / set! / compound operator: expand each element
+    return macroexpand_list(code, env);
+}
+// -------------------------------------------------------------------------
+function* evaluate_code(state) {
+    const code = state.object;
+    if (state.macro_expand) {
+        // expansion mode: walk the code and expand macros without evaluating.
+        // macroexpand_code is async (macros may return promises of code), so we
+        // yield the promise - the tco driver resolves it before continuing.
+        state.object = yield macroexpand_code(code, state.env);
+        state.ready = true;
+        return;
+    }
+    if (code instanceof State) {
+        throw new Error('Internal: expecting LIPS expression got State');
+    } else if (code instanceof LNumber) {
+        state.ready = true;
+    } else if (code instanceof LSymbol) {
+        state.object = state.env.get(state.object);
+        state.ready = true;
+    } else if (is_promise(code)) {
+        // Don't await a promise that is the direct result of a quote-promise
+        // body - pass it through so the quote-promise continuation wraps it.
+        // Every other promise (nested usage) is awaited.
+        if (state.cc && state.cc._state && state.cc._state.quote_promise) {
+            state.object = code;
+        } else {
+            state.object = box(yield code);
+        }
+        state.ready = true;
+    } else if (is_pair(code)) {
+        const { car, cdr } = code;
+        if (car instanceof LSymbol) {
+            const first = state.env.get(car);
+            if (first === __if__) {
+                state.object = cdr.car;
+                state.cc = new Continuation('if', cdr.cdr, code, state, next_if);
+                state.ready = false;
+            } else if (first === __begin__) {
+                if (is_nil(cdr)) {
+                    delete state.object;
+                } else {
+                    state.object = cdr.car;
+                    if (!is_nil(cdr.cdr)) {
+                        state.cc = new Continuation('begin', cdr.cdr, code, state, next_begin);
+                    }
+                }
+                state.ready = false;
+            } else if (first === __quote__) {
+                state.object = cdr.car;
+                state.ready = true;
+            } else if (first === __set__) {
+                state.object = cdr.cdr.car;
+                state.ready = false;
+                state.cc = new Continuation('set!', cdr.car, code, state, next_set);
+            } else if (first === __define__) {
+                if (is_pair(cdr.car)) {
+                    // (define (foo x) x) => (define foo (lambda (x) x))
+                    state.object = new Pair(
+                        new LSymbol('define'),
+                        new Pair(
+                            cdr.car.car,
+                            new Pair(
+                                new Pair(
+                                    new LSymbol('lambda'),
+                                    new Pair(
+                                        cdr.car.cdr,
+                                        cdr.cdr
+                                    )
+                                ),
+                                nil
+                            )
+                        )
+                    );
+                    state.ready = false;
+                } else {
+                    typecheck('define', car, 'symbol');
+                    let doc;
+                    if (is_pair(cdr.cdr.car) &&
+                        LSymbol.is(cdr.cdr.car.car, 'lambda') &&
+                        is_pair(cdr.cdr.car.cdr) &&
+                        LString.isString(cdr.cdr.car.cdr.cdr.car)) {
+                        doc = cdr.cdr.car.cdr.cdr.car.valueOf();
+                    }
+                    const value = state.object = cdr.cdr.car;
+                    // the value has not been evaluated yet, so decide whether it
+                    // may need a name (lambda/syntax/parameter) from the SOURCE
+                    // being a compound expression, and apply the name in
+                    // next_define once the real value is known.
+                    const new_expr = is_pair(value);
+                    state.cc = new Continuation('define', cdr.car, code, state, next_define, {
+                        doc,
+                        new_expr
+                    });
+                    state.ready = false;
+                }
+            } else if (is_macro(first)) {
+                let result = first._invoke_state(code, state);
+                if (is_promise(result)) {
+                    result = yield result;
+                }
+                if (result instanceof SyntaxExpansion) {
+                    // A syntax-rules macro: evaluate its expansion in THIS loop
+                    // (same continuation chain) so a continuation captured
+                    // inside - or re-entering - the macro body works across the
+                    // boundary. If the expansion introduced hygienic gensyms, a
+                    // follow-up continuation restores their literal names in the
+                    // produced value. The caller's dynamic environment is kept.
+                    if (result.names.length) {
+                        state.cc = new Continuation('syntax', null, code, state,
+                                                    next_syntax, { names: result.names });
+                    }
+                    state.env = result.env;
+                    state.object = result.expr;
+                    state.ready = false;
+                } else if (result !== state) {
+                    state.object = result;
+                    // define-macro returns expansion code that still has to be
+                    // evaluated; other Macro/SyntaxParameter values are final.
+                    state.ready = first instanceof Syntax ||
+                        first instanceof SyntaxParameter;
+                }
+            } else {
+                state.object = first;
+                state.cc = new Continuation('pair[a]', cdr, code, state, next_pair);
+                state.ready = false;
+            }
+        } else {
+            // car is a compound expression in operator position. If it is a
+            // syntax-rules macro use, expand it and re-dispatch the WHOLE form,
+            // so an operator that expands to a special form or another macro -
+            // e.g. ((undswap 3 if) ...) -> (if ...)
+            let expanded = false;
+            if (is_pair(car) && car.car instanceof LSymbol) {
+                const op = state.env.get(car.car, { throwError: false });
+                if (op instanceof Syntax) {
+                    let result = op._invoke_state(car, state);
+                    if (is_promise(result)) {
+                        result = yield result;
+                    }
+                    if (result instanceof SyntaxExpansion) {
+                        if (result.names.length) {
+                            state.cc = new Continuation('syntax', null, code, state,
+                                                        next_syntax, { names: result.names });
+                        }
+                        state.env = result.env;
+                        state.object = new Pair(result.expr, cdr);
+                        state.ready = false;
+                        expanded = true;
+                    }
+                }
+            }
+            if (!expanded) {
+                state.object = car;
+                state.cc = new Continuation('pair[b]', cdr, code, state, next_pair);
+                state.ready = false;
+            }
+        }
+    } else {
+        state.ready = true;
+    }
+}
+
+// -------------------------------------------------------------------------
+function next_if(state) {
+    if (is_false(state.object)) {
+        state.object = this.__object__.cdr.car;
+    } else {
+        state.object = this.__object__.car;
+    }
+    state.cc = this.__continuation__;
+    state.env = this.__env__;
+    state.ready = false;
+}
+
+// -------------------------------------------------------------------------
+function next_begin(state) {
+    state.object = this.__object__.car;
+    state.env = this.__env__;
+    state.ready = false;
+    if (is_nil(this.__object__.cdr)) {
+        state.cc = this.__continuation__;
+    } else {
+        this.__object__ = this.__object__.cdr;
+        state.cc = this;
+    }
+}
+
+// -------------------------------------------------------------------------
+// the parameterize body finished - state.object holds its value. Restore the
+// dynamic environment that was active before parameterize and hand the value to
+// the enclosing continuation (see the `parameterize` macro).
+// -------------------------------------------------------------------------
+function next_parameterize(state) {
+    state.dynamic_env = this._state.dynamic_env;
+    state.env = this.__env__;
+    state.cc = this.__continuation__;
+    state.ready = true;
+}
+
+// -------------------------------------------------------------------------
+// a syntax-rules expansion finished evaluating - state.object holds its value.
+// Restore hygienic gensyms to their literal names (see the macro branch in
+// evaluate_code and clear_gensyms).
+// -------------------------------------------------------------------------
+function next_syntax(state) {
+    state.object = clear_gensyms(state.object, this._state.names);
+    state.env = this.__env__;
+    state.cc = this.__continuation__;
+    state.ready = true;
+}
+
+// -------------------------------------------------------------------------
+function next_defmaro(state) {
+    state.cc = this.__continuation__;
+    state.env = this.__env__;
+    state.ready = false;
+}
+
+// -------------------------------------------------------------------------
+function next_set(state) {
+    const env = state.env = this.__env__;
+    state.cc = this.__continuation__;
+    const symbol = this.__object__.valueOf();
+    const value = state.object;
+    const ref = env.ref(symbol);
+    if (!ref) {
+        // case (set! fn.toString (lambda () "xxx"))
+        const parts = symbol.split('.');
+        if (parts.length > 1) {
+            const key = parts.pop();
+            const name = parts.join('.');
+            const object = env.get(name, { throwError: false });
+            if (object) {
+                env.get('set-object!').call(env, object, key, value);
+                // set! return value is unspecified/void
+                delete state.object;
+                state.ready = true;
+                return;
+            }
+        }
+        throw new Error('Unbound variable `' + symbol + '\'');
+    }
+    ref.set(symbol, value);
+    delete state.object;
+    state.ready = true;
+}
+
+// -------------------------------------------------------------------------
+function next_define(state) {
+    let env = this.__env__;
+    if (env.__name__ === Syntax.__merge_env__) {
+        env = env.__parent__;
+    }
+    const value = state.object;
+    if (this._state.new_expr &&
+        ((is_function(value) && is_lambda(value)) ||
+         (value instanceof Syntax) || is_parameter(value))) {
+        let fn_name = this.__object__.valueOf();
+        if (fn_name instanceof LString) {
+            fn_name = fn_name.valueOf();
+        }
+        value.__name__ = fn_name;
+    }
+    env.set(this.__object__, value, this._state.doc, true);
+    state.env = env;
+    state.cc = this.__continuation__;
+    delete state.object;
+    state.ready = true;
+}
+
+// -------------------------------------------------------------------------
+async function next_macro(state) {
+    state.env = this.__env__;
+    state.cc = this.__continuation__;
+    state.object = this.__object__;
+    state.ready = true;
+}
+
+// -------------------------------------------------------------------------
+function evaluate_lambda(fn, args, state, cc) {
+    state.cc = cc.__continuation__;
+    const define_env = fn._env;
+    const scope = lambda_scope.call(cc, define_env, fn, fn._code, args, {
+        error: state.error,
+        use_dynamic: state.use_dynamic,
+        dynamic_env: state.dynamic_env
+    });
+    const { env, dynamic_env } = scope;
+    // hygienic implicit `begin` around the body. The wrapped body is identical
+    // on every call, so cache it on the lambda and bind the (stable) gensym once
+    // in the definition environment. `env` inherits from `define_env`, so the
+    // gensym resolves through the lexical chain — this avoids minting a gensym
+    // and allocating a Pair on every single call (hot in tail-recursive loops).
+    let body = fn._hygienic_body;
+    if (is_undef(body)) {
+        const g = gensym('begin');
+        fn._begin_gensym = g;
+        body = read_only(fn, '_hygienic_body', new Pair(g, fn._body), { hidden: true });
+        define_env.set(g, global_env.get('begin'));
+    }
+    // dynamic-scope mode evaluates the body with `dynamic_env` as its scope, and
+    // that environment does not chain to `define_env`, so the gensym has to be
+    // (re)bound there per call. This path is opt-in and rare.
+    if (state.use_dynamic) {
+        dynamic_env.set(fn._begin_gensym, global_env.get('begin'));
+    }
+    // in dynamic-scope mode free variables resolve through the dynamic
+    // environment (the call stack), so the body evaluates with it as its scope
+    state.env = state.use_dynamic ? dynamic_env : env;
+    state.dynamic_env = dynamic_env;
+    state.object = body;
+    state.ready = false;
+}
+
+// -------------------------------------------------------------------------
+function next_pair(state) {
+    this._state.args[this._state.i++] = state.object;
+    if (is_nil(this.__object__)) {
+        state.env = this.__env__;
+        const [first, ...args] = this._state.args;
+        if (is_lambda(first)) {
+            evaluate_lambda(first, args, state, this);
+        } else if (is_continuation(first)) {
+            state.ready = true;
+            state.object = args[0];
+            const clone = first.clone(false);
+            // restore the try handlers captured when this continuation was
+            // created, so escaping/re-entering a `try` updates the active set.
+            if (clone._state.handlers) {
+                state.handlers = clone._state.handlers.slice();
+            }
+            state.cc = clone;
+        } else if (first === __apply__ && is_lambda(args[0])) {
+            const fn = args.shift();
+            typecheck('apply', fn, 'function', 1);
+            let last = args.pop();
+            typecheck('apply', last, ['pair', 'nil'], args.length + 2);
+            last = global_env.get('list->array').call(global_env, last);
+            evaluate_lambda(fn, args.concat(last), state, this);
+        } else if (is_parameter(first)) {
+            // a dynamic variable created by make-parameter. Look up the
+            // effective binding in the dynamic environment (parameterize
+            // installs a shadowing Parameter there) before reading/setting it.
+            state.cc = this.__continuation__;
+            const param = search_param(state.dynamic_env, first);
+            if (args.length === 0) {
+                state.object = box(param.invoke());
+            } else {
+                param.__value__ = args[0];
+                state.object = undefined;
+            }
+            state.ready = !is_promise(state.object);
+        } else if (is_function(first)) {
+            state.cc = this.__continuation__;
+            state.object = box(call_function(first, prepare_fn_args(first, args), state));
+            state.ready = !is_promise(state.object);
+        } else {
+            throw new Error(`${type(first)} ${env.get('repr')(first)} is not callable while evaluating ` +
+                            to_string(this.__code__));
+        }
+    } else {
+        state.object = this.__object__.car;
+        state.env = this.__env__;
+        state.cc = this;
+        this.__object__ = this.__object__.cdr;
+        state.ready = false;
     }
 }
 // -------------------------------------------------------------------------
@@ -12199,30 +12712,6 @@ const exec = exec_collect(function(code, value) {
     return value;
 });
 
-// -------------------------------------------------------------------------
-// :: used as evaluate in try..catch to get stack trac
-// -------------------------------------------------------------------------
-
-function evaluate_with_stacktrace(code, { error, env, ...rest } = {}) {
-    try {
-        return exec_with_stacktrace(code, { env, ...rest });
-    } catch(e) {
-        error && error.call(env, e);
-    }
-}
-
-// -------------------------------------------------------------------------
-function exec_with_stacktrace(code, args = {}) {
-    return evaluate(code, {
-        ...args,
-        error: (e, code) => {
-            e = augment_exception(e, code);
-            if (!(e instanceof IgnoreException)) {
-                throw e;
-            }
-        }
-    });
-}
 // -------------------------------------------------------------------------
 function exec_collect(collect_callback) {
     return async function exec_lambda(arg, options = {}) {
@@ -12237,11 +12726,11 @@ function exec_collect(collect_callback) {
         }
         const results = [];
         if (is_pair(arg)) {
-            return [await exec_with_stacktrace(arg, { env, dynamic_env, use_dynamic })];
+            return [await evaluate(arg, { env, dynamic_env, use_dynamic })];
         }
         const input = Array.isArray(arg) ? arg : _parse(arg, parser_args);
         for await (let code of input) {
-            const value = await exec_with_stacktrace(code, { env, dynamic_env, use_dynamic });
+            const value = await evaluate(code, { env, dynamic_env, use_dynamic });
             results.push(collect_callback(code, value));
         }
         return results;
@@ -12790,6 +13279,7 @@ read_only(LCharacter, '__class__', 'character');
 read_only(LSymbol, '__class__', 'symbol');
 read_only(LString, '__class__', 'string');
 read_only(QuotedPromise, '__class__', 'promise');
+read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 const version = '{{VER}}';
@@ -12807,6 +13297,7 @@ export {
     tokenize,
     evaluate,
     compile,
+    type,
 
     serialize,
     unserialize,
@@ -12881,6 +13372,7 @@ const lips = {
     tokenize,
     evaluate,
     compile,
+    type,
 
     serialize,
     unserialize,
@@ -12895,7 +13387,6 @@ const lips = {
 
     Environment,
     env: user_env,
-
     Worker,
 
     Interpreter,
