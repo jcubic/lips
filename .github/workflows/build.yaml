@@ -75,8 +75,6 @@ jobs:
         with:
           node-version: '20'
       - run: npm ci
-      - name: build interpreter and stdlib
-        run: make dist/lips.esm.js dist/std.xcb
       # run bin/lips.js directly (not `make benchmark`) so make's build echo can
       # never leak into the parsed output; stdout is only the Benchmark.js lines
       - name: run benchmark
