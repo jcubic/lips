@@ -1496,6 +1496,27 @@
     (alist->object iterator)))
 
 ;; -----------------------------------------------------------------------------
+;; source https://github.com/scheme-requests-for-implementation/srfi-158
+;; -----------------------------------------------------------------------------
+(define (make-coroutine-generator proc)
+  (define void (if #f #f))
+  (define return #f)
+  (define resume #f)
+  (define yield (lambda (v)
+                  (call/cc (lambda (r)
+                             (set! resume r)
+                             (return v)))))
+  (lambda ()
+    (call/cc (lambda (cc)
+               (set! return cc)
+               (if resume
+                   (resume void)  ; void? or yield again?
+                   (begin
+                     (proc yield)
+                     (set! resume (lambda (v) (return (eof-object))))
+                     (return (eof-object))))))))
+
+;; -----------------------------------------------------------------------------
 (define-macro (do-iterator spec cond . body)
   "(do-iterator (var expr) (test result) body ...)
 
