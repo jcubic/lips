@@ -6760,6 +6760,9 @@ LNumber._ops = {
     '&': function(a, b) {
         return a & b;
     },
+    '^': function(a, b) {
+        return a ^ b;
+    },
     '~': function(a) {
         return ~a;
     },
@@ -7631,6 +7634,7 @@ LBigInteger.bn_op = {
     '%': 'imod',
     '|': 'ior',
     '&': 'iand',
+    '^': 'ixor',
     '~': 'inot',
     '<<': 'ishrn',
     '>>': 'ishln'
@@ -11005,6 +11009,12 @@ var global_env = new Environment({
     }, `(~ number)
 
         Function that calculates the bitwise inverse (flip all the bits).`),
+    // ------------------------------------------------------------------
+    '^': doc('^', function(a, b) {
+        return LNumber(a).op('^', b);
+    }, `(^ a b)
+
+        Function that calculates the bitwise xor (exclusive or) operation.`),
     // ------------------------------------------------------------------
     '>>': doc('>>', function(a, b) {
         return LNumber(a).shr(b);
