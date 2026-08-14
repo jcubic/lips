@@ -16,7 +16,7 @@
 * improve and unify Syntax Errors
 * meta info from Runtime errors in REPL can be enabled with `-m`/`--meta`
 * implement simple regex based syntax-extension
-* performance improvements
+* recursion performance improvements
 * new interpreter with TCO and Continuations inspired by js-scheme [#127](https://github.com/jcubic/lips/issues/127)
 * new higher order function `matcher` that return function that check if object is the same
 * new `stack-trace` and `trace` functions
