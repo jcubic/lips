@@ -2086,7 +2086,7 @@ class Parser {
         return token.match(/^;/) || (token.match(/^#\|/) && token.match(/\|#$/));
     }
     evaluate(code) {
-        return tco_eval(code, { env: this.__env__, error: (e) => {
+        return evaluate(code, { env: this.__env__, error: (e) => {
             throw e;
         } });
     }
@@ -4534,7 +4534,7 @@ function define_macro(name, args, body, source, __doc__, state) {
                 // normal mode to obtain the expansion code, but do NOT evaluate
                 // the expansion itself - the caller re-expands it. May be a
                 // promise (macro bodies can produce code asynchronously).
-                return tco_eval(hygienic_begin([env], body), {
+                return evaluate(hygienic_begin([env], body), {
                     env,
                     error: state.error
                 });
@@ -4629,7 +4629,7 @@ Syntax.prototype.toString = function() {
 // :: expression, the hygienic scope it must be evaluated in, and the
 // :: gensym->name map used to un-rename literal symbols in the produced
 // :: value. The transformer returns this instead of evaluating the
-// :: expansion itself, so the caller can evaluate it in the MAIN tco_eval
+// :: expansion itself, so the caller can evaluate it in the MAIN evaluate
 // :: loop (same continuation chain) - otherwise a continuation captured
 // :: inside, or re-entering, a macro body cannot cross the macro boundary.
 // ----------------------------------------------------------------------
@@ -4641,7 +4641,7 @@ class SyntaxExpansion {
     }
     // eager evaluation, used by the legacy evaluate()/evaluate_syntax path
     eval(eval_args) {
-        const result = tco_eval(this.expr, { ...eval_args, env: this.env });
+        const result = evaluate(this.expr, { ...eval_args, env: this.env });
         return clear_gensyms(result, this.names);
     }
 }
@@ -9224,7 +9224,7 @@ var global_env = new Environment({
         const ret = evaluate(code.car, { env: this, dynamic_env, error, use_dynamic });
         return unpromise(ret, function(value) {
             typecheck('let-env', value, 'environment');
-            return tco_eval(Pair(LSymbol('begin'), code.cdr), {
+            return evaluate(Pair(LSymbol('begin'), code.cdr), {
                 env: value, dynamic_env, error
             });
         });
@@ -9307,7 +9307,7 @@ var global_env = new Environment({
         const code = source.cdr;
         const env = this.inherit('ignore');
         const eval_args = { ...state, env, dynamic_env: env, cc: top_cc };
-        tco_eval(hygienic_begin([env], code), eval_args);
+        evaluate(hygienic_begin([env], code), eval_args);
     }, `(ignore . body)
 
         Macro that will evaluate the expression and swallow any promises that may
@@ -9360,7 +9360,7 @@ var global_env = new Environment({
         while (is_pair(p)) {
             const pair = p.car;
             const name = pair.car.valueOf();
-            const value = tco_eval(pair.cdr.car, { ...state, cc: top_cc });
+            const value = evaluate(pair.cdr.car, { ...state, cc: top_cc });
             // the parameter object is an ordinary binding - resolve it in the
             // lexical environment; only its dynamic binding lives in `env`.
             const param = state.env.get(name, { throwError: false });
@@ -9386,14 +9386,14 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'make-parameter': doc(new Macro('make-parameter', function(source, eval_args) {
         const code = source.cdr;
-        // isolate the nested tco_eval from the outer continuation (cc), the
+        // isolate the nested evaluate from the outer continuation (cc), the
         // same way the lambda wrapper does - otherwise `eval_args.cc` leaks and
         // the evaluated value comes back as void/promise instead of the datum.
         const args = { ...eval_args, cc: top_cc };
-        const init = tco_eval(code.car, args);
+        const init = evaluate(code.car, args);
         let fn;
         if (is_pair(code.cdr.car)) {
-            fn = tco_eval(code.cdr.car, args);
+            fn = evaluate(code.cdr.car, args);
         }
         return new Parameter(init, fn);
     }), `(make-parameter init converter)
@@ -9414,7 +9414,7 @@ var global_env = new Environment({
         }
         // cc: top_cc isolates this nested eval - without it the outer
         // continuation leaks in and the result comes back as a promise
-        const syntax = tco_eval(code.cdr.car, { env, ...eval_args, cc: top_cc });
+        const syntax = evaluate(code.cdr.car, { env, ...eval_args, cc: top_cc });
         typecheck('define-syntax-parameter', syntax, 'syntax', 2);
         syntax.__name__ = name.valueOf();
         if (syntax.__name__ instanceof LString) {
@@ -9443,7 +9443,7 @@ var global_env = new Environment({
                 const msg = `invalid syntax for syntax-parameterize: ${repr(code, true)}`;
                 throw new Error(`syntax-parameterize: ${msg}`);
             }
-            let syntax = tco_eval(pair.cdr.car, { ...eval_args, env: this, cc: top_cc });
+            let syntax = evaluate(pair.cdr.car, { ...eval_args, env: this, cc: top_cc });
             const name = pair.car;
             typecheck('syntax-parameterize', syntax, ['syntax']);
             typecheck('syntax-parameterize', name, 'symbol');
@@ -9467,7 +9467,7 @@ var global_env = new Environment({
             env, eval_args.dynamic_env
         ], code.cdr);
         // evaluate the body in the enclosing continuation (in `env` with the
-        // parameterized syntax) instead of a nested tco_eval - avoids leaking
+        // parameterized syntax) instead of a nested evaluate - avoids leaking
         // the outer continuation and re-evaluating the result.
         eval_args.env = env;
         eval_args.object = expr;
@@ -9557,7 +9557,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'eval': doc('eval', function(code, env) {
         env = env || this.get('interaction-environment').call(this);
-        return tco_eval(code, {
+        return evaluate(code, {
             env,
             dynamic_env: env,
             error: (e) => { throw e; }
@@ -9613,7 +9613,7 @@ var global_env = new Environment({
             const eval_args = lambda_scope.call(this, self, lambda, code, args, state);
             const { env, dynamic_env } = eval_args;
             const body = hygienic_begin([env, dynamic_env], rest);
-            return tco_eval(body, { ...eval_args, cc: top_cc });
+            return evaluate(body, { ...eval_args, cc: top_cc });
         }
         var length = is_pair(code.car) ? code.car.length() : null;
         read_only(lambda, '_env', self, { hidden: true });
@@ -9647,7 +9647,7 @@ var global_env = new Environment({
         // argument is already evaluated - quote the code you want expanded:
         // (macroexpand '(when test body)). The expansion is produced in the tco
         // loop in macro_expand mode (see evaluate_code and macroexpand_code).
-        return tco_eval(code, {
+        return evaluate(code, {
             macro_expand: true,
             env: this.env,
             error: (e) => {
@@ -9802,7 +9802,7 @@ var global_env = new Environment({
                             return { expr, scope: new_env };
                         }
                         // Return the expansion instead of evaluating it here in
-                        // a nested tco_eval - the caller evaluates it in the main
+                        // a nested evaluate - the caller evaluates it in the main
                         // loop so continuations work across the macro boundary.
                         // The gensym->literal fixup (clear_gensyms) is applied to
                         // the produced value by whoever evaluates the expansion.
@@ -9902,7 +9902,7 @@ var global_env = new Environment({
         // :: New quasiquote based on Alan Bawden's paper
         // :: "Quasiquotation in Lisp". Instead of building the result inline
         // :: the macro expands into code (append/cons/list/quote/...) that is
-        // :: then evaluated by the main tco_eval loop. Because the unquoted
+        // :: then evaluated by the main evaluate loop. Because the unquoted
         // :: expressions become ordinary sub-expressions they compose with
         // :: continuations, promises and tail calls for free.
         // -----------------------------------------------------------------
@@ -10073,7 +10073,7 @@ var global_env = new Environment({
             log(result);
             // returning something other than `state` makes evaluate_code set
             // it as the object to evaluate next, so the generated builder code
-            // runs through the normal tco_eval loop.
+            // runs through the normal evaluate loop.
             state.object = result;
             state.ready = false;
             return result;
@@ -11499,27 +11499,6 @@ function call_function(fn, args, { env, dynamic_env, use_dynamic } = {}) {
 }
 
 // -------------------------------------------------------------------------
-function apply(fn, args, { env, dynamic_env, use_dynamic, error = () => {} } = {}) {
-    args = evaluate_args(args, { env, dynamic_env, error, use_dynamic });
-    return unpromise(args, function(args) {
-        if (is_raw_lambda(fn)) {
-            // lambda need environment as context
-            // normal functions are bound to their contexts
-            fn = unbind(fn);
-        }
-        args = prepare_fn_args(fn, args);
-        const _args = args.slice();
-        const result = call_function(fn, _args, { env, dynamic_env, use_dynamic });
-        return unpromise(result, (result) => {
-            if (is_pair(result)) {
-                result.mark_cycles();
-                return quote(result);
-            }
-            return box(result);
-        }, error);
-    });
-}
-// -------------------------------------------------------------------------
 // :: Parameters for make-parameter and parametrize
 // -------------------------------------------------------------------------
 class Parameter {
@@ -11806,7 +11785,7 @@ function finish_try(state, handler, kind, payload) {
     }
 }
 
-function tco_eval(...args) {
+function evaluate(...args) {
     return uniterate(tco_generator(...args));
 }
 // -------------------------------------------------------------------------
@@ -12548,32 +12527,32 @@ function next_pair(state) {
     this._state.args[this._state.i++] = state.object;
     if (is_nil(this.__object__)) {
         state.env = this.__env__;
-        const [fn, ...args] = this._state.args;
-        if (is_lambda(fn)) {
-            evaluate_lambda(fn, args, state, this);
-        } else if (is_continuation(fn)) {
+        const [first, ...args] = this._state.args;
+        if (is_lambda(first)) {
+            evaluate_lambda(first, args, state, this);
+        } else if (is_continuation(first)) {
             state.ready = true;
             state.object = args[0];
-            const clone = fn.clone(false);
+            const clone = first.clone(false);
             // restore the try handlers captured when this continuation was
             // created, so escaping/re-entering a `try` updates the active set.
             if (clone._state.handlers) {
                 state.handlers = clone._state.handlers.slice();
             }
             state.cc = clone;
-        } else if (fn === __apply__ && is_lambda(args[0])) {
+        } else if (first === __apply__ && is_lambda(args[0])) {
             const fn = args.shift();
             typecheck('apply', fn, 'function', 1);
             let last = args.pop();
             typecheck('apply', last, ['pair', 'nil'], args.length + 2);
             last = global_env.get('list->array').call(global_env, last);
             evaluate_lambda(fn, args.concat(last), state, this);
-        } else if (is_parameter(fn)) {
+        } else if (is_parameter(first)) {
             // a dynamic variable created by make-parameter. Look up the
             // effective binding in the dynamic environment (parameterize
             // installs a shadowing Parameter there) before reading/setting it.
             state.cc = this.__continuation__;
-            const param = search_param(state.dynamic_env, fn);
+            const param = search_param(state.dynamic_env, first);
             if (args.length === 0) {
                 state.object = box(param.invoke());
             } else {
@@ -12581,13 +12560,13 @@ function next_pair(state) {
                 state.object = undefined;
             }
             state.ready = !is_promise(state.object);
-        } else if (is_function(fn)) {
+        } else if (is_function(first)) {
             state.cc = this.__continuation__;
-            state.object = box(call_function(fn, prepare_fn_args(fn, args), state));
+            state.object = box(call_function(first, prepare_fn_args(first, args), state));
             state.ready = !is_promise(state.object);
         } else {
-            const op = this.__code__ ? this.__code__.car : fn;
-            throw new Error(`${type(fn)} ${op && op.toString()} is not a function`);
+            throw new Error(`${type(first)} ${env.get('repr')(first)} is not callable while evaluating ` +
+                            to_string(this.__code__));
         }
     } else {
         state.object = this.__object__.car;
@@ -12595,105 +12574,6 @@ function next_pair(state) {
         state.cc = this;
         read_only(this, '__object__', this.__object__.cdr);
         state.ready = false;
-    }
-}
-// -------------------------------------------------------------------------
-function evaluate(code, { env, dynamic_env, use_dynamic, error = noop } = {}) {
-    try {
-        if (!is_env(dynamic_env)) {
-            dynamic_env = env === true ? user_env : (env || user_env);
-        }
-        if (use_dynamic) {
-            env = dynamic_env;
-        } else if (env === true) {
-            env = user_env;
-        } else {
-            env = env || global_env;
-        }
-        var eval_args = { env, dynamic_env, use_dynamic, error };
-        var value;
-        if (is_null(code)) {
-            return code;
-        }
-        if (code instanceof LSymbol) {
-            return env.get(code);
-        }
-        if (!is_pair(code)) {
-            return code;
-        }
-        var first = code.car;
-        var rest = code.cdr;
-        if (is_pair(first)) {
-            value = resolve_promises(evaluate(first, eval_args));
-            if (is_promise(value)) {
-                return value.then((value) => {
-                    if (!is_callable(value)) {
-                        throw new Error(
-                            type(value) + ' ' + env.get('repr')(value) +
-                                ' is not callable while evaluating ' + code.toString()
-                        );
-                    }
-                    return evaluate(new Pair(value, code.cdr), eval_args);
-                });
-                // else is later in code
-            } else if (!is_callable(value)) {
-                throw new Error(
-                    type(value) + ' ' + env.get('repr')(value) +
-                        ' is not callable while evaluating ' + code.toString()
-                );
-            }
-        }
-        if (first instanceof LSymbol) {
-            value = env.get(first);
-        } else if (is_function(first)) {
-            value = first;
-        }
-        let result;
-        if (value instanceof Syntax || value instanceof Macro ||
-            value instanceof SyntaxParameter) {
-            // macros get the full form; their fn does source.cdr internally
-            result = value.invoke(code, eval_args);
-        } else if (is_function(value)) {
-            result = apply(value, rest, eval_args);
-        } else if (is_parameter(value)) {
-            const param = search_param(dynamic_env, value);
-            if (is_null(code.cdr)) {
-                result = param.invoke();
-            } else {
-                return unpromise(evaluate(code.cdr.car, eval_args), function(value) {
-                    param.__value__ = value;
-                });
-            }
-        } else if (is_continuation(value)) {
-            result = value.invoke();
-        } else if (is_pair(code)) {
-            value = first && first.toString();
-            throw new Error(`${type(first)} ${value} is not a function`);
-        } else {
-            return code;
-        }
-        // escape promise feature #54
-        var __promise__ = env.get(Symbol.for('__promise__'), { throwError: false });
-        if (is_promise(result)) {
-            if (__promise__ === true) {
-                // fix #139 evaluate the code inside the promise that is not data.
-                // When promise is not quoted it happen automatically, when returning
-                // promise from evaluate.
-                result = result.then(result => {
-                    if (is_pair(result)) {
-                        return evaluate(result, eval_args);
-                    }
-                    return result;
-                });
-                return new QuotedPromise(result);
-            }
-            return result.catch(e => {
-                error && error.call(env, e, code);
-            });
-        }
-        return result;
-    } catch (e) {
-        error && error.call(env, e, code);
     }
 }
 // -------------------------------------------------------------------------
@@ -12719,11 +12599,11 @@ function exec_collect(collect_callback) {
         }
         const results = [];
         if (is_pair(arg)) {
-            return [await tco_eval(arg, { env, dynamic_env, use_dynamic })];
+            return [await evaluate(arg, { env, dynamic_env, use_dynamic })];
         }
         const input = Array.isArray(arg) ? arg : _parse(arg, parser_args);
         for await (let code of input) {
-            const value = await tco_eval(code, { env, dynamic_env, use_dynamic });
+            const value = await evaluate(code, { env, dynamic_env, use_dynamic });
             results.push(collect_callback(code, value));
         }
         return results;
@@ -13343,7 +13223,6 @@ export {
     repr,
     nil,
     eof,
-    tco_eval,
 
     LSymbol,
     LNumber,
@@ -13364,7 +13243,7 @@ const lips = {
     exec,
     parse,
     tokenize,
-    evaluate: tco_eval,
+    evaluate,
     compile,
     type,
 
@@ -13381,7 +13260,6 @@ const lips = {
 
     Environment,
     env: user_env,
-
     Worker,
 
     Interpreter,
