@@ -7,6 +7,7 @@
 * remove `..` macro [#500](https://github.com/jcubic/lips/issues/500)
 * `macroexpand` is now a function (like in Common Lisp) instead of a macro
 * remove `parent.frame` and `parent.frames`
+* remove `Symbol(__data__)` from quoted data
 ### Features
 * add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)

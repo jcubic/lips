@@ -3636,7 +3636,7 @@ Pair.prototype.to_array = function(deep = true) {
 // :: TODO: change to Pair.from_array
 // ----------------------------------------------------------------------
 Pair.from_array = function(array, deep = true, quote = false) {
-    if (is_pair(array) || quote && array instanceof Array && array[__data__]) {
+    if (is_pair(array)) {
         return array;
     }
     if (deep === false) {
@@ -4564,9 +4564,6 @@ function macro_args_env(params, code, scope) {
             if (is_nil(arg)) {
                 env.__env__[params.car.__name__] = nil;
             } else {
-                if (is_pair(arg.car)) {
-                    arg.car[__data__] = true;
-                }
                 env.__env__[params.car.__name__] = arg.car;
             }
         }
@@ -5908,7 +5905,6 @@ function lips_context(obj) {
 // ----------------------------------------------------------------------
 const __context__ = Symbol.for('__context__');
 const __fn__ = Symbol.for('__fn__');
-const __data__ = Symbol.for('__data__');
 const __ref__ = Symbol.for('__ref__');
 const __cycles__ = Symbol.for('__cycles__');
 const __class__ = Symbol.for('__class__');
@@ -8571,9 +8567,6 @@ Environment.prototype.parents = function() {
 function quote(value) {
     if (is_promise(value)) {
         return value.then(quote);
-    }
-    if (is_pair(value) || value instanceof LSymbol) {
-        value[__data__] = true;
     }
     return value;
 }
@@ -11490,9 +11483,6 @@ function resolve_promises(arg) {
             node.have_cycles('car') ? node.car : await resolve(node.car),
             node.have_cycles('cdr') ? node.cdr : await resolve(node.cdr)
         );
-        if (node[__data__]) {
-            pair[__data__] = true;
-        }
         return pair;
     }
     function resolve(node) {
@@ -12784,7 +12774,7 @@ function evaluate(code, { env, dynamic_env, use_dynamic, error = noop } = {}) {
                 // When promise is not quoted it happen automatically, when returning
                 // promise from evaluate.
                 result = result.then(result => {
-                    if (is_pair(result) && !value[__data__]) {
+                    if (is_pair(result)) {
                         return evaluate(result, eval_args);
                     }
                     return result;
