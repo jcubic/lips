@@ -172,6 +172,38 @@
           (loop (%map1 cdr lists))))))
 
 ;; -----------------------------------------------------------------------------
+(define (fold function init . lists)
+  "(fold fn init . lists)
+
+   Function fold is left-to-right reversal of reduce. It call `fn`
+   on each pair of elements of the list and returns a single value.
+   e.g. it computes (fn 'a 'x (fn 'b 'y (fn 'c 'z 'foo)))
+   for: (fold fn 'foo '(a b c) '(x y z))"
+  (typecheck "fold" function "function")
+  (let loop ((result init) (lists lists))
+    (if (%empty-lists lists)
+        result
+        (loop (apply function (append (%map1 car lists) (list result)))
+              (%map1 cdr lists)))))
+
+;; -----------------------------------------------------------------------------
+(define (reduce function init . lists)
+  "(reduce fn init list . lists)
+
+   Higher-order function that takes each element of the list and calls
+   the fn with result of previous call or init and the next element
+   of the list until each element is processed, and returns a single value
+   as result of last call to `fn` function.
+   e.g. it computes (fn 'c 'z (fn 'b 'y (fn 'a 'x 'foo)))
+   for: (reduce fn 'foo '(a b c) '(x y z))"
+  (typecheck "reduce" function "function")
+  (let loop ((result init) (lists lists))
+    (if (%empty-lists lists)
+        result
+        (loop (apply function result (%map1 car lists))
+              (%map1 cdr lists)))))
+
+;; -----------------------------------------------------------------------------
 (define (quoted-symbol? x)
    "(quoted-symbol? code)
 
@@ -1915,4 +1947,3 @@
                                  (value port)))
                       lips.specials.SYMBOL)
         (unset-special! string))))
-

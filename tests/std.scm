@@ -153,6 +153,16 @@
         (let ((fn (fold-left curry + '(1 2 3))))
           (test fn))))
 
+(test "std: reduce/curry"
+      (lambda (t)
+
+        (define (test fn)
+          (t.is (procedure? fn) true)
+          (t.is (fn 4) 10))
+
+        (let ((fn (reduce curry + '(1 2 3))))
+          (test fn))))
+
 (test "std: char properties"
       (lambda (t)
         ;; function taken from book Sketchy Scheme by Nils M Holm

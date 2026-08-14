@@ -6100,23 +6100,6 @@ function compose(...fns) {
     return pipe(...fns.reverse());
 }
 // -------------------------------------------------------------------------
-// :: fold functions generator
-// -------------------------------------------------------------------------
-function fold(name, fold) {
-    var self = this;
-    return function recur(fn, init, ...lists) {
-        typecheck(name, fn, 'function');
-        if (lists.some(is_null)) {
-            if (typeof init === 'number') {
-                return LNumber(init);
-            }
-            return init;
-        } else {
-            return fold.call(self, recur, fn, init, ...lists);
-        }
-    };
-}
-// -------------------------------------------------------------------------
 function limit_math_op(n, fn) {
     // + 1 so it include function in guard_math_call
     return limit(n + 1, curry(guard_math_call, fn));
@@ -10701,25 +10684,6 @@ var global_env = new Environment({
         Predicate that tests if value is a proper linked list structure.
         The car of each pair can be any value. It returns false on cyclic lists."`),
     // ------------------------------------------------------------------
-    fold: doc('fold', fold('fold', function(fold, fn, init, ...lists) {
-        typecheck('fold', fn, 'function');
-        lists.forEach((arg, i) => {
-            typecheck('fold', arg, ['pair', 'nil'], i + 1);
-        });
-        if (lists.some(is_nil)) {
-            return init;
-        }
-        const value = fold.call(this, fn, init, ...lists.map(l => l.cdr));
-        return unpromise(value, value => {
-            return fn(...lists.map(l => l.car), value);
-        });
-    }), `(fold fn init . lists)
-
-         Function fold is left-to-right reversal of reduce. It call \`fn\`
-         on each pair of elements of the list and returns a single value.
-         e.g. it computes (fn 'a 'x (fn 'b 'y (fn 'c 'z 'foo)))
-         for: (fold fn 'foo '(a b c) '(x y z))`),
-    // ------------------------------------------------------------------
     pluck: doc('pluck', function pluck(...keys) {
         return function(obj) {
             keys = keys.map(x => x instanceof LSymbol ? x.__name__ : x);
@@ -10741,26 +10705,6 @@ var global_env = new Environment({
         called with an object will return that key from the object.
         If called with more then one string the returned function will
         create a new object by copying all properties from the given object.`),
-    // ------------------------------------------------------------------
-    reduce: doc('reduce', fold('reduce', function(reduce, fn, init, ...lists) {
-        typecheck('reduce', fn, 'function');
-        lists.forEach((arg, i) => {
-            typecheck('reduce', arg, ['pair', 'nil'], i + 1);
-        });
-        if (lists.some(is_nil)) {
-            return init;
-        }
-        return unpromise(fn(...lists.map(l => l.car), init), (value) => {
-            return reduce.call(this, fn, value, ...lists.map(l => l.cdr));
-        });
-    }), `(reduce fn init list . lists)
-
-         Higher-order function that takes each element of the list and calls
-         the fn with result of previous call or init and the next element
-         of the list until each element is processed, and returns a single value
-         as result of last call to \`fn\` function.
-         e.g. it computes (fn 'c 'z (fn 'b 'y (fn 'a 'x 'foo)))
-         for: (reduce fn 'foo '(a b c) '(x y z))`),
     // ------------------------------------------------------------------
     filter: doc('filter', function filter(arg, list) {
         typecheck('filter', arg, ['regex', 'function']);
