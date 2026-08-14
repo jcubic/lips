@@ -12,6 +12,7 @@ on:
       - "bin/*"
       - "lib/*"
       - "src/*"
+      - "benchmarks/**"
       - ".github/workflows/build.yaml"
     branches:
       - master
@@ -25,6 +26,7 @@ on:
       - "bin/*"
       - "lib/*"
       - "src/*"
+      - "benchmarks/**"
       - ".github/workflows/build.yaml"
     branches:
       - master
@@ -53,3 +55,47 @@ jobs:
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  # runs in parallel with `build`; measures evaluator speed with Benchmark.js.
+  # This is a stable metric independent of the number of tests (unlike the test
+  # wall-time). Results are tracked over commits with github-action-benchmark:
+  # on push to master/devel the numbers become the baseline, and on a PR the job
+  # comments the change vs that baseline (e.g. after merging continuations-2).
+  benchmark:
+    runs-on: ubuntu-latest
+    # allow the job to comment on PRs / push benchmark data to gh-pages
+    permissions:
+      contents: write
+      deployments: write
+      pull-requests: write
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - name: build interpreter and stdlib
+        run: make dist/lips.esm.js dist/std.xcb
+      # run bin/lips.js directly (not `make benchmark`) so make's build echo can
+      # never leak into the parsed output; stdout is only the Benchmark.js lines
+      - name: run benchmark
+        run: node bin/lips.js benchmarks/suite.scm | tee benchmark_output.txt
+      - name: store / compare benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: LIPS interpreter benchmark
+          tool: benchmarkjs
+          output-file-path: benchmark_output.txt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # push the baseline to gh-pages only on push to a real branch;
+          # on PRs just compare + comment (no write to gh-pages from the PR)
+          auto-push: ${{ github.event_name != 'pull_request' }}
+          # comment on the PR (and on commits) with the comparison table
+          comment-always: true
+          summary-always: true
+          # flag (but don't fail the build) if a benchmark gets >50% slower
+          alert-threshold: '150%'
+          fail-on-alert: false
+          comment-on-alert: true

@@ -1,4 +1,4 @@
-.PHONY: publish test coveralls lint zero coverage codespell
+.PHONY: publish test coveralls lint zero coverage codespell benchmark
 
 VERSION={{VERSION}}
 VERSION_DASH=`echo -n "{{VERSION}}" | sed "s/-/%E2%80%93/"`
@@ -114,6 +114,9 @@ test-file: dist/lips.js dist/std.xcb
 
 test-update: dist/lips.js dist/std.scm
 	@$(NPM) run test-update
+
+benchmark: dist/lips.esm.js dist/std.xcb
+	@$(LIPS) benchmarks/suite.scm
 
 fold:
 	@$(WGET) $(UNICODE_FOLD) -O ./assets/CaseFolding.txt
