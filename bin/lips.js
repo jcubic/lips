@@ -146,10 +146,10 @@ function print_error(e, stack) {
     if (stack) {
         process.exit(1);
     } else {
-        console.error('Use (display exception.stack) or use -t/-trace option to display JS stack trace.');
+        console.error('Use (display exception.stack) or use -t/--trace option to display JS stack trace.');
     }
     if (!use_meta) {
-        console.error('Use -m/-meta option to display column and filename of the exception');
+        console.error('Use -m/--meta option to display column and filename of the exception');
     }
     global.exception = e;
 }
