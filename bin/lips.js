@@ -98,10 +98,15 @@ async function run(code, {
     interpreter,
     env = null,
     filename = null,
-    log_unterminated = true
+    log_unterminated = true,
+    // the standard library is written for lexical scope, so it must always be
+    // bootstrapped lexically - `-d`/--dynamic only applies to user code. Passing
+    // use_dynamic through to the bootstrap made the whole stdlib load under
+    // dynamic scope, which is pathological (see bootstrap()).
+    dynamic = use_dynamic
 }) {
     try {
-        return await interpreter.exec(code, { use_dynamic, env, filename });
+        return await interpreter.exec(code, { use_dynamic: dynamic, env, filename });
     } catch(e) {
         if (e instanceof Parser.Unterminated && !log_unterminated) {
             return;
@@ -197,7 +202,8 @@ function bootstrap(interpreter) {
         return readCode(path);
     }
     const code = read(filename);
-    return run(code, { interpreter, filename, env: env.__parent__ });
+    // always lexical: the stdlib assumes lexical scope (see run())
+    return run(code, { interpreter, filename, env: env.__parent__, dynamic: false });
 }
 
 // -----------------------------------------------------------------------------

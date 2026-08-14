@@ -3,7 +3,7 @@ name: Build and test
 on:
   push:
     paths:
-      - "template/Makefile"
+      - "templates/Makefile"
       - "package.json"
       - "package-lock.json"
       - "Makefile"
@@ -19,7 +19,7 @@ on:
       - devel
   pull_request:
     paths:
-      - "template/Makefile"
+      - "templates/Makefile"
       - "Makefile"
       - "scripts/*"
       - "tests/*"
@@ -49,6 +49,9 @@ jobs:
       - run: npm ci
       - run: make
       - run: make lint
+      # fast bootstrap + core-eval sanity check (lexical and dynamic scope)
+      # before the full suite; also guards against a dynamic-mode boot hang
+      - run: make smoke
       - run: make test
       - run: make coverage
       - name: Coveralls

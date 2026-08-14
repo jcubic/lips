@@ -1,4 +1,4 @@
-.PHONY: publish test coveralls lint zero coverage codespell benchmark
+.PHONY: publish test coveralls lint zero coverage codespell benchmark smoke
 
 VERSION=1.0.0-beta.21
 VERSION_DASH=`echo -n "1.0.0-beta.21" | sed "s/-/%E2%80%93/"`
@@ -117,6 +117,20 @@ test-update: dist/std.scm
 
 benchmark: dist/std.xcb
 	@$(LIPS) benchmarks/suite.scm
+
+# Fast end-to-end sanity check of the built interpreter: bootstrap + core
+# evaluation, in both lexical and dynamic (-d) scope. Runs in a couple of
+# seconds and is a cheap early gate before the full test suite.
+#
+# A failing script currently still exits 0 (running a file swallows errors), and
+# a bootstrap regression can hang, so we gate on the success sentinel printed by
+# each script and wrap in `timeout` - the output is echoed first so a CI failure
+# is easy to diagnose.
+smoke: dist/std.xcb
+	@out=`timeout 60 $(LIPS) scripts/smoke.scm`; echo "$$out"; \
+		echo "$$out" | grep -q "smoke: all checks passed"
+	@out=`timeout 60 $(LIPS) -d scripts/smoke-dynamic.scm`; echo "$$out"; \
+		echo "$$out" | grep -q "dynamic smoke: all checks passed"
 
 fold:
 	@$(WGET) $(UNICODE_FOLD) -O ./assets/CaseFolding.txt
