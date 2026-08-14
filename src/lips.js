@@ -6105,21 +6105,42 @@ function compose(...fns) {
 }
 // -------------------------------------------------------------------------
 function limit_math_op(n, fn) {
-    // + 1 so it include function in guard_math_call
-    return limit(n + 1, curry(guard_math_call, fn));
+    // Direct wrapper instead of limit(n+1, curry(guard_math_call, fn)): the
+    // math ops are only ever applied with all n args at once (variadic ops go
+    // through reduce_math_op, which feeds the reducer exactly 2 values), so the
+    // currying/partial-application machinery was never exercised - it just
+    // allocated two closures + several arrays on every single arithmetic call
+    // (a very hot path). This keeps the same behaviour (clamp to n args,
+    // typecheck each as a number) with no per-call allocation.
+    return function(...args) {
+        if (args.length > n) {
+            args.length = n;
+        }
+        for (let i = 0; i < args.length; i++) {
+            typecheck('', args[i], 'number');
+        }
+        return fn(...args);
+    };
 }
 // -------------------------------------------------------------------------
 // :: some functional magic
 // -------------------------------------------------------------------------
-var single_math_op = curry(limit_math_op, 1);
-var binary_math_op = curry(limit_math_op, 2);
+// plain arrows instead of curry(...): these are called once per operator
+// definition, but currying them added no value and made binary_math_op(fn)
+// (called per arithmetic op inside reduce_math_op / - / /) go through the
+// allocation-heavy curry machinery
+var single_math_op = fn => limit_math_op(1, fn);
+var binary_math_op = fn => limit_math_op(2, fn);
 // -------------------------------------------------------------------------
 function reduce_math_op(fn, init = null) {
+    // build the 2-arg reducer ONCE at operator-definition time instead of on
+    // every call (this function is only called to define +, *, etc.)
+    const reducer = binary_math_op(fn);
     return function(...args) {
         if (init !== null) {
             args = [init, ...args];
         }
-        return args.reduce(binary_math_op(fn));
+        return args.reduce(reducer);
     };
 }
 // -------------------------------------------------------------------------
@@ -6440,8 +6461,13 @@ LNumber.prototype.dec = function(n) {
 
 // -------------------------------------------------------------------------
 LNumber.prototype.constant = function(value, type) {
-    enumerable(this, '__value__', value);
-    enumerable(this, '__type__', type);
+    // plain assignment instead of enumerable()/defineProperty: this runs on
+    // EVERY number constructed (every arithmetic result), and two
+    // Object.defineProperty calls per number were ~6% of the recursion
+    // benchmark. Numbers are still treated as immutable by convention - nothing
+    // writes these fields except constant()/dec().
+    this.__value__ = value;
+    this.__type__ = type;
 };
 // -------------------------------------------------------------------------
 LNumber.types = {
@@ -6917,9 +6943,9 @@ LComplex.prototype = Object.create(LNumber.prototype);
 LComplex.prototype.constructor = LComplex;
 // -------------------------------------------------------------------------
 LComplex.prototype.constant = function(im, re) {
-    enumerable(this, '__im__', im);
-    enumerable(this, '__re__', re);
-    enumerable(this, '__type__', 'complex');
+    this.__im__ = im;
+    this.__re__ = re;
+    this.__type__ = 'complex';
 };
 // -------------------------------------------------------------------------
 LComplex.prototype.abs = function() {
@@ -7359,9 +7385,9 @@ LRational.prototype = Object.create(LNumber.prototype);
 LRational.prototype.constructor = LRational;
 // -------------------------------------------------------------------------
 LRational.prototype.constant = function(num, denom) {
-    enumerable(this, '__num__', num);
-    enumerable(this, '__denom__', denom);
-    enumerable(this, '__type__', 'rational');
+    this.__num__ = num;
+    this.__denom__ = denom;
+    this.__type__ = 'rational';
 };
 // -------------------------------------------------------------------------
 LRational.prototype.serialize = function() {
@@ -9619,8 +9645,26 @@ var global_env = new Environment({
         const rest = __doc__ ? code.cdr.cdr : code.cdr;
         function lambda(...args) {
             const eval_args = lambda_scope.call(this, self, lambda, code, args, state);
-            const { env, dynamic_env } = eval_args;
-            const body = hygienic_begin([env, dynamic_env], rest);
+            const { dynamic_env, use_dynamic } = eval_args;
+            // Cache the hygienic (begin . body) wrapper and bind its gensym once
+            // in the definition env (`self`) instead of minting a gensym +
+            // allocating a Pair on every call. `eval_args.env` inherits from
+            // `self`, so the gensym resolves through the lexical chain. Mirrors
+            // evaluate_lambda (shares the same _hygienic_body/_begin_gensym
+            // fields) - hot when a scheme lambda is used as a JS callback, e.g.
+            // array .map over a big array.
+            let body = lambda._hygienic_body;
+            if (is_undef(body)) {
+                const g = gensym('begin');
+                lambda._begin_gensym = g;
+                body = lambda._hygienic_body = new Pair(g, rest);
+                self.set(g, global_env.get('begin'));
+            }
+            // dynamic-scope mode evaluates the body with dynamic_env (which does
+            // not chain to `self`), so rebind the gensym there per call.
+            if (use_dynamic) {
+                dynamic_env.set(lambda._begin_gensym, global_env.get('begin'));
+            }
             return evaluate(body, { ...eval_args, cc: top_cc });
         }
         var length = is_pair(code.car) ? code.car.length() : null;
@@ -11291,6 +11335,12 @@ function typecheck_text_port(fn, arg, type) {
 }
 // -------------------------------------------------------------------------
 function typecheck(fn, arg, expected, position = null) {
+    // fast path: the numeric typecheck done by every math op is the single most
+    // frequent call - short-circuit it before the (memoized-but-still-costly)
+    // type() lookup + toLowerCase. LNumber is exactly type 'number'.
+    if (expected === 'number' && arg instanceof LNumber) {
+        return;
+    }
     fn = fn.valueOf();
     const arg_type = type(arg).toLowerCase();
     if (is_function(expected)) {
@@ -11626,8 +11676,12 @@ class Continuation {
         this.__continuation__ = cc;
         this.__next__ = next;
         const n = state.cc ? state.cc._state.n + 1 : 0;
-        // _state stays non-enumerable so a captured continuation reprs cleanly
-        read_only(this, '_state', {
+        // plain assignment (was read_only/defineProperty): this ran on every
+        // Continuation and was the single biggest defineProperty cost left in
+        // the profile. The sibling fields above are already plain, so _state
+        // being enumerable too is consistent (repr of a continuation does not
+        // enumerate its fields).
+        this._state = {
             ...data,
             i: 0,
             n,
@@ -11635,7 +11689,7 @@ class Continuation {
             state,
             name,
             count: 0
-        }, { hidden: true });
+        };
     }
     get __name__() {
         if (this._state.count === 0) {
@@ -11679,8 +11733,7 @@ class Continuation {
         if (mark) {
             count++;
         }
-        const state = { ...this._state, count, args: [...this._state.args] };
-        read_only(copy, '_state', state, { hidden: true });
+        copy._state = { ...this._state, count, args: [...this._state.args] };
         return copy;
     }
 }
@@ -11711,8 +11764,11 @@ class State {
         // first). Records the call stack for stack-trace/error augmentation -
         // needed because TCO drops tail frames from the continuation chain.
         // `_stack_set` gives O(1) dedup (Array.includes per step is O(n^2)).
-        this.stack = [];
-        this._stack_set = new Set();
+        // Allocated lazily (only when stack collection is enabled with -t/trace)
+        // - otherwise this is a bare array + Set wasted on every eval step, and
+        // a scheme lambda called from JS (.map callback) builds one State each.
+        this.stack = null;
+        this._stack_set = null;
     }
     cont() {
         if (is_debug('continuations')) {
@@ -11735,11 +11791,19 @@ class State {
             this.ready = true;
         }
         // record the current continuation for the stack trace (TCO removes tail
-        // frames from the cc chain, so we accumulate them here as they're seen)
-        const cc = this.cc;
-        if (_collect_stack && !this._stack_set.has(cc) && !cc.hidden()) {
-            this._stack_set.add(cc);
-            this.stack.push(cc);
+        // frames from the cc chain, so we accumulate them here as they're seen).
+        // The stack/_stack_set are created lazily on first use so the common
+        // (no-trace) path allocates neither.
+        if (_collect_stack) {
+            if (this._stack_set === null) {
+                this.stack = [];
+                this._stack_set = new Set();
+            }
+            const cc = this.cc;
+            if (!this._stack_set.has(cc) && !cc.hidden()) {
+                this._stack_set.add(cc);
+                this.stack.push(cc);
+            }
         }
         if (!this.ready) {
             if (is_debug(['eval', 'macro'])) {
@@ -11876,7 +11940,7 @@ function tco_error_handler(e, state, code) {
     // e.__stack__ (deduped) rather than overwrite so that as the error unwinds
     // through nested loops (e.g. `load`) each loop contributes its frames,
     // innermost first.
-    const frames = state.stack.slice().reverse();
+    const frames = (state.stack || []).slice().reverse();
     // the failing (innermost) expression drives the error's location metadata
     const inner = frames.length ? frames[0].__code__ : code;
     if (!(e.__stack__ instanceof Array)) {
