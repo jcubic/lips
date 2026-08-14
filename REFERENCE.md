@@ -1156,7 +1156,7 @@ e.g.:
 
 ## concat
 ```
-(concat . strings)
+(string-append string string2 ...)
 
 Function that creates a new string by joining its arguments.
 ```
@@ -3714,7 +3714,7 @@ start of the string, if no end is specified it convert to the end of the string.
 
 ## string-append
 ```
-(concat . strings)
+(string-append string string2 ...)
 
 Function that creates a new string by joining its arguments.
 ```

@@ -10298,7 +10298,7 @@ var global_env = new Environment({
     concat: doc('concat', function concat(...args) {
         args.forEach((arg, i) => typecheck('concat', arg, 'string', i + 1));
         return args.join('');
-    }, `(concat . strings)
+    }, `(string-append string string2 ...)
 
         Function that creates a new string by joining its arguments.`),
     // ------------------------------------------------------------------
