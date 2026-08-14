@@ -10682,25 +10682,6 @@ var global_env = new Environment({
 
          Higher order function return function that compares argument to object`),
     // ------------------------------------------------------------------
-    find: doc('find', function find(arg, list) {
-        typecheck('find', list, ['pair', 'nil']);
-        if (is_null(list)) {
-            return false;
-        }
-        var fn = matcher(arg);
-        return unpromise(fn(list.car), function(value) {
-            if (value && !is_nil(value)) {
-                return list.car;
-            }
-            return find(arg, list.cdr);
-        });
-    }, `(find fn list)
-        (find regex list)
-        (find atom list)
-
-        Higher-order function that finds the first value for which fn return true.
-        If called with a regex or any atom it will create a matcher function.`),
-    // ------------------------------------------------------------------
     'list?': doc('list?', function(obj) {
         var node = obj;
         while (true) {

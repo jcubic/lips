@@ -139,6 +139,23 @@
                   (k (cons value rest))))))))
 
 ;; -----------------------------------------------------------------------------
+(define (find object list)
+  "(find fn list)
+   (find regex list)
+   (find atom list)
+
+   Higher-order function that finds the first value for which fn return true.
+   If called with a regex or any atom it will create a matcher function."
+  (let ((fn (matcher object)))
+    (let loop ((list list))
+      (if (null? list)
+          #f
+          (let ((item (car list)))
+            (if (fn item)
+                item
+                (loop (cdr list))))))))
+
+;; -----------------------------------------------------------------------------
 (define (for-each function . lists)
   "(for-each fn list1 list2 ...)
 
