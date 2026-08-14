@@ -75,6 +75,10 @@ const type_constants = new Map([
     [NaN, 'NaN'],
     [null, 'null']
 ]);
+// precomputed once - `type` is called on every typecheck (hot path) and
+// Object.entries(type_mapping) would otherwise allocate a fresh array of
+// [key, class] pairs on every single call
+const type_mapping_entries = Object.entries(type_mapping);
 // -------------------------------------------------------------------------
 
 let fs, path, node_require;
@@ -6044,7 +6048,7 @@ function let_macro(name) {
                     // lambda's scope.
                     state.env = (name === 'let') ? outer_env : env;
                 }
-                read_only(this, '__object__', next);
+                this.__object__ = next;
             }
             state.ready = false;
         });
@@ -11335,7 +11339,7 @@ function type(obj) {
         return t;
     }
     if (typeof obj === 'object') {
-        for (let [key, value] of Object.entries(type_mapping)) {
+        for (let [key, value] of type_mapping_entries) {
             if (obj instanceof value) {
                 return key;
             }
@@ -11612,13 +11616,17 @@ function search_param(env, param) {
 class Continuation {
     constructor(name, object, code, state, next, data) {
         const { env = null, cc = null } = state;
-        read_only(this, '__env__', env);
-        read_only(this, '__code__', code);
-        read_only(this, '__object__', object);
-        read_only(this, '__continuation__', cc);
-        read_only(this, '__next__', next);
+        // plain assignments (not read_only/defineProperty): a Continuation is
+        // allocated on nearly every evaluation step, so 6 Object.defineProperty
+        // calls per instance dominated the profile. `__object__` is anyway
+        // reassigned in next_pair/next_begin, so write-protection was moot.
+        this.__env__ = env;
+        this.__code__ = code;
+        this.__object__ = object;
+        this.__continuation__ = cc;
+        this.__next__ = next;
         const n = state.cc ? state.cc._state.n + 1 : 0;
-        // for list
+        // _state stays non-enumerable so a captured continuation reprs cleanly
         read_only(this, '_state', {
             ...data,
             i: 0,
@@ -12400,7 +12408,7 @@ function next_begin(state) {
     if (is_nil(this.__object__.cdr)) {
         state.cc = this.__continuation__;
     } else {
-        read_only(this, '__object__', this.__object__.cdr);
+        this.__object__ = this.__object__.cdr;
         state.cc = this;
     }
 }
@@ -12582,7 +12590,7 @@ function next_pair(state) {
         state.object = this.__object__.car;
         state.env = this.__env__;
         state.cc = this;
-        read_only(this, '__object__', this.__object__.cdr);
+        this.__object__ = this.__object__.cdr;
         state.ready = false;
     }
 }
