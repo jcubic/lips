@@ -1522,20 +1522,20 @@
             (,iterator)
             (,next (lambda ()
                      ((. ,iterator "next")))))
-          (if (or (procedure? ,sync) (procedure? ,async))
-              (begin
-                 (set! ,iterator (if (procedure? ,sync) (,sync) (,async)))
-                 (let* ((,item (,next))
-                        (,stop #f)
-                        (,name (. ,item "value")))
-                   (while (not (or (eq? (. ,item "done") #t) ,stop))
-                     (if ,test
-                         (set! ,stop #t)
-                         (begin
-                           ,@body))
-                      (set! ,item (,next))
-                      (set! ,name (. ,item "value"))))
-                   ,result)))))
+       (if (or (procedure? ,sync) (procedure? ,async))
+           (begin
+             (set! ,iterator (if (procedure? ,sync) (,sync) (,async)))
+             (let* ((,item (,next))
+                    (,stop #f)
+                    (,name (. ,item "value")))
+               (while (not (or (eq? (. ,item "done") #t) ,stop))
+                 (if ,test
+                     (set! ,stop #t)
+                     (begin
+                       ,@body))
+                 (set! ,item (,next))
+                 (set! ,name (. ,item "value"))))
+             ,result)))))
 
 ;; -----------------------------------------------------------------------------
 (define (iterator->array object)

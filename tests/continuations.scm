@@ -49,32 +49,30 @@
                                          (return (eof-object))))
                           (return (eof-object))))))))
 
-(define (%result value done)
-  (let ((result (alist->object ())))
-    (set! result.done done)
-    (set! result.value value)
-    result))
-
 (define (generator proc)
   (define void (if #f #f))
   (define return #f)
   (define resume #f)
-  (define yield (lambda (v)
-                  (call/cc (lambda (r)
-                             (set! resume r)
-                             (return v)))))
-  (let* ((iterator `((next . ,(lambda ()
-                                  (let ((value (call/cc (lambda (cc)
-                                                          (set! return cc)
-                                                          (if resume
-                                                              (resume void)
-                                                              (begin
-                                                                (proc yield)
-                                                                (set! resume (lambda (v)
-                                                                               (return (eof-object))))
-                                                                (return (eof-object))))))))
-                                    `&(:value ,value :done ,(eof-object? value)))))
-                       (,Symbol.asyncIterator . ,(lambda () this)))))
+  (define (yield v)
+    (call/cc (lambda (r)
+               (set! resume r)
+               (return v))))
+  (define (next)
+    (let ((value (call/cc
+                  (lambda (cc)
+                    (set! return cc)
+                    (if resume
+                        (resume void)
+                        (begin
+                          (proc yield)
+                          (set! resume
+                                (lambda (v)
+                                  (return (eof-object))))
+                          (return (eof-object))))))))
+      `&(:value ,value :done ,(eof-object? value))))
+
+  (let* ((iterator `((next . ,next)
+                     (,Symbol.asyncIterator . ,(lambda () this)))))
     (alist->object iterator)))
 
 (define-macro (lambda* args . body)
