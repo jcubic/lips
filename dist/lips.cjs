@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Tue, 11 Aug 2026 17:06:03 +0000
+ * build: Fri, 14 Aug 2026 14:45:16 +0000
  */
 
 'use strict';
@@ -3581,8 +3581,16 @@ function contentLoaded(win, fn) {
 
 // ----------------------------------------------------------------------
 /* c8 ignore next */
+// fast global gate: is_debug() runs in hot paths (every eval step, macros) and
+// its user_env.get('DEBUG') is a full env-chain walk. Keep a module flag that
+// mirrors whether DEBUG is set to a truthy value (updated by Environment.set)
+// so the common (debug-off) case is a single boolean test.
+var _debug_enabled = false;
 function is_debug() {
   var n = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
+  if (!_debug_enabled) {
+    return false;
+  }
   var debug = user_env === null || user_env === void 0 ? void 0 : user_env.get('DEBUG', {
     throwError: false
   });
@@ -13596,7 +13604,11 @@ Interpreter.prototype.exec = function (arg) {
   typecheck('Interpreter::exec', arg, ['string', 'array'], 1);
   typecheck('Interpreter::exec', use_dynamic, 'boolean', 2);
   // simple solution to overwrite this variable in each interpreter
-  // before evaluation of user code
+  // before evaluation of user code. It's set on global_env (not this.__env__)
+  // so stdlib closures - which are lexically scoped to global_env, e.g.
+  // command-line reading **internal-env** - resolve to THIS interpreter's
+  // environment (and its per-interpreter internal env) during exec.
+  global_env.set('**interaction-environment**', this.__env__);
   if (!env) {
     env = this.__env__;
   }
@@ -13813,7 +13825,11 @@ Environment.prototype.get = function (symbol) {
   var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
   // we keep original environment as context for bind
   // so print will get user stdout
-  typecheck('Environment::get', symbol, ['symbol', 'string']);
+  // fast inline type check - this is a hot path and the generic typecheck()
+  // calls type(arg).toLowerCase() on every lookup
+  if (!(symbol instanceof LSymbol || symbol instanceof LString || typeof symbol === 'string')) {
+    typecheck('Environment::get', symbol, ['symbol', 'string']);
+  }
   var _options$throwError = options.throwError,
     throwError = _options$throwError === void 0 ? true : _options$throwError;
   var name = symbol;
@@ -13883,6 +13899,10 @@ Environment.prototype.set = function (name, value) {
     name = name.valueOf();
   }
   this.__env__[name] = value;
+  if (name === 'DEBUG') {
+    // keep the is_debug() fast-path gate in sync
+    _debug_enabled = !(value === false || value === undefined || is_nil(value));
+  }
   if (doc) {
     this.doc(name, doc, true);
   }
@@ -18089,10 +18109,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Tue, 11 Aug 2026 17:06:03 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Fri, 14 Aug 2026 14:45:16 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Tue, 11 Aug 2026 17:06:03 +0000').valueOf();
+  var date = LString('Fri, 14 Aug 2026 14:45:16 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = function _format(x) {
     return x.toString().padStart(2, '0');
@@ -18132,7 +18152,7 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Tue, 11 Aug 2026 17:06:03 +0000';
+var date = 'Fri, 14 Aug 2026 14:45:16 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

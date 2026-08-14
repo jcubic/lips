@@ -1,4 +1,4 @@
-.PHONY: publish test coveralls lint zero coverage codespell
+.PHONY: publish test coveralls lint zero coverage codespell benchmark
 
 VERSION=1.0.0-beta.21
 VERSION_DASH=`echo -n "1.0.0-beta.21" | sed "s/-/%E2%80%93/"`
@@ -106,14 +106,17 @@ publish:
 	$(CD) npm && $(NPM) publish --access=public
 	$(RM) -rf npm
 
-test: src/lips.js dist/std.xcb
+test: dist/std.xcb
 	@$(NPM) run test
 
-test-file: src/lips.js dist/std.xcb
+test-file: dist/std.xcb
 	@$(NPM) run test-file -- -- -f $(FILE)
 
-test-update: src/lips.js dist/std.scm
+test-update: dist/std.scm
 	@$(NPM) run test-update
+
+benchmark: dist/std.xcb
+	@$(LIPS) benchmarks/suite.scm
 
 fold:
 	@$(WGET) $(UNICODE_FOLD) -O ./assets/CaseFolding.txt

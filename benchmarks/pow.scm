@@ -1,6 +1,6 @@
 #!/usr/bin/env -S lips --debug -t
 
-(load "./helpers.scm")
+(load "./helpers/helpers.scm")
 
 
 (suite (add "pow: op" (lambda ()
