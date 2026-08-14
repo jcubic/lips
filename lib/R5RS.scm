@@ -28,6 +28,8 @@
 (define list->vector list->array)
 (define vector->list array->list)
 (define call-with-current-continuation call/cc)
+(define fold-right fold)
+(define fold-left reduce)
 
 ;; -----------------------------------------------------------------------------
 (define (procedure? obj)
@@ -1132,10 +1134,6 @@
   (if (not (null? rest))
       (typecheck "write-char" (car rest) "output-port"))
   (apply display (cons (char.valueOf) rest)))
-
-;; -----------------------------------------------------------------------------
-(define fold-right reduce)
-(define fold-left fold)
 
 ;; -----------------------------------------------------------------------------
 (define (make-vector n . rest)
