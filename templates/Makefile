@@ -106,16 +106,16 @@ publish:
 	$(CD) npm && $(NPM) publish --access=public
 	$(RM) -rf npm
 
-test: dist/lips.js dist/std.xcb
+test: dist/std.xcb
 	@$(NPM) run test
 
-test-file: dist/lips.js dist/std.xcb
+test-file: dist/std.xcb
 	@$(NPM) run test-file -- -- -f $(FILE)
 
-test-update: dist/lips.js dist/std.scm
+test-update: dist/std.scm
 	@$(NPM) run test-update
 
-benchmark: dist/lips.esm.js dist/std.xcb
+benchmark: dist/std.xcb
 	@$(LIPS) benchmarks/suite.scm
 
 fold:
