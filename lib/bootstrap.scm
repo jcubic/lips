@@ -1551,8 +1551,12 @@
      (set! i (+ i 1)))))
 
 ;; -----------------------------------------------------------------------------
+;; map is recognized as #<iterator(Map)> we are adding repr for all classes
+;; -----------------------------------------------------------------------------
 (set-repr! Set (lambda () "#<Set>"))
 (set-repr! Map (lambda () "#<Map>"))
+(set-repr! WeakMap (lambda () "#<WeakMap>"))
+(set-repr! WeakSet (lambda () "#<WeakSet>"))
 
 ;; -----------------------------------------------------------------------------
 (define (native-symbol? x)
