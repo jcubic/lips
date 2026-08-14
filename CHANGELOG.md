@@ -19,6 +19,7 @@
 * performance improvements
 * new interpreter with TCO and Continuations inspired by js-scheme [#127](https://github.com/jcubic/lips/issues/127)
 * new higher order function `matcher` that return function that check if object is the same
+* new `stack-trace` and `trace` functions
 ### Bugfix
 * fix doc string for `make-rectangular`
 * `-inf.0`/`+inf.0` are now real lips numbers
