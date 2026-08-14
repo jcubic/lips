@@ -21,6 +21,7 @@
 * new higher order function `matcher` that return function that check if object is the same
 * new `stack-trace` and `trace` functions
 * add core `^` bitwise xor function
+* add `generator` and `make-coroutine-generator` functions
 ### Bugfix
 * fix doc string for `make-rectangular`
 * `-inf.0`/`+inf.0` are now real lips numbers
