@@ -63,10 +63,9 @@ jobs:
   # comments the change vs that baseline (e.g. after merging continuations-2).
   benchmark:
     runs-on: ubuntu-latest
-    # allow the job to comment on PRs / push benchmark data to gh-pages
+    # only push to the data branch / comment on PRs
     permissions:
       contents: write
-      deployments: write
       pull-requests: write
     steps:
       - name: checkout
@@ -84,17 +83,24 @@ jobs:
         run: node bin/lips.js benchmarks/suite.scm | tee benchmark_output.txt
       - name: store / compare benchmark result
         uses: benchmark-action/github-action-benchmark@v1
+        # never let a benchmark bookkeeping issue (push/comment) fail the build
+        continue-on-error: true
         with:
           name: LIPS interpreter benchmark
           tool: benchmarkjs
           output-file-path: benchmark_output.txt
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          # push the baseline to gh-pages only on push to a real branch;
-          # on PRs just compare + comment (no write to gh-pages from the PR)
+          # Store the history on a DEDICATED branch so we never touch GitHub
+          # Pages (served from master:/docs) or the master branch. This branch
+          # only holds benchmark JSON - it is not a Pages source.
+          gh-pages-branch: benchmark-data
+          benchmark-data-dir-path: data
+          # append the baseline to that branch only on push to master/devel;
+          # on a PR just fetch it, compare and comment (no push)
           auto-push: ${{ github.event_name != 'pull_request' }}
-          # comment on the PR (and on commits) with the comparison table
-          comment-always: true
+          # write the comparison table to the job summary and comment on PRs
           summary-always: true
+          comment-always: true
           # flag (but don't fail the build) if a benchmark gets >50% slower
           alert-threshold: '150%'
           fail-on-alert: false
