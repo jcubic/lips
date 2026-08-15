@@ -11,6 +11,7 @@
 * swap `fold-right` and `fold-left`
 * `truncate` now properly return integer
 * `lips -e` doesn't print the output anymore
+* remove `with-tags` macro and `make-tags` function
 ### Features
 * add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
