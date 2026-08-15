@@ -984,16 +984,17 @@ This function returns the car (item 1) of the list.")
 
 (test "runtime error augmentation"
       (lambda (t)
-        (let ((file "./tests/files/runtime-error.scm"))
-          (with-meta
-           (t.snapshot (to.throw.error (load file)))))))
-
+        (with-meta
+         (let ((file "./tests/files/runtime-error.scm"))
+           (let ((e (to.throw.error (load file))))
+             (t.snapshot (Object.getOwnPropertyNames e)))))))
 
 (test "promise rejection augmentation"
       (lambda (t)
-        (let ((file "./tests/files/runtime-promise-reject.scm"))
-          (with-meta
-           (t.snapshot (to.throw.error (load file)))))))
+        (with-meta
+         (let ((file "./tests/files/runtime-promise-reject.scm"))
+           (let ((e (to.throw.error (load file))))
+             (t.snapshot (Object.getOwnPropertyNames e)))))))
 
 ;; TODO
 ;; begin*
