@@ -134,7 +134,7 @@ const config: Config = {
     },
     algolia: {
       appId: 'HSV6UC2UY5',
-      apiKey: 'a7e0d09fde450addbb08f7b4af1cee8b',
+      apiKey: process.env.ALGOLIA_SEARCH_API_KEY ?? '',
       indexName: 'lips-js',
       searchPagePath: false,
     },
