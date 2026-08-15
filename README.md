@@ -4,7 +4,7 @@
 </h1>
 
 [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/LIPS_scheme)](https://twitter.com/LIPS_scheme)
-[![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.21-blue.svg)](https://www.npmjs.com/package/lips)
+[![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.22-blue.svg)](https://www.npmjs.com/package/lips)
 ![1.0.0 Complete](https://img.shields.io/github/milestones/progress-percent/jcubic/lips/1?label=1.0.0%20Complete)
 [![Build and test](https://github.com/jcubic/lips/actions/workflows/build.yaml/badge.svg?branch=devel&event=push)](https://github.com/jcubic/lips/actions/workflows/build.yaml)
 [![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=devel&faf19c351afca40ab552c650ae15e224)](https://coveralls.io/github/jcubic/lips?branch=devel)

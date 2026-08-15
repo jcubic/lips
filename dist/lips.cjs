@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 15 Aug 2026 11:04:36 +0000
+ * build: Sat, 15 Aug 2026 18:37:21 +0000
  */
 
 'use strict';
@@ -16782,10 +16782,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 15 Aug 2026 11:04:36 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sat, 15 Aug 2026 18:37:21 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 15 Aug 2026 11:04:36 +0000').valueOf();
+  var date = LString('Sat, 15 Aug 2026 18:37:21 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -16824,7 +16824,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 15 Aug 2026 11:04:36 +0000';
+var date = 'Sat, 15 Aug 2026 18:37:21 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
