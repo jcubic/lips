@@ -6796,6 +6796,7 @@ var mapping = {
     'mul': '*',
     'div': '/',
     'rem': '%',
+    'xor': '^',
     'or': '|',
     'and': '&',
     'neg': '~',
@@ -7692,10 +7693,11 @@ function LBigInteger(n, native) {
     if (!LNumber.isBigInteger(n)) {
         throw new Error('Invalid constructor call for LBigInteger');
     }
+    if (is_undef(native)) {
+        native = LNumber.isBN(n);
+    }
     this.constant(n, 'bigint');
-    Object.defineProperty(this, '_native', {
-        value: native
-    });
+    this._native = native;
 }
 // -------------------------------------------------------------------------
 LBigInteger.prototype = Object.create(LNumber.prototype);
@@ -10932,16 +10934,16 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     truncate: doc('truncate', function(n) {
         typecheck('truncate', n, 'number');
-        if (LNumber.isFloat(n)) {
+        if (LNumber.isFloat(n) || LNumber.isRational(n)) {
             if (n instanceof LNumber) {
                 n = n.valueOf();
             }
-            return LFloat(truncate(n));
+            return LNumber(truncate(n));
         }
         return n;
     }, `(truncate n)
 
-        Function that returns the integer part (floor) of a real number.`),
+        Function that returns the integer part (floor) of a fraction (real or rational).`),
     // ------------------------------------------------------------------
     sqrt: doc('sqrt', single_math_op(function(n) {
         return LNumber(n).sqrt();

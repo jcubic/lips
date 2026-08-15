@@ -9,6 +9,7 @@
 * remove `parent.frame` and `parent.frames`
 * remove `Symbol(__data__)` from quoted data
 * swap `fold-right` and `fold-left`
+* `truncate` now properly return integer
 ### Features
 * add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
@@ -22,6 +23,7 @@
 * new `stack-trace` and `trace` functions
 * add core `^` bitwise xor function
 * add `generator` and `make-coroutine-generator` functions
+* add support for `truncate` on rational numbers
 ### Bugfix
 * fix doc string for `make-rectangular`
 * `-inf.0`/`+inf.0` are now real lips numbers
@@ -35,6 +37,7 @@
 * fix `unset-special!` not removing regex based syntax extensions
 * fix hygiene of named `let`
 * fix module path when load throw exception
+* fix handling unsuported operations on rational numbers
 
 ## 1.0.0-beta.21
 ### Breaking

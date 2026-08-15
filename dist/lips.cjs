@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 14 Aug 2026 22:04:45 +0000
+ * build: Sat, 15 Aug 2026 11:04:36 +0000
  */
 
 'use strict';
@@ -10612,6 +10612,7 @@ var mapping = {
   'mul': '*',
   'div': '/',
   'rem': '%',
+  'xor': '^',
   'or': '|',
   'and': '&',
   'neg': '~',
@@ -11601,10 +11602,11 @@ function LBigInteger(n, native) {
   if (!LNumber.isBigInteger(n)) {
     throw new Error('Invalid constructor call for LBigInteger');
   }
+  if (is_undef(native)) {
+    native = LNumber.isBN(n);
+  }
   this.constant(n, 'bigint');
-  Object.defineProperty(this, '_native', {
-    value: native
-  });
+  this._native = native;
 }
 // -------------------------------------------------------------------------
 LBigInteger.prototype = Object.create(LNumber.prototype);
@@ -14428,14 +14430,14 @@ var global_env = new Environment({
   // ------------------------------------------------------------------
   truncate: doc('truncate', function (n) {
     typecheck('truncate', n, 'number');
-    if (LNumber.isFloat(n)) {
+    if (LNumber.isFloat(n) || LNumber.isRational(n)) {
       if (n instanceof LNumber) {
         n = n.valueOf();
       }
-      return LFloat(truncate(n));
+      return LNumber(truncate(n));
     }
     return n;
-  }, "(truncate n)\n\n        Function that returns the integer part (floor) of a real number."),
+  }, "(truncate n)\n\n        Function that returns the integer part (floor) of a fraction (real or rational)."),
   // ------------------------------------------------------------------
   sqrt: doc('sqrt', single_math_op(function (n) {
     return LNumber(n).sqrt();
@@ -16780,10 +16782,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Fri, 14 Aug 2026 22:04:45 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sat, 15 Aug 2026 11:04:36 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Fri, 14 Aug 2026 22:04:45 +0000').valueOf();
+  var date = LString('Sat, 15 Aug 2026 11:04:36 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -16822,7 +16824,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Fri, 14 Aug 2026 22:04:45 +0000';
+var date = 'Sat, 15 Aug 2026 11:04:36 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

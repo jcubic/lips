@@ -4022,7 +4022,7 @@ Tree version of map. fn is invoked on every leaf.
 ```
 (truncate n)
 
-Function that returns the integer part (floor) of a real number.
+Function that returns the integer part (floor) of a fraction (real or rational).
 ```
 
 ## try
