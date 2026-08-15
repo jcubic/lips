@@ -119,7 +119,7 @@
 (define (with-parser-internals before thunk after)
   (before (--> (%internal) (get "__parser_args__")))
   (thunk)
-  (before (--> (%internal) (get "__parser_args__"))))
+  (after (--> (%internal) (get "__parser_args__"))))
 
 (define-macro (with-meta . body)
   `(with-parser-internals (lambda (internals)
