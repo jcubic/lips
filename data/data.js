@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786831427262,
+  "lastUpdate": 1786834421091,
   "repoUrl": "https://github.com/jcubic/lips",
   "entries": {
     "LIPS interpreter benchmark": [
@@ -708,6 +708,65 @@ window.BENCHMARK_DATA = {
             "range": "±0.80%",
             "unit": "ops/sec",
             "extra": "91 samples"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jcubic@jcubic.pl",
+            "name": "Jakub Jankiewicz",
+            "username": "jcubic"
+          },
+          "committer": {
+            "email": "jcubic@jcubic.pl",
+            "name": "Jakub Jankiewicz",
+            "username": "jcubic"
+          },
+          "distinct": true,
+          "id": "6edfe27e751417ecea914e68ff3bace6fe20d271",
+          "message": "fix flaky tests",
+          "timestamp": "2026-08-16T00:52:15+02:00",
+          "tree_id": "c82ba26efc3bc55541ec018a8a9f2a00c567f014",
+          "url": "https://github.com/jcubic/lips/commit/6edfe27e751417ecea914e68ff3bace6fe20d271"
+        },
+        "date": 1786834420468,
+        "tool": "benchmarkjs",
+        "benches": [
+          {
+            "name": "array-map: pow",
+            "value": 501,
+            "range": "±2.00%",
+            "unit": "ops/sec",
+            "extra": "87 samples"
+          },
+          {
+            "name": "array-map: mix",
+            "value": 489,
+            "range": "±0.71%",
+            "unit": "ops/sec",
+            "extra": "91 samples"
+          },
+          {
+            "name": "array-map: string",
+            "value": 219,
+            "range": "±0.87%",
+            "unit": "ops/sec",
+            "extra": "85 samples"
+          },
+          {
+            "name": "recursion: fib(18)",
+            "value": 11.46,
+            "range": "±0.85%",
+            "unit": "ops/sec",
+            "extra": "33 samples"
+          },
+          {
+            "name": "recursion: fib-map",
+            "value": 550,
+            "range": "±0.60%",
+            "unit": "ops/sec",
+            "extra": "92 samples"
           }
         ]
       }
