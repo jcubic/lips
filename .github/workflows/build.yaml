@@ -75,7 +75,12 @@ jobs:
       - name: build
         run: make
       - name: run benchmark
-        run: node bin/lips.js benchmarks/suite.scm | tee benchmark_output.txt
+        shell: bash
+        run: |
+          set -o pipefail
+          node bin/lips.js benchmarks/suite.scm | tee benchmark_output.txt
+      - name: validate benchmark output
+        run: grep -q "ops/sec" benchmark_output.txt
       - name: clean uncommited files
         run: git reset --hard
       - name: store / compare benchmark result
