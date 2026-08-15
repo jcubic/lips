@@ -40,6 +40,7 @@
 * fix module path when load throw exception
 * fix handling unsupported operations on rational numbers
 * fix exit code for `lips -e` on exception
+* fix `vector-fill!` off-by-one error
 
 ## 1.0.0-beta.21
 ### Breaking
