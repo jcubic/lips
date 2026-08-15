@@ -1,4 +1,4 @@
-(test "strings: sensitive"
+(test "sensitive"
   (lambda (t)
     (test-specs (string=? #t "foo" "foo")
                 (string<=? #t "foo" "foo")
@@ -17,7 +17,7 @@
                 (string<=? #t "123" "124"))))
 
 
-(test "strings: insensitive"
+(test "insensitive"
   (lambda (t)
     (test-specs (string-ci=? #t "foo" "Foo")
                 (string-ci<=? #t "foO" "Foo")

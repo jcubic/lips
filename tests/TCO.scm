@@ -1,4 +1,4 @@
-(test "TCO: it should calculate sum of 2000 integers"
+(test "it should calculate sum of 2000 integers"
        (lambda (t)
          (define (sum n)
            (let loop ((n n) (acc 0))

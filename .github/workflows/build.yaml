@@ -32,6 +32,13 @@ on:
       - master
       - devel
 
+concurrency:
+  # a push to devel while a devel->master PR is open triggers both a push and a
+  # pull_request run for the same commit; key the group by the commit SHA so the
+  # two collapse into one (the newer cancels the older) instead of running twice
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest

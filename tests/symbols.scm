@@ -1,11 +1,11 @@
-(test "symbols: it should create interned symbols"
+(test "it should create interned symbols"
       (lambda (t)
         (t.is (eq? 'foo 'foo) #t)
         (t.is (eqv? 'foo 'foo) #t)
         (t.is (equal? 'foo 'foo) #t)
         (t.is (symbol=? 'foo 'foo) #t)))
 
-(test "symbols: it should uninterned symbols"
+(test "it should uninterned symbols"
       (lambda (t)
         (let ((a (string->uninterned-symbol "foo"))
               (b (string->uninterned-symbol "foo")))
@@ -15,7 +15,7 @@
           (t.is (symbol=? a b) #f)
           (t.is (string=? a.__name__ b.__name__) #t))))
 
-(test "symbols: it should create gensyms"
+(test "it should create gensyms"
       (lambda (t)
         (let ((a (gensym "foo"))
               (b (gensym "bar")))
@@ -25,7 +25,7 @@
           (t.is (symbol=? a b) #f)
           (t.is (equal? a.__name__ b.__name__) #f))))
 
-(test "symbols: it should generate unique symbol"
+(test "it should generate unique symbol"
       (lambda (t)
         (let ((a (generate-uninterned-symbol))
               (b (generate-uninterned-symbol))
@@ -43,13 +43,13 @@
                         (t.is (symbol=? a b) #f)
                         (t.is (equal? a.__name__ b.__name__) #f)))))))
 
-(test "symbols: gensyms should be uninterned"
+(test "gensyms should be uninterned"
       (lambda (t)
         (t.is (symbol-interned? #:foo) #f)
         (t.is (symbol-interned? (gensym)) #f)
         (t.is (symbol-interned? (gensym "foo")) #f)))
 
-(test "symbols: it should create symbols with colon in the middle"
+(test "it should create symbols with colon in the middle"
       (lambda (t)
         (let ((detect:signature "foo"))
           (t.is (symbol->string 'detect:signature) "detect:signature")

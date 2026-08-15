@@ -10,6 +10,9 @@
     "require": "./dist/lips.cjs"
   },
   "unpkg": "dist/lips.min.js",
+  "ava": {
+    "snapshotDir": "tests/snapshots"
+  },
   "scripts": {
     "test": "c8 ava --timeout 10m --verbose tests/tests-gen/*.test.js tests/interpreters.js",
     "test-file": "c8 ava --timeout 10m --verbose tests/test.js",

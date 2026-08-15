@@ -15,7 +15,7 @@
                       (location)))
               '("in a house" "with a mouse" "in a house"))))
 
-(test "parametrize: closures"
+(test "closures"
               (lambda (t)
                 (define location (make-parameter "here"))
 
@@ -23,7 +23,7 @@
                              (lambda () (location)))])
                   (t.is (get) "here"))))
 
-(test "parametrize: change value"
+(test "change value"
       (lambda (t)
         (define location (make-parameter "here"))
 
@@ -31,7 +31,7 @@
                                       (location)))
               '("here" "there"))))
 
-(test "parametrize: change value + lexical"
+(test "change value + lexical"
               (lambda (t)
                 (define location (make-parameter "here"))
 
@@ -45,7 +45,7 @@
                       '("on a train" "in a boat"))))
 
 
-(test "parametrize: force/delay"
+(test "force/delay"
       (lambda (t)
         ;; example taken from SRFI-155
         (t.is (let ()

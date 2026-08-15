@@ -155,7 +155,7 @@
 
 (unset-special! #/#[0-9]+a/)
 
-(test "parser: #!fold-case"
+(test "#!fold-case"
       (lambda (t)
         (define foo 10)
         (t.is (to.throw FOO) #t)
@@ -166,7 +166,7 @@
         #!no-fold-case
         (t.is (to.throw FOO) #t)))
 
-(test "parser: syntax extension"
+(test "syntax extension"
       (lambda (t)
         (t.is parser/t1 "<foo+bar/>")
         (t.is parser/t2 '(foo . bar))
@@ -180,7 +180,7 @@
         (t.is parser/t14 10)
         (t.snapshot parser/t10)))
 
-(test "parser: escape hex literals"
+(test "escape hex literals"
       (lambda (t)
          (t.is (to.throw (. (lips.parse "\"\\x9\"") 0)) #t)
          (t.is "\uFFFF" "￿")
@@ -188,7 +188,7 @@
          (t.is (repr '|foo bar|) "foo bar")
          (t.is '|\x9;\x9;|  '|\t\t|)))
 
-(test "parser: character literals"
+(test "character literals"
       (lambda (t)
         (let ((a #\A) (b #\xFF))
           (t.is (and (string=? (type a) "character")
@@ -199,7 +199,7 @@
           (t.is (a.valueOf) "A")
           (t.is (b.valueOf) "\xFF;"))))
 
-(test "parser: quotes with literals"
+(test "quotes with literals"
       (lambda (t)
         (t.is ''#f '(quote #f))
         (t.is ''#x10 '(quote #x10))
@@ -224,7 +224,7 @@
         (t.is ''#e#o10 '(quote #e#o10))
         (t.is ''#o#e10 '(quote #o#e10))))
 
-(test "parser: it should ignore comments"
+(test "it should ignore comments"
       (lambda (t)
 
         (t.is (list #;(foo bar (quux)) 10 20) (list 10 20))
@@ -236,20 +236,20 @@
               (list 10
                     20))))
 
-(test "parser: it should return literal space"
+(test "it should return literal space"
       (lambda (t)
         (let ((str (make-string 10 #\ )))
           (t.is (string-length str) 10)
           (t.is (not (null? (--> str (match #/^\s{10}$/)))) #t))))
 
-(test "parser: vector quoting"
+(test "vector quoting"
       (lambda (t)
          (t.is `#(1 2 3) #(1 2 3))
          (t.is `#(1 2 foo) #(1 2 foo))
          (t.is '#(1 2 foo) #(1 2 foo))))
 
 
-(test "parser: vector constants"
+(test "vector constants"
       (lambda (t)
 
         (define (v)
@@ -263,7 +263,7 @@
         (t.is (eq? (v) (v)) true)))
 
 
-(test "parser: escaping in strings"
+(test "escaping in strings"
       (lambda (t)
         ;; testing #48 - when writing code with string in Scheme
         ;; we need to double escape to get slash
@@ -272,12 +272,12 @@
                                        1)"))
         (t.is (eval (. code 0)) "hello-world")))
 
-(test "parser: processing strings"
+(test "processing strings"
       (lambda (t)
         (define list "\\" "\"" "\\\\" "\\\"")
         (t.is true true)))
 
-(test "parser: datum labels"
+(test "datum labels"
       (lambda (t)
         (let ((x (list #0=(cons 1 2) #0#)))
           (set-car! (car x) 2)
@@ -295,52 +295,52 @@
         (let ((x '#3=(1 2 . #3#)))
           (t.is (eq? x (cddr x)) true))))
 
-(test "parser: should throw an error on extra close paren"
+(test "should throw an error on extra close paren"
       (lambda (t)
         (t.snapshot (try
                (lips.exec "(define x 10))")
                (catch (e)
                       e.message)))))
 
-(test "parser: should process line after comment without text #260"
+(test "should process line after comment without text #260"
       (lambda (t)
         (t.plan 2);
         (t.is #t #t)
         (t.is #t #t)))
 
-(test "parser: emoji character"
+(test "emoji character"
       (lambda (t)
         (let ((x #\💩))
           (t.is (--> x (valueOf) 'length) 2)
           (t.is (length (Array.from (x.valueOf))) 1))))
 
-(test "parser: space character"
+(test "space character"
       (lambda (t)
         (let ((x #\ ))
           (t.is (x.valueOf) " "))))
 
-(test "parser: newline character"
+(test "newline character"
       (lambda (t)
         (let ((x #\
                  ))
           (t.is (x.valueOf) "\n"))))
 
-(test "parser: should throw error on quote without expression"
+(test "should throw error on quote without expression"
       (lambda (t)
         (let ((specs '("(list ')" "(list '')")))
           (for-each (lambda (code)
                       (t.is (to.throw (lips.parse code)) #t))
                     specs))))
 
-(test "parser: should throw an error on invalid dot sequennce #245"
+(test "should throw an error on invalid dot sequennce #245"
       (lambda (t)
         (t.is (to.throw (lips.parse "(1 . 2 3)")) #t)))
 
-(test "parser: should throw error on invalid hash token"
+(test "should throw error on invalid hash token"
       (lambda (t)
         (t.is (to.throw (lips.parse "#f10")) #t)))
 
-(test "parser: escape symbols"
+(test "escape symbols"
       (lambda (t)
         (t.is (map symbol->string '(|name| name|| name|\|| name|\\|xxx name|\\\\| name|\\|))
               '("name" "name" "name|" "name\\xxx" "name\\\\" "name\\"))))
@@ -387,7 +387,7 @@
         (let ((code "\"foo"))
           (t.is (to.throw (lips.tokenize code)) #t))))
 
-(test "parser: metadata"
+(test "metadata"
       (lambda (t)
         (let* ((code "(define foo (lambda (x)
                                     (let ((y (* x x)))
@@ -399,7 +399,7 @@
           (parser.prepare code)
           (t.snapshot (parse parser)))))
 
-(test "parser: lonely closing paren"
+(test "lonely closing paren"
       (lambda (t)
         (t.snapshot (try (let* ((code "    )")
                                 (env lips.env)
@@ -408,7 +408,7 @@
                            (lips.parse parser))
                          (catch (e) e)))))
 
-(test "parser: regex characters in syntax extension"
+(test "regex characters in syntax extension"
       (lambda (t)
         (t.is parser/t11 '(* 1 2 3))))
 
@@ -417,12 +417,12 @@
         (t.is (gensym? parser/t12) #t)
         (t.is parser/t13 19)))
 
-(test "parser: should throw in invalid splice syntax extension"
+(test "should throw in invalid splice syntax extension"
       (lambda (t)
         (t.is (to.throw (lips.parse "$$10")) #t)
         (t.is (to.throw (lips.parse "&&10")) #t)))
 
-(test "parser: set-hash-syntax!"
+(test "set-hash-syntax!"
       (lambda (t)
         (t.is parser/t15 6)
         (t.is parser/t16 '(quote 6))
@@ -432,15 +432,15 @@
         (t.is (to.throw (lips.parse "#sum(1 2 3)")) #t)))
 
 
-(test "parser: datum conflict"
+(test "datum conflict"
       (lambda (t)
         (t.is parser/t19 '((1 2) (1 2)))))
 
-(test "parser: regex syntax extension"
+(test "regex syntax extension"
       (lambda (t)
         (t.is parser/t20 '(((1 2) (1 2)) ((1 2) (1 2) (1 2))))))
 
-(test "parser: syntax errors"
+(test "syntax errors"
       (lambda (t)
         (let ((code (list "(let ((x #4))"
                           "(let ((x #e))"
@@ -462,31 +462,31 @@
       (lambda (t)
         (t.snapshot (to.throw.error (load "./tests/files/lexer-unterminated-regex.scm")))))
 
-(test "parser: dot error"
+(test "dot error"
       (lambda (t)
         (t.snapshot (to.throw.error (load "./tests/files/parser-invalid-list.scm")))))
 
-(test "parser: unterminted list error"
+(test "unterminted list error"
       (lambda (t)
         (t.snapshot (to.throw.error (load "./tests/files/parser-unterminated-list.scm")))))
 
-(test "parser: unexpected parenthesis error"
+(test "unexpected parenthesis error"
       (lambda (t)
         (t.snapshot (to.throw.error (load "./tests/files/parser-unexpected-paren.scm")))))
 
-(test "parser: missing object in syntax extension (eof) error"
+(test "missing object in syntax extension (eof) error"
       (lambda (t)
         (t.snapshot (to.throw.error (load "./tests/files/parser-syntax-expect-object-eof.scm")))))
 
-(test "parser: missing object in syntax extension inside list error"
+(test "missing object in syntax extension inside list error"
       (lambda (t)
         (t.snapshot (to.throw.error (load "./tests/files/parser-syntax-expect-object.scm")))))
 
-(test "parser: invalid datum ref error"
+(test "invalid datum ref error"
       (lambda (t)
         (t.snapshot (to.throw.error (load "./tests/files/parser-invalid-ref.scm")))))
 
-(test "parser: syntax extension error"
+(test "syntax extension error"
       (lambda (t)
         (trace #t)
         (t.snapshot (to.throw.error (load "./tests/files/parser-syntax-extension-error.scm")))

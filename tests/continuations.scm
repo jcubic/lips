@@ -117,25 +117,25 @@
 (define cc/result/5 str)
 
 
-(test "continuations: procedure"
+(test "procedure"
       (lambda (t)
         (t.is (procedure? (call/cc identity)) #t)))
 
-(test "continuations: scope mutation"
+(test "scope mutation"
       (lambda (t)
         (t.is cc/result/1 (list 3 2 1))))
 
-(test "continuations: quasiquote append"
+(test "quasiquote append"
       (lambda (t)
         (t.is cc/result/2 '(1 20 3))
         (t.is cc/result/3 '((1 0 3) (1 10 3) (1 20 3)))))
 
-(test "continuations: middle of string-append"
+(test "middle of string-append"
       (lambda (t)
         (t.is cc/result/4 "foo bar boo")
         (t.is cc/result/5 "foo BAR boo")))
 
-(test "continuations: escape quasiquote"
+(test "escape quasiquote"
       (lambda (t)
         (t.is (call/cc (lambda (return) `(1 2 ,(return 'escaped) 4))) 'escaped)))
 
@@ -143,7 +143,7 @@
 ;; the behavior of Gambit, Chicken and Guile (sum of 0..5 = 15). The earlier
 ;; "base" test relied on REPL-style per-statement delimiting that no R7RS Scheme
 ;; provides inside a body (it would loop forever), so it was removed.
-(test "continuations: re-entrant loop accumulates"
+(test "re-entrant loop accumulates"
       (lambda (t)
         (t.is (let ((k #f) (sum 0) (i 0))
                 (call/cc (lambda (c) (set! k c)))
@@ -153,7 +153,7 @@
                 sum)
               15)))
 
-(test "continuations: double call/cc"
+(test "double call/cc"
               (lambda (t)
                 (define (repeat-string n item)
                   (apply string-append
@@ -172,7 +172,7 @@
                 (t.is (repeat-string 5 "x") "xxxxx")
                 (t.is (repeat-string 2 "1") "11")))
 
-(test "continuations: don't call after call continuation"
+(test "don't call after call continuation"
       (lambda (t)
         (let ((x #f))
           (let ((val (call/cc (lambda (cont)
@@ -181,7 +181,7 @@
             (t.is val 5)
             (t.is x #f)))))
 
-(test "continuations: calling continuation"
+(test "calling continuation"
       (lambda (t)
         (t.plan 1)
         (let ((x #f))
@@ -191,7 +191,7 @@
                 (t.is value #t))))))
 
 
-(test "continuations: make-range"
+(test "make-range"
               (lambda (t)
                 (define (make-range from to)
                   (call/cc
@@ -210,7 +210,7 @@
                 (t.is (make-range 0 10) '(0 1 2 3 4 5 6 7 8 9))
                 (t.is (make-range 10 20) '(10 11 12 13 14 15 16 17 18 19))))
 
-(test "continuations: return"
+(test "return"
       (lambda (t)
         (let ((called #f))
 
@@ -225,7 +225,7 @@
           (t.is (foo) 10)
           (t.is called #f))))
 
-(test "continuations: calling"
+(test "calling"
       (lambda (t)
         (let ((called))
           (t.is (let ((my-val (call/cc (lambda (c) c))))
@@ -239,7 +239,7 @@
 
 ;; example that found a bug in BiwaScheme
 ;; https://github.com/biwascheme/biwascheme/issues/257
-(test "continuations: saving/restoring environment"
+(test "saving/restoring environment"
       (lambda (t)
         (let ((result (call/cc (lambda (return)
                                  (let ((n 5)
@@ -260,7 +260,7 @@
 ;; macro boundary - both when the expansion contains the call/cc loop and when a
 ;; continuation captured inside a macro (here the built-in `when`) is re-entered.
 ;; Verified to match Gambit, Chicken and Guile.
-(test "continuations: re-entry across a syntax-rules macro"
+(test "re-entry across a syntax-rules macro"
       (lambda (t)
         ;; the loop lives inside the macro expansion; `k` is introduced
         ;; hygienically by the macro, the rest comes from the use site
@@ -289,7 +289,7 @@
               '(0 1 2))))
 
 
-(test "continuations: coroutine generator"
+(test "coroutine generator"
       (lambda (t)
         (define (make-coroutine-generator proc)
           (define return #f)
@@ -323,7 +323,7 @@
               '(0 1 2))))
 
 ;; https://docs.scheme.org/surveys/petrofsky-catastrophe/
-(test "continuations: Petrofsky catastrophe"
+(test "Petrofsky catastrophe"
       (lambda (t)
         (t.is (call/cc (lambda (c) (0 (c 1)))) 1)))
 
@@ -334,7 +334,7 @@
 ;; continuation from a statement *after* the assertion, which requires REPL-style
 ;; per-statement delimiting that no R7RS Scheme (or LIPS) provides - they were
 ;; replaced with the equivalent self-contained versions below.
-(test "continuations: re-entrant loop collects values"
+(test "re-entrant loop collects values"
       (lambda (t)
         (t.is (let ((k #f) (i 0) (acc '()))
                 (let ((v (call/cc (lambda (c) (set! k c) i))))
@@ -344,7 +344,7 @@
                 (reverse acc))
               '(0 100 200))))
 
-(test "continuations: quasiquote with re-entrant call/cc"
+(test "quasiquote with re-entrant call/cc"
       (lambda (t)
         (t.is (let ((k #f) (i 0) (acc '()))
                 (let ((lst `(x ,(call/cc (lambda (c) (set! k c) i)) z)))
@@ -354,7 +354,7 @@
                 (reverse acc))
               '((x 0 z) (x 100 z) (x 200 z)))))
 
-(test "continuations: list flipping"
+(test "list flipping"
       (lambda (t)
         (define result (let ((count 0) (flip #t) (x #f) (y #f) (result '()))
                          (set! result (cons (list (call/cc (lambda (cc) (set! x cc) count))
@@ -371,7 +371,7 @@
         (t.is result
               '((0 0) (1 1) (1 2) (3 3) (3 4) (5 5) (5 6) (7 7) (7 8) (9 9) (9 10)))))
 
-(test "continuations: continuation escapes the try body (no throw)"
+(test "continuation escapes the try body (no throw)"
       (lambda (t)
         ;; invoking a continuation captured outside the try jumps straight out;
         ;; the catch clause never runs because nothing was thrown
@@ -380,13 +380,13 @@
         ;; a continuation used inside the body returns normally as the try value
         (t.is (try (call/cc (lambda (k) (+ 1 (k 41)))) (catch (e) 'no)) 41)))
 
-(test "continuations: continuation escapes from the catch clause"
+(test "continuation escapes from the catch clause"
       (lambda (t)
         (t.is (call/cc (lambda (k)
                          (try (throw "x") (catch (e) (k 'from-catch)))))
               'from-catch)))
 
-(test "continuations: escaping a try removes its handler (no stale leak)"
+(test "escaping a try removes its handler (no stale leak)"
       (lambda (t)
         ;; the inner try is escaped via k *without* throwing, so its handler
         ;; must NOT catch the later (throw "x") - only the outer try may
@@ -407,7 +407,7 @@
                 (reverse log))
               '(C))))
 
-(test "continuations: re-entering a try re-arms its handler (retry)"
+(test "re-entering a try re-arms its handler (retry)"
       (lambda (t)
         ;; k is captured inside the body; the catch re-invokes it, re-entering
         ;; the body - the handler must be active again so the next throw is caught
@@ -430,7 +430,7 @@
                 (reverse out))
               '(0 1 2))))
 
-(test "continuations: exceptions cross lambda/continuation boundaries"
+(test "exceptions cross lambda/continuation boundaries"
       (lambda (t)
         ;; throw inside a called lambda is caught by an enclosing try
         (t.is (let ()
@@ -442,7 +442,7 @@
                    (catch (e) e.message))
               "rethrown")))
 
-(test "continuations: parameterize with call/cc escape"
+(test "parameterize with call/cc escape"
       (lambda (t)
         (define p (make-parameter 1))
         ;; escaping the body with a continuation returns the inner value and
@@ -456,7 +456,7 @@
         ;; after leaving parameterize the value reverts
         (t.is (p) 1)))
 
-(test "continuations: parameterize body runs once with call/cc"
+(test "parameterize body runs once with call/cc"
       (lambda (t)
         ;; guards against the body being evaluated twice when a continuation
         ;; escapes across the parameterize boundary
@@ -471,7 +471,7 @@
         (t.is v 'in)
         (t.is count 1)))
 
-(test "continuations: return from list"
+(test "return from list"
       (lambda (t)
         (let ((test (list->array (list 1 2 3 4))) (y 10))
           (t.is (test.map (lambda (x)
@@ -479,7 +479,7 @@
                                        (0 (return (* x y)))))))
                 (list->array (list 10 20 30 40))))))
 
-(test "continuations: retry"
+(test "retry"
       (lambda (t)
         (t.is (let ((result ()) (i 0))
                 (define retry (call/cc (lambda (cc) cc)))
@@ -490,7 +490,7 @@
                     (reverse result)))
               '(0 1 2 3 4))))
 
-(test "continuations: goto"
+(test "goto"
       (lambda (t)
         (t.is (let ((result ()))
                 ((call/cc ; <= there is an apply in the saved context
@@ -508,7 +508,7 @@
                 result)
               '("start" "next" "last"))))
 
-(test "continuations: iterator"
+(test "iterator"
       (lambda (t)
         (define gen (make-iterator '(0 1 2)))
 
@@ -517,7 +517,7 @@
         (t.is 2 (gen))
         (t.is 'end (gen))))
 
-(test "continuations: exit let loop"
+(test "exit let loop"
       (lambda (t)
         (t.plan 1)
 
@@ -529,7 +529,7 @@
                            (exit)
                            (loop (cdr lst)))))))))
 
-(test "continuations: exit recursive function"
+(test "exit recursive function"
       (lambda (t)
         (t.plan 1)
 
@@ -545,7 +545,7 @@
                            (exit))
                          (list 1 2 3 4))))))
 
-(test "continuations: exit for-each"
+(test "exit for-each"
       (lambda (t)
         (t.plan 1)
         (call/cc (lambda (exit)
@@ -555,7 +555,7 @@
                              (list 1 2 3 4))))))
 
 
-(test "continuations: number generator"
+(test "number generator"
       (lambda (t)
         (t.is (let ()
                 (define result ())
@@ -579,7 +579,7 @@
                     (reverse result)))
               '(0 1 2 3 4 5 6 7 8 9))))
 
-(test "continuations: coroutine-generator named loop"
+(test "coroutine-generator named loop"
       (lambda (t)
         (define counter (make-coroutine-generator
                  (lambda (yield)
@@ -593,7 +593,7 @@
         (t.is (counter) 2)
         (t.is (counter) (eof-object))))
 
-(test "continuations: coroutine-generator do loop"
+(test "coroutine-generator do loop"
       (lambda (t)
         (define counter (make-coroutine-generator
                  (lambda (yield)
@@ -606,7 +606,7 @@
         (t.is (counter) 2)
         (t.is (counter) (eof-object))))
 
-(test "continuations: js generator as iterator"
+(test "js generator as iterator"
       (lambda (t)
         (define x (range* 2))
 
@@ -615,7 +615,7 @@
         (t.is (. (x.next) "value") (eof-object))))
 
 
-(test "continuations: js generator to array"
+(test "js generator to array"
       (lambda (t)
         (let ((gen (range* 10)))
           (t.is (procedure? (. gen Symbol.asyncIterator)) #t)
@@ -623,7 +623,7 @@
           (t.is (Array.fromAsync gen)
                 (list->array (list 0 1 2 3 4 5 6 7 8 9))))))
 
-(test "continuations: --> macro"
+(test "--> macro"
       (lambda (t)
         (define -->result '())
 
@@ -636,7 +636,7 @@
 
         (t.is (map (lambda (x) (x.join "")) -->result) '("foo bar" "10" "20"))))
 
-(test "continuations: exit macro"
+(test "exit macro"
       (lambda (t)
         (define-syntax syntax-rules-test
           (syntax-rules ()

@@ -1,5 +1,5 @@
 
-(test "scope: letrec"
+(test "letrec"
       (lambda (t)
         (let ((x 5))
           (letrec ((foo (lambda (y) (bar x y)))
@@ -7,14 +7,14 @@
             (t.is (foo (+ x 3)) 45)))))
 
 
-(test "scope: let - should throw"
+(test "let - should throw"
       (lambda (t)
         (t.is (to.throw (let ((a 10)
                               (b (+ a 10)))
                           (+ b 10)))
               true)))
 
-(test "scope: letrec should calculate !10"
+(test "letrec should calculate !10"
       (lambda (t)
         (t.is (letrec ((x (lambda (y)
                             (if (<= y 0)
@@ -23,7 +23,7 @@
                 (x 10))
               3628800)))
 
-(test "scope: let* - should throw calling !"
+(test "let* - should throw calling !"
       (lambda (t)
         (t.is (to.throw (let* ((x (lambda (y)
                                     (if (<= y 0)
