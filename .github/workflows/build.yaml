@@ -32,16 +32,14 @@ on:
       - master
       - devel
 
-concurrency:
-  # a push to devel while a devel->master PR is open triggers both a push and a
-  # pull_request run for the same commit; key the group by the commit SHA so the
-  # two collapse into one (the newer cancels the older) instead of running twice
-  group: ${{ github.workflow }}-${{ github.event.pull_request.head.sha || github.sha }}
-  cancel-in-progress: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
+    # A push to devel/master and a same-repo PR (e.g. devel->master) fire for the
+    # same commit and would run twice. The push run already covers internal
+    # branches, so skip the pull_request run unless it comes from a fork (which
+    # produces no push event). This dedupes without cancelling anything.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     steps:
       - name: Update deps
         run: sudo apt-get update
@@ -68,6 +66,8 @@ jobs:
 
   benchmark:
     runs-on: ubuntu-latest
+    # same dedupe as `build`: run on push, and on PRs only from forks
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     permissions:
       contents: write
       pull-requests: write
