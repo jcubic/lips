@@ -1206,21 +1206,6 @@
    Allows to create anonymous classes. See define-class for details.")
 
 ;; -----------------------------------------------------------------------------
-(define (make-tags expr)
-  "(make-tags expression)
-
-   Returns a list structure of code with better syntax then raw LIPS"
-  `(h ,(let ((val (car expr))) (if (key? val) (key->string val) val))
-      (alist->object (,'quasiquote ,(pair-map (lambda (car cdr)
-                                                `(,(key->string car) . (,'unquote ,cdr)))
-                                              (cadr expr))))
-      ,(if (not (null? (cddr expr)))
-           (if (and (pair? (caddr expr)) (let ((s (caaddr expr)))
-                                           (and (symbol? s) (eq? s 'list))))
-               `(list->array (list ,@(map make-tags (cdaddr expr))))
-               (caddr expr)))))
-
-;; -----------------------------------------------------------------------------
 (define (%sxml h expr)
   "(%sxml h expr)
 
@@ -1290,23 +1275,6 @@
 
 ;; -----------------------------------------------------------------------------
 (pragma->sxml h)
-
-;; -----------------------------------------------------------------------------
-(define-macro (with-tags expr)
-  "(with-tags expression)
-
-   valutes LIPS shorter code for S-Expression equivalent of JSX.
-   e.g.:
-
-   (with-tags (:div (:class \"item\" :id \"item-1\")
-                    (list (:span () \"Random Item\")
-                          (:a (:onclick (lambda (e) (alert \"close\")))
-                              \"close\"))))
-
-   Above expression can be passed to function that renders JSX (like render
-   in React, Preact) To get the string from the macro you can use vhtml
-   library from npm."
-  (make-tags expr))
 
 ;; -----------------------------------------------------------------------------
 (define (get-resource url)
