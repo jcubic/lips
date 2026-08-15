@@ -37,7 +37,7 @@
 * fix `unset-special!` not removing regex based syntax extensions
 * fix hygiene of named `let`
 * fix module path when load throw exception
-* fix handling unsuported operations on rational numbers
+* fix handling unsupported operations on rational numbers
 
 ## 1.0.0-beta.21
 ### Breaking
