@@ -93,74 +93,13 @@ alias lips='lips -q'
 
 and you will not see the splash again.
 
-### Executing files
-
-You can also execute scheme code with:
+You can also run LIPS using npx:
 
 ```bash
-lips foo.scm
+npx lips@beta
 ```
 
-Note, that with lisp executable you don't need to manually bootstrap the standard library. But you can change
-which file is loaded or disable the loading of the file completely using `--bootstrap` flag.
-
-```bash
-lips --bootstrap dist/std.scm foo.scm
-```
-
-This will run foo.scm file and bootstrap from main scheme file.
-
-```bash
-lips --bootstrap none foo.scm
-```
-
-This will run the code without loading the standard library. So LIPS will have only functions
-and macros defined in JavaScript. This is called Core of LIPS with most of the essentials.
-
-### Executing expressions
-
-You can execute expression with `-e` flag (short of `eval`):
-
-```bash
-lips -e '(print "hello world")'
-```
-
-### Standalone scripts
-
-You can also write scripts using LIPS with [shebang](https://en.wikipedia.org/wiki/Shebang_(Unix)).
-This extension is defined in [SRFI-22](https://srfi.schemers.org/srfi-22/srfi-22.html).
-
-```scheme
-#!/usr/bin/env lips
-(let ((what "World"))
-  (print (string-append "Hello " what)))
-```
-
-If you write code like this and save it in `script.scm` on Unix like systems (Linux, macOS, or Windows with WSL)
-you can change the execution permission:
-
-```bash
-chmod +x script.scm
-```
-
-and execute the script by providing the name:
-
-```bash
-./script.scm
-```
-
-:::info
-
-By default most systems don't execute files in current directory so you need to provide `./` in front.
-You can change that if you add dot (current working directory) to the `$PATH` environment variable:
-
-:::
-
-```bash
-export $PATH=".:$PATH"
-```
-
-If you prefer to install lips locally instead of globally you can use this shebang:
+You can also use `npx` inside script shebang:
 
 ```scheme
 #!/usr/bin/env -S npx lips@beta

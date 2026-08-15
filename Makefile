@@ -27,7 +27,6 @@ WGET=wget
 CODESPELL=codespell
 ESLINT=./node_modules/.bin/eslint
 COVERALLS=./node_modules/.bin/coveralls
-JEST=./node_modules/.bin/jest
 MERMAID=./node_modules/.bin/mmdc
 UGLIFY=./node_modules/.bin/uglifyjs
 ROLLUP=./node_modules/.bin/rollup

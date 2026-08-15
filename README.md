@@ -11,7 +11,6 @@
 [![Join Gitter Chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jcubic/lips)
 ![NPM Download Count](https://img.shields.io/npm/dm/lips)
 ![JSDelivr Download count](https://img.shields.io/jsdelivr/npm/hm/lips)
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fjcubic%2Flips.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fjcubic%2Flips?ref=badge_shield)
 
 [![GitHub stars](https://img.shields.io/github/stars/jcubic/lips.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/jcubic/lips/stargazers/)
 <a href="https://twitter.com/intent/tweet?text=Powerful%20Scheme%20based%20lisp%20language%20written%20in%20JavaScript.%20It%20makes%20life%20easier%20by%20better%20interaction%20with%20JS.%20Use%20full%20power%20of%20JS%2C%20lisp,%20and%20npm%20to%20create%20your%20applications%20via%20@lips_lang&url=https://github.com/jcubic/lips&hashtags=javascript,opensource,lisp,scheme,language,programming">
@@ -44,29 +43,33 @@ The name is a recursive acronym which stands for LIPS Is Pretty Simple.
 
 ## Installation
 
-To install you can use npm (or yarn)<br/>
-**NOTE:** The version that is on NPM is heavily outdated, use beta version:
+### Node.js
 
-```
-npm install lips@beta
-```
+To install you can use npm, which comes with [Node.js](https://nodejs.org/) or any other package
+manager (e.g.: yarn, bun, or pnpm)<br/>
 
-or yarn:
+The easiet way to install and use LIPS is via npx command (part of NPM):
 
-```
-yarn add lips@beta
+```bash
+npx lips@beta
 ```
 
-then include the file in the script tag. You can grab the version from unpkg.com
+Or you can install it:
 
-```
-https://unpkg.com/lips@beta
+```bash
+npm install -g lips@beta
 ```
 
-or from jsDelivr (that's seems a bit faster)
+You can also install it as part of your Node project.
 
-```
-https://cdn.jsdelivr.net/npm/lips@beta/dist/lips.min.js
+### Browser
+
+You need to include the javascript file in script tag inside your HTML.
+
+You an grag the main file from jsDelivr:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/lips@beta/dist/lips.min.js"></script>
 ```
 
 ## Bookmarklet REPL
@@ -89,6 +92,8 @@ find a link that you can drag to your bookmarks.
 
 ## Usage
 
+### Browser
+
 The simplest way is to include the lips code in the script tag:
 
 ```html
@@ -104,6 +109,36 @@ or use the `src` attribute:
 ```html
 <script type="text/x-scheme" bootstrap src="example.scm"></script>
 ```
+
+### Node.js
+
+You can use the REPL by typing:
+
+```bash
+lips
+```
+
+Or create a script using shebang:
+
+```scheme
+#!/usr/bin/env -S lips
+
+(print "Hello, world!")
+```
+
+If you save this into `hello.scm` and make it executable:
+
+```bash
+chmod a+x hello.scm
+```
+
+You can execute the script:
+
+```bash
+./hello.scm
+```
+
+it should print `Hello, world!`.
 
 ## Bootstrapping Scheme system
 
@@ -380,5 +415,3 @@ Thanks for [Algolia DocSearch](https://docsearch.algolia.com/) for providing fre
 
 Released under [MIT](http://opensource.org/licenses/MIT) license<br/>
 Copyright (c) 2018-2024 [Jakub T. Jankiewicz](https://jcubic.pl/me)
-
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fjcubic%2Flips.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fjcubic%2Flips?ref=badge_large)

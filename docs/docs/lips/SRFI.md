@@ -28,19 +28,22 @@ This is a list of builin SRFI that don't require any action from user:
 
 Those SRFI are included as files that can be loaded into LIPS Scheme system:
 
-| description | spec |
-| :--- | ---: |
-| List Library | [SRFI-1](https://srfi.schemers.org/srfi-1/) |
-| `AND-LET*`: an AND with local bindings, a guarded `LET*` special form | [SRFI-2](https://srfi.schemers.org/srfi-2/) |
-| receive: Binding to multiple values | [SRFI-8](https://srfi.schemers.org/srfi-8/) |
-| `#,` external form | [SRFI-10](https://srfi.schemers.org/srfi-10/) |
-| Notation for Specializing Parameters without Currying | [SRFI-26](https://srfi.schemers.org/srfi-26/) |
-| Basic hash tables | [SRFI-69](https://srfi.schemers.org/srfi-69/) |
-| Boxes | [SRFI-111](https://srfi.schemers.org/srfi-111/) |
-| Syntactic combiners for binary predicates | [SRFI-156](https://srfi.schemers.org/srfi-156/) |
-| Multiple-value boxes | [SRFI-195](https://srfi.schemers.org/srfi-195) |
-| Procedures and Syntax for Multiple Values | [SRFI-210](https://srfi.schemers.org/srfi-210/) |
-| Evaluating expressions in an unspecified order | [SRFI-236](https://srfi.schemers.org/srfi-236) |
+| description | spec | source |
+| :--- | :---: | :---: |
+| List Library | [SRFI-1](https://srfi.schemers.org/srfi-1/) | [1.scm](https://github.com/jcubic/lips/blob/master/lib/srfi/1.scm) |
+| `AND-LET*`: an AND with local bindings, a guarded `LET*` special form | [SRFI-2](https://srfi.schemers.org/srfi-2/) | [2.scm](https://github.com/jcubic/lips/blob/master/lib/srfi/2.scm) |
+| receive: Binding to multiple values | [SRFI-8](https://srfi.schemers.org/srfi-8/) | [8.scm](https://github.com/jcubic/lips/blob/master/lib/srfi/8.scm) |
+| `#,` external form | [SRFI-10](https://srfi.schemers.org/srfi-10/) | [10.scm](https://github.com/jcubic/lips/blob/master/lib/srfi/10.scm) |
+| Notation for Specializing Parameters without Currying | [SRFI-26](https://srfi.schemers.org/srfi-26/) | [26.scm](https://github.com/jcubic/lips/blob/master/lib/srfi/26.scm) |
+| A more general `cond` clause | [SRFI-61](https://srfi.schemers.org/srfi-61/) | [61.scm](https://github.com/jcubic/lips/blob/master/lib/srfi/61.scm) |
+| Basic hash tables | [SRFI-69](https://srfi.schemers.org/srfi-69/) | [69.scm](https://github.com/jcubic/lips/blob/master/lib/srfi/69.scm) |
+| Boxes | [SRFI-111](https://srfi.schemers.org/srfi-111/) | [111.scm](https://github.com/jcubic/lips/blob/master/lib/srfi/111.scm) |
+| Syntactic combiners for binary predicates | [SRFI-156](https://srfi.schemers.org/srfi-156/) | [156.scm](https://github.com/jcubic/lips/blob/master/lib/srfi/156.scm) |
+| Multiple-value boxes | [SRFI-195](https://srfi.schemers.org/srfi-195) | [195.scm](https://github.com/jcubic/lips/blob/master/lib/srfi/195.scm) |
+| Procedures and Syntax for Multiple Values | [SRFI-210](https://srfi.schemers.org/srfi-210/) | [210.scm](https://github.com/jcubic/lips/blob/master/lib/srfi/210.scm) |
+| Evaluating expressions in an unspecified order | [SRFI-236](https://srfi.schemers.org/srfi-236) | [236.scm](https://github.com/jcubic/lips/blob/master/lib/srfi/236.scm) |
+| Applicative syntax | [SRFI-239](https://srfi.schemers.org/srfi-239/) | [239.scm](https://github.com/jcubic/lips/blob/master/lib/srfi/239.scm) |
+| Gensym | [SRFI-258](https://srfi.schemers.org/srfi-258/) | [258.scm](https://github.com/jcubic/lips/blob/master/lib/srfi/258.scm) |
 
 On the Web you can use this code to load above SRFI:
 

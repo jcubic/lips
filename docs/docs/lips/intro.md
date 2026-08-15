@@ -283,6 +283,18 @@ In both platforms you can access global JavaScript objects like normal variables
 ;; ==> "hello, LIPS"
 ```
 
+### js-eval
+
+The same way as any JavaScript function of a variable from the window, you can access JavaScript
+eval using `self.eval`:
+
+```scheme
+(define greet (self.eval "(function() {
+                            alert('Hello, LIPS Scheme');
+                          })"))
+(greet)
+```
+
 ### Date and Time
 
 Since we have full access to JavaScript, we can access the `Date` object to manipulate date and time.
@@ -838,14 +850,27 @@ Don't confuse JavaScript promises with `delay` expressions. Their representation
 ;; ==> #<js-promise resolved (number)>
 ```
 
-You can check if a value is a promise by quoting the expression and using `promise?` predicate:
+The predicate `promise?` returns #t when value is a `delay` exprssion. To check if the value
+is a Promise you need to quote it first, then you check if it's instance of Promise or promise
+like object. In JavaScript object with then method is considered a promise by `await`.
+
+In JavaScript this resolves to number 10:
+
+```javascript
+await ({ then: (fn) => fn(10) })
+```
+
+In LIPS Scheme:
 
 ```scheme
-(let ((a '>10)
-      (b '>(Promise.resolve 10)))
-  (print (promise? a))
-  (print (promise? b)))
-;; ==> #f
+(define (js-promise? obj)
+  "(js-promise? obj)
+
+   Function checks if object is promise like."
+  (and (object? obj) (procedure? obj.then)))
+
+(let ((p '>(Promise.resolve 10)))
+  (js-promise? p))
 ;; ==> #t
 ```
 
