@@ -1,4 +1,4 @@
-.PHONY: publish test coveralls lint zero coverage codespell benchmark smoke
+.PHONY: ALL publish test test-file test-update coveralls lint zero coverage codespell benchmark smoke
 
 VERSION=1.0.0-beta.22
 VERSION_DASH=`echo -n "${VERSION}" | sed "s/-/%E2%80%93/"`
@@ -31,6 +31,8 @@ MERMAID=./node_modules/.bin/mmdc
 UGLIFY=./node_modules/.bin/uglifyjs
 ROLLUP=./node_modules/.bin/rollup
 LIPS=./bin/lips.js
+
+TEST_SCM := $(wildcard tests/*.scm)
 
 define ver_date
 	$(GIT) branch | grep '* master' > /dev/null && $(SED) -i -e "s/{{VER}}/$(VERSION)/g" -e "s/{{DATE}}/$(DATE)/g" \
@@ -102,7 +104,11 @@ publish:
 	$(CD) npm && $(NPM) publish --access=public
 	$(RM) -rf npm
 
-test: dist/std.xcb
+tests/tests-gen/.stamp: scripts/generate-tests.js $(TEST_SCM)
+	@$(NODE) scripts/generate-tests.js
+	@touch $@
+
+test: dist/std.xcb tests/tests-gen/.stamp
 	@$(NPM) run test
 
 test-file: dist/std.xcb
@@ -114,14 +120,6 @@ test-update: dist/std.scm
 benchmark: dist/std.xcb
 	@$(LIPS) benchmarks/suite.scm
 
-# Fast end-to-end sanity check of the built interpreter: bootstrap + core
-# evaluation, in both lexical and dynamic (-d) scope. Runs in a couple of
-# seconds and is a cheap early gate before the full test suite.
-#
-# A failing script currently still exits 0 (running a file swallows errors), and
-# a bootstrap regression can hang, so we gate on the success sentinel printed by
-# each script and wrap in `timeout` - the output is echoed first so a CI failure
-# is easy to diagnose.
 smoke: dist/std.xcb
 	@out=`timeout 60 $(LIPS) scripts/smoke.scm`; echo "$$out"; \
 		echo "$$out" | grep -q "smoke: all checks passed"

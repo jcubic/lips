@@ -11,9 +11,9 @@
   },
   "unpkg": "dist/lips.min.js",
   "scripts": {
-    "test": "c8 ava --timeout 10m --verbose tests/*.js",
+    "test": "c8 ava --timeout 10m --verbose tests/tests-gen/*.test.js tests/interpreters.js",
     "test-file": "c8 ava --timeout 10m --verbose tests/test.js",
-    "test-update": "c8 ava --update-snapshots --timeout 10m --verbose tests/test.js",
+    "test-update": "c8 ava --update-snapshots --timeout 10m --verbose tests/tests-gen/*.test.js tests/interpreters.js",
     "coverage": "c8 report --reporter=lcov --reporter=json --reporter=text"
   },
   "repository": {
