@@ -2554,13 +2554,6 @@ Returns new string with k elements. If char is provided
 it's filled with that character.
 ```
 
-## make-tags
-```
-(make-tags expression)
-
-Returns a list structure of code with better syntax then raw LIPS
-```
-
 ## make-u16vector
 ```
 (make-u16vector k fill)
@@ -4456,23 +4449,6 @@ is closed.
 Procedure open string and make it current-input-port then thunk is executed.
 After thunk is executed current-input-port is restored and string port
 is closed.
-```
-
-## with-tags
-```
-(with-tags expression)
-
-valutes LIPS shorter code for S-Expression equivalent of JSX.
-e.g.:
-
-(with-tags (:div (:class "item" :id "item-1")
-                 (list (:span () "Random Item")
-                       (:a (:onclick (lambda (e) (alert "close")))
-                           "close"))))
-
-Above expression can be passed to function that renders JSX (like render
-in React, Preact) To get the string from the macro you can use vhtml
-library from npm.
 ```
 
 ## write

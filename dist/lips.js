@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 15 Aug 2026 18:37:21 +0000
+ * build: Sat, 15 Aug 2026 22:00:23 +0000
  */
 
 (function (global, factory) {
@@ -10264,7 +10264,7 @@
       } else {
         value = n;
       }
-      return LBigInteger(value, true);
+      return LBigInteger(value);
     } else if (typeof BN !== 'undefined' && !(n instanceof BN)) {
       if (n instanceof Array) {
         return LBigInteger(new BN(...n));
@@ -11594,25 +11594,22 @@
     return a.add(b);
   };
   // -------------------------------------------------------------------------
-  function LBigInteger(n, native) {
+  function LBigInteger(n) {
     if (typeof this !== 'undefined' && !(this instanceof LBigInteger) || typeof this === 'undefined') {
-      return new LBigInteger(n, native);
+      return new LBigInteger(n);
     }
     if (n instanceof LBigInteger) {
-      return LBigInteger(n.__value__, n._native);
+      return LBigInteger(n.__value__);
     }
     if (!LNumber.isBigInteger(n)) {
       throw new Error('Invalid constructor call for LBigInteger');
     }
-    if (is_undef(native)) {
-      native = LNumber.isBN(n);
-    }
     this.constant(n, 'bigint');
-    this._native = native;
   }
   // -------------------------------------------------------------------------
   LBigInteger.prototype = Object.create(LNumber.prototype);
   LBigInteger.prototype.constructor = LBigInteger;
+  LBigInteger.prototype._native = typeof BN !== 'undefined';
   // -------------------------------------------------------------------------
   LBigInteger.bn_op = {
     '+': 'iadd',
@@ -11635,13 +11632,13 @@
     if (typeof n === 'undefined') {
       if (LNumber.isBN(this.__value__)) {
         op = LBigInteger.bn_op[op];
-        return LBigInteger(this.__value__.clone()[op](), false);
+        return LBigInteger(this.__value__.clone()[op]());
       }
-      return LBigInteger(LNumber._ops[op](this.__value__), true);
+      return LBigInteger(LNumber._ops[op](this.__value__));
     }
     if (LNumber.isBN(this.__value__) && LNumber.isBN(n.__value__)) {
       op = LBigInteger.bn_op[op];
-      return LBigInteger(this.__value__.clone()[op](n), false);
+      return LBigInteger(this.__value__.clone()[op](n));
     }
     var ret = LNumber._ops[op](this.__value__, n.__value__);
     if (op === '/') {
@@ -11655,7 +11652,7 @@
       });
     }
     // use native calculation because it's real bigint value
-    return LBigInteger(ret, true);
+    return LBigInteger(ret);
   };
   // -------------------------------------------------------------------------
   LBigInteger.prototype.sqrt = function () {
@@ -16784,10 +16781,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sat, 15 Aug 2026 18:37:21 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sat, 15 Aug 2026 22:00:23 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sat, 15 Aug 2026 18:37:21 +0000').valueOf();
+    var date = LString('Sat, 15 Aug 2026 22:00:23 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -16826,7 +16823,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Sat, 15 Aug 2026 18:37:21 +0000';
+  var date = 'Sat, 15 Aug 2026 22:00:23 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

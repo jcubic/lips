@@ -6466,7 +6466,7 @@ function LNumber(n, force = false) {
         } else {
             value = n;
         }
-        return LBigInteger(value, true);
+        return LBigInteger(value);
     } else if (typeof BN !== 'undefined' && !(n instanceof BN)) {
         if (n instanceof Array) {
             return LBigInteger(new BN(...n));
@@ -7682,26 +7682,23 @@ LRational.prototype.add = function(n) {
     return a.add(b);
 };
 // -------------------------------------------------------------------------
-function LBigInteger(n, native) {
+function LBigInteger(n) {
     if (typeof this !== 'undefined' && !(this instanceof LBigInteger) ||
         typeof this === 'undefined') {
-        return new LBigInteger(n, native);
+        return new LBigInteger(n);
     }
     if (n instanceof LBigInteger) {
-        return LBigInteger(n.__value__, n._native);
+        return LBigInteger(n.__value__);
     }
     if (!LNumber.isBigInteger(n)) {
         throw new Error('Invalid constructor call for LBigInteger');
     }
-    if (is_undef(native)) {
-        native = LNumber.isBN(n);
-    }
     this.constant(n, 'bigint');
-    this._native = native;
 }
 // -------------------------------------------------------------------------
 LBigInteger.prototype = Object.create(LNumber.prototype);
 LBigInteger.prototype.constructor = LBigInteger;
+LBigInteger.prototype._native = typeof BN !== 'undefined';
 // -------------------------------------------------------------------------
 LBigInteger.bn_op = {
     '+': 'iadd',
@@ -7724,13 +7721,13 @@ LBigInteger.prototype._op = function(op, n) {
     if (typeof n === 'undefined') {
         if (LNumber.isBN(this.__value__)) {
             op = LBigInteger.bn_op[op];
-            return LBigInteger(this.__value__.clone()[op](), false);
+            return LBigInteger(this.__value__.clone()[op]());
         }
-        return LBigInteger(LNumber._ops[op](this.__value__), true);
+        return LBigInteger(LNumber._ops[op](this.__value__));
     }
     if (LNumber.isBN(this.__value__) && LNumber.isBN(n.__value__)) {
         op = LBigInteger.bn_op[op];
-        return LBigInteger(this.__value__.clone()[op](n), false);
+        return LBigInteger(this.__value__.clone()[op](n));
     }
     const ret = LNumber._ops[op](this.__value__, n.__value__);
     if (op === '/') {
@@ -7741,7 +7738,7 @@ LBigInteger.prototype._op = function(op, n) {
         return LRational({ num: this, denom: n });
     }
     // use native calculation because it's real bigint value
-    return LBigInteger(ret, true);
+    return LBigInteger(ret);
 };
 // -------------------------------------------------------------------------
 LBigInteger.prototype.sqrt = function() {
