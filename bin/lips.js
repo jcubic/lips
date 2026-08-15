@@ -98,6 +98,7 @@ async function run(code, {
     interpreter,
     env = null,
     filename = null,
+    exit = false,
     log_unterminated = true,
     // the standard library is written for lexical scope, so it must always be
     // bootstrapped lexically - `-d`/--dynamic only applies to user code. Passing
@@ -111,12 +112,12 @@ async function run(code, {
         if (e instanceof Parser.Unterminated && !log_unterminated) {
             return;
         }
-        print_error(e, use_stack);
+        print_error(e, use_stack, exit);
     }
 }
 
 // -----------------------------------------------------------------------------
-function print_error(e, stack) {
+function print_error(e, stack, exit) {
     if (!e) {
         console.log('Error is null');
         return;
@@ -148,15 +149,16 @@ function print_error(e, stack) {
     if (strace) {
         console.error(strace);
     }
-    if (stack) {
-        process.exit(1);
-    } else {
+    if (!stack) {
         console.error('Use (display exception.stack) or use -t/--trace option to display JS stack trace.');
     }
     if (!use_meta) {
         console.error('Use -m/--meta option to display column and filename of the exception');
     }
     global.exception = e;
+    if (exit) {
+        process.exit(1);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -372,7 +374,7 @@ if (options.version || options.V) {
     // from 1.0 documentation should use -e but it's not a breaking change
     bootstrap(interpreter).then(function() {
         const code = options.e || options.eval;
-        return run(code, { interpreter }).then(print);
+        return run(code, { interpreter, exit: true });
     });
 } else if ((options.c || options.compile) && options._.length === 1) {
     try {
@@ -404,7 +406,7 @@ if (options.version || options.V) {
                 }
             })
         }).catch(e => {
-            print_error(e, true);
+            print_error(e, true, true);
         });
     } catch(e) {
         console.log(e);
@@ -468,7 +470,7 @@ if (options.version || options.V) {
         input: process.stdin,
         output,
         prompt: prompt,
-        historySize: history_size_valid ? historySize : 1000,
+        historySize: history_size_valid ? history_size : 1000,
         terminal: is_terminal
     });
     if (!is_emacs) {

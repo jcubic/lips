@@ -10,6 +10,7 @@
 * remove `Symbol(__data__)` from quoted data
 * swap `fold-right` and `fold-left`
 * `truncate` now properly return integer
+* `lips -e` doesn't print the output anymore
 ### Features
 * add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
@@ -38,6 +39,7 @@
 * fix hygiene of named `let`
 * fix module path when load throw exception
 * fix handling unsupported operations on rational numbers
+* fix exit code for `lips -e` on exception
 
 ## 1.0.0-beta.21
 ### Breaking
