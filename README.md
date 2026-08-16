@@ -37,6 +37,7 @@ The name is a recursive acronym which stands for LIPS Is Pretty Simple.
 * Full numerical tower and Big Integer support.
 * Powerful introspection.
 * Great integration with JavaScript.
+* Full continuations and TCO.
 * Code formatting (pretty print).
 * Lisp and hygienic Scheme macros and macroexpand.
 * Builtin help system.
@@ -347,8 +348,8 @@ in Web (e.g. in Web REPL) you can also use full URL:
 - [x] Full support for R5RS
 - [ ] Full support for R7RS
   - [ ] R7RS libraries (`import`/`export`/`define-library`).
-  - [ ] Continuations.
-  - [ ] Tail Call Optimization (TCO).
+  - [x] Continuations.
+  - [x] Tail Call Optimization (TCO).
   - [ ] Fully tested Numerical Tower.
 - [x] Fully working binary compiler (for faster parsing and loading std lib).
 - [ ] Finish `syntax-rules` (ignore limitations of current approach).
@@ -379,18 +380,19 @@ If you enjoy the library, you can write about it on a blog post and share inform
 Don't forget to link to the project website (it's
 [good for SEO](https://itnext.io/seo-for-open-source-projects-1a6b17ffeb8b)).
 
-Of course, if you want you can also contribute with code, but there are way easier ways to help.
+Of course, if you like, you can also contribute with code, but there are way easier ways to help.
 
-I would also love to see if you use the library, I may even share the links of projects that use it.
+I would also love to see if you use the library; I may even share the links of projects that use it.
 
 ## Acknowledgments
-* Font used in logo is [Telegrafico](https://www.dafont.com/telegrafico.font) by [ficod](https://www.deviantart.com/ficod).
+* The font used in the logo is [Telegrafico](https://www.dafont.com/telegrafico.font) by [ficod](https://www.deviantart.com/ficod).
 * The cover image for GitHub and Blog Posts use clipart by [Baptiste Gaultier](https://openclipart.org/artist/b.gaultier).
 * Part of the current Parser is inspired by implementation in [BiwaScheme](https://www.biwascheme.org/) by Yutaka HARA (yhara).
 * [TCO](https://lips.js.org/docs/scheme-intro/core#tail-call-optimization) and
-  [Continuations](https://lips.js.org/docs/scheme-intro/continuations) imeplementation inspired by [js-scheme](https://bluishcoder.co.nz/jsscheme/) by Alex Yakovlev
+  [Continuations](https://lips.js.org/docs/scheme-intro/continuations) implementations inspired by [js-scheme](https://bluishcoder.co.nz/jsscheme/) by Alex Yakovlev.
+* Quasiquote is based on Alan Bawden's paper "Quasiquotation in Lisp".
 * `fetch` polyfill use [unfetch](https://github.com/developit/unfetch) by Jason Miller.
-* Browser `init` function use [ContentLoaded](http://javascript.nwbox.com/ContentLoaded/).
+* The browser `init` function uses [ContentLoaded](http://javascript.nwbox.com/ContentLoaded/).
 * The rationalize algorithm is based on [Kawa Scheme](https://www.gnu.org/software/kawa/index.html) by Per M.A. Bothner, Alan Bawden and Marc Feeley.
 * `ucs2decode` function taken from [punycode.js](https://github.com/bestiejs/punycode.js) by [Mathias Bynens](https://mathiasbynens.be/).
 * [Rosetta Code](https://rosettacode.org/) was used for:
@@ -409,7 +411,7 @@ Special thanks:
 * [Lassi Kortela](https://github.com/lassik) for helping with Scheme code.
 * [Niels Wijers](https://github.com/nielswijers) for handing over the [lips npm name](https://www.npmjs.com/package/lips).
 
-Thanks for [Algolia DocSearch](https://docsearch.algolia.com/) for providing free search on LIPS website.
+Thanks to [Algolia DocSearch](https://docsearch.algolia.com/) for providing free search on the LIPS website.
 
 ## License
 
