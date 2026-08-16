@@ -296,6 +296,15 @@ Returns pair from a list that matches given key using eq? check.
 Returns pair from alist that match given key using eqv? check.
 ```
 
+## async-generator
+```
+(generator function)
+
+Higher order function that accepts a function with a single argument (usually yield).
+Function returns JavaScript async generator that produce values for each call
+to yield.
+```
+
 ## atan
 ```
 (atan z)
@@ -1931,7 +1940,7 @@ Function that returns the greatest common divisor of the arguments.
 (generator function)
 
 Higher order function that accepts a function with a single argument (usually yield).
-Function returns JavaScript async generator that produce values for each call
+Function returns JavaScript generator that produce values for each call
 to yield.
 ```
 

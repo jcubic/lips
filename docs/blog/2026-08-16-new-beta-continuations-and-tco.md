@@ -101,13 +101,39 @@ You can also use the generator with the `do-iterator` macro:
 ;; ==> 9
 ```
 
+You can also define an async generator:
+
+```scheme
+(define (title url)
+  (let ((re #/<h1>([^>]+)<\/h1>/))
+    (--> (fetch url)
+         (text)
+         (match re)
+         1)))
+
+(define (titles urls)
+  (async-generator (lambda (yield)
+                     (let loop ((urls urls))
+                       (if (not (null? urls))
+                           (let ((url (car urls)))
+                             (yield (title url))
+                             (loop (cdr urls))))))))
+
+(define urls '("https://scheme.org.pl/test/"
+               "https://terminal.jcubic.pl/"))
+
+(write (Array.fromAsync (titles urls)))
+;; ==> #("Scheme Programming Language"
+;; ==>  "jQuery Terminal: JavaScript Web Based Terminal Emulator")
+```
+
 The JavaScript generators are a syntax sugar for the
 [JavaScript iterator protocol](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols)
 
 The implementation of generator use that protocol, the missing piece to be able to create a generator in LIPS
 were continuations.
 
-This is the source code of the generator:
+This is the source code that was based for the generator:
 
 ```scheme
 (define (generator proc)
@@ -154,8 +180,14 @@ The iterator in JavaScript is an object that has a next property that is a funct
 }
 ```
 
-There are two types of iterators: the normal iterator that has a `Symbol.iterator` property that holds a function,
-which returns the iterator. Or async iterator with `Symbol.asyncIterator` that has the same function.
+There are two types of iterators: the normal iterator that has a `Symbol.iterator` property that
+holds a function, which returns the iterator. Or async iterator with `Symbol.asyncIterator` that has
+the same function. The function `async-generator` uses `Symbol.asyncIterator` instead of `Symbol.iterator`.
+
+For working with an iterator, there is a macro `do-iterator` that works similarly to the `do` macro but accepts
+iterator (it also has a single list as the first element instead of a list of lists).
+
+There is also the `iterator->array` function. Both macro and function are iterator agnostic and accept both iterators.
 
 The difference is that the next function in the async iterator can return a Promise.
 

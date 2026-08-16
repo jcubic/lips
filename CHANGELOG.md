@@ -25,7 +25,7 @@
 * new `stack-trace` and `trace` functions
 * improve error handling
 * add core `^` bitwise xor function
-* add `generator` and `make-coroutine-generator` functions
+* add `generator`, `async-generator`, and `make-coroutine-generator` functions
 * add support for `truncate` on rational numbers
 * add `#!cycle`/`#!no-cycle`, `#!trace`/`#!no-trace` and `#!promise`/`#!no-promise` directives
 ### Bugfix

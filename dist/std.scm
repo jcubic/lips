@@ -1460,38 +1460,54 @@
     (array->list result)))
 
 ;; -----------------------------------------------------------------------------
-;; function inspired by make-coroutine-generator from SRFI-121 AND SRFI-158
+;; JS generator inspired by make-coroutine-generator from SRFI-121 AND SRFI-158
 ;; -----------------------------------------------------------------------------
-(define (generator proc)
-  "(generator function)
+(define (%make-generator symbol)
+  (lambda (proc)
+    (define void (if #f #f))
+    (define return #f)
+    (define resume #f)
+    (define (yield v)
+      (call/cc (lambda (r)
+                 (set! resume r)
+                 (return v))))
+    (define (next)
+      (let ((value (call/cc
+                    (lambda (cc)
+                      (set! return cc)
+                      (if resume
+                          (resume void)
+                          (begin
+                            (proc yield)
+                            (set! resume
+                                  (lambda (v)
+                                    (return (eof-object))))
+                            (return (eof-object))))))))
+        `&(:value ,value :done ,(eof-object? value))))
 
-   Higher order function that accepts a function with a single argument (usually yield).
-   Function returns JavaScript async generator that produce values for each call
-   to yield."
-  (define void (if #f #f))
-  (define return #f)
-  (define resume #f)
-  (define (yield v)
-    (call/cc (lambda (r)
-               (set! resume r)
-               (return v))))
-  (define (next)
-    (let ((value (call/cc
-                  (lambda (cc)
-                    (set! return cc)
-                    (if resume
-                        (resume void)
-                        (begin
-                          (proc yield)
-                          (set! resume
-                                (lambda (v)
-                                  (return (eof-object))))
-                          (return (eof-object))))))))
-      `&(:value ,value :done ,(eof-object? value))))
+    (let* ((iterator `((next . ,next)
+                       (,symbol . ,(lambda () this)))))
+      (alist->object iterator))))
 
-  (let* ((iterator `((next . ,next)
-                     (,Symbol.iterator . ,(lambda () this)))))
-    (alist->object iterator)))
+;; -----------------------------------------------------------------------------
+(define generator
+  (%doc
+   "(generator function)
+
+    Higher order function that accepts a function with a single argument (usually yield).
+    Function returns JavaScript generator that produce values for each call
+    to yield."
+   (%make-generator Symbol.iterator)))
+
+;; -----------------------------------------------------------------------------
+(define async-generator
+  (%doc
+   "(generator function)
+
+    Higher order function that accepts a function with a single argument (usually yield).
+    Function returns JavaScript async generator that produce values for each call
+    to yield."
+   (%make-generator Symbol.asyncIterator)))
 
 ;; -----------------------------------------------------------------------------
 ;; source https://github.com/scheme-requests-for-implementation/srfi-158
