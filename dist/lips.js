@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 16 Aug 2026 09:57:12 +0000
+ * build: Sun, 16 Aug 2026 12:35:53 +0000
  */
 
 (function (global, factory) {
@@ -2936,7 +2936,7 @@
   /* global jQuery, BigInt, Map, WeakMap, Set, Symbol, importScripts, Uint8Array */
   var _excluded = ["token"],
     _excluded2 = ["env"],
-    _excluded3 = ["stderr", "stdin", "stdout", "meta", "command_line", "filename"],
+    _excluded3 = ["stderr", "stdin", "stdout", "meta", "trace", "command_line", "filename"],
     _excluded5 = ["env", "dynamic_env", "use_dynamic"];
   function _classPrivateFieldInitSpec(e, t, a) { _checkPrivateRedeclaration(e, t), t.set(e, a); }
   function _checkPrivateRedeclaration(e, t) { if (t.has(e)) throw new TypeError("Cannot initialize the same private elements twice on an object"); }
@@ -3025,8 +3025,9 @@
   // opt-in gate for stack-frame collection (state.stack). Off by default: pushing
   // every continuation seen during evaluation costs time and, in a long tail loop,
   // unbounded memory. Enable with (trace) when you need stack-trace / full error
-  // stacks.
-  var _collect_stack = false;
+  // stacks. Stored per-instance in the internal env as __collect_stack__ and read
+  // onto state.collect_stack (see read_internal_flags) - not a module global, so
+  // several interpreters can run in one runtime with independent tracing.
   // ----------------------------------------------------------------------
   // fast global gate: is_debug() runs in hot paths (every eval step, macros) and
   // its user_env.get('DEBUG') is a full env-chain walk. Keep a module flag that
@@ -5036,7 +5037,14 @@
             env: _this7.__env__,
             error: e => {
               var msg = "Error while executing syntax extension ".concat(special.seq, " ");
-              throw _this7._augment_exception(new Error(msg + e.message));
+              var wrapper = new Error(msg + e.message);
+              // carry over the Scheme stack trace collected while the
+              // extension ran (when trace/-t is on) so it isn't lost when
+              // we re-wrap the underlying error with parser location
+              if (e.__stack__ instanceof Array) {
+                wrapper.__stack__ = e.__stack__;
+              }
+              throw _this7._augment_exception(wrapper);
             }
           };
           var result = yield _this7._with_syntax_scope(() => {
@@ -10162,7 +10170,7 @@
     }
     this.__string__ = string.join('');
   };
-  Object.defineProperty(LString.prototype, "length", {
+  Object.defineProperty(LString.prototype, 'length', {
     get: function get() {
       return this.__string__.length;
     }
@@ -12180,6 +12188,8 @@
       stdout = _ref33.stdout,
       _ref33$meta = _ref33.meta,
       meta = _ref33$meta === void 0 ? false : _ref33$meta,
+      _ref33$trace = _ref33.trace,
+      trace = _ref33$trace === void 0 ? false : _ref33$trace,
       _ref33$command_line = _ref33.command_line,
       command_line = _ref33$command_line === void 0 ? null : _ref33$command_line,
       _ref33$filename = _ref33.filename,
@@ -12191,6 +12201,7 @@
         stdout,
         stderr,
         meta,
+        trace,
         command_line,
         filename
       }, obj));
@@ -12217,8 +12228,15 @@
       inter.set('stdout', stdout);
     }
     inter.set('command-line', command_line);
+    inter.set('__collect_stack__', trace);
     set_interaction_env(this.__env__, this.__env__, inter);
   }
+  // -------------------------------------------------------------------------
+  Object.defineProperty(Interpreter.prototype, 'internal', {
+    get: function get() {
+      return get_internal_env(this.__env__);
+    }
+  });
   // -------------------------------------------------------------------------
   Interpreter.prototype.exec = function (arg) {
     var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
@@ -12652,12 +12670,14 @@
     return get_interaction_env(env, '**internal-env**');
   }
   // -------------------------------------------------------------------------
-  // Read the perf-instrumentation flags (#!no-cycle / #!no-promise) from the
-  // internal env of the interpreter that owns `env` and store the result on the
-  // eval state. Non-throwing: during early bootstrap (before the interaction env
-  // is linked) or when the flags were never set, the state keeps its defaults
-  // (check everything). A check is only disabled when the flag is exactly false.
-  function read_check_flags(env, state) {
+  // Read the per-instance instrumentation flags (#!no-cycle / #!no-promise and
+  // (trace)) from the internal env of the interpreter that owns `env` and store
+  // the result on the eval state. Non-throwing: during early bootstrap (before the
+  // interaction env is linked) or when the flags were never set, the state keeps
+  // its defaults. cycle/promise checks default ON and turn off when the flag is
+  // exactly false; stack collection defaults OFF and turns on when
+  // __collect_stack__ is exactly true (the (trace) helper stores the enabled flag).
+  function read_internal_flags(env, state) {
     if (!is_env(env)) {
       return;
     }
@@ -12679,6 +12699,14 @@
       throwError: false
     }) === false) {
       state.check_promise = false;
+    }
+    // stack collection defaults OFF; (trace) stores the enabled flag directly,
+    // so we collect only when it is explicitly true (a plain !is_false check
+    // would wrongly collect by default, since is_false(undefined) is false)
+    if (internal.get('__collect_stack__', {
+      throwError: false
+    }) === true) {
+      state.collect_stack = true;
     }
   }
   // -------------------------------------------------------------------------
@@ -12809,18 +12837,12 @@
       });
     }, "(print . args)\n\n        This function converts each input into a string and prints\n        the result to the standard output (by default it's the\n        console but it can be defined in user code). This function\n        calls `(newline)` after printing each input."),
     // ------------------------------------------------------------------
-    'trace': doc(function () {
-      var enable = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : true;
-      _collect_stack = !is_false(enable);
-      return _collect_stack;
-    }, "(trace)\n        (trace enabled)\n\n        Enable (or disable with (trace #f)) collection of stack frames so that\n        stack-trace and full error stack traces work. Collecting has a runtime\n        and memory cost, so it is disabled by default."),
-    // ------------------------------------------------------------------
     'stack-trace': doc(function (cc) {
       typecheck('stack-trace', cc, 'continuation');
       return cc.trace((cc, i) => {
         return "[".concat(i, "]: ").concat(to_string(cc.__code__));
       }).join('\n');
-    }, "(stack-trace <continuation>)\n\n        Function return stack trace if given continuation as a string.\n        You first need to enable collecting stack frames using (trace)."),
+    }, "(stack-trace <continuation>)\n\n        Function return stack trace if given continuation as a string.\n        You first need to enable collecting stack frames using (trace #t)."),
     // ------------------------------------------------------------------
     format: doc('format', function format(str) {
       for (var _len19 = arguments.length, args = new Array(_len19 > 1 ? _len19 - 1 : 0), _key19 = 1; _key19 < _len19; _key19++) {
@@ -13754,12 +13776,6 @@
       throw new Error("You can't call `unquote` outside of quasiquote");
     }, "(unquote code) or ,code\n\n        Special form used in the quasiquote macro. It evaluates the expression inside and\n        substitutes the value into quasiquote's result."),
     // ------------------------------------------------------------------
-    looper: function looper(num) {
-      while (num.cmp(0) != 0) {
-        num = num.sub(1);
-      }
-    },
-    // ------------------------------------------------------------------
     quasiquote: function () {
       // -----------------------------------------------------------------
       // :: New quasiquote based on Alan Bawden's paper
@@ -14642,9 +14658,7 @@
       return LNumber(a).shl(b);
     }, "(<< a b)\n\n        Function that left shifts the value a by value b bits."),
     // ------------------------------------------------------------------
-    not: doc('not', function not(value) {
-      return !value;
-    }, "(not object)\n\n        Function that returns the Boolean negation of its argument.")
+    not: doc('not', is_false, "(not object)\n\n         Function that returns the Boolean negation of its argument.")
   }, undefined, 'global');
   var user_env = global_env.inherit('user-env');
   // -------------------------------------------------------------------------
@@ -15256,7 +15270,14 @@
     hidden() {
       // we ignore top continuations that have no data
       // and _ignore that is added in call/cc when invoking argument
-      return this._state.name === 'top' || this.__code__._ignore;
+      return this._state.name === 'top' || this.__code__._ignore ||
+      // machine-generated builder code: quasiquote embeds the list/append/
+      // cons operators by *value* (not symbol) for hygiene - see the
+      // quasiquote macro. Such a frame is a function in operator position,
+      // which never happens in user source, so drop it from the stack
+      // trace (the unquoted sub-expressions, which keep symbol operators,
+      // are still shown).
+      is_pair(this.__code__) && is_function(this.__code__.car);
     }
     trace(callback) {
       // the state records every (non-hidden) continuation seen during
@@ -15322,7 +15343,10 @@
       // running several interpreters in one runtime.
       this.check_cycle = true;
       this.check_promise = true;
-      read_check_flags(env, this);
+      // stack-frame collection for stack-trace / full error stacks - off by
+      // default (see (trace)); turned on per-instance via read_internal_flags
+      this.collect_stack = false;
+      read_internal_flags(env, this);
       // exception handlers registered by `try` in THIS eval loop. Kept per
       // state (not global) so they survive async suspension at an `await`
       // and can't be clobbered by other interleaving eval loops.
@@ -15361,7 +15385,7 @@
       // frames from the cc chain, so we accumulate them here as they're seen).
       // The stack/_stack_set are created lazily on first use so the common
       // (no-trace) path allocates neither.
-      if (_collect_stack) {
+      if (this.collect_stack) {
         if (this._stack_set === null) {
           this.stack = [];
           this._stack_set = new Set();
@@ -16835,10 +16859,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sun, 16 Aug 2026 09:57:12 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sun, 16 Aug 2026 12:35:53 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sun, 16 Aug 2026 09:57:12 +0000').valueOf();
+    var date = LString('Sun, 16 Aug 2026 12:35:53 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -16877,7 +16901,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Sun, 16 Aug 2026 09:57:12 +0000';
+  var date = 'Sun, 16 Aug 2026 12:35:53 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

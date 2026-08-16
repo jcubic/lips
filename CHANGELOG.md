@@ -24,6 +24,7 @@
 * new interpreter with TCO and Continuations inspired by js-scheme [#127](https://github.com/jcubic/lips/issues/127)
 * new higher order function `matcher` that return function that check if object is the same
 * new `stack-trace` and `trace` functions
+* improve error handling
 * add core `^` bitwise xor function
 * add `generator` and `make-coroutine-generator` functions
 * add support for `truncate` on rational numbers

@@ -65,13 +65,13 @@ dist/std.scm: lib/bootstrap.scm lib/R5RS.scm lib/byte-vectors.scm lib/R7RS.scm l
 	$(CAT) lib/bootstrap.scm lib/R5RS.scm lib/byte-vectors.scm lib/R7RS.scm lib/init.scm > dist/std.scm
 
 dist/std.xcb: dist/std.scm
-	$(LIPS) -t --bootstrap dist/std.scm -c -q dist/std.scm
+	$(LIPS) -tmcq --bootstrap dist/std.scm dist/std.scm
 
 docs/reference.json: dist/std.xcb src/lips.js scripts/reference.js
 	$(NODE) ./scripts/reference.js > docs/reference.json
 
 dist/std.min.scm: dist/std.scm
-	$(LIPS) -t --bootstrap dist/std.scm ./scripts/minify.scm ./dist/std.scm > dist/std.min.scm
+	$(LIPS) -tm --bootstrap dist/std.scm ./scripts/minify.scm ./dist/std.scm > dist/std.min.scm
 
 package.json: .$(VERSION)
 	$(SED) -i 's/"version": "[^"]\+"/"version": "$(VERSION)"/' package.json
@@ -89,7 +89,7 @@ README.md: templates/README.md dist/lips.js .$(VERSION)
 	-e "s/{{VER_DASH}}/$(VERSION_DASH)/g" < templates/README.md > README.md
 
 REFERENCE.md: docs/reference.json scripts/reference.scm
-	$(LIPS) --bootstrap dist/std.scm scripts/reference.scm > REFERENCE.md
+	$(LIPS) -tm --bootstrap dist/std.scm scripts/reference.scm > REFERENCE.md
 
 .$(VERSION): Makefile
 	touch .$(VERSION)
@@ -118,12 +118,12 @@ test-update: dist/std.scm
 	@$(NPM) run test-update
 
 benchmark: dist/std.xcb
-	@$(LIPS) benchmarks/suite.scm
+	@$(LIPS) -tm benchmarks/suite.scm
 
 smoke: dist/std.xcb
-	@out=`timeout 60 $(LIPS) scripts/smoke.scm`; echo "$$out"; \
+	@out=`timeout 60 $(LIPS) -tm scripts/smoke.scm`; echo "$$out"; \
 		echo "$$out" | grep -q "smoke: all checks passed"
-	@out=`timeout 60 $(LIPS) -d scripts/smoke-dynamic.scm`; echo "$$out"; \
+	@out=`timeout 60 $(LIPS) -tm -d scripts/smoke-dynamic.scm`; echo "$$out"; \
 		echo "$$out" | grep -q "dynamic smoke: all checks passed"
 
 fold:

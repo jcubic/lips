@@ -2131,7 +2131,14 @@ class Parser {
                 env: this.__env__,
                 error: (e) => {
                     const msg = `Error while executing syntax extension ${special.seq} `;
-                    throw this._augment_exception(new Error(msg + e.message));
+                    const wrapper = new Error(msg + e.message);
+                    // carry over the Scheme stack trace collected while the
+                    // extension ran (when trace/-t is on) so it isn't lost when
+                    // we re-wrap the underlying error with parser location
+                    if (e.__stack__ instanceof Array) {
+                        wrapper.__stack__ = e.__stack__;
+                    }
+                    throw this._augment_exception(wrapper);
                 }
             };
             const result = await this._with_syntax_scope(() => {
@@ -6366,7 +6373,7 @@ LString.prototype.set = function(n, char) {
     }
     this.__string__ = string.join('');
 };
-Object.defineProperty(LString.prototype, "length", {
+Object.defineProperty(LString.prototype, 'length', {
     get: function() {
         return this.__string__.length;
     }
@@ -8240,6 +8247,7 @@ function Interpreter(name, {
     stdin,
     stdout,
     meta = false,
+    trace = false,
     command_line = null,
     filename = null,
     ...obj
@@ -8251,6 +8259,7 @@ function Interpreter(name, {
             stdout,
             stderr,
             meta,
+            trace,
             command_line,
             filename,
             ...obj
@@ -8274,8 +8283,15 @@ function Interpreter(name, {
         inter.set('stdout', stdout);
     }
     inter.set('command-line', command_line);
+    inter.set('__collect_stack__', trace);
     set_interaction_env(this.__env__, this.__env__, inter);
 }
+// -------------------------------------------------------------------------
+Object.defineProperty(Interpreter.prototype, 'internal', {
+    get: function() {
+        return get_internal_env(this.__env__);
+    }
+});
 // -------------------------------------------------------------------------
 Interpreter.prototype.exec = function(arg, options = {}) {
     let {
@@ -10010,14 +10026,6 @@ var global_env = new Environment({
         Special form used in the quasiquote macro. It evaluates the expression inside and
         substitutes the value into quasiquote's result.`),
     // ------------------------------------------------------------------
-    looper: function(num) {
-        var x = [];
-        while (num.cmp(0) != 0) {
-            x.push(num);
-            num = num.sub(1);
-        }
-    },
-    // ------------------------------------------------------------------
     quasiquote: (function() {
         // -----------------------------------------------------------------
         // :: New quasiquote based on Alan Bawden's paper
@@ -11145,11 +11153,12 @@ var global_env = new Environment({
 
         Function that left shifts the value a by value b bits.`),
     // ------------------------------------------------------------------
-    not: doc('not', function not(value) {
-        return !is_false(value);
-    }, `(not object)
+    not: doc(
+        'not',
+        is_false,
+        `(not object)
 
-        Function that returns the Boolean negation of its argument.`)
+         Function that returns the Boolean negation of its argument.`)
 }, undefined, 'global');
 var user_env = global_env.inherit('user-env');
 // -------------------------------------------------------------------------
@@ -11775,7 +11784,15 @@ class Continuation {
     hidden() {
         // we ignore top continuations that have no data
         // and _ignore that is added in call/cc when invoking argument
-        return this._state.name === 'top' || this.__code__._ignore;
+        return this._state.name === 'top' ||
+            this.__code__._ignore ||
+            // machine-generated builder code: quasiquote embeds the list/append/
+            // cons operators by *value* (not symbol) for hygiene - see the
+            // quasiquote macro. Such a frame is a function in operator position,
+            // which never happens in user source, so drop it from the stack
+            // trace (the unquoted sub-expressions, which keep symbol operators,
+            // are still shown).
+            (is_pair(this.__code__) && is_function(this.__code__.car));
     }
     trace(callback) {
         // the state records every (non-hidden) continuation seen during

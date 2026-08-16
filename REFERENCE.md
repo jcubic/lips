@@ -3653,7 +3653,7 @@ Returns the square of z. This is equivalent to (* z z).
 (stack-trace <continuation>)
 
 Function return stack trace if given continuation as a string.
-You first need to enable collecting stack frames using (trace).
+You first need to enable collecting stack frames using (trace #t).
 ```
 
 ## string
@@ -3989,12 +3989,11 @@ To clear the timer you can use native JS clearTimeout function.
 
 ## trace
 ```
-(trace)
-(trace enabled)
+(trace flag)
 
-Enable (or disable with (trace #f)) collection of stack frames so that
-stack-trace and full error stack traces work. Collecting has a runtime
-and memory cost, so it is disabled by default.
+toggle collection of stack frames so that stack-trace and full error
+stack traces work. Collecting has a runtime and memory cost,
+so it is disabled by default.
 ```
 
 ## tree->array

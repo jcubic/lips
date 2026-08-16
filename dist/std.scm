@@ -34,11 +34,33 @@
 (set-special! "#!no-promise" (%set-internal "__check_promise__" false) lips.specials.SYMBOL)
 
 ;; -----------------------------------------------------------------------------
+(define-macro (%internal)
+  `(let-env **interaction-environment** **internal-env**))
+
+;; -----------------------------------------------------------------------------
+(define (trace flag)
+  "(trace flag)
+
+   toggle collection of stack frames so that stack-trace and full error
+   stack traces work. Collecting has a runtime and memory cost,
+   so it is disabled by default."
+  (typecheck "trace" flag "boolean")
+  (--> (%internal) (set "__collect_stack__" flag)))
+
+;; -----------------------------------------------------------------------------
 (define (%doc string fn)
   (typecheck "%doc" fn "function")
   (typecheck "%doc" string "string")
   (set-object! fn '__doc__ (--> string (replace #/^ +/mg "")))
   fn)
+
+;; -----------------------------------------------------------------------------
+(define (error message . args)
+  "(error message ...)
+
+   Function raises error with given message and arguments,
+   which are called invariants."
+  (raise (new lips.Error message (args.to_array))))
 
 ;; -----------------------------------------------------------------------------
 (define-macro (let-syntax vars . body)
@@ -497,13 +519,7 @@
   "(object :name value)
 
    Creates a JavaScript object using key like syntax."
-  (try
-    (%object-expander false expr)
-    (catch (e)
-      (try
-       (error e.message)
-       (catch (e)
-         (console.error e.message))))))
+    (%object-expander false expr))
 
 ;; -----------------------------------------------------------------------------
 (define-macro (%object-literal . expr)
@@ -511,13 +527,7 @@
 
    Creates a JavaScript object using key like syntax. This is similar,
    to object but all values are quoted. This macro is used by the & object literal."
-  (try
-    (%object-expander true expr true)
-    (catch (e)
-      (try
-        (error e.message)
-        (catch (e)
-          (console.error e.message))))))
+    (%object-expander true expr true))
 
 ;; -----------------------------------------------------------------------------
 (define (alist->assign desc . sources)
@@ -1754,10 +1764,6 @@
           (if (file-exists? path)
               (read-file path binary)
               (fetch-url path binary))))))
-
-;; -----------------------------------------------------------------------------
-(define-macro (%internal)
-  `(let-env **interaction-environment** **internal-env**))
 
 ;; -----------------------------------------------------------------------------
 (define %read-binary-file (curry %read-file true))
@@ -5435,14 +5441,6 @@
             Changes the current working directory to provided string."
            (typecheck "set-current-directory!" value "string")
            (process.chdir value))))))
-
-;; -----------------------------------------------------------------------------
-(define (error message . args)
-  "(error message ...)
-
-   Function raises error with given message and arguments,
-   which are called invariants."
-  (raise (new lips.Error message (args.to_array))))
 
 ;; -----------------------------------------------------------------------------
 (define (error-object? obj)

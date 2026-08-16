@@ -204,8 +204,9 @@ function bootstrap(interpreter) {
         return readCode(path);
     }
     const code = read(filename);
-    // always lexical: the stdlib assumes lexical scope (see run())
-    return run(code, { interpreter, filename, env: env.__parent__, dynamic: false });
+    return run(code, {
+        interpreter, filename, env: env.__parent__, dynamic: false, exit: true
+    });
 }
 
 // -----------------------------------------------------------------------------
@@ -293,6 +294,7 @@ const interpreter = Interpreter('repl', {
     __filename: __filename,
     command_line,
     meta: use_meta,
+    trace: use_stack,
     // -------------------------------------------------------------------------
     exit: doc(function(code) {
         process.exit(code);

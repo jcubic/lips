@@ -1708,14 +1708,6 @@
            (process.chdir value))))))
 
 ;; -----------------------------------------------------------------------------
-(define (error message . args)
-  "(error message ...)
-
-   Function raises error with given message and arguments,
-   which are called invariants."
-  (raise (new lips.Error message (args.to_array))))
-
-;; -----------------------------------------------------------------------------
 (define (error-object? obj)
   "(error-object? obj)
 
