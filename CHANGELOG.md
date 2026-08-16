@@ -12,13 +12,12 @@
 * `truncate` now properly return integer
 * `lips -e` doesn't print the output anymore
 * remove `with-tags` macro and `make-tags` function
-* add `#!cycle`/`#!no-cycle` and `#!promise`/`#!no-promise` optimization directives
 ### Features
 * add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
 * `Environment:doc` now returns doc string for functions and macros additional to variables
 * improve and unify Syntax Errors
-* meta info from Runtime errors in REPL can be enabled with `-m`/`--meta`
+* show meta information about 'stack' trace about errors in REPL with `-t`/`--trace` flag
 * implement simple regex based syntax-extension
 * recursion performance improvements
 * new interpreter with TCO and Continuations inspired by js-scheme [#127](https://github.com/jcubic/lips/issues/127)
@@ -28,6 +27,7 @@
 * add core `^` bitwise xor function
 * add `generator` and `make-coroutine-generator` functions
 * add support for `truncate` on rational numbers
+* add `#!cycle`/`#!no-cycle`, `#!trace`/`#!no-trace` and `#!promise`/`#!no-promise` directives
 ### Bugfix
 * fix doc string for `make-rectangular`
 * `-inf.0`/`+inf.0` are now real lips numbers

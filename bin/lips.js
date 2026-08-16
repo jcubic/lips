@@ -4,13 +4,17 @@ import lily from '@jcubic/lily';
 
 const boolean = [
     'd', 'dynamic', 'q', 'quiet', 'V', 'version', 'trace', 't', 'c', 'compile',
-    'm', 'meta'
+    'm', 'meta', 'j', 'js-trace'
 ];
 const options = lily(process.argv.slice(2), { boolean });
 
 const use_dynamic = options.d || options.dynamic;
-const use_stack = options.t || options.trace;
-const use_meta = options.m || options.meta;
+// -t/--trace enables tracing: source-position metadata (line/column/file) on
+// errors AND Scheme stack collection. -m/--meta is kept as an alias for it (the
+// two used to be separate; they were merged since they are two halves of the
+// same debugging aid). -j/--js-trace additionally prints the JavaScript stack.
+const use_trace = options.t || options.trace || options.m || options.meta;
+const use_js_trace = options.j || options['js-trace'];
 
 const quiet = options.q || options.quiet;
 
@@ -112,12 +116,12 @@ async function run(code, {
         if (e instanceof Parser.Unterminated && !log_unterminated) {
             return;
         }
-        print_error(e, use_stack, exit);
+        print_error(e, use_js_trace, exit);
     }
 }
 
 // -----------------------------------------------------------------------------
-function print_error(e, stack, exit) {
+function print_error(e, js_trace, exit) {
     if (!e) {
         console.log('Error is null');
         return;
@@ -141,7 +145,7 @@ function print_error(e, stack, exit) {
             return prefix + output;
         }).join('\n');
     }
-    if (use_stack) {
+    if (js_trace) {
         console.error(e.stack);
     } else {
         console.error(message);
@@ -149,11 +153,11 @@ function print_error(e, stack, exit) {
     if (strace) {
         console.error(strace);
     }
-    if (!stack) {
-        console.error('Use (display exception.stack) or use -t/--trace option to display JS stack trace.');
+    if (!js_trace) {
+        console.error(`Use (display exception.stack) or use -j/--js-trace option to display JS 'stack' trace.`);
     }
-    if (!use_meta) {
-        console.error('Use -m/--meta option to display column and filename of the exception');
+    if (!use_trace) {
+        console.error('Use -t/--trace option to display line, column and file of the exception');
     }
     global.exception = e;
     if (exit) {
@@ -177,7 +181,7 @@ function print(result) {
                 process.stdout.write('\x1b[K' + value);
                 return true;
             } catch(e) {
-                print_error(e, use_stack);
+                print_error(e, use_js_trace);
             }
         }
     }
@@ -293,8 +297,7 @@ const interpreter = Interpreter('repl', {
     __dirname: __dirname,
     __filename: __filename,
     command_line,
-    meta: use_meta,
-    trace: use_stack,
+    trace: use_trace,
     // -------------------------------------------------------------------------
     exit: doc(function(code) {
         process.exit(code);
@@ -444,17 +447,18 @@ if (options.version || options.V) {
 } else if (options.h || options.help) {
     var name = process.argv[1];
     var intro = banner.replace(/(Jankiewicz\n)[\s\S]+$/, '$1');
-    console.log(format('%s\nusage:\n  %s -q | -c | -h | -m | -t | -b <file> | -d | -e <code> | <filena' +
+    console.log(format('%s\nusage:\n  %s -q | -c | -h | -t | -j | -b <file> | -d | -e <code> | <filena' +
                        'me>\n\n  [-h --help]\t\tthis help message\n  [-e --eval]\t\texecute code\n  [-' +
                        'V --version]\tdisplay version information according to srfi-176\n  [-c --compi' +
                        'le]\tparse and compile the file into binary file format\n  [-b --bootstrap]\tp' +
                        'oint to a file that should be used for bootstrapping standard library,\n\t\t\t' +
                        'default is ./dist/std.xcb. use none to disable bootstrapping\n  [-q --quiet]\t' +
                        '\tdon\'t display banner in REPL\n  [-d --dynamic]\trun interpreter with dynami' +
-                       'c scope\n  [-t --trace]\t\tprint JavaScript and scheme stack traces when exten' +
-                       'sions is thrown\n  [-m --meta]\t\tadd meta information to the parsed code that' +
-                       ' enhance exceptions message\n\nif called without arguments it will run the REP' +
-                       'L and if called with one argument\nit will treat it as filename and execute it.',
+                       'c scope\n  [-t --trace]\t\tenable tracing: report line, column and file on err' +
+                       'ors and\n\t\t\tcollect a Scheme \'stack\' trace\n  [-j --js-trace]\talso print' +
+                       ' the JavaScript stack trace on errors\n  [-m --meta]\t\tdeprecated alias for -' +
+                       't --trace\n\nif called without arguments it will run the REPL and if called wi' +
+                       'th one argument\nit will treat it as filename and execute it.',
                        intro, path.basename(name)));
 } else {
     const entry = '   ' + (use_dynamic ? 'dynamic' : 'lexical') + ' scope $1';
@@ -785,7 +789,7 @@ function run_repl(err, rl) {
                     continue_multiline(code);
                 }
             } catch (e) {
-                print_error(e, use_stack);
+                print_error(e, use_js_trace);
                 cmd = '';
                 rl.setPrompt(prompt);
                 rl.prompt();

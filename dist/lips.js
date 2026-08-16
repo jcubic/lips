@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 16 Aug 2026 18:34:45 +0000
+ * build: Sun, 16 Aug 2026 21:36:37 +0000
  */
 
 (function (global, factory) {
@@ -3025,7 +3025,7 @@
   // opt-in gate for stack-frame collection (state.stack). Off by default: pushing
   // every continuation seen during evaluation costs time and, in a long tail loop,
   // unbounded memory. Enable with (trace) when you need stack-trace / full error
-  // stacks. Stored per-instance in the internal env as __collect_stack__ and read
+  // stacks. Stored per-instance in the internal env as __trace__ and read
   // onto state.collect_stack (see read_internal_flags) - not a module global, so
   // several interpreters can run in one runtime with independent tracing.
   // ----------------------------------------------------------------------
@@ -4011,7 +4011,21 @@
       this.trigger('remove');
     },
     append: function append(name, value, type) {
-      this.get_list(name).set(name, {
+      var list = this.get_list(name);
+      if (is_regex(name)) {
+        // regex specials are keyed by RegExp objects, which Map compares by
+        // identity; re-defining a special with a freshly constructed but
+        // equivalent regex would otherwise append a duplicate and the older
+        // entry (matched first in get()) would keep winning. Drop any entry
+        // with the same source so the redefinition overwrites it (mirrors
+        // remove()).
+        for (var key of list.keys()) {
+          if (String(key) === String(name)) {
+            list.delete(key);
+          }
+        }
+      }
+      list.set(name, {
         seq: name,
         value,
         type
@@ -4756,7 +4770,14 @@
       });
       read_only(this, '__file__', filename === null || filename === void 0 ? void 0 : filename.valueOf());
       read_only(this, '__env__', env);
-      this.__meta__ = meta;
+      // The `meta` option forces source-position augmentation on regardless of
+      // the flag (public API, kept as an override). Otherwise augmentation
+      // follows the unified __trace__ flag, snapshot per input in prepare() so
+      // it is consistent for a whole parse yet still tracks a runtime (trace)
+      // toggle on the next input (e.g. the REPL parser, reused across lines).
+      read_only(this, '_meta_forced', meta, {
+        hidden: true
+      });
       // datum labels
       read_only(this, '_refs', [], {
         hidden: true
@@ -4775,6 +4796,12 @@
         filename,
         formatter
       });
+    }
+    get _meta() {
+      var env = get_internal_env(this.__env__);
+      return this._meta_forced || env.get('__trace__', {
+        throwError: false
+      }) === true;
     }
     prepare(arg) {
       var _ref11 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
@@ -4879,13 +4906,6 @@
           throw _this._augment_exception(e);
         }
       })();
-    }
-    get __meta__() {
-      return this._meta;
-    }
-    set __meta__(value) {
-      this._meta = value;
-      internal_env.get('__parser_args__').meta = value;
     }
     peek() {
       var _this2 = this;
@@ -12234,8 +12254,7 @@
       inter.set('stdout', stdout);
     }
     inter.set('command-line', command_line);
-    inter.set('__collect_stack__', trace);
-    inter.set('__parser__', parser);
+    inter.set('__trace__', trace);
     set_interaction_env(this.__env__, this.__env__, inter);
   }
   // -------------------------------------------------------------------------
@@ -12683,7 +12702,7 @@
   // interaction env is linked) or when the flags were never set, the state keeps
   // its defaults. cycle/promise checks default ON and turn off when the flag is
   // exactly false; stack collection defaults OFF and turns on when
-  // __collect_stack__ is exactly true (the (trace) helper stores the enabled flag).
+  // __trace__ is exactly true (the (trace) helper stores the enabled flag).
   function read_internal_flags(env, state) {
     if (!is_env(env)) {
       return;
@@ -12710,7 +12729,7 @@
     // stack collection defaults OFF; (trace) stores the enabled flag directly,
     // so we collect only when it is explicitly true (a plain !is_false check
     // would wrongly collect by default, since is_false(undefined) is false)
-    if (internal.get('__collect_stack__', {
+    if (internal.get('__trace__', {
       throwError: false
     }) === true) {
       state.collect_stack = true;
@@ -13041,6 +13060,14 @@
       var filename = basename(file);
       var IS_BIN = file.match(/\.xcb$/);
       var eval_args = get_internal_value(this, '__parser_args__');
+      // Capture the trace flag now - synchronously, right after any preceding
+      // (trace #t) and before the async file read yields - and force it on as
+      // the parse's meta. Otherwise a concurrent eval toggling __trace__ during
+      // the read could flip whether this file is parsed with source positions,
+      // making augmentation of a load-time error nondeterministic.
+      var trace_now = get_internal_env(this).get('__trace__', {
+        throwError: false
+      }) === true;
       function run(code) {
         if (IS_BIN) {
           code = unserialize_bin(code);
@@ -13061,6 +13088,7 @@
         return exec(code, _objectSpread(_objectSpread({
           env
         }, eval_args), {}, {
+          meta: eval_args.meta || trace_now,
           filename
         }));
       }
@@ -15526,10 +15554,58 @@
     if (e instanceof State) {
       return e.object;
     }
+    if (e instanceof IgnoreException) {
+      return;
+    }
+    // A primitive can be thrown/rejected (e.g. (throw 10), (Promise.reject 10)).
+    // It can't carry a stack or location metadata (assigning a property to a
+    // number throws), so only augment object-like values and let primitives fall
+    // straight through to the try redirect / propagation below.
+    if (e !== null && (typeof e === 'object' || typeof e === 'function')) {
+      // exception unwinds past this loop - let it propagate. Use THIS loop's own
+      // stack (state.cc is now the outer `top`, whose _state.state is a different
+      // loop). Recorded outermost-first, reported innermost-first. We APPEND to
+      // e.__stack__ (deduped) rather than overwrite so that as the error unwinds
+      // through nested loops (e.g. `load`) each loop contributes its frames,
+      // innermost first.
+      var frames = (state.stack || []).slice().reverse();
+      // the failing (innermost) expression drives the error's location metadata
+      var inner = frames.length ? frames[0].__code__ : code;
+      if (!is_augmented(inner)) {
+        // stack collection may be off - walk the live continuation chain for
+        // the innermost node that carries source positions (nodes are tagged
+        // by the parser under #!trace / meta)
+        var walk = state.cc;
+        while (walk && !is_augmented(walk.__code__)) {
+          walk = walk.__continuation__;
+        }
+        if (walk && is_augmented(walk.__code__)) {
+          inner = walk.__code__;
+        }
+      }
+      if (!(e.__stack__ instanceof Array)) {
+        e.__stack__ = [];
+      }
+      var seen = new Set(e.__stack__);
+      for (var cc of frames) {
+        var str = to_string(cc.__code__, true);
+        if (!seen.has(str)) {
+          seen.add(str);
+          e.__stack__.push(str);
+        }
+      }
+      if (!e.__stack__.length && code) {
+        e.__stack__.push(to_string(code, true));
+      }
+      // location metadata from the innermost frame (only the first, innermost
+      // loop to see the error sets it)
+      augment_exception(e, inner);
+    }
+
     // an active `try` in this loop? redirect to its catch/finally.
     // state.handlers is per-loop, so a handler survives an `await`
     // suspension and is never wiped by another eval loop.
-    if (!(e instanceof IgnoreException) && state !== null && state !== void 0 && (_state$handlers = state.handlers) !== null && _state$handlers !== void 0 && _state$handlers.length) {
+    if (state !== null && state !== void 0 && (_state$handlers = state.handlers) !== null && _state$handlers !== void 0 && _state$handlers.length) {
       var handler = state.handlers.pop();
       if (handler.catch_body) {
         var catch_env = handler.env.inherit('catch');
@@ -15550,32 +15626,6 @@
       }
       return __continue__;
     }
-    // exception unwinds past this loop - let it propagate. Use THIS loop's own
-    // stack (state.cc is now the outer `top`, whose _state.state is a different
-    // loop). Recorded outermost-first, reported innermost-first. We APPEND to
-    // e.__stack__ (deduped) rather than overwrite so that as the error unwinds
-    // through nested loops (e.g. `load`) each loop contributes its frames,
-    // innermost first.
-    var frames = (state.stack || []).slice().reverse();
-    // the failing (innermost) expression drives the error's location metadata
-    var inner = frames.length ? frames[0].__code__ : code;
-    if (!(e.__stack__ instanceof Array)) {
-      e.__stack__ = [];
-    }
-    var seen = new Set(e.__stack__);
-    for (var cc of frames) {
-      var str = to_string(cc.__code__, true);
-      if (!seen.has(str)) {
-        seen.add(str);
-        e.__stack__.push(str);
-      }
-    }
-    if (!e.__stack__.length && code) {
-      e.__stack__.push(to_string(code, true));
-    }
-    // location metadata from the innermost frame (only the first, innermost
-    // loop to see the error sets it)
-    augment_exception(e, inner);
     state.error && state.error(e);
     if (!(e instanceof IgnoreException)) {
       throw e;
@@ -16871,10 +16921,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sun, 16 Aug 2026 18:34:45 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sun, 16 Aug 2026 21:36:37 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sun, 16 Aug 2026 18:34:45 +0000').valueOf();
+    var date = LString('Sun, 16 Aug 2026 21:36:37 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -16913,7 +16963,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Sun, 16 Aug 2026 18:34:45 +0000';
+  var date = 'Sun, 16 Aug 2026 21:36:37 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

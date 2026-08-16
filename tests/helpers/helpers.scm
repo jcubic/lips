@@ -122,11 +122,13 @@
   (after (--> (%internal) (get "__parser_args__"))))
 
 (define-macro (with-meta . body)
-  `(with-parser-internals (lambda (internals)
-                            (trace #t)
-                            (set-object! internals 'meta #t))
-                          (lambda ()
-                            ,@body)
-                          (lambda (internals)
-                            (trace #f)
-                            (set-object! internals 'meta #f))))
+  "(with-meta . body)
+
+   Run body with tracing enabled - the parser tags code with source positions
+   (line/column/file) and the evaluator collects a stack trace. A single
+   (trace) call now controls both."
+  `(begin
+     (trace #t)
+     (let ((result (begin ,@body)))
+       (trace #f)
+       result)))

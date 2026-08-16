@@ -42,7 +42,7 @@ LIPS support full numerical tower (not yet 100% unit tested):
 * complex numbers (that can use integers, floats, or rationals)
 
 ## Print procedure
-LIPS define helper `print` procedure that display all its arguments with newline after each element.
+LIPS `define` helper `print` procedure that display all its arguments with newline after each element.
 
 ```scheme
 (print 1 2 3)

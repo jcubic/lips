@@ -3991,9 +3991,9 @@ To clear the timer you can use native JS clearTimeout function.
 ```
 (trace flag)
 
-toggle collection of stack frames so that stack-trace and full error
-stack traces work. Collecting has a runtime and memory cost,
-so it is disabled by default.
+Toggle tracing. When enabled the parser augments the code with source
+positions (so errors report line, column and file) and the evaluator
+collects stack frames (so exceptions carry a Scheme 'stack' trace).
 ```
 
 ## tree->array

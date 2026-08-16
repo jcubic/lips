@@ -137,7 +137,7 @@ function log(x, ...args) {
 // opt-in gate for stack-frame collection (state.stack). Off by default: pushing
 // every continuation seen during evaluation costs time and, in a long tail loop,
 // unbounded memory. Enable with (trace) when you need stack-trace / full error
-// stacks. Stored per-instance in the internal env as __collect_stack__ and read
+// stacks. Stored per-instance in the internal env as __trace__ and read
 // onto state.collect_stack (see read_internal_flags) - not a module global, so
 // several interpreters can run in one runtime with independent tracing.
 // ----------------------------------------------------------------------
@@ -1100,7 +1100,21 @@ var specials = {
         this.trigger('remove');
     },
     append: function(name, value, type) {
-        this.get_list(name).set(name, {
+        const list = this.get_list(name);
+        if (is_regex(name)) {
+            // regex specials are keyed by RegExp objects, which Map compares by
+            // identity; re-defining a special with a freshly constructed but
+            // equivalent regex would otherwise append a duplicate and the older
+            // entry (matched first in get()) would keep winning. Drop any entry
+            // with the same source so the redefinition overwrites it (mirrors
+            // remove()).
+            for (const key of list.keys()) {
+                if (String(key) === String(name)) {
+                    list.delete(key);
+                }
+            }
+        }
+        list.set(name, {
             seq: name,
             value,
             type
@@ -1889,7 +1903,12 @@ class Parser {
         });
         read_only(this, '__file__', filename?.valueOf());
         read_only(this, '__env__', env);
-        this.__meta__ = meta;
+        // The `meta` option forces source-position augmentation on regardless of
+        // the flag (public API, kept as an override). Otherwise augmentation
+        // follows the unified __trace__ flag, snapshot per input in prepare() so
+        // it is consistent for a whole parse yet still tracks a runtime (trace)
+        // toggle on the next input (e.g. the REPL parser, reused across lines).
+        read_only(this, '_meta_forced', meta, { hidden: true });
         // datum labels
         read_only(this, '_refs', [], { hidden: true });
         read_only(this, '_state', {
@@ -1900,6 +1919,10 @@ class Parser {
         }, { hidden: true });
         // keep the arguments of the parser for (load ...)
         get_internal_env(env).set('__parser_args__', { meta, filename, formatter });
+    }
+    get _meta() {
+        const env = get_internal_env(this.__env__);
+        return this._meta_forced || env.get('__trace__', { throwError: false }) === true;
     }
     prepare(arg, { filename = null } = {}) {
         if (arg instanceof LString) {
@@ -1993,13 +2016,6 @@ class Parser {
         } catch (e) {
             throw this._augment_exception(e);
         }
-    }
-    get __meta__() {
-        return this._meta;
-    }
-    set __meta__(value) {
-        this._meta = value;
-        internal_env.get('__parser_args__').meta = value;
     }
     async peek() {
         const token = this._peek();
@@ -8291,8 +8307,7 @@ function Interpreter(name, {
         inter.set('stdout', stdout);
     }
     inter.set('command-line', command_line);
-    inter.set('__collect_stack__', trace);
-    inter.set('__parser__', parser);
+    inter.set('__trace__', trace);
     set_interaction_env(this.__env__, this.__env__, inter);
 }
 // -------------------------------------------------------------------------
@@ -8759,7 +8774,7 @@ function get_internal_env(env) {
 // interaction env is linked) or when the flags were never set, the state keeps
 // its defaults. cycle/promise checks default ON and turn off when the flag is
 // exactly false; stack collection defaults OFF and turns on when
-// __collect_stack__ is exactly true (the (trace) helper stores the enabled flag).
+// __trace__ is exactly true (the (trace) helper stores the enabled flag).
 function read_internal_flags(env, state) {
     if (!is_env(env)) {
         return;
@@ -8778,7 +8793,7 @@ function read_internal_flags(env, state) {
     // stack collection defaults OFF; (trace) stores the enabled flag directly,
     // so we collect only when it is explicitly true (a plain !is_false check
     // would wrongly collect by default, since is_false(undefined) is false)
-    if (internal.get('__collect_stack__', { throwError: false }) === true) {
+    if (internal.get('__trace__', { throwError: false }) === true) {
         state.collect_stack = true;
     }
 }
@@ -9143,6 +9158,13 @@ var global_env = new Environment({
         const filename = basename(file);
         const IS_BIN = file.match(/\.xcb$/);
         const eval_args = get_internal_value(this, '__parser_args__');
+        // Capture the trace flag now - synchronously, right after any preceding
+        // (trace #t) and before the async file read yields - and force it on as
+        // the parse's meta. Otherwise a concurrent eval toggling __trace__ during
+        // the read could flip whether this file is parsed with source positions,
+        // making augmentation of a load-time error nondeterministic.
+        const trace_now = get_internal_env(this)
+            .get('__trace__', { throwError: false }) === true;
         function run(code) {
             if (IS_BIN) {
                 code = unserialize_bin(code);
@@ -9160,7 +9182,9 @@ var global_env = new Environment({
                     code = unserialize(code);
                 }
             }
-            return exec(code, { env, ...eval_args, filename });
+            return exec(code, {
+                env, ...eval_args, meta: eval_args.meta || trace_now, filename
+            });
         }
         function fetch(file) {
             return root.fetch(file)
@@ -12020,10 +12044,58 @@ function tco_error_handler(e, state, code) {
     if (e instanceof State) {
         return e.object;
     }
+    if (e instanceof IgnoreException) {
+        return;
+    }
+    // A primitive can be thrown/rejected (e.g. (throw 10), (Promise.reject 10)).
+    // It can't carry a stack or location metadata (assigning a property to a
+    // number throws), so only augment object-like values and let primitives fall
+    // straight through to the try redirect / propagation below.
+    if (e !== null && (typeof e === 'object' || typeof e === 'function')) {
+        // exception unwinds past this loop - let it propagate. Use THIS loop's own
+        // stack (state.cc is now the outer `top`, whose _state.state is a different
+        // loop). Recorded outermost-first, reported innermost-first. We APPEND to
+        // e.__stack__ (deduped) rather than overwrite so that as the error unwinds
+        // through nested loops (e.g. `load`) each loop contributes its frames,
+        // innermost first.
+        const frames = (state.stack || []).slice().reverse();
+        // the failing (innermost) expression drives the error's location metadata
+        let inner = frames.length ? frames[0].__code__ : code;
+        if (!is_augmented(inner)) {
+            // stack collection may be off - walk the live continuation chain for
+            // the innermost node that carries source positions (nodes are tagged
+            // by the parser under #!trace / meta)
+            let walk = state.cc;
+            while (walk && !is_augmented(walk.__code__)) {
+                walk = walk.__continuation__;
+            }
+            if (walk && is_augmented(walk.__code__)) {
+                inner = walk.__code__;
+            }
+        }
+        if (!(e.__stack__ instanceof Array)) {
+            e.__stack__ = [];
+        }
+        const seen = new Set(e.__stack__);
+        for (const cc of frames) {
+            const str = to_string(cc.__code__, true);
+            if (!seen.has(str)) {
+                seen.add(str);
+                e.__stack__.push(str);
+            }
+        }
+        if (!e.__stack__.length && code) {
+            e.__stack__.push(to_string(code, true));
+        }
+        // location metadata from the innermost frame (only the first, innermost
+        // loop to see the error sets it)
+        augment_exception(e, inner);
+    }
+
     // an active `try` in this loop? redirect to its catch/finally.
     // state.handlers is per-loop, so a handler survives an `await`
     // suspension and is never wiped by another eval loop.
-    if (!(e instanceof IgnoreException) && state?.handlers?.length) {
+    if (state?.handlers?.length) {
         const handler = state.handlers.pop();
         if (handler.catch_body) {
             const catch_env = handler.env.inherit('catch');
@@ -12044,32 +12116,7 @@ function tco_error_handler(e, state, code) {
         }
         return __continue__;
     }
-    // exception unwinds past this loop - let it propagate. Use THIS loop's own
-    // stack (state.cc is now the outer `top`, whose _state.state is a different
-    // loop). Recorded outermost-first, reported innermost-first. We APPEND to
-    // e.__stack__ (deduped) rather than overwrite so that as the error unwinds
-    // through nested loops (e.g. `load`) each loop contributes its frames,
-    // innermost first.
-    const frames = (state.stack || []).slice().reverse();
-    // the failing (innermost) expression drives the error's location metadata
-    const inner = frames.length ? frames[0].__code__ : code;
-    if (!(e.__stack__ instanceof Array)) {
-        e.__stack__ = [];
-    }
-    const seen = new Set(e.__stack__);
-    for (const cc of frames) {
-        const str = to_string(cc.__code__, true);
-        if (!seen.has(str)) {
-            seen.add(str);
-            e.__stack__.push(str);
-        }
-    }
-    if (!e.__stack__.length && code) {
-        e.__stack__.push(to_string(code, true));
-    }
-    // location metadata from the innermost frame (only the first, innermost
-    // loop to see the error sets it)
-    augment_exception(e, inner);
+
     state.error && state.error(e);
     if (!(e instanceof IgnoreException)) {
         throw e;

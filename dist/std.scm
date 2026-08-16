@@ -18,7 +18,9 @@
 (define NaN +nan.0)
 
 ;; -----------------------------------------------------------------------------
-;; performance instrumentation
+(define-macro (%internal)
+  `(let-env **interaction-environment** **internal-env**))
+
 ;; -----------------------------------------------------------------------------
 (define (%set-internal prop value)
   "(%set-internal prop value)
@@ -27,27 +29,27 @@
   (lambda ()
     (ignore (--> (%internal) (set prop value)))))
 
+;; -----------------------------------------------------------------------------
+;; directives
+;; -----------------------------------------------------------------------------
 (set-special! "#!cycle" (%set-internal "__check_cycle__" true) lips.specials.SYMBOL)
 (set-special! "#!no-cycle" (%set-internal "__check_cycle__" false) lips.specials.SYMBOL)
 
 (set-special! "#!promise" (%set-internal "__check_promise__" true) lips.specials.SYMBOL)
 (set-special! "#!no-promise" (%set-internal "__check_promise__" false) lips.specials.SYMBOL)
 
-;; -----------------------------------------------------------------------------
-(define-macro (%internal)
-  `(let-env **interaction-environment** **internal-env**))
+(set-special! "#!trace" (%set-internal "__trace__" true) lips.specials.SYMBOL)
+(set-special! "#!no-trace" (%set-internal "__trace__" false) lips.specials.SYMBOL)
 
 ;; -----------------------------------------------------------------------------
 (define (trace flag)
   "(trace flag)
 
-   toggle collection of stack frames so that stack-trace and full error
-   stack traces work. Collecting has a runtime and memory cost,
-   so it is disabled by default."
+   Toggle tracing. When enabled the parser augments the code with source
+   positions (so errors report line, column and file) and the evaluator
+   collects stack frames (so exceptions carry a Scheme 'stack' trace)."
   (typecheck "trace" flag "boolean")
-  (let* ((env (%internal)) (parser (env.get "__parser__")))
-    (env.set "__collect_stack__" flag)
-    (set-object! parser "__meta__" flag)))
+  (ignore (--> (%internal) (set "__trace__" flag))))
 
 ;; -----------------------------------------------------------------------------
 (define (%doc string fn)

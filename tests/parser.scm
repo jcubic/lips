@@ -153,6 +153,14 @@
 
 (define parser/t20 (list #2a((1 2) (1 2)) #3a((1 2) (1 2) (1 2))))
 
+;; redefining a regex special with an equivalent (freshly constructed) regex
+;; must overwrite the previous definition, not append a shadowed duplicate
+(define-macro (nested-const x) `(quote overwritten))
+
+(set-special! #/#[0-9]+a/ nested-const lips.specials.LITERAL)
+
+(define parser/t21 #4a((1 2) (1 2)))
+
 (unset-special! #/#[0-9]+a/)
 
 (test "#!fold-case"
@@ -178,6 +186,8 @@
         (t.is parser/t8 '(() () () () ()))
         (t.is parser/t9 "foo \\ bar")
         (t.is parser/t14 10)
+        (t.is parser/t20 '(((1 2) (1 2)) ((1 2) (1 2) (1 2))))
+        (t.is parser/t21 'overwritten)
         (t.snapshot parser/t10)))
 
 (test "escape hex literals"

@@ -984,17 +984,42 @@ This function returns the car (item 1) of the list.")
 
 (test "runtime error augmentation"
       (lambda (t)
-        (with-meta
-         (let ((file "./tests/files/runtime-error.scm"))
-           (let ((e (to.throw.error (load file))))
-             (t.snapshot (Object.getOwnPropertyNames e)))))))
+        (trace #t)
+        (let ((file "./tests/files/runtime-error.scm"))
+          (let ((e (to.throw.error (load file))))
+            (t.snapshot (Object.getOwnPropertyNames e))))
+        (trace #f)))
 
 (test "promise rejection augmentation"
       (lambda (t)
-        (with-meta
-         (let ((file "./tests/files/runtime-promise-reject.scm"))
-           (let ((e (to.throw.error (load file))))
-             (t.snapshot (Object.getOwnPropertyNames e)))))))
+        (trace #t)
+        (let ((file "./tests/files/runtime-promise-reject.scm"))
+          (let ((e (to.throw.error (load file))))
+            (t.snapshot (Object.getOwnPropertyNames e))))
+        (trace #f)))
+
+(test "symbol meta tags in input string port"
+      (lambda (t)
+        (trace #t)
+        (let ((port (open-input-string "(one two three)")))
+          (t.is (map (lambda (symbol) symbol.__col__) (read port))
+                '(1 5 9)))
+        (trace #f)))
+
+(test "error augumentation in try..catch at parse time"
+      (lambda (t)
+        #!trace
+        (let ((message (try (throw (new Error "Nasty")) (catch (e) e.message))))
+          #!no-trace
+          (t.is (list? (match #/Nasty at line [0-9]+ and column [0-9]+/g message)) #t))))
+
+(test "Promise rejection augumentation in try..catch at parse time"
+      (lambda (t)
+        #!trace
+        (let ((message (try (Promise.reject (new Error "Nasty")) (catch (e) e.message))))
+          #!no-trace
+          (t.is (list? (match #/Nasty at line [0-9]+ and column [0-9]+/g message)) #t))))
+
 
 ;; TODO
 ;; begin*
