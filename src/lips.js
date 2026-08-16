@@ -9307,7 +9307,7 @@ var global_env = new Environment({
 
          Creates a loop, it executes cond and body until cond expression is false.`),
     // ------------------------------------------------------------------
-    'do': doc(new Macro('do', async function(source, state) {
+    'do': doc(new Macro('do', function(source, state) {
         const code = source.cdr;
         state.env = state.env.inherit('do');
         const loop = gensym('loop');
