@@ -47,6 +47,26 @@
                           a
                           (loop (- i 1) (modulo (+ (* a x) 7) 1000003)))))))))
 
+ (add "recursion: nested loops"
+      (lambda ()
+        (define (sum n)
+          (let ((sum 0) (list (range n)))
+            (while (not (null? list))
+              (set! sum (+ sum (car list)))
+              (set! list (cdr list)))
+            sum))
+
+        (define (loop x)
+          (let ((i 100))
+            (while (> i 0)
+              (let loop ((i x))
+                (if (> i 0)
+                    (loop (- i 1))))
+              (set! i (- i 1))
+              (sum 100))))
+
+        (loop 100)))
+
  ;; big array + JS .map/.filter chain producing strings
  (add "array-map: string"
       (lambda ()
