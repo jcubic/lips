@@ -1,7 +1,7 @@
 (define true #t)
 (define false #f)
 (define NaN +nan.0)
-(define (%set-internal prop value) "(%set-internal prop value)\u000A\u000AHelper function that create setter for internal environment." (lambda () (--> (%internal) (set prop value))))
+(define (%set-internal prop value) "(%set-internal prop value)\u000A\u000AHelper function that create setter for internal environment." (lambda () (ignore (--> (%internal) (set prop value)))))
 (set-special! "#!cycle" (%set-internal "__check_cycle__" true) lips.specials.SYMBOL)
 (set-special! "#!no-cycle" (%set-internal "__check_cycle__" false) lips.specials.SYMBOL)
 (set-special! "#!promise" (%set-internal "__check_promise__" true) lips.specials.SYMBOL)

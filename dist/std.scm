@@ -25,7 +25,7 @@
 
    Helper function that create setter for internal environment."
   (lambda ()
-    (--> (%internal) (set prop value))))
+    (ignore (--> (%internal) (set prop value)))))
 
 (set-special! "#!cycle" (%set-internal "__check_cycle__" true) lips.specials.SYMBOL)
 (set-special! "#!no-cycle" (%set-internal "__check_cycle__" false) lips.specials.SYMBOL)
