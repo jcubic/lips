@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 15 Aug 2026 22:00:23 +0000
+ * build: Sun, 16 Aug 2026 09:57:12 +0000
  */
 
 (function (global, factory) {
@@ -9675,8 +9675,13 @@
   }
   // ----------------------------------------------------------------------
   function patch_value(value, context) {
+    var mark_cycles = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : true;
     if (is_pair(value)) {
-      value.mark_cycles();
+      // mark_cycles is skipped when the caller opted out via #!no-cycle - the
+      // pair is still quoted, just not scanned for cycles (unsafe if it has any)
+      if (mark_cycles) {
+        value.mark_cycles();
+      }
       return quote(value);
     }
     if (is_function(value)) {
@@ -12459,7 +12464,9 @@
       typecheck('Environment::get', symbol, ['symbol', 'string']);
     }
     var _options$throwError = options.throwError,
-      throwError = _options$throwError === void 0 ? true : _options$throwError;
+      throwError = _options$throwError === void 0 ? true : _options$throwError,
+      _options$mark_cycles = options.mark_cycles,
+      mark_cycles = _options$mark_cycles === void 0 ? true : _options$mark_cycles;
     var name = symbol;
     if (name instanceof LSymbol || name instanceof LString) {
       name = name.valueOf();
@@ -12469,7 +12476,7 @@
       if (Value.is_undefined(value)) {
         return undefined;
       }
-      return patch_value(value.valueOf());
+      return patch_value(value.valueOf(), undefined, mark_cycles);
     }
     var parts;
     if (symbol instanceof LSymbol && symbol[LSymbol.object]) {
@@ -12502,7 +12509,7 @@
           throw e;
         }
       } else if (Value.of('get', value)) {
-        return patch_value(value.valueOf());
+        return patch_value(value.valueOf(), undefined, mark_cycles);
       }
       value = get(root, name);
     }
@@ -12643,6 +12650,36 @@
   // -------------------------------------------------------------------------
   function get_internal_env(env) {
     return get_interaction_env(env, '**internal-env**');
+  }
+  // -------------------------------------------------------------------------
+  // Read the perf-instrumentation flags (#!no-cycle / #!no-promise) from the
+  // internal env of the interpreter that owns `env` and store the result on the
+  // eval state. Non-throwing: during early bootstrap (before the interaction env
+  // is linked) or when the flags were never set, the state keeps its defaults
+  // (check everything). A check is only disabled when the flag is exactly false.
+  function read_check_flags(env, state) {
+    if (!is_env(env)) {
+      return;
+    }
+    var interaction = env.get('**interaction-environment**', {
+      throwError: false
+    });
+    var internal = interaction && interaction.get('**internal-env**', {
+      throwError: false
+    });
+    if (!internal) {
+      return;
+    }
+    if (internal.get('__check_cycle__', {
+      throwError: false
+    }) === false) {
+      state.check_cycle = false;
+    }
+    if (internal.get('__check_promise__', {
+      throwError: false
+    }) === false) {
+      state.check_promise = false;
+    }
   }
   // -------------------------------------------------------------------------
   function get_internal_value(env, name) {
@@ -15045,7 +15082,9 @@
     var _ref45 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
       env = _ref45.env,
       dynamic_env = _ref45.dynamic_env,
-      use_dynamic = _ref45.use_dynamic;
+      use_dynamic = _ref45.use_dynamic,
+      _ref45$check_promise = _ref45.check_promise,
+      check_promise = _ref45$check_promise === void 0 ? true : _ref45$check_promise;
     if (!fn._context) {
       read_only(fn, '_context', new LambdaContext({}), {
         hidden: true
@@ -15066,7 +15105,9 @@
     ctx._env_computed = false;
     ctx._dyn_computed = false;
     ctx.use_dynamic = use_dynamic;
-    return resolve_promises(fn.apply(ctx, args));
+    // #!no-promise: skip walking the result for promises and hand it back as-is
+    var result = fn.apply(ctx, args);
+    return check_promise ? resolve_promises(result) : result;
   }
 
   // -------------------------------------------------------------------------
@@ -15273,6 +15314,15 @@
       this.ready = false;
       this.macro_expand = macro_expand;
       this.promise_quote = false;
+      // perf-instrumentation flags for THIS interpreter instance, read from its
+      // internal env (see #!no-cycle / #!no-promise). Default to checking; a
+      // flag only turns a check off when it was explicitly set to false. Read
+      // dynamically (not cached in a module global) because `exec` swaps
+      // **interaction-environment** per instance - a static cache would break
+      // running several interpreters in one runtime.
+      this.check_cycle = true;
+      this.check_promise = true;
+      read_check_flags(env, this);
       // exception handlers registered by `try` in THIS eval loop. Kept per
       // state (not global) so they survive async suspension at an `await`
       // and can't be clobbered by other interleaving eval loops.
@@ -15866,9 +15916,11 @@
     } else if (code instanceof LNumber) {
       state.ready = true;
     } else if (code instanceof LSymbol) {
-      state.object = state.env.get(state.object);
+      state.object = state.env.get(state.object, {
+        mark_cycles: state.check_cycle
+      });
       state.ready = true;
-    } else if (is_promise(code)) {
+    } else if (state.check_promise && is_promise(code)) {
       // Don't await a promise that is the direct result of a quote-promise
       // body - pass it through so the quote-promise continuation wraps it.
       // Every other promise (nested usage) is awaited.
@@ -15882,7 +15934,9 @@
       var car = code.car,
         cdr = code.cdr;
       if (car instanceof LSymbol) {
-        var first = state.env.get(car);
+        var first = state.env.get(car, {
+          mark_cycles: state.check_cycle
+        });
         if (first === __if__) {
           state.object = cdr.car;
           state.cc = new Continuation('if', cdr.cdr, code, state, next_if);
@@ -16781,10 +16835,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sat, 15 Aug 2026 22:00:23 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sun, 16 Aug 2026 09:57:12 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sat, 15 Aug 2026 22:00:23 +0000').valueOf();
+    var date = LString('Sun, 16 Aug 2026 09:57:12 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -16823,7 +16877,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Sat, 15 Aug 2026 22:00:23 +0000';
+  var date = 'Sun, 16 Aug 2026 09:57:12 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

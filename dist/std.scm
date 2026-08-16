@@ -18,6 +18,22 @@
 (define NaN +nan.0)
 
 ;; -----------------------------------------------------------------------------
+;; performance instrumentation
+;; -----------------------------------------------------------------------------
+(define (%set-internal prop value)
+  "(%set-internal prop value)
+
+   Helper function that create setter for internal environment."
+  (lambda ()
+    (--> (%internal) (set prop value))))
+
+(set-special! "#!cycle" (%set-internal "__check_cycle__" true) lips.specials.SYMBOL)
+(set-special! "#!no-cycle" (%set-internal "__check_cycle__" false) lips.specials.SYMBOL)
+
+(set-special! "#!promise" (%set-internal "__check_promise__" true) lips.specials.SYMBOL)
+(set-special! "#!no-promise" (%set-internal "__check_promise__" false) lips.specials.SYMBOL)
+
+;; -----------------------------------------------------------------------------
 (define (%doc string fn)
   (typecheck "%doc" fn "function")
   (typecheck "%doc" string "string")

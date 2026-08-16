@@ -11,6 +11,14 @@
 ;; the old recursive evaluator and the continuation (tco) evaluator, and each is
 ;; small enough that the whole suite finishes in a couple of minutes.
 ;; -----------------------------------------------------------------------------
+
+;; performance instrumentation (see lib/bootstrap.scm): the workloads below are
+;; all acyclic and synchronous, so we turn off cycle detection and promise
+;; resolution for the whole suite. These are global read-time switches; keep
+;; them here so the benchmark reflects the fast path.
+#!no-cycle
+#!no-promise
+
 (load "./helpers/helpers.scm")
 
 ;; a big JS array whose elements are mapped with a LIPS callback - this hits the

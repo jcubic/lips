@@ -12,6 +12,7 @@
 * `truncate` now properly return integer
 * `lips -e` doesn't print the output anymore
 * remove `with-tags` macro and `make-tags` function
+* add `#!cycle`/`#!no-cycle` and `#!promise`/`#!no-promise` optimization directives
 ### Features
 * add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
