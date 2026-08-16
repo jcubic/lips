@@ -34,6 +34,16 @@
 (set-special! "#!no-promise" (%set-internal "__check_promise__" false) lips.specials.SYMBOL)
 
 ;; -----------------------------------------------------------------------------
+(define (trace flag)
+  "(trace flag)
+
+   toggle collection of stack frames so that stack-trace and full error
+   stack traces work. Collecting has a runtime and memory cost,
+   so it is disabled by default."
+  (typecheck "trace" flag "boolean")
+  (--> (%internal) (set "__collect_stack__" flag)))
+
+;; -----------------------------------------------------------------------------
 (define (%doc string fn)
   (typecheck "%doc" fn "function")
   (typecheck "%doc" string "string")

@@ -89,7 +89,7 @@ README.md: templates/README.md dist/lips.js .$(VERSION)
 	-e "s/{{VER_DASH}}/$(VERSION_DASH)/g" < templates/README.md > README.md
 
 REFERENCE.md: docs/reference.json scripts/reference.scm
-	$(LIPS) scripts/reference.scm > REFERENCE.md
+	$(LIPS) --bootstrap dist/std.scm scripts/reference.scm > REFERENCE.md
 
 .$(VERSION): Makefile
 	touch .$(VERSION)

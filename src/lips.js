@@ -137,8 +137,9 @@ function log(x, ...args) {
 // opt-in gate for stack-frame collection (state.stack). Off by default: pushing
 // every continuation seen during evaluation costs time and, in a long tail loop,
 // unbounded memory. Enable with (trace) when you need stack-trace / full error
-// stacks.
-let _collect_stack = false;
+// stacks. Stored per-instance in the internal env as __collect_stack__ and read
+// onto state.collect_stack (see read_internal_flags) - not a module global, so
+// several interpreters can run in one runtime with independent tracing.
 // ----------------------------------------------------------------------
 // fast global gate: is_debug() runs in hot paths (every eval step, macros) and
 // its user_env.get('DEBUG') is a full env-chain walk. Keep a module flag that
@@ -8727,12 +8728,14 @@ function get_internal_env(env) {
     return get_interaction_env(env, '**internal-env**');
 }
 // -------------------------------------------------------------------------
-// Read the perf-instrumentation flags (#!no-cycle / #!no-promise) from the
-// internal env of the interpreter that owns `env` and store the result on the
-// eval state. Non-throwing: during early bootstrap (before the interaction env
-// is linked) or when the flags were never set, the state keeps its defaults
-// (check everything). A check is only disabled when the flag is exactly false.
-function read_check_flags(env, state) {
+// Read the per-instance instrumentation flags (#!no-cycle / #!no-promise and
+// (trace)) from the internal env of the interpreter that owns `env` and store
+// the result on the eval state. Non-throwing: during early bootstrap (before the
+// interaction env is linked) or when the flags were never set, the state keeps
+// its defaults. cycle/promise checks default ON and turn off when the flag is
+// exactly false; stack collection defaults OFF and turns on when
+// __collect_stack__ is exactly true (the (trace) helper stores the enabled flag).
+function read_internal_flags(env, state) {
     if (!is_env(env)) {
         return;
     }
@@ -8746,6 +8749,12 @@ function read_check_flags(env, state) {
     }
     if (internal.get('__check_promise__', { throwError: false }) === false) {
         state.check_promise = false;
+    }
+    // stack collection defaults OFF; (trace) stores the enabled flag directly,
+    // so we collect only when it is explicitly true (a plain !is_false check
+    // would wrongly collect by default, since is_false(undefined) is false)
+    if (internal.get('__collect_stack__', { throwError: false }) === true) {
+        state.collect_stack = true;
     }
 }
 // -------------------------------------------------------------------------
@@ -8876,17 +8885,7 @@ var global_env = new Environment({
         This function converts each input into a string and prints
         the result to the standard output (by default it's the
         console but it can be defined in user code). This function
-        calls \`(newline)\` after printing each input.`),
-    // ------------------------------------------------------------------
-    'trace': doc(function(enable = true) {
-        _collect_stack = !is_false(enable);
-        return _collect_stack;
-    }, `(trace)
-        (trace enabled)
-
-        Enable (or disable with (trace #f)) collection of stack frames so that
-        stack-trace and full error stack traces work. Collecting has a runtime
-        and memory cost, so it is disabled by default.`),
+        calls \`(newline)\` after printing each input.`), 
     // ------------------------------------------------------------------
     'stack-trace': doc(function(cc) {
         typecheck('stack-trace', cc, 'continuation');
@@ -8896,7 +8895,7 @@ var global_env = new Environment({
     }, `(stack-trace <continuation>)
 
         Function return stack trace if given continuation as a string.
-        You first need to enable collecting stack frames using (trace).`),
+        You first need to enable collecting stack frames using (trace #t).`),
     // ------------------------------------------------------------------
     format: doc('format', function format(str, ...args) {
         typecheck('format', str, 'string');
@@ -11147,7 +11146,7 @@ var global_env = new Environment({
         Function that left shifts the value a by value b bits.`),
     // ------------------------------------------------------------------
     not: doc('not', function not(value) {
-        return !value;
+        return !is_false(value);
     }, `(not object)
 
         Function that returns the Boolean negation of its argument.`)
@@ -11836,7 +11835,10 @@ class State {
         // running several interpreters in one runtime.
         this.check_cycle = true;
         this.check_promise = true;
-        read_check_flags(env, this);
+        // stack-frame collection for stack-trace / full error stacks - off by
+        // default (see (trace)); turned on per-instance via read_internal_flags
+        this.collect_stack = false;
+        read_internal_flags(env, this);
         // exception handlers registered by `try` in THIS eval loop. Kept per
         // state (not global) so they survive async suspension at an `await`
         // and can't be clobbered by other interleaving eval loops.
@@ -11875,7 +11877,7 @@ class State {
         // frames from the cc chain, so we accumulate them here as they're seen).
         // The stack/_stack_set are created lazily on first use so the common
         // (no-trace) path allocates neither.
-        if (_collect_stack) {
+        if (this.collect_stack) {
             if (this._stack_set === null) {
                 this.stack = [];
                 this._stack_set = new Set();
