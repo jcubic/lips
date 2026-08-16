@@ -269,13 +269,6 @@ Examples:
 
 The issue with performance is tracked in [#197](https://github.com/jcubic/lips/issues/197).
 
-### JavaScript callbacks
-
-Another limitation is when using JavaScript libraries that require normal values but get a Promise instead.
-This can happen with React/Preact and when the component returns a Promise. Some macros can be async
-(return a Promise), which will break the React app when used in components. An example of a macro that is async is
-`do` macro. So when using React/Preact and when you need to use a promise, use promise quotation and `useEffect`.
-
 ## Supported SRFI
 
 ### built-in
