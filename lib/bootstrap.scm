@@ -1486,7 +1486,7 @@
       `&(:value ,value :done ,(eof-object? value))))
 
   (let* ((iterator `((next . ,next)
-                     (,Symbol.asyncIterator . ,(lambda () this)))))
+                     (,Symbol.iterator . ,(lambda () this)))))
     (alist->object iterator)))
 
 ;; -----------------------------------------------------------------------------
