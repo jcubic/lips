@@ -120,11 +120,13 @@ test-update: dist/std.scm
 benchmark: dist/std.xcb
 	@$(LIPS) -tm benchmarks/suite.scm
 
-smoke: dist/std.xcb
+smoke: dist/std.xcb dist/lips.js
 	@out=`timeout 60 $(LIPS) -tm scripts/smoke.scm`; echo "$$out"; \
 		echo "$$out" | grep -q "smoke: all checks passed"
 	@out=`timeout 60 $(LIPS) -tm -d scripts/smoke-dynamic.scm`; echo "$$out"; \
 		echo "$$out" | grep -q "dynamic smoke: all checks passed"
+	@out=`timeout 90 $(NODE) scripts/smoke-browser.js`; echo "$$out"; \
+		echo "$$out" | grep -q "browser smoke: all checks passed"
 
 fold:
 	@$(WGET) $(UNICODE_FOLD) -O ./assets/CaseFolding.txt

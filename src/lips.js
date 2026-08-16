@@ -8795,6 +8795,7 @@ var internal_env = new Environment({
         console.error(...args);
     }),
     'command-line': [],
+    __parser_args__: { meta: false, filename: null, formatter: null },
     // ------------------------------------------------------------------
     stdin: InputPort(function() {
         return Promise.resolve(prompt(''));

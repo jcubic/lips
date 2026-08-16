@@ -246,6 +246,7 @@
     "nyc": "^18.0.0",
     "preact": "^10.29.8",
     "preact-render-to-string": "^6.7.0",
+    "puppeteer": "^23.7.1",
     "rollup": "^4.62.4",
     "rollup-plugin-node-globals": "^1.4.0",
     "tsup": "^8.5.1",
