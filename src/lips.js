@@ -1889,7 +1889,7 @@ class Parser {
         });
         read_only(this, '__file__', filename?.valueOf());
         read_only(this, '__env__', env);
-        read_only(this, '_meta', meta, { hidden: true });
+        this.__meta__ = meta;
         // datum labels
         read_only(this, '_refs', [], { hidden: true });
         read_only(this, '_state', {
@@ -1993,6 +1993,13 @@ class Parser {
         } catch (e) {
             throw this._augment_exception(e);
         }
+    }
+    get __meta__() {
+        return this._meta;
+    }
+    set __meta__(value) {
+        this._meta = value;
+        internal_env.get('__parser_args__').meta = value;
     }
     async peek() {
         const token = this._peek();
@@ -8269,7 +8276,8 @@ function Interpreter(name, {
         name = 'anonymous';
     }
     read_only(this, '__env__', user_env.inherit(name, obj));
-    read_only(this, '__parser__', new Parser({ env: this.__env__, filename, meta }));
+    const parser = new Parser({ env: this.__env__, filename, meta });
+    read_only(this, '__parser__', parser);
     const defaults_name = '**interaction-environment-defaults**';
     this.set(defaults_name, get_props(obj).concat(defaults_name));
     var inter = internal_env.inherit(`internal-${name}`);
@@ -8284,6 +8292,7 @@ function Interpreter(name, {
     }
     inter.set('command-line', command_line);
     inter.set('__collect_stack__', trace);
+    inter.set('__parser__', parser);
     set_interaction_env(this.__env__, this.__env__, inter);
 }
 // -------------------------------------------------------------------------

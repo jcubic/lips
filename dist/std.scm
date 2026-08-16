@@ -45,7 +45,9 @@
    stack traces work. Collecting has a runtime and memory cost,
    so it is disabled by default."
   (typecheck "trace" flag "boolean")
-  (--> (%internal) (set "__collect_stack__" flag)))
+  (let* ((env (%internal)) (parser (env.get "__parser__")))
+    (env.set "__collect_stack__" flag)
+    (set-object! parser "__meta__" flag)))
 
 ;; -----------------------------------------------------------------------------
 (define (%doc string fn)
