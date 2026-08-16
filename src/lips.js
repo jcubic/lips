@@ -10004,16 +10004,25 @@ var global_env = new Environment({
         // evaluate_code detects "outermost result" as a promise reaching this
         // continuation (marked with quote_promise), and this continuation wraps
         // whatever the body produced in a QuotedPromise.
+        // Defer awaiting for the whole body: while promise_quote is set, any
+        // promise reaching evaluate_code is wrapped (not awaited) so it
+        // propagates upward - a body that computes with promises stays a promise,
+        // while a body of plain values stays a plain value. The continuation
+        // clears the flag and returns the result: a promise becomes the escaped
+        // QuotedPromise, a non-promise is returned unchanged (quoting a plain
+        // value must NOT turn it into a promise).
+        state.promise_quote = true;
         state.cc = new Continuation('quote-promise', null, source, state, function(state) {
             state.cc = this.__continuation__;
             state.env = this.__env__;
+            state.promise_quote = false;
             const result = state.object;
             if (result instanceof QuotedPromise) {
                 state.object = result;
             } else if (is_promise(result)) {
                 state.object = new QuotedPromise(result);
             } else {
-                state.object = new QuotedPromise(Promise.resolve(result));
+                state.object = result;
             }
             state.ready = true;
         }, { quote_promise: true });
@@ -12467,10 +12476,13 @@ function* evaluate_code(state) {
         state.object = state.env.get(state.object, { mark_cycles: state.check_cycle });
         state.ready = true;
     } else if (state.check_promise && is_promise(code)) {
-        // Don't await a promise that is the direct result of a quote-promise
-        // body - pass it through so the quote-promise continuation wraps it.
-        // Every other promise (nested usage) is awaited.
-        if (state.cc && state.cc._state && state.cc._state.quote_promise) {
+        // Inside a quote-promise body (state.promise_quote) promises are not
+        // awaited - they pass through as-is so they propagate upward through the
+        // surrounding calls (resolve_promises turns a call with a promise
+        // argument into a promise of its result). The quote-promise continuation
+        // escapes the final promise into a QuotedPromise. Every other promise is
+        // awaited normally.
+        if (state.promise_quote) {
             state.object = code;
         } else {
             state.object = box(yield code);
@@ -12801,7 +12813,18 @@ function next_pair(state) {
             state.ready = !is_promise(state.object);
         } else if (is_function(first)) {
             state.cc = this.__continuation__;
-            state.object = box(call_function(first, prepare_fn_args(first, args), state));
+            const fn_args = prepare_fn_args(first, args);
+            if (state.promise_quote) {
+                // inside quote-promise arguments aren't awaited; if any is a
+                // promise, defer the whole call so its result is a promise that
+                // keeps propagating upward (unpromise_array is a no-op when there
+                // are none)
+                state.object = box(unpromise_array(fn_args, resolved => {
+                    return call_function(first, resolved, state);
+                }));
+            } else {
+                state.object = box(call_function(first, fn_args, state));
+            }
             state.ready = !is_promise(state.object);
         } else {
             throw new Error(`${type(first)} ${env.get('repr')(first)} is not callable while evaluating ` +

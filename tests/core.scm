@@ -360,6 +360,15 @@ This function returns the car (item 1) of the list.")
           (await p)
           (t.is result #(10)))))
 
+(test "quoted promise of a non-promise returns the value"
+      (lambda (t)
+        ;; '>expr only escapes automatic awaiting of a promise; quoting a plain
+        ;; value must return that value, not wrap it in a promise
+        (t.is '>(list 1 2 3) '(1 2 3))
+        (t.is (promise? '>(list 1 2 3)) #f)
+        (t.is '>42 42)
+        (t.is (await '>(list 1 2 3)) '(1 2 3))))
+
 (test "quoted promise of object with then method"
       (lambda (t)
         (let ((p '>(object :then (lambda (fn)

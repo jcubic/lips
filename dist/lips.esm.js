@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 16 Aug 2026 21:36:37 +0000
+ * build: Sun, 16 Aug 2026 23:00:16 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -13192,32 +13192,27 @@ var global_env = new Environment({
     return state;
   }), "(while cond body)\n\n         Creates a loop, it executes cond and body until cond expression is false."),
   // ------------------------------------------------------------------
-  'do': doc(new Macro('do', /*#__PURE__*/function () {
-    var _ref37 = _asyncToGenerator(function* (source, state) {
-      var code = source.cdr;
-      state.env = state.env.inherit('do');
-      var loop = gensym('loop');
-      var names = ['let', 'if', 'begin'];
-      var result = is_nil(code.cdr.car.cdr) ? undefined : code.cdr.car.cdr.car;
-      var body = Pair(Pair(loop, code.car.map(list => {
-        if (!is_pair(list.cdr.cdr)) {
-          return list.car;
-        }
-        return list.cdr.cdr.car;
-      })), _nil);
-      is_nil(code.cdr.cdr) ? _nil : code.cdr.cdr.clone();
-      state.object = hygiene([state.env], names, function (_let, _if, _begin) {
-        return Pair.from_array([_let, loop, code.car.map(list => {
-          return Pair(list.car, Pair(list.cdr.car, _nil));
-        }), [_if, code.cdr.car.car, result, Pair(_begin, is_nil(code.cdr.cdr) ? body : code.cdr.cdr.clone().append(body))]]);
-      });
-      state.ready = false;
-      return state;
+  'do': doc(new Macro('do', function (source, state) {
+    var code = source.cdr;
+    state.env = state.env.inherit('do');
+    var loop = gensym('loop');
+    var names = ['let', 'if', 'begin'];
+    var result = is_nil(code.cdr.car.cdr) ? undefined : code.cdr.car.cdr.car;
+    var body = Pair(Pair(loop, code.car.map(list => {
+      if (!is_pair(list.cdr.cdr)) {
+        return list.car;
+      }
+      return list.cdr.cdr.car;
+    })), _nil);
+    is_nil(code.cdr.cdr) ? _nil : code.cdr.cdr.clone();
+    state.object = hygiene([state.env], names, function (_let, _if, _begin) {
+      return Pair.from_array([_let, loop, code.car.map(list => {
+        return Pair(list.car, Pair(list.cdr.car, _nil));
+      }), [_if, code.cdr.car.car, result, Pair(_begin, is_nil(code.cdr.cdr) ? body : code.cdr.cdr.clone().append(body))]]);
     });
-    return function (_x7, _x8) {
-      return _ref37.apply(this, arguments);
-    };
-  }()), "(do ((<var> <init> <next>)) (test return) . body)\n\n         Iteration macro that evaluates the expression body in scope of the variables.\n         On each loop it changes the variables according to the <next> expression and runs\n         test to check if the loop should continue. If test is a single value, the macro\n         will return undefined. If the test is a pair of expressions the macro will\n         evaluate and return the second expression after the loop exits."),
+    state.ready = false;
+    return state;
+  }), "(do ((<var> <init> <next>)) (test return) . body)\n\n         Iteration macro that evaluates the expression body in scope of the variables.\n         On each loop it changes the variables according to the <next> expression and runs\n         test to check if the loop should continue. If test is a single value, the macro\n         will return undefined. If the test is a pair of expressions the macro will\n         evaluate and return the second expression after the loop exits."),
   // ------------------------------------------------------------------
   'if': doc(Macro.internal('if'), "(if cond true-expr false-expr)\n\n         Macro that evaluates cond expression and if the value is true, it\n         evaluates and returns true-expression, if not it evaluates and returns\n         false-expression."),
   // ------------------------------------------------------------------
@@ -13590,7 +13585,7 @@ var global_env = new Environment({
   }, "(lambda (a b) body)\n        (lambda args body)\n        (lambda (a b . rest) body)\n\n        The lambda macro creates a new anonymous function. If the first element of\n        the body is a string and there is more elements the string is used as the\n        documentation string, that can be read using (help fn)."),
   // ------------------------------------------------------------------
   macroexpand: doc(/*#__PURE__*/function () {
-    var _ref38 = _asyncToGenerator(function* (code) {
+    var _ref37 = _asyncToGenerator(function* (code) {
       // macroexpand is a function (like Common Lisp), NOT a macro, so its
       // argument is already evaluated - quote the code you want expanded:
       // (macroexpand '(when test body)). The expansion is produced in the tco
@@ -13603,13 +13598,13 @@ var global_env = new Environment({
         }
       });
     });
-    return function (_x9) {
-      return _ref38.apply(this, arguments);
+    return function (_x7) {
+      return _ref37.apply(this, arguments);
     };
   }(), "(macroexpand expr)\n\n        Function that expands all macros in the quoted expression and returns\n        the expanded code. Being a function, its argument is evaluated, so pass\n        quoted code: (macroexpand '(when x y))."),
   // ------------------------------------------------------------------
   'macroexpand-1': doc(/*#__PURE__*/function () {
-    var _ref39 = _asyncToGenerator(function* (code) {
+    var _ref38 = _asyncToGenerator(function* (code) {
       // like macroexpand but expands only the outermost macro use one step
       // (does not recurse into the result or subforms). Also a function, so
       // pass quoted code: (macroexpand-1 '(when x y)).
@@ -13623,8 +13618,8 @@ var global_env = new Environment({
       }
       return code;
     });
-    return function (_x0) {
-      return _ref39.apply(this, arguments);
+    return function (_x8) {
+      return _ref38.apply(this, arguments);
     };
   }(), "(macroexpand-1 expr)\n\n         Function similar to macroexpand but it expands the outermost macro only\n         one level and returns the resulting code. Being a function, its argument\n         is evaluated, so pass quoted code: (macroexpand-1 '(when x y))."),
   // ------------------------------------------------------------------
@@ -13683,8 +13678,8 @@ var global_env = new Environment({
     } else {
       validate_identifiers(macro.car);
     }
-    var syntax = new Syntax(function (code, _ref40) {
-      var macro_expand = _ref40.macro_expand;
+    var syntax = new Syntax(function (code, _ref39) {
+      var macro_expand = _ref39.macro_expand;
       var scope = env.inherit('syntax');
       var var_scope = this;
       // for macros that define variables used in macro (2 levels nestting)
@@ -13772,16 +13767,25 @@ var global_env = new Environment({
     // evaluate_code detects "outermost result" as a promise reaching this
     // continuation (marked with quote_promise), and this continuation wraps
     // whatever the body produced in a QuotedPromise.
+    // Defer awaiting for the whole body: while promise_quote is set, any
+    // promise reaching evaluate_code is wrapped (not awaited) so it
+    // propagates upward - a body that computes with promises stays a promise,
+    // while a body of plain values stays a plain value. The continuation
+    // clears the flag and returns the result: a promise becomes the escaped
+    // QuotedPromise, a non-promise is returned unchanged (quoting a plain
+    // value must NOT turn it into a promise).
+    state.promise_quote = true;
     state.cc = new Continuation('quote-promise', null, source, state, function (state) {
       state.cc = this.__continuation__;
       state.env = this.__env__;
+      state.promise_quote = false;
       var result = state.object;
       if (result instanceof QuotedPromise) {
         state.object = result;
       } else if (is_promise(result)) {
         state.object = new QuotedPromise(result);
       } else {
-        state.object = new QuotedPromise(Promise.resolve(result));
+        state.object = result;
       }
       state.ready = true;
     }, {
@@ -15000,10 +15004,10 @@ function type(obj) {
     return t;
   }
   if (typeof obj === 'object') {
-    for (var _ref43 of type_mapping_entries) {
-      var _ref42 = _slicedToArray(_ref43, 2);
-      var _key42 = _ref42[0];
-      var value = _ref42[1];
+    for (var _ref42 of type_mapping_entries) {
+      var _ref41 = _slicedToArray(_ref42, 2);
+      var _key42 = _ref41[0];
+      var value = _ref41[1];
       if (obj instanceof value) {
         return _key42;
       }
@@ -15062,7 +15066,7 @@ function resolve_promises(arg) {
       node.forEach(traverse);
     }
   }
-  function promise(_x1) {
+  function promise(_x9) {
     return _promise.apply(this, arguments);
   }
   function _promise() {
@@ -15126,12 +15130,12 @@ function prepare_fn_args(fn, args) {
 
 // -------------------------------------------------------------------------
 function call_function(fn, args) {
-  var _ref45 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
-    env = _ref45.env,
-    dynamic_env = _ref45.dynamic_env,
-    use_dynamic = _ref45.use_dynamic,
-    _ref45$check_promise = _ref45.check_promise,
-    check_promise = _ref45$check_promise === void 0 ? true : _ref45$check_promise;
+  var _ref44 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
+    env = _ref44.env,
+    dynamic_env = _ref44.dynamic_env,
+    use_dynamic = _ref44.use_dynamic,
+    _ref44$check_promise = _ref44.check_promise,
+    check_promise = _ref44$check_promise === void 0 ? true : _ref44$check_promise;
   if (!fn._context) {
     read_only(fn, '_context', new LambdaContext({}), {
       hidden: true
@@ -15349,12 +15353,12 @@ class Continuation {
 // :: code based on ideas from jsScheme by Alex Yakovlev
 // -------------------------------------------------------------------------
 class State {
-  constructor(object, cc, _ref46) {
-    var env = _ref46.env,
-      dynamic_env = _ref46.dynamic_env,
-      use_dynamic = _ref46.use_dynamic,
-      error = _ref46.error,
-      macro_expand = _ref46.macro_expand;
+  constructor(object, cc, _ref45) {
+    var env = _ref45.env,
+      dynamic_env = _ref45.dynamic_env,
+      use_dynamic = _ref45.use_dynamic,
+      error = _ref45.error,
+      macro_expand = _ref45.macro_expand;
     if (is_debug('continuations')) {
       console.log('[STATE] ' + macro_expand);
       console.trace();
@@ -15496,13 +15500,13 @@ function evaluate() {
 // -------------------------------------------------------------------------
 // :: Tail Call Optimized eval
 // -------------------------------------------------------------------------
-function tco_generator(code, _ref47) {
-  var env = _ref47.env,
-    cc = _ref47.cc,
-    dynamic_env = _ref47.dynamic_env,
-    use_dynamic = _ref47.use_dynamic,
-    _ref47$macro_expand = _ref47.macro_expand,
-    macro_expand = _ref47$macro_expand === void 0 ? false : _ref47$macro_expand;
+function tco_generator(code, _ref46) {
+  var env = _ref46.env,
+    cc = _ref46.cc,
+    dynamic_env = _ref46.dynamic_env,
+    use_dynamic = _ref46.use_dynamic,
+    _ref46$macro_expand = _ref46.macro_expand,
+    macro_expand = _ref46$macro_expand === void 0 ? false : _ref46$macro_expand;
   return function* () {
     if (!is_env(dynamic_env)) {
       dynamic_env = env === true ? user_env : env || user_env;
@@ -15660,11 +15664,11 @@ function macro_result_value(result, state) {
 }
 
 // -------------------------------------------------------------------------
-function lambda_scope(self, fn, code, args, _ref48) {
-  var use_dynamic = _ref48.use_dynamic,
-    error = _ref48.error,
-    cc = _ref48.cc,
-    call_dynamic_env = _ref48.dynamic_env;
+function lambda_scope(self, fn, code, args, _ref47) {
+  var use_dynamic = _ref47.use_dynamic,
+    error = _ref47.error,
+    cc = _ref47.cc,
+    call_dynamic_env = _ref47.dynamic_env;
   // lambda got scopes as context in apply
   var dynamic_env;
   if (is_context(this)) {
@@ -15824,7 +15828,7 @@ function macroexpand_shadow(env, names) {
   return scope;
 }
 // -------------------------------------------------------------------------
-function macroexpand_list(_x10, _x11) {
+function macroexpand_list(_x0, _x1) {
   return _macroexpand_list.apply(this, arguments);
 } // -------------------------------------------------------------------------
 function _macroexpand_list() {
@@ -15844,7 +15848,7 @@ function _macroexpand_list() {
   });
   return _macroexpand_list.apply(this, arguments);
 }
-function macroexpand_bindings(_x12, _x13) {
+function macroexpand_bindings(_x10, _x11) {
   return _macroexpand_bindings.apply(this, arguments);
 } // -------------------------------------------------------------------------
 function _macroexpand_bindings() {
@@ -15870,7 +15874,7 @@ function _macroexpand_bindings() {
   });
   return _macroexpand_bindings.apply(this, arguments);
 }
-function macroexpand_once(_x14, _x15, _x16) {
+function macroexpand_once(_x12, _x13, _x14) {
   return _macroexpand_once.apply(this, arguments);
 } // -------------------------------------------------------------------------
 function _macroexpand_once() {
@@ -15898,7 +15902,7 @@ function _macroexpand_once() {
   });
   return _macroexpand_once.apply(this, arguments);
 }
-function macroexpand_code(_x17, _x18) {
+function macroexpand_code(_x15, _x16) {
   return _macroexpand_code.apply(this, arguments);
 } // -------------------------------------------------------------------------
 function _macroexpand_code() {
@@ -16000,10 +16004,13 @@ function* evaluate_code(state) {
     });
     state.ready = true;
   } else if (state.check_promise && is_promise(code)) {
-    // Don't await a promise that is the direct result of a quote-promise
-    // body - pass it through so the quote-promise continuation wraps it.
-    // Every other promise (nested usage) is awaited.
-    if (state.cc && state.cc._state && state.cc._state.quote_promise) {
+    // Inside a quote-promise body (state.promise_quote) promises are not
+    // awaited - they pass through as-is so they propagate upward through the
+    // surrounding calls (resolve_promises turns a call with a promise
+    // argument into a promise of its result). The quote-promise continuation
+    // escapes the final promise into a QuotedPromise. Every other promise is
+    // awaited normally.
+    if (state.promise_quote) {
       state.object = code;
     } else {
       state.object = box(yield code);
@@ -16317,7 +16324,18 @@ function next_pair(state) {
       state.ready = !is_promise(state.object);
     } else if (is_function(first)) {
       state.cc = this.__continuation__;
-      state.object = box(call_function(first, prepare_fn_args(first, args), state));
+      var fn_args = prepare_fn_args(first, args);
+      if (state.promise_quote) {
+        // inside quote-promise arguments aren't awaited; if any is a
+        // promise, defer the whole call so its result is a promise that
+        // keeps propagating upward (unpromise_array is a no-op when there
+        // are none)
+        state.object = box(unpromise_array(fn_args, resolved => {
+          return call_function(first, resolved, state);
+        }));
+      } else {
+        state.object = box(call_function(first, fn_args, state));
+      }
       state.ready = !is_promise(state.object);
     } else {
       throw new Error("".concat(type(first), " ").concat(env.get('repr')(first), " is not callable while evaluating ") + to_string(this.__code__));
@@ -16396,7 +16414,7 @@ function exec_collect(collect_callback) {
       }
       return results;
     });
-    function exec_lambda(_x20) {
+    function exec_lambda(_x18) {
       return _exec_lambda.apply(this, arguments);
     }
     return exec_lambda;
@@ -16600,9 +16618,9 @@ function Worker(url) {
   this.rpc('init', [url]).catch(error => {
     console.error(error);
   });
-  this.exec = function (code, _ref49) {
-    var _ref49$use_dynamic = _ref49.use_dynamic,
-      use_dynamic = _ref49$use_dynamic === void 0 ? false : _ref49$use_dynamic;
+  this.exec = function (code, _ref48) {
+    var _ref48$use_dynamic = _ref48.use_dynamic,
+      use_dynamic = _ref48$use_dynamic === void 0 ? false : _ref48$use_dynamic;
     return this.rpc('eval', [code, use_dynamic]);
   };
 }
@@ -16611,10 +16629,10 @@ function Worker(url) {
 // :: Serialization
 // -------------------------------------------------------------------------
 var serialization_map = {
-  'pair': _ref50 => {
-    var _ref51 = _slicedToArray(_ref50, 2),
-      car = _ref51[0],
-      cdr = _ref51[1];
+  'pair': _ref49 => {
+    var _ref50 = _slicedToArray(_ref49, 2),
+      car = _ref50[0],
+      cdr = _ref50[1];
     return Pair(car, cdr);
   },
   'number': function number(value) {
@@ -16623,10 +16641,10 @@ var serialization_map = {
     }
     return LNumber(value);
   },
-  'regex': function regex(_ref52) {
-    var _ref53 = _slicedToArray(_ref52, 2),
-      pattern = _ref53[0],
-      flag = _ref53[1];
+  'regex': function regex(_ref51) {
+    var _ref52 = _slicedToArray(_ref51, 2),
+      pattern = _ref52[0],
+      flag = _ref52[1];
     return new RegExp(pattern, flag);
   },
   'nil': function nil() {
@@ -16646,10 +16664,10 @@ var serialization_map = {
 // class mapping to create smaller JSON
 var available_class = Object.keys(serialization_map);
 var class_map = {};
-for (var _ref56 of Object.entries(available_class)) {
-  var _ref55 = _slicedToArray(_ref56, 2);
-  var i = _ref55[0];
-  var cls = _ref55[1];
+for (var _ref55 of Object.entries(available_class)) {
+  var _ref54 = _slicedToArray(_ref55, 2);
+  var i = _ref54[0];
+  var cls = _ref54[1];
   class_map[cls] = +i;
 }
 function mangle_name(name) {
@@ -16716,10 +16734,10 @@ var cbor = function () {
   }
   var encoder = new Encoder();
   var cbor_serialization_map = {};
-  for (var _ref59 of Object.entries(serialization_map)) {
-    var _ref58 = _slicedToArray(_ref59, 2);
-    var name = _ref58[0];
-    var _fn2 = _ref58[1];
+  for (var _ref58 of Object.entries(serialization_map)) {
+    var _ref57 = _slicedToArray(_ref58, 2);
+    var name = _ref57[0];
+    var _fn2 = _ref57[1];
     var Class = types[name];
     cbor_serialization_map[name] = serializer(Class, _fn2);
   }
@@ -16914,10 +16932,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 16 Aug 2026 21:36:37 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 16 Aug 2026 23:00:16 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 16 Aug 2026 21:36:37 +0000').valueOf();
+  var date = LString('Sun, 16 Aug 2026 23:00:16 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -16956,7 +16974,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 16 Aug 2026 21:36:37 +0000';
+var date = 'Sun, 16 Aug 2026 23:00:16 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
