@@ -2,7 +2,6 @@
 ### Breaking
 * syntax extensions now expect a reference to a function or a macro
 * replace `set-obj!` with `set-object!` [#439](https://github.com/jcubic/lips/issues/439)
-* REPL -t/--trace will toggle only JavaScript stack, Scheme stack traces are now always on
 * stack trace in exceptions is now `Error::__stack__`
 * remove `..` macro [#500](https://github.com/jcubic/lips/issues/500)
 * `macroexpand` is now a function (like in Common Lisp) instead of a macro

@@ -456,9 +456,9 @@ if (options.version || options.V) {
                        '\tdon\'t display banner in REPL\n  [-d --dynamic]\trun interpreter with dynami' +
                        'c scope\n  [-t --trace]\t\tenable tracing: report line, column and file on err' +
                        'ors and\n\t\t\tcollect a Scheme \'stack\' trace\n  [-j --js-trace]\talso print' +
-                       ' the JavaScript stack trace on errors\n  [-m --meta]\t\tdeprecated alias for -' +
-                       't --trace\n\nif called without arguments it will run the REPL and if called wi' +
-                       'th one argument\nit will treat it as filename and execute it.',
+                       ' the JavaScript stack trace on errors\n\nif called without arguments it will r' +
+                       'un the REPL and if called with one argument\nit will treat it as filename and ' +
+                       'execute it.',
                        intro, path.basename(name)));
 } else {
     const entry = '   ' + (use_dynamic ? 'dynamic' : 'lexical') + ' scope $1';

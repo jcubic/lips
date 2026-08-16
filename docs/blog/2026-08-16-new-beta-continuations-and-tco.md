@@ -407,7 +407,6 @@ Up to 2.81× speed improvement
 ### Breaking
 * syntax extensions now expect a reference to a function or a macro
 * replace `set-obj!` with `set-object!` [#439](https://github.com/jcubic/lips/issues/439)
-* REPL -t/--trace will toggle only JavaScript stack, Scheme stack traces are now always on
 * stack trace in exceptions is now `Error::__stack__`
 * remove `..` macro [#500](https://github.com/jcubic/lips/issues/500)
 * `macroexpand` is now a function (like in Common Lisp) instead of a macro
@@ -422,7 +421,7 @@ Up to 2.81× speed improvement
 * add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
 * `Environment:doc` now returns doc string for functions and macros additional to variables
 * improve and unify Syntax Errors
-* meta info from Runtime errors in REPL can be enabled with `-m`/`--meta`
+* show meta information about 'stack' trace about errors in REPL with `-t`/`--trace` flag
 * implement simple regex based syntax-extension
 * recursion performance improvements
 * new interpreter with TCO and Continuations inspired by js-scheme [#127](https://github.com/jcubic/lips/issues/127)
@@ -430,7 +429,7 @@ Up to 2.81× speed improvement
 * new `stack-trace` and `trace` functions
 * improve error handling
 * add core `^` bitwise xor function
-* add `generator` and `make-coroutine-generator` functions
+* add `generator`, `async-generator`, and `make-coroutine-generator` functions
 * add support for `truncate` on rational numbers
 * add `#!cycle`/`#!no-cycle`, `#!trace`/`#!no-trace` and `#!promise`/`#!no-promise` directives
 ### Bugfix
