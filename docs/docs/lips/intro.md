@@ -966,14 +966,14 @@ When your function is async (returns a Promise), you need to use `async-generato
 `Array.from` can't be used for every possible case because it will unbox the values (and convert
 rational to float), here it doesn't happen because LIPS don't treat JavaScript iterators in any
 special way (it may change in the future). But `Array.from` will convert the array of rationals to
-float if used on normal vector:
+float if used on a normal vector:
 
 ```scheme
 (Array.from #(1/2 1/3 1/4 1/5))
 ;; ==> #(0.5 0.3333333333333333 0.25 0.2)
 ```
 
-To solve this issue you can use [iterator->array](/reference#iterator->array) function.
+To solve this issue, you can use [iterator->array](/reference#iterator->array) function.
 
 ```scheme
 
