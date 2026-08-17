@@ -488,15 +488,7 @@ as first element of the list (it's handled in special way by the parser). In any
 see documentation about [Pairs in Scheme](/docs/scheme-intro/data-types#pairs).
 
 
-##### The double dot operator
-
-`..` - this is a macro is that simplify usage of `.` procedure:
-
-```scheme
-(.. document.querySelector)
-```
-
-##### Usage of Legacy `..` and `.` operators
+##### Usage of `.` operators
 
 You still sometimes may want to use `.` instead of `-->` when you want to get
 property from an object returned by expression.
@@ -505,7 +497,6 @@ In the old version of LIPS, you have to execute code like this:
 
 ```scheme
 ((. document 'querySelector) "body")
-((.. document.querySelector) "body")
 ```
 
 The first expression return a Native JavaScript procedure that is then executed.
