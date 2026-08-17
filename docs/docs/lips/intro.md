@@ -888,9 +888,9 @@ or
 (raise (new Error "error"))
 ```
 
-The `raise` procedure throw any object and `throw` wraps the argument in `new Error`.
+The `raise` procedure throws any object, and `throw` wraps the argument in `new Error`.
 
-You can catch exceptions with LIPS specific try..catch..finally:
+You can catch exceptions with LIPS-specific `try..catch..finally`:
 
 ```scheme
 (try
@@ -930,7 +930,7 @@ The order of execution is not expected, but it may change in the future.
 
 :::
 
-LIPS also define R<sup>7</sup>RS guard `procedure` that is just a macro that use try..catch behind the scene:
+LIPS also defines the R<sup>7</sup>RS `guard` procedure that is just a macro that uses `try..catch` behind the scenes:
 
 ```scheme
 (guard (e ((list? e) (print (string-append "Error: " (car e)))))
@@ -938,30 +938,39 @@ LIPS also define R<sup>7</sup>RS guard `procedure` that is just a macro that use
 ;; ==> Error: error
 ```
 
-### JavaScript Generars and iterators
-Right now there is no way to define JavaScript generators inside LIPS. You can create iterator using
-[iteration prorocol](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols),
-But to have yield keyword you need [continuations](/docs/scheme-intro/continuations), they are part of the
-LIPS Roadmap.
+### JavaScript Generators and Iterators
 
-Here is example of creating iterator in LIPS:
+You can create JavaScript generators in LISP Scheme with help from
+[continuations](/docs/scheme-intro/continuations). There is already generator function that is part
+of the standard library. To create a generator function, you can use anaphoric macro:
 
 ```scheme
-(let ((obj (object))
-      (max 5))
-  (set-obj! obj Symbol.iterator
-            (lambda ()
-              (let ((i 0))
-                `&(:next ,(lambda ()
-                            (set! i (+ i 1))
-                            (if (> i max)
-                                `&(:done #t)
-                                `&(:done #f :value ,(/ 1 i))))))))
-  (print (iterator->array obj))
-  (print (Array.from obj)))
-;; ==> #(1 1/2 1/3 1/4 1/5)
-;; ==> #(1 1/2 1/3 1/4 1/5)
+(define-macro (lambda* args . body)
+  `(lambda ,args
+     (generator (lambda (yield)
+                  ,@body))))
 ```
+
+To use this macro, you can use this code:
+
+```scheme
+(define range* (lambda* (n)
+                 (do ((i 0 (+ i 1)))
+                   ((>= i n))
+                   (yield i))))
+
+(define gen (range* 10))
+(print gen)
+;; ==> #<iterator(Object)>
+(print (Array.from gen))
+;; ==> #(0 1 2 3 4 5 6 7 8 9)
+```
+
+:::info
+
+When your function is async (returns a Promise), you need to use `async-generator` and `Array.fromAsync`.
+
+:::
 
 `Array.from` can't be used for every possible case because it will unbox the values (and convert
 rational to float), here it doesn't happen because LIPS don't treat JavaScript iterators in any
@@ -973,36 +982,26 @@ float if used on normal vector:
 ;; ==> #(0.5 0.3333333333333333 0.25 0.2)
 ```
 
-:::info
-
-Be careful when using iterator protocol because any function side Scheme can return a promise. If you would change
-quoted object literal `` `&() `` with longhand `object` you will get an error because `object` is async.
-
-:::
-
-You can abstract the use of iteration protocol with a macro, but to have a real `yield` keyword like
-syntax, you need `call/cc`.
-
-You can also define generators inside JavaScript using `self.eval` (JavaScript global `eval`):
+To solve this issue you can use [iterator->array](/reference#iterator->array) function.
 
 ```scheme
-(define gen (self.eval "(async function* gen(time, ...args) {
-                          function delay(time) {
-                            return new Promise((resolve) => {
-                              setTimeout(resolve, time);
-                            });
-                          }
-                          for (let x of args) {
-                            await delay(time);
-                            yield x;
-                          }
-                        })"))
 
-(iterator->array (gen 100 1 2 3 4 5))
-;; ==> #(1 2 3 4 5)
+(define (array->async-iterator arr)
+  (async-generator (lambda (yield)
+                      (timer 10)
+                      (let ((len arr.length))
+                        (let loop ((i 0))
+                          (if (< i len)
+                              (begin
+                                (yield (vector-ref arr i))
+                                (loop (+ i 1)))))))))
+
+(iterator->array (array->async-iterator #(1/2 1/3 1/4 1/5)))
+;; ==> #(1/2 1/3 1/4 1/5)
+
+(array->async-iterator #(1 2 3))
+;; ==> #<asyncIterator(Object)>
 ```
-
-Here is example of async generator written in JavaScript.
 
 ### Classes
 
@@ -1170,9 +1169,3 @@ Library. You can use this syntax in Node based REPL (NPM executable).  The same 
 with the web. But note that the root directory reply on the path of the LIPS Scheme script file. So
 you if you bundle the code with Webpack or Rollup, LIPS may not find the root URL and may not be
 able to load the proper file.
-
-## Limitations
-
-LISP Scheme currently doesn't support [continuations](/docs/scheme-intro/continuations) and [Tail Call
-Optimization](/docs/scheme-intro/core#tail-call-optimization).  But they are part of the roadmap for
-version 1.0. The development is tracked on [GitHub](https://github.com/jcubic/lips/issues/127).
