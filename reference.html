@@ -10,8 +10,8 @@
 
 
 <script crossorigin="anonymous" src="https://js.sentry-cdn.com/c6868ced9c228b7da5e50196c0ab2f14@o4508899181723648.ingest.de.sentry.io/4508899184607312.min.js"></script><link rel="stylesheet" href="/assets/css/styles.a3279b4e.css">
-<script src="/assets/js/runtime~main.8c43fea6.js" defer="defer"></script>
-<script src="/assets/js/main.bd412afd.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.cf8e2f0d.js" defer="defer"></script>
+<script src="/assets/js/main.78434630.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -50,9 +50,7 @@ will be weakly bound (can be rebound), so you can call this log function
 without problem unlike in JavaScript when you use
 `var log = console.log`.
 `get` is an alias because . doesn&#x27;t work everywhere, e.g. you can&#x27;t
-pass it as an argument.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="..">..<a href="#.." class="hash-link" aria-label="Direct link to .." title="Direct link to .." translate="no">​</a></h2><pre>(.. foo.bar.baz)
-
-Gets the value from a nested object where the argument is a period separated symbol.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="*">*<a href="#*" class="hash-link" aria-label="Direct link to *" title="Direct link to *" translate="no">​</a></h2><pre>(* . numbers)
+pass it as an argument.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="*">*<a href="#*" class="hash-link" aria-label="Direct link to *" title="Direct link to *" translate="no">​</a></h2><pre>(* . numbers)
 
 Multiplies all numbers passed as arguments. If single value is passed
 it will return that value.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="**">**<a href="#**" class="hash-link" aria-label="Direct link to **" title="Direct link to **" translate="no">​</a></h2><pre>(** a b)
@@ -63,7 +61,9 @@ Function that calculates number a to to the power of b.</pre></li><li><h2 class=
 Divides n1 by n2 and subsequent arguments one by one. If single argument
 is passed it will calculate (/ 1 n).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="&amp;">&amp;<a href="#&amp;" class="hash-link" aria-label="Direct link to &amp;" title="Direct link to &amp;" translate="no">​</a></h2><pre>(&amp; a b)
 
-Function that calculates the bitwise and operation.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="+">+<a href="#+" class="hash-link" aria-label="Direct link to +" title="Direct link to +" translate="no">​</a></h2><pre>(+ . numbers)
+Function that calculates the bitwise and operation.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="^">^<a href="#^" class="hash-link" aria-label="Direct link to ^" title="Direct link to ^" translate="no">​</a></h2><pre>(^ a b)
+
+Function that calculates the bitwise xor (exclusive or) operation.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="+">+<a href="#+" class="hash-link" aria-label="Direct link to +" title="Direct link to +" translate="no">​</a></h2><pre>(+ . numbers)
 
 Sums all numbers passed as arguments. If single value is passed it will
 return that value.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="&lt;">&lt;<a href="#&lt;" class="hash-link" aria-label="Direct link to &lt;" title="Direct link to &lt;" translate="no">​</a></h2><pre>(&lt; x1 x2 ...)
@@ -105,7 +105,7 @@ Function that works like Object.assign but for LIPS alists.</pre></li><li><h2 cl
 Function that converts alist pairs to a JavaScript object.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="always">always<a href="#always" class="hash-link" aria-label="Direct link to always" title="Direct link to always" translate="no">​</a></h2><pre>(always constant)
 
 Higher-order function that returns a new thunk that always returns
-the given constant when called.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="and">and<a href="#and" class="hash-link" aria-label="Direct link to and" title="Direct link to and" translate="no">​</a></h2><pre>(and . expressions)
+the given constant when called.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="and">and<a href="#and" class="hash-link" aria-label="Direct link to and" title="Direct link to and" translate="no">​</a></h2><pre>(and expr1 expr2 ...)
 
 Macro that evaluates each expression in sequence and if any value returns false
 it will stop and return false. If each value returns true it will return the
@@ -133,7 +133,11 @@ Returns pair from alist that match given key using equal? check.</pre></li><li><
 
 Returns pair from a list that matches given key using eq? check.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="assv">assv<a href="#assv" class="hash-link" aria-label="Direct link to assv" title="Direct link to assv" translate="no">​</a></h2><pre>(assv obj alist)
 
-Returns pair from alist that match given key using eqv? check.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="atan">atan<a href="#atan" class="hash-link" aria-label="Direct link to atan" title="Direct link to atan" translate="no">​</a></h2><pre>(atan z)
+Returns pair from alist that match given key using eqv? check.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="async-generator">async-generator<a href="#async-generator" class="hash-link" aria-label="Direct link to async-generator" title="Direct link to async-generator" translate="no">​</a></h2><pre>(generator function)
+
+Higher order function that accepts a function with a single argument (usually yield).
+Function returns JavaScript async generator that produce values for each call
+to yield.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="atan">atan<a href="#atan" class="hash-link" aria-label="Direct link to atan" title="Direct link to atan" translate="no">​</a></h2><pre>(atan z)
 (atan x y)
 
 Function calculates arcus tangent of a complex number.
@@ -250,10 +254,12 @@ Function that calculates (car (cdr (cdr (cdr arg))))</pre></li><li><h2 class="an
 Function that calculates (car (cdr (cdr arg)))</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="cadr">cadr<a href="#cadr" class="hash-link" aria-label="Direct link to cadr" title="Direct link to cadr" translate="no">​</a></h2><pre>(cadr arg)
 
 Function that calculates (car (cdr arg))</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="call-with-current-continuation">call-with-current-continuation<a href="#call-with-current-continuation" class="hash-link" aria-label="Direct link to call-with-current-continuation" title="Direct link to call-with-current-continuation" translate="no">​</a></h2><pre>(call/cc proc)
+(call-with-current-continuation proc)
 
-Call-with-current-continuation.
-
-NOT SUPPORTED BY LIPS RIGHT NOW</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="call-with-input-file">call-with-input-file<a href="#call-with-input-file" class="hash-link" aria-label="Direct link to call-with-input-file" title="Direct link to call-with-input-file" translate="no">​</a></h2><pre>(call-with-input-file filename proc)
+Function capture current continuation and call a procedure with
+that continuation passed as the only argument. The continuation act
+like a procedure that can be called to jump back into the place where
+continuation was captured.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="call-with-input-file">call-with-input-file<a href="#call-with-input-file" class="hash-link" aria-label="Direct link to call-with-input-file" title="Direct link to call-with-input-file" translate="no">​</a></h2><pre>(call-with-input-file filename proc)
 
 Procedure open file for reading, call user defined procedure with given port
 and then close the port. It return value that was returned by user proc
@@ -269,10 +275,12 @@ Calls the producer procedure with no arguments, then calls the
 consumer procedure with the returned value as an argument -- unless
 the returned value is a special Values object created by (values), if it is
 the values are unpacked and the consumer is called with multiple arguments.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="call/cc">call/cc<a href="#call/cc" class="hash-link" aria-label="Direct link to call/cc" title="Direct link to call/cc" translate="no">​</a></h2><pre>(call/cc proc)
+(call-with-current-continuation proc)
 
-Call-with-current-continuation.
-
-NOT SUPPORTED BY LIPS RIGHT NOW</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="car">car<a href="#car" class="hash-link" aria-label="Direct link to car" title="Direct link to car" translate="no">​</a></h2><pre>(car pair)
+Function capture current continuation and call a procedure with
+that continuation passed as the only argument. The continuation act
+like a procedure that can be called to jump back into the place where
+continuation was captured.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="car">car<a href="#car" class="hash-link" aria-label="Direct link to car" title="Direct link to car" translate="no">​</a></h2><pre>(car pair)
 
 This function returns the car (item 1) of the list.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="cdaaaar">cdaaaar<a href="#cdaaaar" class="hash-link" aria-label="Direct link to cdaaaar" title="Direct link to cdaaaar" translate="no">​</a></h2><pre>(cdaaaar arg)
 
@@ -407,7 +415,7 @@ Checks if argument x is complex.</pre></li><li><h2 class="anchor anchorTargetSti
 Higher-order function that creates a new function that applies all functions
 from right to left and returns the last value. Reverse of pipe.
 e.g.:
-((compose (curry + 2) (curry * 3)) 10) ==&gt; (+ 2 (* 3 10)) ==&gt; 32</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="concat">concat<a href="#concat" class="hash-link" aria-label="Direct link to concat" title="Direct link to concat" translate="no">​</a></h2><pre>(concat . strings)
+((compose (curry + 2) (curry * 3)) 10) ==&gt; (+ 2 (* 3 10)) ==&gt; 32</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="concat">concat<a href="#concat" class="hash-link" aria-label="Direct link to concat" title="Direct link to concat" translate="no">​</a></h2><pre>(string-append string string2 ...)
 
 Function that creates a new string by joining its arguments.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="cond">cond<a href="#cond" class="hash-link" aria-label="Direct link to cond" title="Direct link to cond" translate="no">​</a></h2><pre>(cond (predicate? . body)
       (predicate? . body)
@@ -480,7 +488,7 @@ usage:
 
   (define-class Person Object
       (constructor (lambda (self name)
-                     (set-obj! self &#x27;_name name)))
+                     (set-object! self &#x27;_name name)))
       (hi (lambda (self)
             (display (string-append self._name &quot; says hi&quot;))
             (newline))))
@@ -691,19 +699,19 @@ The function is added, so it don&#x27;t throw exception when using R7RS code.</p
 Function fold is left-to-right reversal of reduce. It call `fn`
 on each pair of elements of the list and returns a single value.
 e.g. it computes (fn &#x27;a &#x27;x (fn &#x27;b &#x27;y (fn &#x27;c &#x27;z &#x27;foo)))
-for: (fold fn &#x27;foo &#x27;(a b c) &#x27;(x y z))</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="fold-left">fold-left<a href="#fold-left" class="hash-link" aria-label="Direct link to fold-left" title="Direct link to fold-left" translate="no">​</a></h2><pre>(fold fn init . lists)
-
-Function fold is left-to-right reversal of reduce. It call `fn`
-on each pair of elements of the list and returns a single value.
-e.g. it computes (fn &#x27;a &#x27;x (fn &#x27;b &#x27;y (fn &#x27;c &#x27;z &#x27;foo)))
-for: (fold fn &#x27;foo &#x27;(a b c) &#x27;(x y z))</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="fold-right">fold-right<a href="#fold-right" class="hash-link" aria-label="Direct link to fold-right" title="Direct link to fold-right" translate="no">​</a></h2><pre>(reduce fn init list . lists)
+for: (fold fn &#x27;foo &#x27;(a b c) &#x27;(x y z))</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="fold-left">fold-left<a href="#fold-left" class="hash-link" aria-label="Direct link to fold-left" title="Direct link to fold-left" translate="no">​</a></h2><pre>(reduce fn init list . lists)
 
 Higher-order function that takes each element of the list and calls
 the fn with result of previous call or init and the next element
 of the list until each element is processed, and returns a single value
 as result of last call to `fn` function.
 e.g. it computes (fn &#x27;c &#x27;z (fn &#x27;b &#x27;y (fn &#x27;a &#x27;x &#x27;foo)))
-for: (reduce fn &#x27;foo &#x27;(a b c) &#x27;(x y z))</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="for-each">for-each<a href="#for-each" class="hash-link" aria-label="Direct link to for-each" title="Direct link to for-each" translate="no">​</a></h2><pre>(for-each fn . lists)
+for: (reduce fn &#x27;foo &#x27;(a b c) &#x27;(x y z))</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="fold-right">fold-right<a href="#fold-right" class="hash-link" aria-label="Direct link to fold-right" title="Direct link to fold-right" translate="no">​</a></h2><pre>(fold fn init . lists)
+
+Function fold is left-to-right reversal of reduce. It call `fn`
+on each pair of elements of the list and returns a single value.
+e.g. it computes (fn &#x27;a &#x27;x (fn &#x27;b &#x27;y (fn &#x27;c &#x27;z &#x27;foo)))
+for: (fold fn &#x27;foo &#x27;(a b c) &#x27;(x y z))</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="for-each">for-each<a href="#for-each" class="hash-link" aria-label="Direct link to for-each" title="Direct link to for-each" translate="no">​</a></h2><pre>(for-each fn list1 list2 ...)
 
 Higher-order function that calls function `fn` on each
 value of the argument. If you provide more than one list
@@ -729,7 +737,11 @@ Function make an object property read only.</pre></li><li><h2 class="anchor anch
 
 Predicate that tests if value is a callable function.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="gcd">gcd<a href="#gcd" class="hash-link" aria-label="Direct link to gcd" title="Direct link to gcd" translate="no">​</a></h2><pre>(gcd n1 n2 ...)
 
-Function that returns the greatest common divisor of the arguments.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="gensym">gensym<a href="#gensym" class="hash-link" aria-label="Direct link to gensym" title="Direct link to gensym" translate="no">​</a></h2><pre>(gensym)
+Function that returns the greatest common divisor of the arguments.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="generator">generator<a href="#generator" class="hash-link" aria-label="Direct link to generator" title="Direct link to generator" translate="no">​</a></h2><pre>(generator function)
+
+Higher order function that accepts a function with a single argument (usually yield).
+Function returns JavaScript generator that produce values for each call
+to yield.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="gensym">gensym<a href="#gensym" class="hash-link" aria-label="Direct link to gensym" title="Direct link to gensym" translate="no">​</a></h2><pre>(gensym)
 
 Generates a unique symbol that is not bound anywhere,
 to use with macros as meta name.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="gensym-literal">gensym-literal<a href="#gensym-literal" class="hash-link" aria-label="Direct link to gensym-literal" title="Direct link to gensym-literal" translate="no">​</a></h2><pre>(gensym-literal symbol)
@@ -781,7 +793,11 @@ false-expression.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq"
 Macro that will evaluate the expression and swallow any promises that may
 be created. It will discard any value that may be returned by the last body
 expression. The code should have side effects and/or when it&#x27;s promise
-it should resolve to undefined.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="imag-part">imag-part<a href="#imag-part" class="hash-link" aria-label="Direct link to imag-part" title="Direct link to imag-part" translate="no">​</a></h2><pre>(imag-part n)
+it should resolve to undefined. Macro ignore don&#x27;t capture any continuations,
+so it work like top level expression.
+
+You can use call/cc inside ignore, but capturing continuations and
+using it outside of ignore can give unspecified results.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="imag-part">imag-part<a href="#imag-part" class="hash-link" aria-label="Direct link to imag-part" title="Direct link to imag-part" translate="no">​</a></h2><pre>(imag-part n)
 
 Return imaginary part of the complex number n.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="import">import<a href="#import" class="hash-link" aria-label="Direct link to import" title="Direct link to import" translate="no">​</a></h2><pre>(import (library namespace))
 (import (only (library namespace) name1 name2))
@@ -804,7 +820,9 @@ Checks if value is infinite.</pre></li><li><h2 class="anchor anchorTargetStickyN
 
 Checks if argument is input-port and if you can read from it.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="input-port?">input-port?<a href="#input-port?" class="hash-link" aria-label="Direct link to input-port?" title="Direct link to input-port?" translate="no">​</a></h2><pre>(input-port? arg)
 
-Returns true if argument is input port.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="instance?">instance?<a href="#instance?" class="hash-link" aria-label="Direct link to instance?" title="Direct link to instance?" translate="no">​</a></h2><pre>(instance? obj)
+Returns true if argument is input port.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="inspect">inspect<a href="#inspect" class="hash-link" aria-label="Direct link to inspect" title="Direct link to inspect" translate="no">​</a></h2><pre>(inspect object)
+
+logs the arguments without unboxing.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="instance?">instance?<a href="#instance?" class="hash-link" aria-label="Direct link to instance?" title="Direct link to instance?" translate="no">​</a></h2><pre>(instance? obj)
 
 Checks if object is an instance, created with a new operator</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="instanceof">instanceof<a href="#instanceof" class="hash-link" aria-label="Direct link to instanceof" title="Direct link to instanceof" translate="no">​</a></h2><pre>(instanceof type obj)
 
@@ -815,7 +833,11 @@ Function that converts number argument to character.</pre></li><li><h2 class="an
 Checks if the argument x is integer.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="interaction-environment">interaction-environment<a href="#interaction-environment" class="hash-link" aria-label="Direct link to interaction-environment" title="Direct link to interaction-environment" translate="no">​</a></h2><pre>(interaction-environment)
 
 Returns the interaction environment equal to lips.env. This can be overwritten
-when creating new interpreter with lips.Interpreter.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="iterator-&gt;array">iterator-&gt;array<a href="#iterator-&gt;array" class="hash-link" aria-label="Direct link to iterator-&gt;array" title="Direct link to iterator-&gt;array" translate="no">​</a></h2><pre>(iterator-&gt;array object)
+when creating new interpreter with lips.Interpreter.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="is-debug">is-debug<a href="#is-debug" class="hash-link" aria-label="Direct link to is-debug" title="Direct link to is-debug" translate="no">​</a></h2><pre>(is-debug)
+(is-debug value)
+
+Debug function, which checks if internal debug state is set to
+a given value or true.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="iterator-&gt;array">iterator-&gt;array<a href="#iterator-&gt;array" class="hash-link" aria-label="Direct link to iterator-&gt;array" title="Direct link to iterator-&gt;array" translate="no">​</a></h2><pre>(iterator-&gt;array object)
 
 Return array from JavaScript iterator object.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="iterator?">iterator?<a href="#iterator?" class="hash-link" aria-label="Direct link to iterator?" title="Direct link to iterator?" translate="no">​</a></h2><pre>(iterator? x)
 
@@ -911,10 +933,13 @@ of z1 with given base z2.</pre></li><li><h2 class="anchor anchorTargetStickyNavb
 
 Predicate that tests if value is a macro.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="macroexpand">macroexpand<a href="#macroexpand" class="hash-link" aria-label="Direct link to macroexpand" title="Direct link to macroexpand" translate="no">​</a></h2><pre>(macroexpand expr)
 
-Macro that expand all macros inside and return single expression as output.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="macroexpand-1">macroexpand-1<a href="#macroexpand-1" class="hash-link" aria-label="Direct link to macroexpand-1" title="Direct link to macroexpand-1" translate="no">​</a></h2><pre>(macroexpand-1 expr)
+Function that expands all macros in the quoted expression and returns
+the expanded code. Being a function, its argument is evaluated, so pass
+quoted code: (macroexpand &#x27;(when x y)).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="macroexpand-1">macroexpand-1<a href="#macroexpand-1" class="hash-link" aria-label="Direct link to macroexpand-1" title="Direct link to macroexpand-1" translate="no">​</a></h2><pre>(macroexpand-1 expr)
 
-Macro similar to macroexpand but it expand macros only one level
-and return single expression as output.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="magnitude">magnitude<a href="#magnitude" class="hash-link" aria-label="Direct link to magnitude" title="Direct link to magnitude" translate="no">​</a></h2><pre>(magnitude x)
+Function similar to macroexpand but it expands the outermost macro only
+one level and returns the resulting code. Being a function, its argument
+is evaluated, so pass quoted code: (macroexpand-1 &#x27;(when x y)).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="magnitude">magnitude<a href="#magnitude" class="hash-link" aria-label="Direct link to magnitude" title="Direct link to magnitude" translate="no">​</a></h2><pre>(magnitude x)
 
 Returns magnitude of the complex number in polar coordinate system.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-bytevector">make-bytevector<a href="#make-bytevector" class="hash-link" aria-label="Direct link to make-bytevector" title="Direct link to make-bytevector" translate="no">​</a></h2><pre>(make-u8vector k fill)
 
@@ -936,7 +961,7 @@ The result value is a procedure that return the value of dynamic variable.</pre>
 
 Create new complex number from polar parameters.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-promise">make-promise<a href="#make-promise" class="hash-link" aria-label="Direct link to make-promise" title="Direct link to make-promise" translate="no">​</a></h2><pre>(make-promise fn)
 
-Function that creates a promise from a function.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-rectangular">make-rectangular<a href="#make-rectangular" class="hash-link" aria-label="Direct link to make-rectangular" title="Direct link to make-rectangular" translate="no">​</a></h2><pre>(make-rectangular im re)
+Function that creates a promise from a function.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-rectangular">make-rectangular<a href="#make-rectangular" class="hash-link" aria-label="Direct link to make-rectangular" title="Direct link to make-rectangular" translate="no">​</a></h2><pre>(make-rectangular re im)
 
 Creates a complex number from imaginary and real part (a+bi form).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-s16vector">make-s16vector<a href="#make-s16vector" class="hash-link" aria-label="Direct link to make-s16vector" title="Direct link to make-s16vector" translate="no">​</a></h2><pre>(make-s16vector k fill)
 
@@ -950,9 +975,7 @@ Allocate new signed 8-bit integer vector (C signed char) of length k,
 with optional initial values.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-string">make-string<a href="#make-string" class="hash-link" aria-label="Direct link to make-string" title="Direct link to make-string" translate="no">​</a></h2><pre>(make-string k [char])
 
 Returns new string with k elements. If char is provided
-it&#x27;s filled with that character.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-tags">make-tags<a href="#make-tags" class="hash-link" aria-label="Direct link to make-tags" title="Direct link to make-tags" translate="no">​</a></h2><pre>(make-tags expression)
-
-Returns a list structure of code with better syntax then raw LIPS</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-u16vector">make-u16vector<a href="#make-u16vector" class="hash-link" aria-label="Direct link to make-u16vector" title="Direct link to make-u16vector" translate="no">​</a></h2><pre>(make-u16vector k fill)
+it&#x27;s filled with that character.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-u16vector">make-u16vector<a href="#make-u16vector" class="hash-link" aria-label="Direct link to make-u16vector" title="Direct link to make-u16vector" translate="no">​</a></h2><pre>(make-u16vector k fill)
 
 Allocate new unsigned 16-bit integer vector (C unsigned short) of length k,
 with optional initial values.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-u32vector">make-u32vector<a href="#make-u32vector" class="hash-link" aria-label="Direct link to make-u32vector" title="Direct link to make-u32vector" translate="no">​</a></h2><pre>(make-u32vector k fill)
@@ -964,7 +987,7 @@ Allocate new unsigned 8-bit integer vector (C unsigned char) of length k,
 with optional initial values.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-vector">make-vector<a href="#make-vector" class="hash-link" aria-label="Direct link to make-vector" title="Direct link to make-vector" translate="no">​</a></h2><pre>(make-vector n [fill])
 
 Creates a new vector with n empty elements. If fill is specified it will set
-all elements of the vector to that value.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="map">map<a href="#map" class="hash-link" aria-label="Direct link to map" title="Direct link to map" translate="no">​</a></h2><pre>(map fn . lists)
+all elements of the vector to that value.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="map">map<a href="#map" class="hash-link" aria-label="Direct link to map" title="Direct link to map" translate="no">​</a></h2><pre>(map fn list1 list2 ...)
 
 Higher-order function that calls function `fn` with each
 value of the list. If you provide more then one list as argument
@@ -974,7 +997,9 @@ values of the fn calls are accumulated in a result list and
 returned by map.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="match">match<a href="#match" class="hash-link" aria-label="Direct link to match" title="Direct link to match" translate="no">​</a></h2><pre>(match pattern string)
 
 Function that returns a match object from JavaScript as a list or #f if
-no match.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="max">max<a href="#max" class="hash-link" aria-label="Direct link to max" title="Direct link to max" translate="no">​</a></h2><pre>(max n1 n2 ...)
+no match.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="matcher">matcher<a href="#matcher" class="hash-link" aria-label="Direct link to matcher" title="Direct link to matcher" translate="no">​</a></h2><pre>(matcher object)
+
+Higher order function return function that compares argument to object</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="max">max<a href="#max" class="hash-link" aria-label="Direct link to max" title="Direct link to max" translate="no">​</a></h2><pre>(max n1 n2 ...)
 
 Returns the maximum of its arguments.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="member">member<a href="#member" class="hash-link" aria-label="Direct link to member" title="Direct link to member" translate="no">​</a></h2><pre>(member obj list)
 
@@ -1024,10 +1049,7 @@ Return numerator of rational or same number if n is not rational.</pre></li><li>
 
 Creates a JavaScript object using key like syntax.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="object-&gt;alist">object-&gt;alist<a href="#object-&gt;alist" class="hash-link" aria-label="Direct link to object-&gt;alist" title="Direct link to object-&gt;alist" translate="no">​</a></h2><pre>(object-&gt;alist object)
 
-Function that converts a JavaScript object to Alist</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="object-literal">object-literal<a href="#object-literal" class="hash-link" aria-label="Direct link to object-literal" title="Direct link to object-literal" translate="no">​</a></h2><pre>(object-literal :name value)
-
-Creates a JavaScript object using key like syntax. This is similar,
-to object but all values are quoted. This macro is used by the &amp; object literal.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="object?">object?<a href="#object?" class="hash-link" aria-label="Direct link to object?" title="Direct link to object?" translate="no">​</a></h2><pre>(object? expression)
+Function that converts a JavaScript object to Alist</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="object?">object?<a href="#object?" class="hash-link" aria-label="Direct link to object?" title="Direct link to object?" translate="no">​</a></h2><pre>(object? expression)
 
 Predicate that tests if value is an plain object (not another LIPS type).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="odd?">odd?<a href="#odd?" class="hash-link" aria-label="Direct link to odd?" title="Direct link to odd?" translate="no">​</a></h2><pre>(odd? number)
 
@@ -1059,7 +1081,7 @@ Function that opens file and return port that can be used for writing. If file
 exists it will throw an Error.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="open-output-string">open-output-string<a href="#open-output-string" class="hash-link" aria-label="Direct link to open-output-string" title="Direct link to open-output-string" translate="no">​</a></h2><pre>(open-output-string)
 
 Creates new output port that can used to write string into
-and after finish get the whole string using `get-output-string`.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="or">or<a href="#or" class="hash-link" aria-label="Direct link to or" title="Direct link to or" translate="no">​</a></h2><pre>(or . expressions)
+and after finish get the whole string using `get-output-string`.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="or">or<a href="#or" class="hash-link" aria-label="Direct link to or" title="Direct link to or" translate="no">​</a></h2><pre>(or expr1 expr2 ...)
 
 Macro that executes the values one by one and returns the first that is
 a truthy value. If there are no expressions that evaluate to true it
@@ -1075,12 +1097,7 @@ from the list each time.</pre></li><li><h2 class="anchor anchorTargetStickyNavba
 
 Predicate that tests if value is a pair or list structure.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="parameterize">parameterize<a href="#parameterize" class="hash-link" aria-label="Direct link to parameterize" title="Direct link to parameterize" translate="no">​</a></h2><pre>(parameterize ((name value) ...)
 
-Macro that change the dynamic variable created by make-parameter.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="parent.frame">parent.frame<a href="#parent.frame" class="hash-link" aria-label="Direct link to parent.frame" title="Direct link to parent.frame" translate="no">​</a></h2><pre>(parent.frame)
-
-Returns the parent environment if called from inside a function.
-If no parent frame can be found it returns nil.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="parent.frames">parent.frames<a href="#parent.frames" class="hash-link" aria-label="Direct link to parent.frames" title="Direct link to parent.frames" translate="no">​</a></h2><pre>(parent.frames)
-
-Returns the list of environments from parent frames (lambda function calls)</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="peek-char">peek-char<a href="#peek-char" class="hash-link" aria-label="Direct link to peek-char" title="Direct link to peek-char" translate="no">​</a></h2><pre>(peek-char port)
+Macro that change the dynamic variable created by make-parameter.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="peek-char">peek-char<a href="#peek-char" class="hash-link" aria-label="Direct link to peek-char" title="Direct link to peek-char" translate="no">​</a></h2><pre>(peek-char port)
 
 This function reads and returns a character from the string
 port, or, if there is no more data in the string port, it
@@ -1115,9 +1132,9 @@ Returns a pretty printed string from pair expression.</pre></li><li><h2 class="a
 This function converts each input into a string and prints
 the result to the standard output (by default it&#x27;s the
 console but it can be defined in user code). This function
-calls `(newline)` after printing each input.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="procedure?">procedure?<a href="#procedure?" class="hash-link" aria-label="Direct link to procedure?" title="Direct link to procedure?" translate="no">​</a></h2><pre>(procedure? expression)
+calls `(newline)` after printing each input.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="procedure?">procedure?<a href="#procedure?" class="hash-link" aria-label="Direct link to procedure?" title="Direct link to procedure?" translate="no">​</a></h2><pre>(procedure? obj)
 
-Predicate that tests if value is a callable function or continuation.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="promise">promise<a href="#promise" class="hash-link" aria-label="Direct link to promise" title="Direct link to promise" translate="no">​</a></h2><pre>(promise . body)
+Checks if object is callable function or continuation.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="promise">promise<a href="#promise" class="hash-link" aria-label="Direct link to promise" title="Direct link to promise" translate="no">​</a></h2><pre>(promise . body)
 
 Anaphoric macro that exposes resolve and reject functions from JS promise.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="promise?">promise?<a href="#promise?" class="hash-link" aria-label="Direct link to promise?" title="Direct link to promise?" translate="no">​</a></h2><pre>(promise? obj)
 
@@ -1133,17 +1150,18 @@ Generate a new pseudo random seed for random.</pre></li><li><h2 class="anchor an
 
 Sorts the list using the quick sort algorithm according to predicate.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="quasiquote">quasiquote<a href="#quasiquote" class="hash-link" aria-label="Direct link to quasiquote" title="Direct link to quasiquote" translate="no">​</a></h2><pre>(quasiquote list)
 
-Similar macro to `quote` but inside it you can use special expressions (unquote
-x) abbreviated to ,x that will evaluate x and insert its value verbatim or
-(unquote-splicing x) abbreviated to ,@x that will evaluate x and splice the value
-into the result. Best used with macros but it can be used outside.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="quote">quote<a href="#quote" class="hash-link" aria-label="Direct link to quote" title="Direct link to quote" translate="no">​</a></h2><pre>(quote expression) or &#x27;expression
+Similar macro to `quote` but inside it you can use special expressions
+(unquote x) abbreviated to ,x that will evaluate x and insert its value
+verbatim or (unquote-splicing x) abbreviated to ,@x that will evaluate x
+and splice the value into the result. Best used with macros but it
+can be used outside.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="quote">quote<a href="#quote" class="hash-link" aria-label="Direct link to quote" title="Direct link to quote" translate="no">​</a></h2><pre>(quote expression) or &#x27;expression
 
 Macro that returns a single LIPS expression as data (it won&#x27;t evaluate the
 argument). It will return a list if put in front of LIPS code.
 And if put in front of a symbol it will return the symbol itself, not the value
 bound to that name.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="quote-promise">quote-promise<a href="#quote-promise" class="hash-link" aria-label="Direct link to quote-promise" title="Direct link to quote-promise" translate="no">​</a></h2><pre>(quote-promise expr) or &#x27;&gt;expr
 
-Macro used to escape automati awaiting of the expression. It will be wrapped
+Macro used to escape automatic awaiting of the expression. It will be wrapped
 with a JavaScript class that behaves like Promise but will not be automatically
 resolved by LIPS like normal promises are.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="quoted-symbol?">quoted-symbol?<a href="#quoted-symbol?" class="hash-link" aria-label="Direct link to quoted-symbol?" title="Direct link to quoted-symbol?" translate="no">​</a></h2><pre>(quoted-symbol? code)
 
@@ -1311,10 +1329,30 @@ The old value is lost.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_
 Function that sets the cdr (tail) of the list/pair to specified value.
 It will destroy the list. The old tail is lost.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="set-current-directory!">set-current-directory!<a href="#set-current-directory!" class="hash-link" aria-label="Direct link to set-current-directory!" title="Direct link to set-current-directory!" translate="no">​</a></h2><pre>(set-current-directory! string)
 
-Changes the current working directory to provided string.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="set-global!">set-global!<a href="#set-global!" class="hash-link" aria-label="Direct link to set-global!" title="Direct link to set-global!" translate="no">​</a></h2><pre>(set-global! name)
+Changes the current working directory to provided string.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="set-debug!">set-debug!<a href="#set-debug!" class="hash-link" aria-label="Direct link to set-debug!" title="Direct link to set-debug!" translate="no">​</a></h2><pre>(set-debug!)
+(set-debug! value)
 
-Macro to make the name a Javascript global variable (i.e. accessible on globalThis).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="set-obj!">set-obj!<a href="#set-obj!" class="hash-link" aria-label="Direct link to set-obj!" title="Direct link to set-obj!" translate="no">​</a></h2><pre>(set-obj! obj key value)
-(set-obj! obj key value props)
+Set debug internal value, used internally for debugging. You can use it
+in LIPS with is-debug function.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="set-global!">set-global!<a href="#set-global!" class="hash-link" aria-label="Direct link to set-global!" title="Direct link to set-global!" translate="no">​</a></h2><pre>(set-global! name)
+
+Macro to make the name a Javascript global variable (i.e. accessible on globalThis).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="set-hash-syntax!">set-hash-syntax!<a href="#set-hash-syntax!" class="hash-link" aria-label="Direct link to set-hash-syntax!" title="Direct link to set-hash-syntax!" translate="no">​</a></h2><pre>(set-hash-syntax! seq value)
+(set-hash-syntax! seq #f)
+
+Creates or removes hash syntax. The value can be a macro or a function.
+The functions needs to return data that will be returned by the parser
+when it finds the # + char or # + symbol in the input stream.
+When the value equal to #f the syntax is removed.
+
+e.g.:
+
+(set-hash-syntax! #\+ (lambda (port)
+                        `(quote ,(apply + (read port)))))
+
+(print #+(1 2 3))
+;; ==&gt; 6
+(print &#x27;#+(1 2 3))
+;; ==&gt; (quote 6)</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="set-object!">set-object!<a href="#set-object!" class="hash-link" aria-label="Direct link to set-object!" title="Direct link to set-object!" translate="no">​</a></h2><pre>(set-object! obj key value)
+(set-object! obj key value props)
 
 Function set a property of a JavaScript object. props should be a vector of pairs,
 passed to Object.defineProperty.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="set-repr!">set-repr!<a href="#set-repr!" class="hash-link" aria-label="Direct link to set-repr!" title="Direct link to set-repr!" translate="no">​</a></h2><pre>(add-repr! type fn)
@@ -1327,16 +1365,18 @@ is the value that need to be converted to a string. If the object is nested
 and you need to use `repr` recursively, it should pass the second parameter q
 to repr, so string will be quoted when it&#x27;s true.
 
-e.g.: (lambda (obj q) (string-append &quot;&lt;&quot; (repr obj q) &quot;&gt;&quot;))</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="set-special!">set-special!<a href="#set-special!" class="hash-link" aria-label="Direct link to set-special!" title="Direct link to set-special!" translate="no">​</a></h2><pre>(set-special! symbol name [type])
+e.g.: (lambda (obj q) (string-append &quot;&lt;&quot; (repr obj q) &quot;&gt;&quot;))</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="set-special!">set-special!<a href="#set-special!" class="hash-link" aria-label="Direct link to set-special!" title="Direct link to set-special!" translate="no">​</a></h2><pre>(set-special! seq value [type])
 
-Add a special symbol to the list of transforming operators by the parser.
-e.g.: `(add-special! &quot;#&quot; &#x27;x)` will allow to use `#(1 2 3)` and it will be
-transformed into (x (1 2 3)) so you can write x macro that will process
-the list. 3rd argument is optional, and it can be one of two values:
-lips.specials.LITERAL, which is the default behavior, or
-lips.specials.SPLICE which causes the value to be unpacked into the expression.
-This can be used for e.g. to make `#(1 2 3)` into (x 1 2 3) that is needed
-by # that defines vectors.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="set!">set!<a href="#set!" class="hash-link" aria-label="Direct link to set!" title="Direct link to set!" translate="no">​</a></h2><pre>(set! name value)
+Add a new syntax extension to the parser. When parser found the new seq string
+in the input stream it will invoke the function or a macro and return the output
+at parse time.
+
+The arguments to the function or macro depends on the type of extension:
+
+* lips.specials.SYMBOL will not process the next tokens only call the extension
+* lips.specials.LITERAL will read next expression and pass it as first argument
+* lips.specials.SPLICE will read next expression which needs to be a list and
+spread the list into the function arguments.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="set!">set!<a href="#set!" class="hash-link" aria-label="Direct link to set!" title="Direct link to set!" translate="no">​</a></h2><pre>(set! name value)
 
 Macro that can be used to set the value of the variable or slot (mutate it).
 set! searches the scope chain until it finds first non empty slot and sets it.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="shuffle">shuffle<a href="#shuffle" class="hash-link" aria-label="Direct link to shuffle" title="Direct link to shuffle" translate="no">​</a></h2><pre>(shuffle obj)
@@ -1359,7 +1399,10 @@ be a string or regular expression.</pre></li><li><h2 class="anchor anchorTargetS
 
 Function that returns the square root of the number.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="square">square<a href="#square" class="hash-link" aria-label="Direct link to square" title="Direct link to square" translate="no">​</a></h2><pre>(square z)
 
-Returns the square of z. This is equivalent to (* z z).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="string">string<a href="#string" class="hash-link" aria-label="Direct link to string" title="Direct link to string" translate="no">​</a></h2><pre>(string chr1 chr2 ...)
+Returns the square of z. This is equivalent to (* z z).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="stack-trace">stack-trace<a href="#stack-trace" class="hash-link" aria-label="Direct link to stack-trace" title="Direct link to stack-trace" translate="no">​</a></h2><pre>(stack-trace &lt;continuation&gt;)
+
+Function return stack trace if given continuation as a string.
+You first need to enable collecting stack frames using (trace #t).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="string">string<a href="#string" class="hash-link" aria-label="Direct link to string" title="Direct link to string" translate="no">​</a></h2><pre>(string chr1 chr2 ...)
 
 Function that creates a new string from it&#x27;s arguments. Each argument
 needs to be a character object.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="string-&gt;list">string-&gt;list<a href="#string-&gt;list" class="hash-link" aria-label="Direct link to string-&gt;list" title="Direct link to string-&gt;list" translate="no">​</a></h2><pre>(string-&gt;list string)
@@ -1378,7 +1421,7 @@ The start and end is the range of the input string for the conversion.</pre></li
 (string-&gt;list string start end)
 
 Function that copies given range of string to list. If no start is specified it use
-start of the string, if no end is specified it convert to the end of the string.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="string-append">string-append<a href="#string-append" class="hash-link" aria-label="Direct link to string-append" title="Direct link to string-append" translate="no">​</a></h2><pre>(concat . strings)
+start of the string, if no end is specified it convert to the end of the string.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="string-append">string-append<a href="#string-append" class="hash-link" aria-label="Direct link to string-append" title="Direct link to string-append" translate="no">​</a></h2><pre>(string-append string string2 ...)
 
 Function that creates a new string by joining its arguments.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="string-ci&lt;?">string-ci&lt;?<a href="#string-ci&lt;?" class="hash-link" aria-label="Direct link to string-ci&lt;?" title="Direct link to string-ci&lt;?" translate="no">​</a></h2><pre>(string-ci&lt;? string1 string2 ...)
 
@@ -1470,13 +1513,17 @@ Function that tests if argument is string port.</pre></li><li><h2 class="anchor 
 Throws a new exception.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="timer">timer<a href="#timer" class="hash-link" aria-label="Direct link to timer" title="Direct link to timer" translate="no">​</a></h2><pre>(timer time . body)
 
 Evaluates body after delay, it returns the timer ID from setTimeout.
-To clear the timer you can use native JS clearTimeout function.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="tree-&gt;array">tree-&gt;array<a href="#tree-&gt;array" class="hash-link" aria-label="Direct link to tree-&gt;array" title="Direct link to tree-&gt;array" translate="no">​</a></h2><pre>(tree-&gt;array list)
+To clear the timer you can use native JS clearTimeout function.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="trace">trace<a href="#trace" class="hash-link" aria-label="Direct link to trace" title="Direct link to trace" translate="no">​</a></h2><pre>(trace flag)
+
+Toggle tracing. When enabled the parser augments the code with source
+positions (so errors report line, column and file) and the evaluator
+collects stack frames (so exceptions carry a Scheme &#x27;stack&#x27; trace).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="tree-&gt;array">tree-&gt;array<a href="#tree-&gt;array" class="hash-link" aria-label="Direct link to tree-&gt;array" title="Direct link to tree-&gt;array" translate="no">​</a></h2><pre>(tree-&gt;array list)
 
 Function that converts a LIPS cons tree structure into a JavaScript array.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="tree-map">tree-map<a href="#tree-map" class="hash-link" aria-label="Direct link to tree-map" title="Direct link to tree-map" translate="no">​</a></h2><pre>(tree-map fn tree)
 
 Tree version of map. fn is invoked on every leaf.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="truncate">truncate<a href="#truncate" class="hash-link" aria-label="Direct link to truncate" title="Direct link to truncate" translate="no">​</a></h2><pre>(truncate n)
 
-Function that returns the integer part (floor) of a real number.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="try">try<a href="#try" class="hash-link" aria-label="Direct link to try" title="Direct link to try" translate="no">​</a></h2><pre>(try expr (catch (e) code))
+Function that returns the integer part (floor) of a fraction (real or rational).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="try">try<a href="#try" class="hash-link" aria-label="Direct link to try" title="Direct link to try" translate="no">​</a></h2><pre>(try expr (catch (e) code))
 (try expr (catch (e) code) (finally code))
 (try expr (finally code))
 
@@ -1627,9 +1674,7 @@ Function that sets nth item of the vector to value.</pre></li><li><h2 class="anc
 
 Returns true if value is vector and false if not.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="wait">wait<a href="#wait" class="hash-link" aria-label="Direct link to wait" title="Direct link to wait" translate="no">​</a></h2><pre>(wait time . expr)
 
-Returns a promise that will resolve with the expression after delay.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="warn-quote">warn-quote<a href="#warn-quote" class="hash-link" aria-label="Direct link to warn-quote" title="Direct link to warn-quote" translate="no">​</a></h2><pre>(warn-quote)
-
-Simple macro that throws an error, when you try to use ’ symbol as quote in code.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="while">while<a href="#while" class="hash-link" aria-label="Direct link to while" title="Direct link to while" translate="no">​</a></h2><pre>(while cond body)
+Returns a promise that will resolve with the expression after delay.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="while">while<a href="#while" class="hash-link" aria-label="Direct link to while" title="Direct link to while" translate="no">​</a></h2><pre>(while cond body)
 
 Creates a loop, it executes cond and body until cond expression is false.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="with-exception-handler">with-exception-handler<a href="#with-exception-handler" class="hash-link" aria-label="Direct link to with-exception-handler" title="Direct link to with-exception-handler" translate="no">​</a></h2><pre>(with-exception-handler handler thunk)
 
@@ -1646,19 +1691,7 @@ is closed.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="wi
 
 Procedure open string and make it current-input-port then thunk is executed.
 After thunk is executed current-input-port is restored and string port
-is closed.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="with-tags">with-tags<a href="#with-tags" class="hash-link" aria-label="Direct link to with-tags" title="Direct link to with-tags" translate="no">​</a></h2><pre>(with-tags expression)
-
-valutes LIPS shorter code for S-Expression equivalent of JSX.
-e.g.:
-
-(with-tags (:div (:class &quot;item&quot; :id &quot;item-1&quot;)
-                 (list (:span () &quot;Random Item&quot;)
-                       (:a (:onclick (lambda (e) (alert &quot;close&quot;)))
-                           &quot;close&quot;))))
-
-Above expression can be passed to function that renders JSX (like render
-in React, Preact) To get the string from the macro you can use vhtml
-library from npm.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="write">write<a href="#write" class="hash-link" aria-label="Direct link to write" title="Direct link to write" translate="no">​</a></h2><pre>(write obj [port])
+is closed.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="write">write<a href="#write" class="hash-link" aria-label="Direct link to write" title="Direct link to write" translate="no">​</a></h2><pre>(write obj [port])
 
 Write object to standard output or give port. For strings it will include
 wrap in quotes.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="write-bytevector">write-bytevector<a href="#write-bytevector" class="hash-link" aria-label="Direct link to write-bytevector" title="Direct link to write-bytevector" translate="no">​</a></h2><pre>(write-bytevector bytevector)

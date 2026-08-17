@@ -4,11 +4,24 @@
         <title>LIPS Scheme blog</title>
         <link>https://lips.js.org/blog</link>
         <description>LIPS Scheme blog RSS Feed</description>
-        <lastBuildDate>Sun, 14 Sep 2025 00:00:00 GMT</lastBuildDate>
+        <lastBuildDate>Sun, 16 Aug 2026 00:00:00 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
         <generator>https://github.com/jpmonette/feed</generator>
         <language>en</language>
         <copyright>Copyright © 2026 Jakub T. Jankiewicz</copyright>
+        <item>
+            <title><![CDATA[LIPS Scheme 1.0.0-beta.22 with Continuations and TCO]]></title>
+            <link>https://lips.js.org/blog/beta-continuations-and-tco</link>
+            <guid>https://lips.js.org/blog/beta-continuations-and-tco</guid>
+            <pubDate>Sun, 16 Aug 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[I'm excited to introduce a new beta version of LIPS Scheme. The most important features of this]]></description>
+            <content:encoded><![CDATA[<p>I&#39;m excited to introduce a new beta version of LIPS Scheme. The most important features of this
+version are full <a href="/docs/scheme-intro/continuations">continuations</a> and <a href="/docs/scheme-intro/core#tail-call-optimization">TCO (Tail Call
+Optimization)</a>. They were inspired by
+<a href="https://bluishcoder.co.nz/jsscheme/">JS-Scheme</a> by Alex Yakovlev.</p>
+<br/><a href="/blog/beta-continuations-and-tco">see the rest of the article</a>]]></content:encoded>
+            <category>release</category>
+        </item>
         <item>
             <title><![CDATA[How to Serialize Any Object in JavaScript?]]></title>
             <link>https://lips.js.org/blog/serialization</link>
