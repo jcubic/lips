@@ -7,7 +7,7 @@ tags: [release]
 ---
 
 I'm excited to introduce a new beta version of LIPS Scheme. The most important features of this
-version are full [continuations](docs/scheme-intro/continuations) and [TCO (Tail Call
+version are full [continuations](/docs/scheme-intro/continuations) and [TCO (Tail Call
 Optimization)](/docs/scheme-intro/core#tail-call-optimization). They were inspired by
 [JS-Scheme](https://bluishcoder.co.nz/jsscheme/) by Alex Yakovlev.
 
@@ -15,7 +15,7 @@ Optimization)](/docs/scheme-intro/core#tail-call-optimization). They were inspir
 
 ## Continuations
 
-You can now finally play with [continuations](docs/scheme-intro/continuations). Here is a simple
+You can now finally play with [continuations](/docs/scheme-intro/continuations). Here is a simple
 example of an early exit from a recursive named let.
 
 ```scheme
@@ -67,7 +67,7 @@ for (const i of integers(10)) {
 // ==> 9
 ```
 
-Now, thanks to [continuations](docs/scheme-intro/continuations), the same thing can be done in LIPS Scheme.
+Now, thanks to [continuations](/docs/scheme-intro/continuations), the same thing can be done in LIPS Scheme.
 
 ```scheme
 (define (integers x)
@@ -131,7 +131,7 @@ The JavaScript generators are a syntax sugar for the
 [JavaScript iterator protocol](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols)
 
 The implementation of generator use that protocol, the missing piece to be able to create a generator in LIPS
-were [continuations](docs/scheme-intro/continuations).
+were [continuations](/docs/scheme-intro/continuations).
 
 This is the source code that was based for the generator:
 
@@ -193,7 +193,7 @@ accept both iterators.
 
 ## Tail Call Optimizations
 
-This is another feature implemented together with [continuations](docs/scheme-intro/continuations)
+This is another feature implemented together with [continuations](/docs/scheme-intro/continuations)
 inspired by [JS-Scheme](https://bluishcoder.co.nz/jsscheme/). You can now use recursion that doesn't
 consume the stack. There are still some memory increases, but the memory-allocated objects are
 garbage collected during the long loop.
@@ -213,7 +213,7 @@ Here is an example that you can test:
 
 ## "Stack" Trace
 
-You can create a 'stack' trace out of [continuations](docs/scheme-intro/continuations):
+You can create a 'stack' trace out of [continuations](/docs/scheme-intro/continuations):
 
 ```scheme
 (trace #t)
@@ -231,7 +231,7 @@ You can create a 'stack' trace out of [continuations](docs/scheme-intro/continua
 (trace #f)
 ```
 
-You can also directly inspect the [continuations](docs/scheme-intro/continuations) and extract meta information:
+You can also directly inspect the [continuations](/docs/scheme-intro/continuations) and extract meta information:
 
 ```scheme
 (trace #t)
