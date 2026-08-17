@@ -38,7 +38,7 @@ example of an early exit from a recursive named let.
 ;; ==> (0 1 2 3 4 5 6 7)
 ```
 
-## JavaScript generators
+## JavaScript Generators
 
 Finally, LIPS has native JavaScript generators. If you're not familiar with generators, they are like a
 function that can yield a value, which suspends the execution and then resumes it later.
@@ -278,7 +278,7 @@ Metadata also works when reading from a port:
 (trace #f)
 ```
 
-## Syntax extensions
+## Syntax Extensions
 
 Parsing syntax extensions was improved. Now you can use simple regex-based syntax. There were also fixed
 extensions that start with `#`.
@@ -300,7 +300,12 @@ syntax is supported, only character classes and `+`/`*` quantifiers.
 
 Same as `macroexpand`/`macroexpand-1` that are now functions similar to Common Lisp.
 
-## Speed improvements
+## Async Execution
+
+Now the interpreter is all synchronous, so if you don't explicitly return a Promise from a function, it's guaranteed
+that the function created in LIPS is synchronous. This is important when using Scheme with JavaScript callbacks.
+
+## Speed Improvements
 
 A few optimizations were implemented. One of them is two new directives, similar to `#!fold-case`,
 created as syntax extensions:
@@ -330,7 +335,7 @@ Here is a breakdown of the speed improvements. I've created two simple scripts t
 
 First I run it on version 21 and then on 22 with an additional two optimization directives.
 
-### First example
+### First Example
 
 Here is the first code. A while loop is a macro that maps into a named let that uses tail recursion.
 
@@ -361,7 +366,7 @@ Here is the first code. A while loop is a macro that maps into a named let that 
 ```
 
 
-### Speed comparison
+### Speed Comparison
 
 | Version | Speed  |promise directive | both directives |
 |---------|--------|------------------|-----------------|
@@ -370,7 +375,7 @@ Here is the first code. A while loop is a macro that maps into a named let that 
 
 Up to 1.82x speed improvement
 
-### Second example
+### Second Example
 
 Here is another script with the `Array::forEach` Scheme callback.
 
@@ -394,7 +399,7 @@ Here is another script with the `Array::forEach` Scheme callback.
 (timed-loop 100)
 ```
 
-### Speed comparison
+### Speed Comparison
 
 | Version | Speed  |promise directive | both directives |
 |---------|--------|------------------|-----------------|
