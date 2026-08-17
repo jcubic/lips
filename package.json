@@ -269,10 +269,10 @@
     "unfetch": "^5.0.0"
   },
   "allowScripts": {
-    "puppeteer@23.11.1": true,
     "microtime": true,
     "esbuild": true,
     "core-js-pure": true,
-    "cbor-extract": true
+    "cbor-extract": true,
+    "puppeteer@25.8.0": true
   }
 }

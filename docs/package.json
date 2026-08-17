@@ -54,5 +54,9 @@
   },
   "overrides": {
     "@types/react": "^18.3.12"
+  },
+  "allowScripts": {
+    "puppeteer@23.11.1": true,
+    "core-js@3.50.0": true
   }
 }
