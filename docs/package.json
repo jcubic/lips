@@ -26,7 +26,7 @@
     "liquidjs": "^10.29.0",
     "marked": "^14.1.4",
     "prism-react-renderer": "^2.4.1",
-    "puppeteer": "^23.11.1",
+    "puppeteer": "^25.8.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^9.1.0"
@@ -50,13 +50,15 @@
     ]
   },
   "engines": {
-    "node": ">=18.0"
+    "node": ">=24.0"
   },
   "overrides": {
-    "@types/react": "^18.3.12"
+    "@types/react": "^18.3.12",
+    "serialize-javascript": "^7.1.0",
+    "uuid": "^11.1.1"
   },
   "allowScripts": {
-    "puppeteer@23.11.1": true,
+    "puppeteer@25.8.0": true,
     "core-js@3.50.0": true
   }
 }
