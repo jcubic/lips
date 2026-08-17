@@ -302,7 +302,7 @@ Same as `macroexpand`/`macroexpand-1` that are now functions similar to Common L
 
 ## Speed improvements
 
-A few optimizations were implemented. One of them is two new directives, simiar to `#!fold-case`,
+A few optimizations were implemented. One of them is two new directives, similar to `#!fold-case`,
 created as syntax extensions:
 
 ```scheme
