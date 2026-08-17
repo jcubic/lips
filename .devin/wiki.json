@@ -1,0 +1,313 @@
+{
+  "repo_notes": [
+    {
+      "content": "Evaluator in LIPS Scheme was rewritten in version 1.0.0-beta.22. TCO and Continuations were added. Quasiquote and macroexpand were rewritten. Code is augmented with source metadata (__line__/__col__/__file__) and errors get a Scheme __stack__ when tracing is enabled. REGENERATION DIRECTIVE (act on this): the entire evaluator lives in src/lips.js - re-read that file and REWRITE any page that still describes an older recursive or trampoline/Thunk based evaluator; those descriptions are outdated and wrong. The new evaluator is a single synchronous JavaScript generator (a while loop) that yields ONLY when a real JS Promise is encountered - a hand-rolled equivalent of what Babel does when it transpiles async/await into a generator with yield; when Scheme code uses no promises, evaluation is fully synchronous. Read and document these exact symbols BY NAME (grep them in src/lips.js): the State class and the Continuation class; the generator tco_generator and its driver uniterate (plus its inner drive) and tco_resolve; tco_error_handler; evaluate_code and the continuation step functions next_pair / next_if / next_begin / next_set / next_define; call_function and evaluate_lambda; resolve_promises / unpromise and QuotedPromise; the internal-macro dispatch (Macro.internal, invalid_macro, __if__/__begin__/__set__/__define__/__quote__, iternal_macros, is_internal_macro). trampoline() and Thunk are NOT part of evaluation (see the Tail Call Optimization note). The new evaluator was inspired by JS-Scheme by Alex Yakovlev."
+    }
+  ],
+  "pages": [
+    {
+      "title": "Overview",
+      "purpose": "Introduce LIPS (Lisp Is Pretty Simple), a Scheme-based Lisp interpreter in JavaScript, explaining its purpose, design philosophy, and key features at a high level",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Installation and Quick Start",
+      "purpose": "Guide users through installing LIPS via npm, CDN, or standalone executable, and provide quick examples of running code in Node.js, browsers, and the REPL",
+      "parent": "Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Architecture Overview",
+      "purpose": "Present high-level system architecture showing how the core interpreter, standard library, CLI, web components, and build system interact",
+      "parent": "Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Project History and Evolution",
+      "purpose": "Document the evolution of LIPS through versions, major features added, breaking changes, and the roadmap for future development",
+      "parent": "Overview",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Core Interpreter",
+      "purpose": "Detailed documentation of the JavaScript core that implements lexing, parsing, evaluation, and the type system",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Lexer and Parser",
+      "purpose": "Explain the tokenization state machine, parser architecture, handling of special forms, datum labels, quasiquotation, and parser extensions",
+      "parent": "Core Interpreter",
+      "page_notes": [
+        {
+          "content": "specials now accept simplified regex syntax there are two Map objects one for normal strings and one for RegExp. Also: quasiquote was rewritten (Bawden-style, see the quasiquote macro in src/lips.js). Instead of building the result inline it now EXPANDS the backtick / , (unquote) / ,@ (unquote-splicing) forms into ordinary builder code made of cons/list/append/quote that the main evaluator then runs - so unquoted expressions become normal sub-expressions and compose with continuations, promises and TCO for free. Note for accuracy: the generated builder code embeds the list/append/cons FUNCTION VALUES (not the symbols) so a macro that shadows those names cannot break the expansion. A light, conceptual description is enough - the depth-tracking details can be omitted."
+        }
+      ]
+    },
+    {
+      "title": "Evaluator and Environments",
+      "purpose": "Document the evaluation engine, environment hierarchy, lexical vs dynamic scoping, variable binding, and special form handling",
+      "parent": "Core Interpreter",
+      "page_notes": [
+        {
+          "content": "REWRITE THIS PAGE from src/lips.js. The evaluator is built around two classes. State = the mutable per-loop evaluation state: .object (current value/expression being processed), .cc (current Continuation), .env and .dynamic_env, .ready (whether .object is a finished value or still needs evaluating), .handlers (per-loop try/catch/finally stack), and .stack (Scheme stack frames, collected only when tracing is on). Continuation = a reified evaluator frame: .__code__ (the source form, augmented with __line__/__col__ when tracing), .__object__ (a cursor that walks the operand list by taking .cdr), .__continuation__ (parent frame), .__next__ (the step function), and ._state (holds .args, .i, a name, and a back-reference to the owning State). The public evaluate() is uniterate(tco_generator(...)): tco_generator/tco_resolve is a while loop that repeatedly runs state.eval() then state.cont(); uniterate (with its inner drive) unwinds the generator to a final value, awaiting only real promises (this is the async/await-as-generator trick, like Babel). evaluate_code dispatches on the code: numbers/symbols resolve inline; for a pair it checks the head, and if the head is NOT a special form it evaluates operands one at a time via a Continuation whose step is next_pair, which accumulates evaluated args and, when the operand list is exhausted, applies the head - a lambda (evaluate_lambda, which reuses a cached hygienic implicit-begin), a captured continuation, a make-parameter parameter, or a JS function (call_function, which then resolve_promises on the result). SPECIAL FORMS (if, begin, set!, define, quote) are handled inline and are NOT ordinary macros - see the dedicated explanation below. Also document lexical vs dynamic scope (use_dynamic threads through State) and that the internal instrumentation flags (__trace__/__check_cycle__/__check_promise__) are read per-State by read_internal_flags from the per-interpreter internal env. INTERNAL MACROS / SPECIAL FORMS (document this explicitly - it is commonly misunderstood): if/begin/set!/define/quote are created by Macro.internal(name), which builds a placeholder Macro whose body is invalid_macro (it THROWS 'is internal macro, you can't invoke it manually' if you ever call it directly). They are stored in global_env under their names, then captured by reference into module-level constants __if__/__begin__/__set__/__define__/__quote__ (and gathered in the iternal_macros array, tested by is_internal_macro). evaluate_code recognizes them by IDENTITY (first === __if__, first === __begin__, ...) and, instead of invoking them, runs dedicated inline logic that installs the matching continuation step function (next_if, next_begin, next_set, next_define). So a 'special form' here = an environment binding that looks like a macro but is really a sentinel the evaluator switches on."
+        }
+      ]
+    },
+    {
+      "title": "Data Types System",
+      "purpose": "Detail all LIPS data types: LSymbol (with interning and gensyms), LNumber (BigInt, rationals, complex), Pair, LString, LCharacter, and special values",
+      "parent": "Core Interpreter",
+      "page_notes": [
+        {
+          "content": "Continuations is a new data type that needs to be added to the list."
+        }
+      ]
+    },
+    {
+      "title": "Continuations",
+      "purpose": "Document information about Continuations class, how Continuations are capured using call/cc and how you can access the stack of continuations when tracing is enabled.",
+      "parent": "Core Interpreter",
+      "page_notes": [
+        {
+          "content": "Document the Continuation class (src/lips.js). Fields: __code__ (the source form for this frame; carries __line__/__col__/__file__ when tracing is on), __object__ (a cursor that walks the remaining operand list via .cdr as the frame steps), __continuation__ (the parent frame - the chain of these IS the control stack), __next__ (the step function run on each loop turn: next_pair for calls, or next_if/next_begin/next_set/next_define for special forms), and _state (args accumulated so far, index i, a display name, and a back-reference to the owning State). call/cc captures the current Continuation together with its __continuation__ parent chain and hands it to the callback as a first-class value; invoking that value re-installs the captured frame (Continuation.clone() deep-copies the chain, using _state.count for the clone's display name, and restores the try handlers). IMPORTANT distinction to make on this page: the Continuation class is the evaluator's INTERNAL reified frame; the value returned by call/cc is the user-facing first-class continuation - same class, two roles. Because TCO drops tail frames from the live cc chain (that is the whole point of TCO), the Scheme stack trace can't be read from the cc chain alone - it is accumulated SEPARATELY into State.stack while evaluating, and only when tracing is enabled (State.collect_stack, populated from the __trace__ internal-env flag via read_internal_flags). stack-trace/error augmentation therefore uses that collected stack (and, as a fallback, walks the live cc chain) to find the innermost frame whose __code__ carries source positions. Add Continuation to the Data Types System page's list of types as well."
+        }
+      ]
+    },
+    {
+      "title": "Macro System",
+      "purpose": "Explain both Lisp macros (define-macro) and hygienic macros (syntax-rules), including pattern matching, hygiene guarantees, and macro expansion process",
+      "parent": "Core Interpreter",
+      "page_notes": [
+        {
+          "content": "Two macro kinds: non-hygienic Lisp macros (define-macro, the Macro class) and hygienic syntax-rules (the Syntax class, pattern/template matching with gensym-based hygiene). ADD: the special forms if/begin/set!/define/quote are 'internal macros' - created with Macro.internal(name), their body is invalid_macro so calling them directly throws; they appear as bindings in the environment but the evaluator recognizes them by identity and handles them inline (see is_internal_macro / the Evaluator page). macroexpand was rewritten (see the macroexpand/macroexpand_code section in src/lips.js): it walks the code like the evaluator but NEVER calls functions and NEVER evaluates a macro's output - it returns the fully expanded code as data. Binding forms (lambda/let/letrec/define) shadow their bound names in the relevant scope, so a macro name the user has rebound as a variable is left untouched; a macro may return a Promise of its expansion, so the walk is async throughout. A moderate-depth description is enough; the pattern-matcher internals can stay high-level."
+        }
+      ]
+    },
+    {
+      "title": "CBOR Serialization",
+      "purpose": "Document the CBOR encoding/decoding system used for binary compilation, including structure optimization, packed values, bundled strings, and extension mechanism",
+      "parent": "Core Interpreter",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Asynchronous Operations",
+      "purpose": "Explain promise handling, QuotedPromise wrapper, automatic async/await, and integration with JavaScript's asynchronous programming model",
+      "parent": "Core Interpreter",
+      "page_notes": [
+        {
+          "content": "Async operatons QuotedPromise handling was rewritten since the new interpreter was added."
+        }
+      ]
+    },
+    {
+      "title": "Tail Call Optimization",
+      "purpose": "Explain how proper tail recursion is achieved WITHOUT stack growth by the generator-based while loop (tco_generator driving the State/Continuation machine), and explicitly correct the common misconception that TCO uses a trampoline with Thunk objects - it does not. The trampoline()/Thunk helpers are unrelated to evaluation.",
+      "parent": "Core Interpreter",
+      "page_notes": [
+        {
+          "content": "The TCO and Continuations were added in latest version. TCO is not implemented using trampoline and Thunk, that is reserved for internal functions, that use recursion. Trampoline is only used by pair_to_string (dead code) and mark_cycles that use recursive traversal to mark cycles in list data structures. The new interpreter use a JavaScript generator as a replacement for async/await so the code can be synchronous when Scheme code doesn't use any promises. TCO is implemented using while loop and State object that are also integrated with Continuations class. The function uniterate is like unwind for generator to extrac the value that can be a promise. This was inspired by in Babel transpiler that transpiles async/await into JavaScript generator with yield keyword. The code for the new interpreter was inspired by JS-Scheme by Alex Yakovlev."
+        }
+      ]
+    },
+    {
+      "title": "Standard Library",
+      "purpose": "Document the self-hosted Scheme standard library that provides core functions, macros, and R5RS/R7RS compliance",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Core Functions and Macros",
+      "purpose": "Detail fundamental procedures and macros like define, lambda, let, cond, map, filter, and control flow constructs, including functional utilities like curry, pipe, range, and fold",
+      "parent": "Standard Library",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "R5RS and R7RS Compliance",
+      "purpose": "Explain how LIPS implements R5RS and R7RS standards through compatibility layers, including aliases and standard-specific features",
+      "parent": "Standard Library",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "SRFI Support",
+      "purpose": "List built-in and loadable SRFIs, explain the @lips loading mechanism, and document each SRFI's functionality",
+      "parent": "Standard Library",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Object System and Records",
+      "purpose": "Document define-class for ES6-style classes, define-record-type for R7RS records, and the object literal syntax",
+      "parent": "Standard Library",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "I/O and Port System",
+      "purpose": "Explain input/output ports, file operations, string ports, binary ports, byte vectors, and the buffered output system",
+      "parent": "Standard Library",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "JavaScript Integration",
+      "purpose": "Document how LIPS integrates with JavaScript, enabling seamless interop between Scheme and JS code",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Accessing JavaScript Objects",
+      "purpose": "Explain dot notation, the new operator, the --> macro for method chaining, set! for mutations, and object literal syntax",
+      "parent": "JavaScript Integration",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Promise and Async Handling",
+      "purpose": "Detail automatic promise resolution, promise quotation ('> syntax), and integration with JavaScript async/await",
+      "parent": "JavaScript Integration",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Module Systems",
+      "purpose": "Document require for Node.js modules, ES module dynamic imports, and loading Scheme files with load/include",
+      "parent": "JavaScript Integration",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "User Interfaces",
+      "purpose": "Document the various ways users can interact with LIPS: command line, web browser, and bookmarklet",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Command Line Interface and REPL",
+      "purpose": "Explain the lips CLI executable, REPL features (history, syntax highlighting, indentation, parenthesis matching), command-line flags, and script execution",
+      "parent": "User Interfaces",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Web-based Interactive Interpreter",
+      "purpose": "Document the React/TypeScript web REPL component, its integration with jQuery Terminal, examples system, and deployment; also covers embedding the REPL in external pages",
+      "parent": "User Interfaces",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Bookmarklet REPL",
+      "purpose": "Explain the bookmarklet for injecting a REPL into any webpage, its limitations, and use cases",
+      "parent": "User Interfaces",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Development Guide",
+      "purpose": "Guide developers contributing to LIPS or extending it for their own projects",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Building and Distribution Pipeline",
+      "purpose": "Document the Makefile build system, Rollup bundling, binary compilation of standard library, npm package structure, and the self-hosting bootstrapping process",
+      "parent": "Development Guide",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Testing Framework",
+      "purpose": "Explain the test infrastructure using AVA/Jasmine, Scheme test files, syntax.scm macro tests, helper utilities, snapshot tests, and test organization",
+      "parent": "Development Guide",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    },
+    {
+      "title": "Extensibility Mechanisms",
+      "purpose": "Document reader macros, parser extensions via specials map, define-symbol-macro, SXML for React/Preact, and custom syntax examples like defstruct",
+      "parent": "Development Guide",
+      "page_notes": [
+        {
+          "content": ""
+        }
+      ]
+    }
+  ]
+}
