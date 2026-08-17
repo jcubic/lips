@@ -1,6 +1,6 @@
 .PHONY: ALL publish test test-file test-update coveralls lint zero coverage codespell benchmark smoke
 
-VERSION=1.0.0-beta.22
+VERSION=1.0.0-beta.22.1
 VERSION_DASH=`echo -n "${VERSION}" | sed "s/-/%E2%80%93/"`
 BRANCH=`git branch --show-current | grep -q '^master$$' && echo 'master' || echo 'devel'`
 DATE=`date -uR`

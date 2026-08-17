@@ -10,10 +10,8 @@ permissions:
 
 jobs:
   test:
-      - name: Update deps
-        run: sudo apt-get update
-      - name: Install ImageMagick
-        run: sudo apt-get -y install graphicsmagick
+    runs-on: ubuntu-latest
+    steps:
       - name: checkout
         uses: actions/checkout@v7
       - name: setup node
