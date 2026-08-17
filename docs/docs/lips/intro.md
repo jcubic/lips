@@ -996,7 +996,7 @@ To solve this issue, you can use [iterator->array](/reference#iterator->array) f
 
 :::info
 
-`Arrary.from` and `Array.fromAsync` invoke the iterator next method internally so the values from the generator are not unboxed:
+`Array.from` and `Array.fromAsync` invoke the iterator next method internally so the values from the generator are not unboxed:
 
 ```scheme
 (Array.fromAsync (array->async-iterator #(1/2 1/3 1/4 1/5)))
