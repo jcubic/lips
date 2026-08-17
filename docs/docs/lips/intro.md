@@ -979,7 +979,7 @@ To solve this issue, you can use [iterator->array](/reference#iterator->array) f
 
 (define (array->async-iterator arr)
   (async-generator (lambda (yield)
-                      (timer 10)
+                      (timer 10) ;; timer returns a Promise
                       (let ((len arr.length))
                         (let loop ((i 0))
                           (if (< i len)
@@ -993,6 +993,19 @@ To solve this issue, you can use [iterator->array](/reference#iterator->array) f
 (array->async-iterator #(1 2 3))
 ;; ==> #<asyncIterator(Object)>
 ```
+
+:::info
+
+`Arrary.from` and `Array.fromAsync` invoke the iterator next method internally so the values from the generator are not unboxed:
+
+```scheme
+(Array.fromAsync (array->async-iterator #(1/2 1/3 1/4 1/5)))
+;; ==> #(1/2 1/3 1/4 1/5)
+```
+
+To unbox its values, you would need to [monkey patch](https://en.wikipedia.org/wiki/Monkey_patch) the Array static method.
+
+:::
 
 ### Classes
 
