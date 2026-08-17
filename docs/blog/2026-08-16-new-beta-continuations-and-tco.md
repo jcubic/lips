@@ -1,5 +1,5 @@
 ---
-slug: new-beta-continuations-and-tco
+slug: beta-continuations-and-tco
 title: "LIPS Scheme 1.0.0-beta.22 with Continuations and TCO"
 authors: jcubic
 image: /img/continuations.png
@@ -450,4 +450,4 @@ Up to 2.81× speed improvement
 * fix exit code for `lips -e` on exception
 * fix `vector-fill!` off-by-one error
 * fix parsing of syntax extensions
-
+* fix repr and type of iterators

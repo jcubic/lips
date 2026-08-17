@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 16 Aug 2026 23:00:16 +0000
+ * build: Mon, 17 Aug 2026 10:00:47 +0000
  */
 
 'use strict';
@@ -9628,14 +9628,8 @@ function is_undef(value) {
   return typeof value === 'undefined';
 }
 // -------------------------------------------------------------------------
-function get_proto(obj) {
-  return Object.getPrototypeOf(obj);
-}
-// -------------------------------------------------------------------------
 function is_iterator(obj, symbol) {
-  if (has_own_symbol(obj, symbol) || has_own_symbol(get_proto(obj), symbol)) {
-    return is_function(obj[symbol]);
-  }
+  return is_object(obj) && is_function(obj[symbol]);
 }
 // -------------------------------------------------------------------------
 function is_instance(obj) {
@@ -9652,10 +9646,6 @@ function is_instance(obj) {
 // -------------------------------------------------------------------------
 function is_native(obj) {
   return obj && (obj instanceof LNumber || obj instanceof LString || obj instanceof LCharacter);
-}
-// -------------------------------------------------------------------------
-function has_own_symbol(obj, symbol) {
-  return is_object(obj) && symbol in Object.getOwnPropertySymbols(obj);
 }
 // ----------------------------------------------------------------------
 // :: Function utilities
@@ -16937,10 +16927,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 16 Aug 2026 23:00:16 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Mon, 17 Aug 2026 10:00:47 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 16 Aug 2026 23:00:16 +0000').valueOf();
+  var date = LString('Mon, 17 Aug 2026 10:00:47 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -16979,7 +16969,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 16 Aug 2026 23:00:16 +0000';
+var date = 'Mon, 17 Aug 2026 10:00:47 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

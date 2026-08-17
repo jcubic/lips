@@ -5825,9 +5825,7 @@ function get_proto(obj) {
 }
 // -------------------------------------------------------------------------
 function is_iterator(obj, symbol) {
-    if (has_own_symbol(obj, symbol) || has_own_symbol(get_proto(obj), symbol)) {
-        return is_function(obj[symbol]);
-    }
+    return is_object(obj) && is_function(obj[symbol]);
 }
 // -------------------------------------------------------------------------
 function is_instance(obj) {

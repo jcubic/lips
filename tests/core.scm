@@ -1029,6 +1029,42 @@ This function returns the car (item 1) of the list.")
           #!no-trace
           (t.is (list? (match #/Nasty at line [0-9]+ and column [0-9]+/g message)) #t))))
 
+(test "iterators"
+      (lambda (t)
+        (define (array->iterator arr)
+          (generator (lambda (yield)
+                             (timer 10)
+                             (let ((len arr.length))
+                               (let loop ((i 0))
+                                 (if (< i len)
+                                     (begin
+                                       (yield (vector-ref arr i))
+                                       (loop (+ i 1)))))))))
+
+
+        (let ((iterator (array->iterator #(1 3 4))))
+          (t.is (Array.from iterator) #(1 3 4))
+          (t.is (type iterator) "iterator")
+          (t.is (repr iterator) "#<iterator(Object)>"))))
+
+(test "async iterators"
+      (lambda (t)
+        (define (array->async-iterator arr)
+          (async-generator (lambda (yield)
+                             (timer 10)
+                             (let ((len arr.length))
+                               (let loop ((i 0))
+                                 (if (< i len)
+                                     (begin
+                                       (yield (vector-ref arr i))
+                                       (loop (+ i 1)))))))))
+
+
+        (let ((iterator (array->async-iterator #(1 3 4))))
+          (t.is (Array.fromAsync iterator) #(1 3 4))
+          (t.is (type iterator) "async-iterator")
+          (t.is (repr iterator) "#<asyncIterator(Object)>"))))
+
 
 ;; TODO
 ;; begin*

@@ -44,6 +44,7 @@
 * fix exit code for `lips -e` on exception
 * fix `vector-fill!` off-by-one error
 * fix parsing of syntax extensions
+* fix repr and type of iterators
 
 ## 1.0.0-beta.21
 ### Breaking
