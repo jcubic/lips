@@ -17,7 +17,7 @@
        (if (not (. ,attempt 'passed))
            (--> (. ,attempt 'errors)
                 (forEach (lambda (e)
-                           (set-obj! e 'savedError #void)))))
+                           (set-object! e 'savedError #void)))))
        (--> ,attempt (commit)))))
 
 (define (round-number x . rest)
@@ -77,6 +77,14 @@
   (let ((result (gensym)))
     `(try (begin ,@body #f) (catch (e) #t))))
 
+(define-macro (to.throw.error . body)
+  "(to.throw code)
+
+   If code throw exception it will return true, otherwise
+   it will return false."
+  (let ((result (gensym)))
+    `(try (begin ,@body #f) (catch (e) e))))
+
 (define (%test-specs t specs)
   "(%test-specs t list)
 
@@ -107,3 +115,20 @@
                                  `(list ,(symbol->string (car spec))
                                         ,@spec))
                                body))))
+
+(define (with-parser-internals before thunk after)
+  (before (--> (%internal) (get "__parser_args__")))
+  (thunk)
+  (after (--> (%internal) (get "__parser_args__"))))
+
+(define-macro (with-meta . body)
+  "(with-meta . body)
+
+   Run body with tracing enabled - the parser tags code with source positions
+   (line/column/file) and the evaluator collects a stack trace. A single
+   (trace) call now controls both."
+  `(begin
+     (trace #t)
+     (let ((result (begin ,@body)))
+       (trace #f)
+       result)))

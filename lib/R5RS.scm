@@ -24,17 +24,18 @@
 (define string-append concat)
 (define = ==)
 (define remainder %)
-(define procedure? function?)
 (define expt **)
 (define list->vector list->array)
 (define vector->list array->list)
 (define call-with-current-continuation call/cc)
+(define fold-right fold)
+(define fold-left reduce)
 
 ;; -----------------------------------------------------------------------------
 (define (procedure? obj)
-  "(procedure? expression)
+  "(procedure? obj)
 
-   Predicate that tests if value is a callable function or continuation."
+   Checks if object is callable function or continuation."
   (or (function? obj) (continuation? obj)))
 
 ;; -----------------------------------------------------------------------------
@@ -49,10 +50,10 @@
          (symbol (cadr spec))
          (args (cddr spec)))
      `(begin
-        (set-special! ,symbol ',name ,(string->symbol
-                                       (concat "lips.specials."
-                                               (symbol->string type))))
-        (define-macro (,name ,@args) ,@rest))))
+        (define-macro (,name ,@args) ,@rest)
+        (set-special! ,symbol ,name ,(string->symbol
+                                      (concat "lips.specials."
+                                              (symbol->string type)))))))
 
 ;; -----------------------------------------------------------------------------
 ;; Vector literals syntax using parser syntax extensions
@@ -196,7 +197,7 @@
                                  (begin (set! result-ready? #t)
                                         (set! result x)
                                         result)))))))
-        (set-obj! promise (Symbol.for "promise") true)
+        (set-object! promise (Symbol.for "promise") true)
         (set! promise.toString (lambda ()
                                  (string-append "#<promise - "
                                                 (if result-ready?
@@ -276,7 +277,7 @@
   (typecheck "number->string" x "number" 1)
   (let ((radix (if (null? rest) 10 (car rest))))
     (typecheck "number->string" radix "number" 2)
-    (--> x (toString (--> radix (valueOf))))))
+    (x.toString (radix.valueOf))))
 
 ;; -----------------------------------------------------------------------------
 (define (boolean? x)
@@ -301,7 +302,7 @@
    Set obj as value in vector at position i."
   (typecheck "vector-set!" vector "array" 1)
   (typecheck "vector-set!" i "number" 2)
-  (set-obj! vector i obj))
+  (set-object! vector i obj))
 
 ;; -----------------------------------------------------------------------------
 (define (%number-type type x)
@@ -395,7 +396,7 @@
 
 ;; -----------------------------------------------------------------------------
 (define (make-rectangular re im)
-  "(make-rectangular im re)
+  "(make-rectangular re im)
 
    Creates a complex number from imaginary and real part (a+bi form)."
   (let ((value `((re . ,re) (im . ,im))))
@@ -470,16 +471,16 @@
 (define _this_env (current-environment))
 
 ;; -----------------------------------------------------------------------------
-(let iter ((fns _maths))
+(let loop ((fns _maths))
   (if (not (null? fns))
       (let* ((name (car fns))
              (op (. Math name))
              (fn (lambda (n) (lips.LNumber (op n)))))
         (--> _this_env (set name fn))
-        (set-obj! fn '__doc__ (concat "(" name " n)\n\nFunction that calculates " name
+        (set-object! fn '__doc__ (concat "(" name " n)\n\nFunction that calculates " name
                                   " math operation (it call JavaScript Math." name
                                   " function)"))
-        (iter (cdr fns)))))
+        (loop (cdr fns)))))
 
 ;; -----------------------------------------------------------------------------
 (define (sin n)
@@ -967,24 +968,21 @@
   "(char-whitespace? chr)
 
    Returns true if character is whitespace."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'space-unicode-regex))))
+  (--> (%internal) (get 'space-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (%define-chr-re (char-numeric? chr)
   "(char-numeric? chr)
 
    Returns true if character is number."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'numeral-unicode-regex))))
+  (--> (%internal) (get 'numeral-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (%define-chr-re (char-alphabetic? chr)
   "(char-alphabetic? chr)
 
    Returns true if character is leter of the ASCII alphabet."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'letter-unicode-regex))))
+  (--> (%internal) (get 'letter-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (define (%char-cmp name chr1 chr2)
@@ -1138,10 +1136,6 @@
   (apply display (cons (char.valueOf) rest)))
 
 ;; -----------------------------------------------------------------------------
-(define fold-right reduce)
-(define fold-left fold)
-
-;; -----------------------------------------------------------------------------
 (define (make-vector n . rest)
   "(make-vector n [fill])
 
@@ -1175,7 +1169,7 @@
    Function that sets nth item of the vector to value."
   (typecheck "vector-ref" vec "array" 1)
   (typecheck "vector-ref" n "number" 2)
-  (set-obj! vec n value))
+  (set-object! vec n value))
 
 ;; -----------------------------------------------------------------------------
 (define (vector-fill! vec value)
@@ -1186,7 +1180,7 @@
   (let recur ((n (- (length vec) 1)))
     (if (>= n 0)
         (begin
-          (set-obj! vec n value)
+          (set-object! vec n value)
           (recur (- n 1))))))
 
 ;; -----------------------------------------------------------------------------
@@ -1437,8 +1431,7 @@
    Procedure use port and make it current-input-port then thunk is executed.
    After thunk is executed current-input-port is restored and given port
    is closed."
-  (let* ((env **interaction-environment**)
-         (internal-env (env.get '**internal-env**))
+  (let* ((internal-env (%internal))
          (old-stdin (internal-env.get "stdin")))
     (internal-env.set "stdin" port)
     (try
@@ -1468,8 +1461,7 @@
 ;; -----------------------------------------------------------------------------
 (define (with-output-to-file string thunk)
   (let* ((port (open-output-file string))
-         (env **interaction-environment**)
-         (internal-env (env.get '**internal-env**))
+         (internal-env (%internal))
          (old-stdout (internal-env.get "stdout")))
     (internal-env.set "stdout" port)
     (try
@@ -1481,7 +1473,7 @@
 ;; -----------------------------------------------------------------------------
 (define (file-exists? filename)
   (new Promise (lambda (resolve)
-                 (let ((fs (--> lips.env (get '**internal-env**) (get 'fs))))
+                 (let ((fs (--> (%internal) (get 'fs))))
                    (if (null? fs)
                        (throw (new Error "file-exists?: fs not defined"))
                        (fs.stat filename (lambda (err stat)

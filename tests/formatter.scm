@@ -1,5 +1,5 @@
 
-(test "formatter: let+if+begin"
+(test "let+if+begin"
       (lambda (t)
         (t.snapshot (pretty-format '(let ((x 10))
                                       (if (zero? x)
@@ -11,13 +11,13 @@
                                             (newline))))))))
 
 
-(test "formatter: named let"
+(test "named let"
       (lambda (t)
         (t.snapshot (pretty-format '(let iter ((x 10))
                                       (if (not (zero? x))
                                           (iter (- x 1))))))))
 
-(test "formatter: let"
+(test "let"
       (lambda (t)
         (t.snapshot (pretty-format '(let ((x 10))
                                       (print x)
@@ -54,7 +54,7 @@
                                       (foo bar)
                                       (print0))))))
 
-(test "formatter: cond"
+(test "cond"
       (lambda (t)
         (t.snapshot (pretty-format '(cond ((foo 10) 10)
                                           ((foo (bar baz))
@@ -72,7 +72,7 @@
                                           ((foo)
                                            (foo bar)))))))
 
-(test "formatter: define"
+(test "define"
       (lambda (t)
 
         (t.snapshot (pretty-format '(define (foo x) (+ x x))))
@@ -93,24 +93,24 @@
         (t.snapshot (pretty-format '(define foo 10)))))
 
 
-(test "formatter: syntax-rules"
+(test "syntax-rules"
       (lambda (t)
 
         (t.snapshot (pretty-format '(syntax-rules () ((_ x) (list x)))))
         (t.snapshot (pretty-format '(syntax-rules () ((_) (if)) ((_ x) (list x)))))
         (t.snapshot (pretty-format '(syntax-rules (==>) ((_ a ==> b) (lambda (x) (and (< x a) (> x b)))))))))
 
-(test "formatter: define-syntax"
+(test "define-syntax"
       (lambda (t)
 
         (t.snapshot (pretty-format '(define-syntax foo (syntax-rules () ((_ x) (list x))))))))
 
-(test "formatter: nested list"
+(test "nested list"
       (lambda (t)
 
         (t.snapshot (pretty-format '((1 2 3) (1 2 3) (1 2 3))))))
 
-(test "formatter: string"
+(test "string"
       (lambda (t)
         (let ((code ";; bar
                      (define i 0) ;; foo

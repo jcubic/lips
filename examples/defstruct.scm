@@ -48,7 +48,7 @@
          ((. console "error") msg)
          (let (($ (. window "jQuery")))
            (if (not (or (null? $) (null? (. jQuery "terminal"))))
-               (let ((term ((.. jQuery.terminal.active))))
+               (let ((term (jQuery.terminal.active)))
                  (--> term (error msg))))))))
 
 (define string-append concat)

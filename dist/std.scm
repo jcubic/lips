@@ -18,11 +18,53 @@
 (define NaN +nan.0)
 
 ;; -----------------------------------------------------------------------------
+(define-macro (%internal)
+  `(let-env **interaction-environment** **internal-env**))
+
+;; -----------------------------------------------------------------------------
+(define (%set-internal prop value)
+  "(%set-internal prop value)
+
+   Helper function that create setter for internal environment."
+  (lambda ()
+    (ignore (--> (%internal) (set prop value)))))
+
+;; -----------------------------------------------------------------------------
+;; directives
+;; -----------------------------------------------------------------------------
+(set-special! "#!cycle" (%set-internal "__check_cycle__" true) lips.specials.SYMBOL)
+(set-special! "#!no-cycle" (%set-internal "__check_cycle__" false) lips.specials.SYMBOL)
+
+(set-special! "#!promise" (%set-internal "__check_promise__" true) lips.specials.SYMBOL)
+(set-special! "#!no-promise" (%set-internal "__check_promise__" false) lips.specials.SYMBOL)
+
+(set-special! "#!trace" (%set-internal "__trace__" true) lips.specials.SYMBOL)
+(set-special! "#!no-trace" (%set-internal "__trace__" false) lips.specials.SYMBOL)
+
+;; -----------------------------------------------------------------------------
+(define (trace flag)
+  "(trace flag)
+
+   Toggle tracing. When enabled the parser augments the code with source
+   positions (so errors report line, column and file) and the evaluator
+   collects stack frames (so exceptions carry a Scheme 'stack' trace)."
+  (typecheck "trace" flag "boolean")
+  (ignore (--> (%internal) (set "__trace__" flag))))
+
+;; -----------------------------------------------------------------------------
 (define (%doc string fn)
   (typecheck "%doc" fn "function")
   (typecheck "%doc" string "string")
-  (set-obj! fn '__doc__ (--> string (replace #/^ +/mg "")))
+  (set-object! fn '__doc__ (--> string (replace #/^ +/mg "")))
   fn)
+
+;; -----------------------------------------------------------------------------
+(define (error message . args)
+  "(error message ...)
+
+   Function raises error with given message and arguments,
+   which are called invariants."
+  (raise (new lips.Error message (args.to_array))))
 
 ;; -----------------------------------------------------------------------------
 (define-macro (let-syntax vars . body)
@@ -60,6 +102,167 @@
          (typecheck "define-syntax" ,expr-name "syntax")
          ,expr-name)
        ,@rest)))
+
+;; -----------------------------------------------------------------------------
+(define-macro (and . args)
+  "(and expr1 expr2 ...)
+
+   Macro that evaluates each expression in sequence and if any value returns false
+   it will stop and return false. If each value returns true it will return the
+   last value. If it's called without arguments it will return true."
+  (if (null? args)
+      #t
+      (if (null? (cdr args))
+          (car args)
+          `(if ,(car args) (and ,@(cdr args)) #f))))
+
+;; -----------------------------------------------------------------------------
+(define-macro (or . args)
+  "(or expr1 expr2 ...)
+
+   Macro that executes the values one by one and returns the first that is
+   a truthy value. If there are no expressions that evaluate to true it
+   returns false."
+  (if (null? args)
+      #f
+      (if (null? (cdr args))
+          (car args)
+          (let ((name (gensym)))
+            `(let ((,name ,(car args)))
+               (if ,name ,name (or ,@(cdr args))))))))
+
+;; -----------------------------------------------------------------------------
+;; map implementation based on https://stackoverflow.com/a/21629316/387194
+;; -----------------------------------------------------------------------------
+(define (%some? function list)
+  "(%some? function lst)
+
+   Help function that check if function predicate return true for every element
+   of the list. If argument is not a list it returns #f."
+  (and (pair? list)
+       (or (function (car list))
+           (%some? function (cdr list)))))
+
+;; -----------------------------------------------------------------------------
+(define (%map1 function list)
+  "(%map1 function list)
+
+   Helper single list map function, used by map."
+  (let loop ((list list) (result ()))
+    (if (null? list)
+        (reverse result)
+        (loop (cdr list)
+              (cons (function (car list))
+                    result)))))
+
+;; -----------------------------------------------------------------------------
+(define (%empty-lists lists)
+  "(%empty-lists lists)
+
+  helper function that checks if lists of lists is empty"
+  (or (null? lists) (%some? null? lists)))
+
+;; -----------------------------------------------------------------------------
+(define (map function . lists)
+  "(map fn list1 list2 ...)
+
+   Higher-order function that calls function `fn` with each
+   value of the list. If you provide more then one list as argument
+   it will take each value from each list and call `fn` function
+   with that many argument as number of list arguments. The return
+   values of the fn calls are accumulated in a result list and
+   returned by map."
+  (typecheck "map" function "function")
+  (let loop ((lists lists) (k (lambda (x) x)))
+    (if (%empty-lists lists)
+        (k '())
+        (let ((value (apply function (%map1 car lists))))
+          (loop (%map1 cdr lists)
+                (lambda (rest)
+                  (k (cons value rest))))))))
+
+;; -----------------------------------------------------------------------------
+(define (find object list)
+  "(find fn list)
+   (find regex list)
+   (find atom list)
+
+   Higher-order function that finds the first value for which fn return true.
+   If called with a regex or any atom it will create a matcher function."
+  (let ((fn (matcher object)))
+    (let loop ((list list))
+      (if (null? list)
+          #f
+          (let ((item (car list)))
+            (if (fn item)
+                item
+                (loop (cdr list))))))))
+
+;; -----------------------------------------------------------------------------
+(define (for-each function . lists)
+  "(for-each fn list1 list2 ...)
+
+   Higher-order function that calls function `fn` on each
+   value of the argument. If you provide more than one list
+   it will take each value from each list and call `fn` function
+   with that many arguments as number of list arguments."
+  (typecheck "for-each" function "function")
+  (let loop ((lists lists))
+    (if (not (%empty-lists lists))
+        (begin
+          (apply function (%map1 car lists))
+          (loop (%map1 cdr lists))))))
+
+;; -----------------------------------------------------------------------------
+(define (fold function init . lists)
+  "(fold fn init . lists)
+
+   Function fold is left-to-right reversal of reduce. It call `fn`
+   on each pair of elements of the list and returns a single value.
+   e.g. it computes (fn 'a 'x (fn 'b 'y (fn 'c 'z 'foo)))
+   for: (fold fn 'foo '(a b c) '(x y z))"
+  (typecheck "fold" function "function")
+  (let loop ((result init) (lists lists))
+    (if (%empty-lists lists)
+        result
+        (loop (apply function (append (%map1 car lists) (list result)))
+              (%map1 cdr lists)))))
+
+;; -----------------------------------------------------------------------------
+(define (reduce function init . lists)
+  "(reduce fn init list . lists)
+
+   Higher-order function that takes each element of the list and calls
+   the fn with result of previous call or init and the next element
+   of the list until each element is processed, and returns a single value
+   as result of last call to `fn` function.
+   e.g. it computes (fn 'c 'z (fn 'b 'y (fn 'a 'x 'foo)))
+   for: (reduce fn 'foo '(a b c) '(x y z))"
+  (typecheck "reduce" function "function")
+  (let loop ((result init) (lists lists))
+    (if (%empty-lists lists)
+        result
+        (loop (apply function result (%map1 car lists))
+              (%map1 cdr lists)))))
+
+;; -----------------------------------------------------------------------------
+(define (filter object list)
+  "(filter fn list)
+   (filter regex list)
+
+   Higher-order function that calls `fn` for each element of the list
+   and return a new list for only those elements for which fn returns
+   a truthy value. If called with a regex it will create a matcher function."
+  (typecheck "filter" object #("function" "regex"))
+  (let ((fn (matcher object)))
+    (let loop ((result '()) (list list))
+      (if (null? list)
+          (reverse result)
+          (let ((item (car list)))
+            (loop (if (fn item)
+                      (cons item result)
+                      result)
+                  (cdr list)))))))
 
 ;; -----------------------------------------------------------------------------
 (define (quoted-symbol? x)
@@ -178,26 +381,14 @@
    (and (object? x) (procedure? (. x Symbol.iterator))))
 
 ;; -----------------------------------------------------------------------------
-(define-macro (.. expr)
-  "(.. foo.bar.baz)
-
-   Gets the value from a nested object where the argument is a period separated symbol."
-  (if (not (symbol? expr))
-      expr
-      (let ((parts (split "." (symbol->string expr))))
-        (if (single parts)
-            expr
-            `(. ,(string->symbol (car parts)) ,@(cdr parts))))))
-
-;; -----------------------------------------------------------------------------
-(set-special! "#:" 'gensym-literal)
-
-;; -----------------------------------------------------------------------------
 (define (gensym-literal symbol)
   "(gensym-literal symbol)
 
    Parser extension that creates a new quoted named gensym."
   `(quote ,(gensym symbol)))
+
+;; -----------------------------------------------------------------------------
+(set-special! "#:" gensym-literal)
 
 ;; -----------------------------------------------------------------------------
 (define (plain-object? x)
@@ -257,21 +448,6 @@
                             (apply cons (vector->list arr)))))))
 
 ;; -----------------------------------------------------------------------------
-(define (parent.frames)
-  "(parent.frames)
-
-   Returns the list of environments from parent frames (lambda function calls)"
-  (let iter ((result '()) (frame (parent.frame 1)))
-    (if (eq? frame (interaction-environment))
-        (cons frame result)
-        (if (null? frame)
-            result
-            (let ((parent.frame (--> frame (get 'parent.frame (object :throwError false)))))
-              (if (function? parent.frame)
-                  (iter (cons frame result) (parent.frame 0))
-                  result))))))
-
-;; -----------------------------------------------------------------------------
 (define (pair-map fn seq-list)
   "(pair-map fn list)
 
@@ -319,27 +495,27 @@
                            (throw msg))
                          (let ((prop (key->string first)))
                            (if (or (key? second) no-second)
-                               (let ((code `(set-obj! ,name ,prop #void)))
+                               (let ((code `(set-object! ,name ,prop #void)))
                                  (loop (cdr lst) (cons code result)))
                                (let ((code (if readonly
                                                (if (and (pair? second) (key? (car second)))
-                                                   `(set-obj! ,name
-                                                              ,prop
-                                                              ,(%object-expander readonly second quot)
-                                                              ,r-only)
+                                                   `(set-object! ,name
+                                                                 ,prop
+                                                                 ,(%object-expander readonly second quot)
+                                                                 ,r-only)
                                                    (if quot
-                                                       `(set-obj! ,name ,prop ',second ,r-only)
-                                                       `(set-obj! ,name ,prop ,second ,r-only)))
+                                                       `(set-object! ,name ,prop ',second ,r-only)
+                                                       `(set-object! ,name ,prop ,second ,r-only)))
                                                (if (and (pair? second) (key? (car second)))
-                                                   `(set-obj! ,name
-                                                              ,prop
-                                                              ,(%object-expander readonly second))
+                                                   `(set-object! ,name
+                                                                 ,prop
+                                                                 ,(%object-expander readonly second))
                                                    (if quot
-                                                       `(set-obj! ,name ,prop ',second)
-                                                       `(set-obj! ,name ,prop ,second))))))
+                                                       `(set-object! ,name ,prop ',second)
+                                                       `(set-object! ,name ,prop ,second))))))
                                  (loop (cddr lst) (cons code result)))))))))
            ,(if readonly
-               `(Object.preventExtensions ,name))
+                `(Object.preventExtensions ,name))
            ,name))))
 
 ;; -----------------------------------------------------------------------------
@@ -347,27 +523,15 @@
   "(object :name value)
 
    Creates a JavaScript object using key like syntax."
-  (try
-    (%object-expander false expr)
-    (catch (e)
-      (try
-       (error e.message)
-       (catch (e)
-         (console.error e.message))))))
+    (%object-expander false expr))
 
 ;; -----------------------------------------------------------------------------
-(define-macro (object-literal . expr)
-  "(object-literal :name value)
+(define-macro (%object-literal . expr)
+  "(%object-literal list)
 
    Creates a JavaScript object using key like syntax. This is similar,
    to object but all values are quoted. This macro is used by the & object literal."
-  (try
-    (%object-expander true expr true)
-    (catch (e)
-      (try
-        (error e.message)
-        (catch (e)
-          (console.error e.message))))))
+    (%object-expander true expr true))
 
 ;; -----------------------------------------------------------------------------
 (define (alist->assign desc . sources)
@@ -409,7 +573,7 @@
    Marks the object as data to stop evaluation."
   (if (object? obj)
       (begin
-        (set-obj! obj 'data true)
+        (set-object! obj 'data true)
         obj)))
 
 ;; -----------------------------------------------------------------------------
@@ -480,8 +644,10 @@
   (let ((rules (gensym "rules")))
     `(let ((,rules lips.Formatter.rules)
            (Ahead (lambda (pattern)
-                    (let ((Ahead (.. lips.Formatter.Ahead)))
-                      (new Ahead (if (string? pattern) (new RegExp pattern) pattern)))))
+                    (new lips.Formatter.Ahead
+                         (if (string? pattern)
+                             (new RegExp pattern)
+                             pattern))))
            (* (Symbol.for "*"))
            (Pattern (lambda (pattern flag)
                       (new lips.Formatter.Pattern (list->array pattern)
@@ -630,35 +796,31 @@
   "(current-output-port)
 
    Returns the default stdout port."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'stdout))))
+  (--> (%internal) (get 'stdout)))
 
 ;; -----------------------------------------------------------------------------
 (define (current-error-port)
   "(current-output-port)
 
    Returns the default stderr port."
-  (let-env (interaction-environment)
-     (--> **internal-env** (get 'stderr))))
+  (--> (%internal) (get 'stderr)))
 
 ;; -----------------------------------------------------------------------------
 (define (current-input-port)
   "(current-input-port)
 
    Returns the default stdin port."
-  (let-env (interaction-environment)
-     (--> **internal-env** (get 'stdin))))
+  (--> (%internal) (get 'stdin)))
 
 ;; -----------------------------------------------------------------------------
 (define (command-line)
   "(command-line)
 
    Returns the command line arguments, or an empty list if not running under Node.js."
-  (let ((args (let-env (interaction-environment)
-                       (--> **internal-env** (get 'command-line)))))
-    (if (or (null? args) (zero? (length args)))
+  (let ((args (--> (%internal) (get 'command-line))))
+    (if (or (null? args) (== (length args) 0))
         '("")
-        (vector->list args))))
+        (lips.Pair.from_array args))))
 
 ;; -----------------------------------------------------------------------------
 (define (flush-output . rest)
@@ -726,7 +888,7 @@
 ;; -----------------------------------------------------------------------------
 ;; add syntax &(:foo 10) that evaluates (object :foo 10)
 ;; -----------------------------------------------------------------------------
-(set-special! "&" 'object-literal lips.specials.SPLICE)
+(set-special! "&" %object-literal lips.specials.SPLICE)
 ;; -----------------------------------------------------------------------------
 (set-repr! Object
            (lambda (x q)
@@ -740,8 +902,6 @@
                      ")")))
 
 ;; -----------------------------------------------------------------------------
-(set-special! "#\"" '%string-interpolation lips.specials.SYMBOL)
-
 (define (%read-interpolated . rest)
   "(%read-interpolated [port])
 
@@ -758,20 +918,27 @@
                           (value (read (open-input-string expr))))
                      (loop "" (vector-append result (vector part expr)) (read-char)))
                    (let inner ((next (peek-char port)))
-                     (cond ((char=? next #\space) (read-char) (inner (peek-char port)))
+                     (cond ((char=? next #\space)
+                            (read-char port)
+                            (inner (peek-char port)))
                            ((char=? next #\})
-                            (read-char)
-                            (loop "" (vector-append result (vector part expr)) (read-char)))
+                            (read-char port)
+                            (loop ""
+                                  (vector-append result (vector part expr))
+                                  (read-char port)))
                            (else
-                            (error (string-append "Parse Error: expecting } got " (repr next)))))))))
+                            (error (string-append "Parse Error: expecting } got "
+                                                  (repr next)))))))))
             ((char=? char #\\)
-             (loop (string-append part (repr (read-char))) result (read-char)))
+             (loop (string-append part (repr (read-char port)))
+                   result
+                   (read-char port)))
             ((char=? char #\")
              (vector->list (vector-append result (vector part))))
             ((eof-object? char)
              (error "Parse Error: expecting character #eof found"))
             (else
-             (loop (string-append part (repr char)) result (read-char)))))))
+             (loop (string-append part (repr char)) result (read-char port)))))))
 
 ;; -----------------------------------------------------------------------------
 (define (%string-interpolation)
@@ -790,6 +957,8 @@
                                  `(repr ,expr)))
                            (%read-interpolated)))))
 
+;; -----------------------------------------------------------------------------
+(set-special! "#\"" %string-interpolation lips.specials.SYMBOL)
 ;; -----------------------------------------------------------------------------
 (define (bound? x . rest)
   "(bound? x [env])
@@ -908,7 +1077,7 @@
 
    Evaluates body after delay, it returns the timer ID from setTimeout.
    To clear the timer you can use native JS clearTimeout function."
-  `(setTimeout (lambda () (try (begin ,@body) (catch (e) (error (.. e.message))))) ,time))
+  `(setTimeout (lambda () (try (begin ,@body) (catch (e) (error e.message)))) ,time))
 
 ;; -----------------------------------------------------------------------------
 (define-macro (wait time . expr)
@@ -916,31 +1085,6 @@
 
    Returns a promise that will resolve with the expression after delay."
   `(promise (timer ,time (resolve (begin ,@expr)))))
-
-;; -----------------------------------------------------------------------------
-(define (await value)
-  "(await value)
-
-   Unquotes a quoted promise so it can be automagically evaluated (resolved
-   to its value)."
-  (if (instanceof lips.QuotedPromise value)
-      (value.valueOf)
-      value))
-
-;; -----------------------------------------------------------------------------
-(define-macro (quote-promise expr)
-  "(quote-promise expr) or '>expr
-
-  Macro used to escape automati awaiting of the expression. It will be wrapped
-  with a JavaScript class that behaves like Promise but will not be automatically
-  resolved by LIPS like normal promises are."
-  `(let ((env))
-      (set! env (current-environment))
-      (env.set (Symbol.for "__promise__") true)
-      (let ((env))
-        (set! env (current-environment))
-        (env.set (Symbol.for "__promise__") false)
-        ,expr)))
 
 ;; -----------------------------------------------------------------------------
 (define (defmacro? obj)
@@ -1041,7 +1185,7 @@
 
      (define-class Person Object
          (constructor (lambda (self name)
-                        (set-obj! self '_name name)))
+                        (set-object! self '_name name)))
          (hi (lambda (self)
                (display (string-append self._name \" says hi\"))
                (newline))))
@@ -1058,17 +1202,17 @@
                                 ;; ref: https://stackoverflow.com/a/50885340/387194
                                 (append (%class-lambda constructor)
                                         (list 'this))))
-             (set-obj! ,name (Symbol.for "__class__") true)
+             (set-object! ,name (Symbol.for "__class__") true)
              (let ((,g:parent ,parent ))
                (if (not (null? ,g:parent))
                    (begin
-                     (set-obj! ,name 'prototype (Object.create (. ,g:parent 'prototype)))
-                     (set-obj! (. ,name 'prototype) 'constructor ,name))))
-             (set-obj! ,name '__name__ ',name)
+                     (set-object! ,name 'prototype (Object.create (. ,g:parent 'prototype)))
+                     (set-object! (. ,name 'prototype) 'constructor ,name))))
+             (set-object! ,name '__name__ ',name)
              ,@(map (lambda (fn)
-                      `(set-obj! (. ,name 'prototype)
-                                 ,(%class-method-name (car fn))
-                                 ,(%class-lambda fn)))
+                      `(set-object! (. ,name 'prototype)
+                                    ,(%class-method-name (car fn))
+                                    ,(%class-lambda fn)))
                     functions))
           (let ((item (car lst)))
             (if (eq? (car item) 'constructor)
@@ -1085,26 +1229,11 @@
        (if (not (or (procedure? parent) (eq? parent #null)))
            (error "parent class need to be a function or #null"))
        (define-class temp parent body ...)
-       (set-obj! temp "__name__" "anonymous")
+       (set-object! temp "__name__" "anonymous")
        temp)))
   "(class <parent> body ...)
 
    Allows to create anonymous classes. See define-class for details.")
-
-;; -----------------------------------------------------------------------------
-(define (make-tags expr)
-  "(make-tags expression)
-
-   Returns a list structure of code with better syntax then raw LIPS"
-  `(h ,(let ((val (car expr))) (if (key? val) (key->string val) val))
-      (alist->object (,'quasiquote ,(pair-map (lambda (car cdr)
-                                                `(,(key->string car) . (,'unquote ,cdr)))
-                                              (cadr expr))))
-      ,(if (not (null? (cddr expr)))
-           (if (and (pair? (caddr expr)) (let ((s (caaddr expr)))
-                                           (and (symbol? s) (eq? s 'list))))
-               `(list->array (list ,@(map make-tags (cdaddr expr))))
-               (caddr expr)))))
 
 ;; -----------------------------------------------------------------------------
 (define (%sxml h expr)
@@ -1144,11 +1273,11 @@
 ;; -----------------------------------------------------------------------------
 ;; mapping ~ and into longer form (the same as built-in , and ,@)
 ;; -----------------------------------------------------------------------------
-(set-special! "~" 'sxml-unquote-mapper)
-
-;; -----------------------------------------------------------------------------
 (define (sxml-unquote-mapper expression)
   `(sxml-unquote ,expression))
+
+;; -----------------------------------------------------------------------------
+(set-special! "~" sxml-unquote-mapper)
 
 ;; -----------------------------------------------------------------------------
 (define (sxml-unquote)
@@ -1176,23 +1305,6 @@
 
 ;; -----------------------------------------------------------------------------
 (pragma->sxml h)
-
-;; -----------------------------------------------------------------------------
-(define-macro (with-tags expr)
-  "(with-tags expression)
-
-   valutes LIPS shorter code for S-Expression equivalent of JSX.
-   e.g.:
-
-   (with-tags (:div (:class \"item\" :id \"item-1\")
-                    (list (:span () \"Random Item\")
-                          (:a (:onclick (lambda (e) (alert \"close\")))
-                              \"close\"))))
-
-   Above expression can be passed to function that renders JSX (like render
-   in React, Preact) To get the string from the macro you can use vhtml
-   library from npm."
-  (make-tags expr))
 
 ;; -----------------------------------------------------------------------------
 (define (get-resource url)
@@ -1348,6 +1460,77 @@
     (array->list result)))
 
 ;; -----------------------------------------------------------------------------
+;; JS generator inspired by make-coroutine-generator from SRFI-121 AND SRFI-158
+;; -----------------------------------------------------------------------------
+(define (%make-generator symbol)
+  (lambda (proc)
+    (define void (if #f #f))
+    (define return #f)
+    (define resume #f)
+    (define (yield v)
+      (call/cc (lambda (r)
+                 (set! resume r)
+                 (return v))))
+    (define (next)
+      (let ((value (call/cc
+                    (lambda (cc)
+                      (set! return cc)
+                      (if resume
+                          (resume void)
+                          (begin
+                            (proc yield)
+                            (set! resume
+                                  (lambda (v)
+                                    (return (eof-object))))
+                            (return (eof-object))))))))
+        `&(:value ,value :done ,(eof-object? value))))
+
+    (let* ((iterator `((next . ,next)
+                       (,symbol . ,(lambda () this)))))
+      (alist->object iterator))))
+
+;; -----------------------------------------------------------------------------
+(define generator
+  (%doc
+   "(generator function)
+
+    Higher order function that accepts a function with a single argument (usually yield).
+    Function returns JavaScript generator that produce values for each call
+    to yield."
+   (%make-generator Symbol.iterator)))
+
+;; -----------------------------------------------------------------------------
+(define async-generator
+  (%doc
+   "(generator function)
+
+    Higher order function that accepts a function with a single argument (usually yield).
+    Function returns JavaScript async generator that produce values for each call
+    to yield."
+   (%make-generator Symbol.asyncIterator)))
+
+;; -----------------------------------------------------------------------------
+;; source https://github.com/scheme-requests-for-implementation/srfi-158
+;; -----------------------------------------------------------------------------
+(define (make-coroutine-generator proc)
+  (define void (if #f #f))
+  (define return #f)
+  (define resume #f)
+  (define yield (lambda (v)
+                  (call/cc (lambda (r)
+                             (set! resume r)
+                             (return v)))))
+  (lambda ()
+    (call/cc (lambda (cc)
+               (set! return cc)
+               (if resume
+                   (resume void)  ; void? or yield again?
+                   (begin
+                     (proc yield)
+                     (set! resume (lambda (v) (return (eof-object))))
+                     (return (eof-object))))))))
+
+;; -----------------------------------------------------------------------------
 (define-macro (do-iterator spec cond . body)
   "(do-iterator (var expr) (test result) body ...)
 
@@ -1374,20 +1557,20 @@
             (,iterator)
             (,next (lambda ()
                      ((. ,iterator "next")))))
-          (if (or (procedure? ,sync) (procedure? ,async))
-              (begin
-                 (set! ,iterator (if (procedure? ,sync) (,sync) (,async)))
-                 (let* ((,item (,next))
-                        (,stop #f)
-                        (,name (. ,item "value")))
-                   (while (not (or (eq? (. ,item "done") #t) ,stop))
-                     (if ,test
-                         (set! ,stop #t)
-                         (begin
-                           ,@body))
-                      (set! ,item (,next))
-                      (set! ,name (. ,item "value"))))
-                   ,result)))))
+       (if (or (procedure? ,sync) (procedure? ,async))
+           (begin
+             (set! ,iterator (if (procedure? ,sync) (,sync) (,async)))
+             (let* ((,item (,next))
+                    (,stop #f)
+                    (,name (. ,item "value")))
+               (while (not (or (eq? (. ,item "done") #t) ,stop))
+                 (if ,test
+                     (set! ,stop #t)
+                     (begin
+                       ,@body))
+                 (set! ,item (,next))
+                 (set! ,name (. ,item "value"))))
+             ,result)))))
 
 ;; -----------------------------------------------------------------------------
 (define (iterator->array object)
@@ -1399,12 +1582,16 @@
     (do-iterator
      (item object)
      (#f result)
-     (set-obj! result i item)
+     (set-object! result i item)
      (set! i (+ i 1)))))
 
 ;; -----------------------------------------------------------------------------
+;; map is recognized as #<iterator(Map)> we are adding repr for all classes
+;; -----------------------------------------------------------------------------
 (set-repr! Set (lambda () "#<Set>"))
 (set-repr! Map (lambda () "#<Map>"))
+(set-repr! WeakMap (lambda () "#<WeakMap>"))
+(set-repr! WeakSet (lambda () "#<WeakSet>"))
 
 ;; -----------------------------------------------------------------------------
 (define (native-symbol? x)
@@ -1414,16 +1601,16 @@
   (and (string=? (type x) "symbol") (not (symbol? x))))
 
 ;; -----------------------------------------------------------------------------
-(set-special! "’" 'warn-quote)
+(define (%warn-quote)
+  "(%warn-quote)
+
+   Simple function that throws an error, when you try to use ’ symbol as quote in code."
+  (throw (new Error (string-append "You're using an invalid Unicode quote character. Run: "
+                                   "(set-special! \"’\" quote)"
+                                   " to allow the use of this type of quote"))))
 
 ;; -----------------------------------------------------------------------------
-(define-macro (warn-quote)
-  "(warn-quote)
-
-   Simple macro that throws an error, when you try to use ’ symbol as quote in code."
-  (throw (new Error (string-append "You're using an invalid Unicode quote character. Run: "
-                                   "(set-special! \"’\" 'quote)"
-                                   " to allow the use of this type of quote"))))
+(set-special! "’" %warn-quote)
 
 ;; -----------------------------------------------------------------------------
 (define-macro (let-env-values env spec . body)
@@ -1573,8 +1760,7 @@
        Code that uses this function in binary mode needs to check
        if the result is ArrayBuffer or Node.js/BrowserFS Buffer object."
       (if (not read-file)
-          (let ((fs (--> (interaction-environment)
-                         (get '**internal-env**)
+          (let ((fs (--> (%internal)
                          (get 'fs &(:throwError false)))))
             (if (not (null? fs))
                 (let ((*read-file* (promisify fs.readFile)))
@@ -1609,7 +1795,7 @@
 
    Returns a promisified version of a fs function or throws an exception
    if fs is not available."
-  (let ((fs (--> lips.env (get '**internal-env**) (get 'fs &(:throwError false)))))
+  (let ((fs (--> (%internal) (get 'fs &(:throwError false)))))
     (if (null? fs)
         (throw (new Error (string-append message ": fs not defined")))
         (promisify (. fs fn)))))
@@ -1680,6 +1866,34 @@
   (if (instanceof ArrayBuffer bin)
       (new Uint8Array bin)
       (Uint8Array.from bin)))
+
+;; -----------------------------------------------------------------------------
+(define-macro (or . args)
+  "(or expr1 expr2 ...)
+
+   Macro that executes the values one by one and returns the first that is
+   a truthy value. If there are no expressions that evaluate to true it
+   returns false."
+  (if (null? args)
+      #f
+      (if (null? (cdr args))
+          (car args)
+          (let ((name (gensym)))
+            `(let ((,name ,(car args)))
+               (if ,name ,name (or ,@(cdr args))))))))
+
+;; -----------------------------------------------------------------------------
+(define-macro (and . args)
+  "(and expr1 expr2 ...)
+
+   Macro that evaluates each expression in sequence and if any value returns false
+   it will stop and return false. If each value returns true it will return the
+   last value. If it's called without arguments it will return true."
+  (if (null? args)
+      #t
+      (if (null? (cdr args))
+          (car args)
+          `(if ,(car args) (and ,@(cdr args)) #f))))
 
 ;; -----------------------------------------------------------------------------
 (define (complement fn)
@@ -1791,6 +2005,36 @@
 (define performance (if (and (eq? self global) (not (bound? 'performance)))
                         (. (require "perf_hooks") 'performance)
                         performance))
+
+;; -----------------------------------------------------------------------------
+(define (set-hash-syntax! seq value)
+  "(set-hash-syntax! seq value)
+   (set-hash-syntax! seq #f)
+
+   Creates or removes hash syntax. The value can be a macro or a function.
+   The functions needs to return data that will be returned by the parser
+   when it finds the # + char or # + symbol in the input stream.
+   When the value equal to #f the syntax is removed.
+
+   e.g.:
+
+   (set-hash-syntax! #\\+ (lambda (port)
+                           `(quote ,(apply + (read port)))))
+
+   (print #+(1 2 3))
+   ;; ==> 6
+   (print '#+(1 2 3))
+   ;; ==> (quote 6)"
+  (typecheck "set-hash-syntax!" seq '("symbol" "character"))
+  (let ((string (string-append "#" (if (symbol? seq)
+                                       (symbol->string seq)
+                                       (string seq)))))
+    (if value
+        (set-special! string (lambda ()
+                               (let ((port (current-input-port)))
+                                 (value port)))
+                      lips.specials.SYMBOL)
+        (unset-special! string))))
 ;;   __ __                          __
 ;;  / / \ \       _    _  ___  ___  \ \
 ;; | |   \ \     | |  | || . \/ __>  | |
@@ -1817,17 +2061,18 @@
 (define string-append concat)
 (define = ==)
 (define remainder %)
-(define procedure? function?)
 (define expt **)
 (define list->vector list->array)
 (define vector->list array->list)
 (define call-with-current-continuation call/cc)
+(define fold-right fold)
+(define fold-left reduce)
 
 ;; -----------------------------------------------------------------------------
 (define (procedure? obj)
-  "(procedure? expression)
+  "(procedure? obj)
 
-   Predicate that tests if value is a callable function or continuation."
+   Checks if object is callable function or continuation."
   (or (function? obj) (continuation? obj)))
 
 ;; -----------------------------------------------------------------------------
@@ -1842,10 +2087,10 @@
          (symbol (cadr spec))
          (args (cddr spec)))
      `(begin
-        (set-special! ,symbol ',name ,(string->symbol
-                                       (concat "lips.specials."
-                                               (symbol->string type))))
-        (define-macro (,name ,@args) ,@rest))))
+        (define-macro (,name ,@args) ,@rest)
+        (set-special! ,symbol ,name ,(string->symbol
+                                      (concat "lips.specials."
+                                              (symbol->string type)))))))
 
 ;; -----------------------------------------------------------------------------
 ;; Vector literals syntax using parser syntax extensions
@@ -1989,7 +2234,7 @@
                                  (begin (set! result-ready? #t)
                                         (set! result x)
                                         result)))))))
-        (set-obj! promise (Symbol.for "promise") true)
+        (set-object! promise (Symbol.for "promise") true)
         (set! promise.toString (lambda ()
                                  (string-append "#<promise - "
                                                 (if result-ready?
@@ -2069,7 +2314,7 @@
   (typecheck "number->string" x "number" 1)
   (let ((radix (if (null? rest) 10 (car rest))))
     (typecheck "number->string" radix "number" 2)
-    (--> x (toString (--> radix (valueOf))))))
+    (x.toString (radix.valueOf))))
 
 ;; -----------------------------------------------------------------------------
 (define (boolean? x)
@@ -2094,7 +2339,7 @@
    Set obj as value in vector at position i."
   (typecheck "vector-set!" vector "array" 1)
   (typecheck "vector-set!" i "number" 2)
-  (set-obj! vector i obj))
+  (set-object! vector i obj))
 
 ;; -----------------------------------------------------------------------------
 (define (%number-type type x)
@@ -2188,7 +2433,7 @@
 
 ;; -----------------------------------------------------------------------------
 (define (make-rectangular re im)
-  "(make-rectangular im re)
+  "(make-rectangular re im)
 
    Creates a complex number from imaginary and real part (a+bi form)."
   (let ((value `((re . ,re) (im . ,im))))
@@ -2263,16 +2508,16 @@
 (define _this_env (current-environment))
 
 ;; -----------------------------------------------------------------------------
-(let iter ((fns _maths))
+(let loop ((fns _maths))
   (if (not (null? fns))
       (let* ((name (car fns))
              (op (. Math name))
              (fn (lambda (n) (lips.LNumber (op n)))))
         (--> _this_env (set name fn))
-        (set-obj! fn '__doc__ (concat "(" name " n)\n\nFunction that calculates " name
+        (set-object! fn '__doc__ (concat "(" name " n)\n\nFunction that calculates " name
                                   " math operation (it call JavaScript Math." name
                                   " function)"))
-        (iter (cdr fns)))))
+        (loop (cdr fns)))))
 
 ;; -----------------------------------------------------------------------------
 (define (sin n)
@@ -2760,24 +3005,21 @@
   "(char-whitespace? chr)
 
    Returns true if character is whitespace."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'space-unicode-regex))))
+  (--> (%internal) (get 'space-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (%define-chr-re (char-numeric? chr)
   "(char-numeric? chr)
 
    Returns true if character is number."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'numeral-unicode-regex))))
+  (--> (%internal) (get 'numeral-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (%define-chr-re (char-alphabetic? chr)
   "(char-alphabetic? chr)
 
    Returns true if character is leter of the ASCII alphabet."
-  (let-env (interaction-environment)
-           (--> **internal-env** (get 'letter-unicode-regex))))
+  (--> (%internal) (get 'letter-unicode-regex)))
 
 ;; -----------------------------------------------------------------------------
 (define (%char-cmp name chr1 chr2)
@@ -2931,10 +3173,6 @@
   (apply display (cons (char.valueOf) rest)))
 
 ;; -----------------------------------------------------------------------------
-(define fold-right reduce)
-(define fold-left fold)
-
-;; -----------------------------------------------------------------------------
 (define (make-vector n . rest)
   "(make-vector n [fill])
 
@@ -2968,7 +3206,7 @@
    Function that sets nth item of the vector to value."
   (typecheck "vector-ref" vec "array" 1)
   (typecheck "vector-ref" n "number" 2)
-  (set-obj! vec n value))
+  (set-object! vec n value))
 
 ;; -----------------------------------------------------------------------------
 (define (vector-fill! vec value)
@@ -2979,7 +3217,7 @@
   (let recur ((n (- (length vec) 1)))
     (if (>= n 0)
         (begin
-          (set-obj! vec n value)
+          (set-object! vec n value)
           (recur (- n 1))))))
 
 ;; -----------------------------------------------------------------------------
@@ -3230,8 +3468,7 @@
    Procedure use port and make it current-input-port then thunk is executed.
    After thunk is executed current-input-port is restored and given port
    is closed."
-  (let* ((env **interaction-environment**)
-         (internal-env (env.get '**internal-env**))
+  (let* ((internal-env (%internal))
          (old-stdin (internal-env.get "stdin")))
     (internal-env.set "stdin" port)
     (try
@@ -3261,8 +3498,7 @@
 ;; -----------------------------------------------------------------------------
 (define (with-output-to-file string thunk)
   (let* ((port (open-output-file string))
-         (env **interaction-environment**)
-         (internal-env (env.get '**internal-env**))
+         (internal-env (%internal))
          (old-stdout (internal-env.get "stdout")))
     (internal-env.set "stdout" port)
     (try
@@ -3274,7 +3510,7 @@
 ;; -----------------------------------------------------------------------------
 (define (file-exists? filename)
   (new Promise (lambda (resolve)
-                 (let ((fs (--> lips.env (get '**internal-env**) (get 'fs))))
+                 (let ((fs (--> (%internal) (get 'fs))))
                    (if (null? fs)
                        (throw (new Error "file-exists?: fs not defined"))
                        (fs.stat filename (lambda (err stat)
@@ -3489,7 +3725,7 @@
          (typecheck ,(symbol->string vector-set!) k "number")
          (if (not (,vector-in-range? vector k))
              (throw (new Error ,(format "~a index out of range" vector-set!)))
-             (set-obj! vector k v)))
+             (set-object! vector k v)))
        ;; -----------------------------------------------------------------------------
        (define (,list->tvector lst)
          (typecheck ,(symbol->string list->tvector) lst "pair")
@@ -3499,7 +3735,7 @@
          (typecheck ,(symbol->string vector->tvector) vector "array")
          (,TypedArray.from vector))
        ;; -----------------------------------------------------------------------------
-       (set-special! ,repr-str ',type-vector lips.specials.SPLICE)
+       (set-special! ,repr-str ,type-vector lips.specials.SPLICE)
        ;; -----------------------------------------------------------------------------
        (set-repr! ,type
                   (lambda (x _quote)
@@ -3710,10 +3946,10 @@
   Fill vector with a given value in given range. If start is not given is start
   at 0. If end is not given it fill till the end if the vector."
  (typecheck "vector->fill!" vector "array")
- (let recur ((n (- end start)))
+ (let recur ((n (- end start 1)))
     (if (>= n start)
         (begin
-          (set-obj! vector n fill)
+          (set-object! vector n fill)
           (recur (- n 1))))))
 
 ;; -----------------------------------------------------------------------------
@@ -4990,7 +5226,7 @@
                              (if (not (,pred ,obj-name))
                                  (throw (new Error ,(string-append "object is not record of type "
                                                                    (symbol->string name))))
-                                 (set-obj! ,obj-name ',prop-name ,value-name)))))))
+                                 (set-object! ,obj-name ',prop-name ,value-name)))))))
               fields))))
 
 ;; -----------------------------------------------------------------------------
@@ -5036,7 +5272,7 @@
          (throw (new Error (string-append "namespace " namespace
                                           " already exists in library "
                                           self.__name__)))
-         (set-obj! self.__namespace__ namespace env))))
+         (set-object! self.__namespace__ namespace env))))
   (env
    (lambda (self namespace)
      (let ((env (. self.__namespace__ namespace)))
@@ -5227,14 +5463,6 @@
            (process.chdir value))))))
 
 ;; -----------------------------------------------------------------------------
-(define (error message . args)
-  "(error message ...)
-
-   Function raises error with given message and arguments,
-   which are called invariants."
-  (raise (new lips.Error message (args.to_array))))
-
-;; -----------------------------------------------------------------------------
 (define (error-object? obj)
   "(error-object? obj)
 
@@ -5310,18 +5538,6 @@
 ;; A better random generator improved by ChatGPT
 ;; the constant based on Knuth TAOCP Vol. 2
 ;; -----------------------------------------------------------------------------
-(define (bitwise-xor a b)
-  (let loop ((a a) (b b) (result 0) (bit 1))
-    (if (and (= a 0) (= b 0))
-        result
-        (let* ((abit (modulo a 2))
-               (bbit (modulo b 2))
-               (x (if (= (modulo (+ abit bbit) 2) 1) 1 0)))
-          (loop (quotient a 2) (quotient b 2)
-                (+ result (* bit x))
-                (* bit 2))))))
-
-;; -----------------------------------------------------------------------------
 (define (pseudo-random-seed)
   "(pseudo-random-seed)
 
@@ -5335,8 +5551,8 @@
          (seed1 (+ (* sec 1000003) jiff))
          ;; Mix further by applying XOR between seed1 and
          ;; seed1 multiplied by Knuth's LCG multiplier to spread bits
-         (seed2 (bitwise-xor seed1
-                             (* seed1 6364136223846793005))))
+         (seed2 (^ seed1
+                   (* seed1 6364136223846793005))))
     ;; Ensure the result fits into 64 bits by taking modulo 2^64
     (modulo seed2 (expt 2 64))))
 

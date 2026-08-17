@@ -1,8 +1,7 @@
 {
   "presets": [ "@babel/preset-env" ],
   "plugins": [
-    ["@babel/plugin-proposal-unicode-property-regex", { "useUnicodeFlag": true } ],
-    "@babel/plugin-transform-async-to-generator"
+    ["@babel/plugin-proposal-unicode-property-regex", { "useUnicodeFlag": true } ]
   ],
   "exclude": "node_modules/**"
 }

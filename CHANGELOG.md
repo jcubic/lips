@@ -1,3 +1,51 @@
+## 1.0.0-beta.22
+### Breaking
+* syntax extensions now expect a reference to a function or a macro
+* replace `set-obj!` with `set-object!` [#439](https://github.com/jcubic/lips/issues/439)
+* stack trace in exceptions is now `Error::__stack__`
+* remove `..` macro [#500](https://github.com/jcubic/lips/issues/500)
+* `macroexpand` is now a function (like in Common Lisp) instead of a macro
+* remove `parent.frame` and `parent.frames`
+* remove `Symbol(__data__)` from quoted data
+* swap `fold-right` and `fold-left`
+* `truncate` now properly return integer
+* `lips -e` doesn't print the output anymore
+* remove `with-tags` macro and `make-tags` function
+### Features
+* add debugging helpers (`is-debug`, `set-debug!`, and `inspect`)
+* add `set-hash-syntax!` function [#477](https://github.com/jcubic/lips/issues/477)
+* `Environment:doc` now returns doc string for functions and macros additional to variables
+* improve and unify Syntax Errors
+* show meta information about 'stack' trace about errors in REPL with `-t`/`--trace` flag
+* implement simple regex based syntax-extension
+* recursion performance improvements
+* new interpreter with TCO and Continuations inspired by js-scheme [#127](https://github.com/jcubic/lips/issues/127)
+* new higher order function `matcher` that return function that check if object is the same
+* new `stack-trace` and `trace` functions
+* improve error handling
+* add core `^` bitwise xor function
+* add `generator`, `async-generator`, and `make-coroutine-generator` functions
+* add support for `truncate` on rational numbers
+* add `#!cycle`/`#!no-cycle`, `#!trace`/`#!no-trace` and `#!promise`/`#!no-promise` directives
+### Bugfix
+* fix doc string for `make-rectangular`
+* `-inf.0`/`+inf.0` are now real lips numbers
+* fix boolean operation on `+nan.0` [#472](https://github.com/jcubic/lips/issues/472)
+* fix swallowed errors in async syntax extensions [#470](https://github.com/jcubic/lips/issues/470)
+* fix cleanup after parsing syntax extension throws an error
+* fix unwanted argument unboxing from lips constructors [#483](https://github.com/jcubic/lips/issues/483)
+* fix warning about rejected Promise in try..catch [#482](https://github.com/jcubic/lips/issues/482) [#484](https://github.com/jcubic/lips/issues/484)
+* fix overwriting internal state when using multiple Interpters [#495](https://github.com/jcubic/lips/issues/495)
+* fix syntax extension conflict with datum syntax
+* fix `unset-special!` not removing regex based syntax extensions
+* fix hygiene of named `let`
+* fix module path when load throw exception
+* fix handling unsupported operations on rational numbers
+* fix exit code for `lips -e` on exception
+* fix `vector-fill!` off-by-one error
+* fix parsing of syntax extensions
+* fix repr and type of iterators
+
 ## 1.0.0-beta.21
 ### Breaking
 * `(range n 0 -1)` don't include 0 like in Python [#442](https://github.com/jcubic/lips/issues/442)
@@ -36,6 +84,7 @@
 * fix rounding on big int rationals
 * fix scope variables in `do` macro [#468](https://github.com/jcubic/lips/issues/468)
 * fix REPL for Node 24 [#466](https://github.com/jcubic/lips/issues/466)
+
 
 ## 1.0.0-beta.20
 ### Feature

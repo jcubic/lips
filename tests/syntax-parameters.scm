@@ -1,4 +1,4 @@
-(test "syntax-parameters: should define syntax-parameter"
+(test "should define syntax-parameter"
       (lambda (t)
         (define-syntax-parameter return
           (syntax-rules ()
@@ -11,7 +11,7 @@
                           (match #/^return used outside of a lambda\^/)))
               #f)))
 
-(test "syntax-parameters: should create syntax-rules binding with syntax-parameterize"
+(test "should create syntax-rules binding with syntax-parameterize"
       (lambda (t)
         (define-syntax-parameter it (syntax-rules () ((_) "default")))
         (syntax-parameterize
@@ -21,7 +21,7 @@
                 ((_) "world"))))
          (t.is (string-append (it) " " (is))
                "hello world"))))
-(test "syntax-parameters: should create anaphofric macro"
+(test "should create anaphofric macro"
       (lambda (t)
         (define-syntax-parameter it (syntax-rules () ((_) "default")))
         (define-syntax foo
@@ -35,7 +35,7 @@
         (t.is (foo (string-append (it) "!"))
               "hello, world!")))
 
-(test "syntax-parameters: should return default parameter when anaphoric variable is used outside"
+(test "should return default parameter when anaphoric variable is used outside"
       (lambda (t)
         (define-syntax-parameter it (syntax-rules () ((_) "default")))
 
@@ -50,7 +50,7 @@
 
         (t.is (foo (it)) "default")))
 
-(test "syntax-parameters: parameters should be local"
+(test "parameters should be local"
       (lambda (t)
         (define void (if #f #f))
 
@@ -74,7 +74,7 @@
                 (foo it))
               10)))
 
-(test "syntax-parameters: user binding should shadow parameter"
+(test "user binding should shadow parameter"
       (lambda (t)
 
         (define-syntax-parameter it (syntax-rules () ((_) "default")))
@@ -96,7 +96,7 @@
                 (foo it))
               10)))
 
-(test "syntax-parameters: hygience without syntax-parameterize"
+(test "hygience without syntax-parameterize"
       (lambda (t)
         (t.plan 4)
 
@@ -114,7 +114,7 @@
         (let ((it 10))
           (foo (t.is it 10)))))
 
-(test "syntax-parameters: hygience with syntax-parameterize"
+(test "hygience with syntax-parameterize"
       (lambda (t)
         (t.plan 4)
 

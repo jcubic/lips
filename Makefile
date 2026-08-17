@@ -1,8 +1,8 @@
-.PHONY: publish test coveralls lint zero coverage codespell
+.PHONY: ALL publish test test-file test-update coveralls lint zero coverage codespell benchmark smoke
 
-VERSION=1.0.0-beta.21
-VERSION_DASH=`echo -n "1.0.0-beta.21" | sed "s/-/%E2%80%93/"`
-BRANCH=`git branch | grep '^*' | sed 's/* //'`
+VERSION=1.0.0-beta.22
+VERSION_DASH=`echo -n "${VERSION}" | sed "s/-/%E2%80%93/"`
+BRANCH=`git branch --show-current | grep -q '^master$$' && echo 'master' || echo 'devel'`
 DATE=`date -uR`
 YEAR=`date +%Y`
 DATE_SHORT=`date +%Y-%m-%d`
@@ -32,12 +32,14 @@ UGLIFY=./node_modules/.bin/uglifyjs
 ROLLUP=./node_modules/.bin/rollup
 LIPS=./bin/lips.js
 
+TEST_SCM := $(wildcard tests/*.scm)
+
 define ver_date
 	$(GIT) branch | grep '* master' > /dev/null && $(SED) -i -e "s/{{VER}}/$(VERSION)/g" -e "s/{{DATE}}/$(DATE)/g" \
 	-e "s/{{YEAR}}/${YEAR}/" $(1) || $(SED) -i -e "s/{{VER}}/DEV/g" -e "s/{{DATE}}/$(DATE)/g" $(1)
 endef
 
-ALL: Makefile package.json .$(VERSION) assets/classDiagram.svg dist/base.js dist/lips.js dist/lips.esm.js dist/lips.min.js dist/lips.esm.min.js README.md dist/std.min.scm dist/std.xcb docs/reference.json docs/version.json
+ALL: package.json .$(VERSION) assets/classDiagram.svg dist/base.js dist/lips.js dist/lips.esm.js dist/lips.min.js dist/lips.esm.min.js README.md REFERENCE.md dist/std.min.scm dist/std.xcb docs/reference.json docs/version.json
 
 dist/banner.js: src/banner.js src/lips.js .$(VERSION)
 	$(CP) src/banner.js dist/banner.js
@@ -63,16 +65,13 @@ dist/std.scm: lib/bootstrap.scm lib/R5RS.scm lib/byte-vectors.scm lib/R7RS.scm l
 	$(CAT) lib/bootstrap.scm lib/R5RS.scm lib/byte-vectors.scm lib/R7RS.scm lib/init.scm > dist/std.scm
 
 dist/std.xcb: dist/std.scm
-	$(LIPS) -t --bootstrap dist/std.scm -c -q dist/std.scm
+	$(LIPS) -tmcq --bootstrap dist/std.scm dist/std.scm
 
-docs/reference.json: dist/std.xcb src/lips.js
+docs/reference.json: dist/std.xcb src/lips.js scripts/reference.js
 	$(NODE) ./scripts/reference.js > docs/reference.json
 
 dist/std.min.scm: dist/std.scm
-	$(LIPS) -t --bootstrap dist/std.scm ./scripts/minify.scm ./dist/std.scm > dist/std.min.scm
-
-Makefile: templates/Makefile
-	$(SED) -e "s/{{VER""SION}}/"$(VERSION)"/g" templates/Makefile > Makefile
+	$(LIPS) -tm --bootstrap dist/std.scm ./scripts/minify.scm ./dist/std.scm > dist/std.min.scm
 
 package.json: .$(VERSION)
 	$(SED) -i 's/"version": "[^"]\+"/"version": "$(VERSION)"/' package.json
@@ -89,6 +88,9 @@ README.md: templates/README.md dist/lips.js .$(VERSION)
 	-e "s/{{CHECKSUM}}/$(TESTS_CHECKSUM)/g" -e "s/{{COMMIT}}/$(COMMIT)/g" -e "s/{{DATE}}/${DATE_SHORT}/" \
 	-e "s/{{VER_DASH}}/$(VERSION_DASH)/g" < templates/README.md > README.md
 
+REFERENCE.md: docs/reference.json scripts/reference.scm
+	$(LIPS) -tm --bootstrap dist/std.scm scripts/reference.scm > REFERENCE.md
+
 .$(VERSION): Makefile
 	touch .$(VERSION)
 
@@ -102,14 +104,29 @@ publish:
 	$(CD) npm && $(NPM) publish --access=public
 	$(RM) -rf npm
 
-test: dist/lips.js dist/std.xcb
+tests/tests-gen/.stamp: scripts/generate-tests.js $(TEST_SCM)
+	@$(NODE) scripts/generate-tests.js
+	@touch $@
+
+test: dist/std.xcb tests/tests-gen/.stamp
 	@$(NPM) run test
 
-test-file: dist/lips.js dist/std.xcb
-	@$(NPM) run test -- -- -f $(FILE)
+test-file: dist/std.xcb
+	@$(NPM) run test-file -- -- -f $(FILE)
 
-test-update: dist/lips.js dist/std.scm
+test-update: dist/std.scm
 	@$(NPM) run test-update
+
+benchmark: dist/std.xcb
+	@$(LIPS) -tm benchmarks/suite.scm
+
+smoke: dist/std.xcb dist/lips.js
+	@out=`timeout 60 $(LIPS) -tm scripts/smoke.scm`; echo "$$out"; \
+		echo "$$out" | grep -q "smoke: all checks passed"
+	@out=`timeout 60 $(LIPS) -tm -d scripts/smoke-dynamic.scm`; echo "$$out"; \
+		echo "$$out" | grep -q "dynamic smoke: all checks passed"
+	@out=`timeout 90 $(NODE) scripts/smoke-browser.js`; echo "$$out"; \
+		echo "$$out" | grep -q "browser smoke: all checks passed"
 
 fold:
 	@$(WGET) $(UNICODE_FOLD) -O ./assets/CaseFolding.txt

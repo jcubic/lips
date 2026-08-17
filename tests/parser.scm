@@ -1,17 +1,17 @@
-(set-special! "<>" 'html lips.specials.SPLICE)
-
 (define-macro (html . args)
   (let ((str (--> (list->array (map symbol->string args)) (join "+"))))
-    `(string-append "<" ,str "/>")))
+     `(string-append "<" ,str "/>")))
+
+(set-special! "<>" html lips.specials.SPLICE)
 
 (define parser/t1 <>(foo bar))
 
 (unset-special! "<>")
 
-(set-special! "--" 'dash lips.specials.LITERAL)
-
 (define-macro (dash x)
   `'(,(car x) . ,(cadr x)))
+
+(set-special! "--" dash lips.specials.LITERAL)
 
 (define parser/t2 --(foo bar baz))
 
@@ -19,23 +19,21 @@
 
 (define parser/t3 (. (lips.parse "(--)" (current-environment)) 0))
 
-(set-special! ":" 'keyword lips.specials.LITERAL)
-
 (define-macro (keyword n)
    `(string->symbol (string-append ":" (symbol->string ',n))))
 
-(define parser/t4 :foo)
+(set-special! ":" keyword lips.specials.LITERAL)
 
-(set-special! ":" 'keyword lips.specials.SPLICE)
+(define parser/t4 :foo)
 
 (define-macro (keyword . n)
    `(string->symbol (string-append ":" (symbol->string ',n))))
 
+(set-special! ":" keyword lips.specials.SPLICE)
+
 (define parser/t5 :foo)
 
 (unset-special! ":")
-
-(set-special! "::" 'cube)
 
 (define (cube x)
   (if (number? x)
@@ -43,19 +41,20 @@
       `(let ((.x ,x))
          (* .x .x .x))))
 
+(set-special! "::" cube)
+
 (define parser/t6 (let ((x 3)) ::x))
 (define parser/t7 (. (lips.parse "(let ((x 3)) ::x)" (current-environment)) 0))
 
 (unset-special! "::")
 
-(set-special! "#nil" 'nil-fn lips.specials.SYMBOL)
 (define (nil-fn) '())
+
+(set-special! "#nil" nil-fn lips.specials.SYMBOL)
 
 (define parser/t8 (list #nil #nil '#nil '#nil #nil))
 
 (unset-special! "#nil")
-
-(set-special! "$" 'raw-string lips.specials.SYMBOL)
 
 (define (raw-string)
   (if (char=? (peek-char) #\")
@@ -67,28 +66,104 @@
               (apply string (vector->list result))
               (loop (vector-append result (vector char)) (peek-char)))))))
 
+(set-special! "$" raw-string lips.specials.SYMBOL)
+
 (define parser/t9 $"foo \ bar")
 
 (unset-special! "$")
-
-(set-special! "#:num" 'line-num lips.specials.SYMBOL)
 
 (define (line-num)
   (let* ((lexer lips.__parser__.__lexer__)
          (token lexer.__token__))
     (+ token.col)))
 
+(set-special! "#:num" line-num lips.specials.SYMBOL)
+
 (define parser/t10 (list #:num #:num #:num #:num))
 
 (unset-special! "#:num")
 
-(set-special! "*|" 'multply-inline)
-
 (define (multply-inline x) `(* ,@x))
+
+(set-special! "*|" multply-inline)
 
 (define parser/t11 '*|(1 2 3)) ;; |
 
-(test "parser: #!fold-case"
+(unset-special! "*|")
+
+(define-syntax gensym-macro
+  (syntax-rules ()
+    ((_ name)
+     (gensym 'name))))
+
+(set-special! "#::" gensym-macro)
+
+(define parser/t12 #::hello)
+
+(unset-special! "#::")
+
+(define-syntax line-num
+  (syntax-rules ()
+    ((_)
+     (let* ((lexer lips.__parser__.__lexer__)
+            (token lexer.__token__))
+       (+ token.col)))))
+
+(set-special! "#:num" line-num lips.specials.SYMBOL)
+
+(define parser/t13 #:num)
+
+(unset-special! "#:num")
+
+(set-special! "$$" (lambda () 10) lips.specials.SPLICE)
+
+(define parser/t14 $$())
+
+(set-hash-syntax! #\+ (lambda (port)
+                        `(quote ,(apply + (read port)))))
+
+(define parser/t15 #+(1 2 3))
+(define parser/t16 '#+(1 2 3))
+
+(set-hash-syntax! 'sum (lambda (port)
+                         `(quote ,(apply + (read port)))))
+
+(define parser/t17 #sum(1 2 3))
+(define parser/t18 '#sum(1 2 3))
+
+(set-hash-syntax! 'sum #f)
+(set-hash-syntax! #\+ #f)
+
+(define-macro (macro)
+  `(begin
+     (Promise.resolve)
+     (+ "x" "y")))
+
+(set-special! "&&" macro)
+
+(define-macro (nested-list x) `(quote ,x))
+
+(set-special! "#2a" nested-list lips.specials.LITERAL)
+
+(define parser/t19 #2a((1 2) (1 2)))
+
+(unset-special! "#2a")
+
+(set-special! #/#[0-9]+a/ nested-list lips.specials.LITERAL)
+
+(define parser/t20 (list #2a((1 2) (1 2)) #3a((1 2) (1 2) (1 2))))
+
+;; redefining a regex special with an equivalent (freshly constructed) regex
+;; must overwrite the previous definition, not append a shadowed duplicate
+(define-macro (nested-const x) `(quote overwritten))
+
+(set-special! #/#[0-9]+a/ nested-const lips.specials.LITERAL)
+
+(define parser/t21 #4a((1 2) (1 2)))
+
+(unset-special! #/#[0-9]+a/)
+
+(test "#!fold-case"
       (lambda (t)
         (define foo 10)
         (t.is (to.throw FOO) #t)
@@ -99,7 +174,7 @@
         #!no-fold-case
         (t.is (to.throw FOO) #t)))
 
-(test "parser: syntax extension"
+(test "syntax extension"
       (lambda (t)
         (t.is parser/t1 "<foo+bar/>")
         (t.is parser/t2 '(foo . bar))
@@ -110,9 +185,12 @@
         (t.is parser/t7 '(let ((x 3)) (let ((.x x)) (* .x .x .x))))
         (t.is parser/t8 '(() () () () ()))
         (t.is parser/t9 "foo \\ bar")
+        (t.is parser/t14 10)
+        (t.is parser/t20 '(((1 2) (1 2)) ((1 2) (1 2) (1 2))))
+        (t.is parser/t21 'overwritten)
         (t.snapshot parser/t10)))
 
-(test "parser: escape hex literals"
+(test "escape hex literals"
       (lambda (t)
          (t.is (to.throw (. (lips.parse "\"\\x9\"") 0)) #t)
          (t.is "\uFFFF" "￿")
@@ -120,7 +198,7 @@
          (t.is (repr '|foo bar|) "foo bar")
          (t.is '|\x9;\x9;|  '|\t\t|)))
 
-(test "parser: character literals"
+(test "character literals"
       (lambda (t)
         (let ((a #\A) (b #\xFF))
           (t.is (and (string=? (type a) "character")
@@ -131,7 +209,7 @@
           (t.is (a.valueOf) "A")
           (t.is (b.valueOf) "\xFF;"))))
 
-(test "parser: quotes with literals"
+(test "quotes with literals"
       (lambda (t)
         (t.is ''#f '(quote #f))
         (t.is ''#x10 '(quote #x10))
@@ -156,7 +234,7 @@
         (t.is ''#e#o10 '(quote #e#o10))
         (t.is ''#o#e10 '(quote #o#e10))))
 
-(test "parser: it should ignore comments"
+(test "it should ignore comments"
       (lambda (t)
 
         (t.is (list #;(foo bar (quux)) 10 20) (list 10 20))
@@ -168,20 +246,20 @@
               (list 10
                     20))))
 
-(test "parser: it should return literal space"
+(test "it should return literal space"
       (lambda (t)
         (let ((str (make-string 10 #\ )))
           (t.is (string-length str) 10)
           (t.is (not (null? (--> str (match #/^\s{10}$/)))) #t))))
 
-(test "parser: vector quoting"
+(test "vector quoting"
       (lambda (t)
          (t.is `#(1 2 3) #(1 2 3))
          (t.is `#(1 2 foo) #(1 2 foo))
          (t.is '#(1 2 foo) #(1 2 foo))))
 
 
-(test "parser: vector constants"
+(test "vector constants"
       (lambda (t)
 
         (define (v)
@@ -195,7 +273,7 @@
         (t.is (eq? (v) (v)) true)))
 
 
-(test "parser: escaping in strings"
+(test "escaping in strings"
       (lambda (t)
         ;; testing #48 - when writing code with string in Scheme
         ;; we need to double escape to get slash
@@ -204,12 +282,12 @@
                                        1)"))
         (t.is (eval (. code 0)) "hello-world")))
 
-(test "parser: processing strings"
+(test "processing strings"
       (lambda (t)
         (define list "\\" "\"" "\\\\" "\\\"")
         (t.is true true)))
 
-(test "parser: datum labels"
+(test "datum labels"
       (lambda (t)
         (let ((x (list #0=(cons 1 2) #0#)))
           (set-car! (car x) 2)
@@ -227,52 +305,52 @@
         (let ((x '#3=(1 2 . #3#)))
           (t.is (eq? x (cddr x)) true))))
 
-(test "parser: should throw an error on extra close paren"
+(test "should throw an error on extra close paren"
       (lambda (t)
         (t.snapshot (try
                (lips.exec "(define x 10))")
                (catch (e)
                       e.message)))))
 
-(test "parser: should process line after comment without text #260"
+(test "should process line after comment without text #260"
       (lambda (t)
         (t.plan 2);
         (t.is #t #t)
         (t.is #t #t)))
 
-(test "parser: emoji character"
+(test "emoji character"
       (lambda (t)
         (let ((x #\💩))
           (t.is (--> x (valueOf) 'length) 2)
           (t.is (length (Array.from (x.valueOf))) 1))))
 
-(test "parser: space character"
+(test "space character"
       (lambda (t)
         (let ((x #\ ))
           (t.is (x.valueOf) " "))))
 
-(test "parser: newline character"
+(test "newline character"
       (lambda (t)
         (let ((x #\
                  ))
           (t.is (x.valueOf) "\n"))))
 
-(test "parser: should throw error on quote without expression"
+(test "should throw error on quote without expression"
       (lambda (t)
         (let ((specs '("(list ')" "(list '')")))
           (for-each (lambda (code)
                       (t.is (to.throw (lips.parse code)) #t))
                     specs))))
 
-(test "parser: should throw an error on invalid dot sequennce #245"
+(test "should throw an error on invalid dot sequennce #245"
       (lambda (t)
         (t.is (to.throw (lips.parse "(1 . 2 3)")) #t)))
 
-(test "parser: should throw error on invalid hash token"
+(test "should throw error on invalid hash token"
       (lambda (t)
         (t.is (to.throw (lips.parse "#f10")) #t)))
 
-(test "parser: escape symbols"
+(test "escape symbols"
       (lambda (t)
         (t.is (map symbol->string '(|name| name|| name|\|| name|\\|xxx name|\\\\| name|\\|))
               '("name" "name" "name|" "name\\xxx" "name\\\\" "name\\"))))
@@ -319,7 +397,7 @@
         (let ((code "\"foo"))
           (t.is (to.throw (lips.tokenize code)) #t))))
 
-(test "parser: metadata"
+(test "metadata"
       (lambda (t)
         (let* ((code "(define foo (lambda (x)
                                     (let ((y (* x x)))
@@ -331,7 +409,7 @@
           (parser.prepare code)
           (t.snapshot (parse parser)))))
 
-(test "parser: lonely cosing paren"
+(test "lonely closing paren"
       (lambda (t)
         (t.snapshot (try (let* ((code "    )")
                                 (env lips.env)
@@ -340,6 +418,86 @@
                            (lips.parse parser))
                          (catch (e) e)))))
 
-(test "parser: regex characters in syntax extension"
+(test "regex characters in syntax extension"
       (lambda (t)
         (t.is parser/t11 '(* 1 2 3))))
+
+(test "parer: syntax-rule macro as syntax extension"
+      (lambda (t)
+        (t.is (gensym? parser/t12) #t)
+        (t.is parser/t13 19)))
+
+(test "should throw in invalid splice syntax extension"
+      (lambda (t)
+        (t.is (to.throw (lips.parse "$$10")) #t)
+        (t.is (to.throw (lips.parse "&&10")) #t)))
+
+(test "set-hash-syntax!"
+      (lambda (t)
+        (t.is parser/t15 6)
+        (t.is parser/t16 '(quote 6))
+        (t.is parser/t17 6)
+        (t.is parser/t18 '(quote 6))
+        (t.is (to.throw (lips.parse "#+(1 2 3)")) #t)
+        (t.is (to.throw (lips.parse "#sum(1 2 3)")) #t)))
+
+
+(test "datum conflict"
+      (lambda (t)
+        (t.is parser/t19 '((1 2) (1 2)))))
+
+(test "regex syntax extension"
+      (lambda (t)
+        (t.is parser/t20 '(((1 2) (1 2)) ((1 2) (1 2) (1 2))))))
+
+(test "syntax errors"
+      (lambda (t)
+        (let ((code (list "(let ((x #4))"
+                          "(let ((x #e))"
+                          "(let ((x 10))"
+                          "(let ((x 10))
+                                #4)")))
+          (for-each (lambda (code)
+                      (let ((result (try (lips.parse code)
+                                         (catch (e) e))))
+                        (t.is (instanceof Error result) #t)
+                        (t.snapshot result)))
+                    code))))
+
+(test "lexer: unterminated expression"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/lexer-hash-error.scm")))))
+
+(test "lexer: unterminated regex"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/lexer-unterminated-regex.scm")))))
+
+(test "dot error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-invalid-list.scm")))))
+
+(test "unterminted list error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-unterminated-list.scm")))))
+
+(test "unexpected parenthesis error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-unexpected-paren.scm")))))
+
+(test "missing object in syntax extension (eof) error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-syntax-expect-object-eof.scm")))))
+
+(test "missing object in syntax extension inside list error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-syntax-expect-object.scm")))))
+
+(test "invalid datum ref error"
+      (lambda (t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-invalid-ref.scm")))))
+
+(test "syntax extension error"
+      (lambda (t)
+        (trace #t)
+        (t.snapshot (to.throw.error (load "./tests/files/parser-syntax-extension-error.scm")))
+        (trace #f)))

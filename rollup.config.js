@@ -1,6 +1,8 @@
 import commonjs from "@rollup/plugin-commonjs";
 import nodeResolve from "@rollup/plugin-node-resolve";
 import babel from "@rollup/plugin-babel";
+import strip from '@rollup/plugin-strip';
+
 import fs from 'node:fs';
 
 const banner = fs.readFileSync('./dist/banner.js', 'utf8');
@@ -15,17 +17,28 @@ const base = {
     next(warning);
   },
   plugins: [
+    strip({
+      functions: ['log'],
+    }),
     babel({
       babelrc: false,
+      compact: false,
       babelHelpers: 'runtime',
       "plugins": [
-        "@babel/plugin-transform-async-to-generator",
         ["@babel/plugin-transform-runtime", {
           "helpers": true
         }],
       ],
+      // Target environments that support ES modules. They all support
+      // async/await natively, so preset-env no longer rewrites it into
+      // generators + the regenerator runtime (previously ~90 regenerator refs
+      // in the bundle). This keeps the output modern and much smaller. The
+      // explicit @babel/plugin-transform-async-to-generator was removed for the
+      // same reason - it forced the generator transform regardless of targets.
       "presets": [
-        "@babel/preset-env"
+        ["@babel/preset-env", {
+          "targets": { "esmodules": true }
+        }]
       ],
       "exclude": "node_modules/**"
     }),
@@ -44,6 +57,7 @@ export default [
             name: "lips",
             file: "dist/lips.js",
             format: "umd",
+            exports: "named",
             banner,
             manualChunks: () => 'everything.js'
         },
@@ -54,6 +68,7 @@ export default [
             name: "lips",
             file: "dist/lips.cjs",
             format: "cjs",
+            exports: "named",
             banner,
             manualChunks: () => 'everything.js'
         },

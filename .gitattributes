@@ -1,6 +1,7 @@
 * text eol=lf
 .* text eol=lf
 dist/* binary
+*.snap binary
 *png binary
 *jpg binary
 *ico binary

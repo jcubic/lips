@@ -3,9 +3,18 @@
 import lily from '@jcubic/lily';
 
 const boolean = [
-    'd', 'dynamic', 'q', 'quiet', 'V', 'version', 'trace', 't', 'c', 'compile'
+    'd', 'dynamic', 'q', 'quiet', 'V', 'version', 'trace', 't', 'c', 'compile',
+    'm', 'meta', 'j', 'js-trace'
 ];
 const options = lily(process.argv.slice(2), { boolean });
+
+const use_dynamic = options.d || options.dynamic;
+// -t/--trace enables tracing: source-position metadata (line/column/file) on
+// errors AND Scheme stack collection. -m/--meta is kept as an alias for it (the
+// two used to be separate; they were merged since they are two halves of the
+// same debugging aid). -j/--js-trace additionally prints the JavaScript stack.
+const use_trace = options.t || options.trace || options.m || options.meta;
+const use_js_trace = options.j || options['js-trace'];
 
 const quiet = options.q || options.quiet;
 
@@ -41,11 +50,8 @@ import os from 'os';
 import path from 'path';
 import { format } from 'util';
 import readline from 'readline';
-import highlight from 'prism-cli';
-import Prism from 'prismjs';
-import 'prismjs/components/prism-scheme.min.js';
+import scheme from '../lib/js/pprint.js';
 import { satisfies } from 'compare-versions';
-import '../lib/js/prism.js';
 
 import { createRequire } from 'module';
 
@@ -92,26 +98,45 @@ function debug(message) {
     console.log(message);
 }
 // -----------------------------------------------------------------------------
-async function run(code, interpreter, use_dynamic = false, env = null, stack = false, log_unterminated = true) {
+async function run(code, {
+    interpreter,
+    env = null,
+    filename = null,
+    exit = false,
+    log_unterminated = true,
+    // the standard library is written for lexical scope, so it must always be
+    // bootstrapped lexically - `-d`/--dynamic only applies to user code. Passing
+    // use_dynamic through to the bootstrap made the whole stdlib load under
+    // dynamic scope, which is pathological (see bootstrap()).
+    dynamic = use_dynamic
+}) {
     try {
-        return await interpreter.exec(code, { use_dynamic, env });
+        return await interpreter.exec(code, { use_dynamic: dynamic, env, filename });
     } catch(e) {
         if (e instanceof Parser.Unterminated && !log_unterminated) {
             return;
         }
-        print_error(e, stack);
+        print_error(e, use_js_trace, exit);
     }
 }
 
 // -----------------------------------------------------------------------------
-function print_error(e, stack) {
+function print_error(e, js_trace, exit) {
     if (!e) {
         console.log('Error is null');
         return;
     }
-    log_error(e.message);
-    if (e.__code__) {
-        strace = e.__code__.map((line, i) => {
+    if (!(e instanceof Error)) {
+        e = new Error(e.toString());
+    }
+    const re = /^([^\s]+ )?Error:/;
+    let message = e.message;
+    if (!message.match(re)) {
+        message = `Runtime Error: ${message}`;
+    }
+    log_error(message);
+    if (e.__stack__) {
+        strace = e.__stack__.map((line, i) => {
             const prefix = `[${i+1}]: `;
             const formatter = new Formatter(line);
             const output = formatter.break().format({
@@ -120,17 +145,24 @@ function print_error(e, stack) {
             return prefix + output;
         }).join('\n');
     }
-    if (stack) {
+    if (js_trace) {
         console.error(e.stack);
-        console.error(strace);
-        process.exit(1);
     } else {
-        console.error(e.message);
-        console.error('Call (stack-trace) to see the stack');
-        console.error('Thrown exception is in global exception variable, use ' +
-                      '(display exception.stack) to display JS stack trace');
+        console.error(message);
+    }
+    if (strace) {
+        console.error(strace);
+    }
+    if (!js_trace) {
+        console.error(`Use (display exception.stack) or use -j/--js-trace option to display JS 'stack' trace.`);
+    }
+    if (!use_trace) {
+        console.error('Use -t/--trace option to display line, column and file of the exception');
     }
     global.exception = e;
+    if (exit) {
+        process.exit(1);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -149,7 +181,7 @@ function print(result) {
                 process.stdout.write('\x1b[K' + value);
                 return true;
             } catch(e) {
-                print_error(e, options.t || options.trace);
+                print_error(e, use_js_trace);
             }
         }
     }
@@ -161,7 +193,7 @@ function bootstrap(interpreter) {
     if (bootstrap === 'none') {
         return Promise.resolve();
     }
-    const file = bootstrap ? bootstrap : './dist/std.xcb';
+    const filename = bootstrap ? bootstrap : './dist/std.xcb';
     function read(name) {
         var path;
         try {
@@ -175,8 +207,10 @@ function bootstrap(interpreter) {
         }
         return readCode(path);
     }
-    const code = read(file);
-    return run(code, interpreter, false, env.__parent__, true);
+    const code = read(filename);
+    return run(code, {
+        interpreter, filename, env: env.__parent__, dynamic: false, exit: true
+    });
 }
 
 // -----------------------------------------------------------------------------
@@ -220,14 +254,6 @@ function doc(fn, doc) {
 }
 
 // -----------------------------------------------------------------------------
-function scheme(str) {
-    return highlight(str, 'scheme', {
-        grammar: Prism.languages.scheme,
-        newlines: true
-    });
-}
-
-// -----------------------------------------------------------------------------
 function log(message) {
     if (typeof message !== 'string') {
         message = message.toString();
@@ -238,14 +264,14 @@ function log(message) {
 // -----------------------------------------------------------------------------
 let strace;
 let rl;
-let buffer;
+let output;
 var newline;
 const moduleURL = new URL(import.meta.url);
 const __dirname = path.dirname(moduleURL.pathname);
 const __filename = path.basename(moduleURL.pathname);
 const command_line = [];
 let last_line = '';
-const interp = Interpreter('repl', {
+const interpreter = Interpreter('repl', {
     stdin: InputPort(function() {
         return new Promise(function(resolve) {
             rl = readline.createInterface({
@@ -271,14 +297,7 @@ const interp = Interpreter('repl', {
     __dirname: __dirname,
     __filename: __filename,
     command_line,
-    // -------------------------------------------------------------------------
-    'stack-trace': doc(function() {
-        if (strace) {
-            console.log(strace);
-        }
-    }, `(stack-trace)
-
-        Function display stack trace of last error`),
+    trace: use_trace,
     // -------------------------------------------------------------------------
     exit: doc(function(code) {
         process.exit(code);
@@ -289,7 +308,6 @@ const interp = Interpreter('repl', {
     // -------------------------------------------------------------------------
     pprint: doc(function(arg) {
         if (arg instanceof Pair) {
-            arg = new Formatter(arg.toString(true)).break().format();
             this.get('display').call(this, scheme(arg));
         } else {
             this.get('write').call(this, scheme(arg));
@@ -298,7 +316,10 @@ const interp = Interpreter('repl', {
     }, env.get('pprint').__doc__),
     // -------------------------------------------------------------------------
     help: doc(new Macro('help', function(code, { error }) {
-        var new_code = new Pair(new LSymbol('__help'), code);
+        // a macro receives the whole form `(help <arg>)`, so forward the
+        // argument list (code.cdr) to __help - forwarding the whole form would
+        // make __help resolve `help` itself instead of <arg>.
+        var new_code = new Pair(new LSymbol('__help'), code.cdr);
         var doc = evaluate(new_code, { env: this, error });
         if (doc) {
             console.log(doc.toString());
@@ -347,16 +368,18 @@ if (options.version || options.V) {
     ].map(([key, ...values]) => {
         return [LSymbol(key), ...values];
     }));
-    bootstrap(interp).then(function() {
+    bootstrap(interpreter).then(function() {
         // Scheme can access JS global.output
-        return run('(for-each (lambda (x) (write x) (newline)) output)', interp, options.d || options.dynamic);
+        return run('(for-each (lambda (x) (write x) (newline)) output)', {
+            interpreter,
+            use_dynamic
+        });
     });
 } else if (options.e || options.eval) {
     // from 1.0 documentation should use -e but it's not a breaking change
-    bootstrap(interp).then(function() {
+    bootstrap(interpreter).then(function() {
         const code = options.e || options.eval;
-        const dynamic = options.d || options.dynamic;
-        return run(code, interp, dynamic, null, true).then(print);
+        return run(code, { interpreter, exit: true });
     });
 } else if ((options.c || options.compile) && options._.length === 1) {
     try {
@@ -369,8 +392,8 @@ if (options.version || options.V) {
         const compiled_name = filename.replace(/\.[^.]+$/, '') + ext;
         var code = readFile(filename);
         const cwd = process.cwd();
-        bootstrap(interp).then(function() {
-            return compile(code, interp.__env__).then(code => {
+        bootstrap(interpreter).then(function() {
+            return compile(code, interpreter.__env__).then(code => {
                 if (!quiet) {
                     console.log(`Writing ${compiled_name} ...`);
                 }
@@ -388,7 +411,7 @@ if (options.version || options.V) {
                 }
             })
         }).catch(e => {
-            print_error(e, true);
+            print_error(e, true, true);
         });
     } catch(e) {
         console.log(e);
@@ -412,9 +435,8 @@ if (options.version || options.V) {
     command_line.push(...get_command_line_args());
     try {
         const code = readCode(filename);
-        bootstrap(interp).then(() => {
-            const dynamic = options.d || options.dynamic;
-            return run(code, interp, dynamic, null, options.t || options.trace);
+        bootstrap(interpreter).then(() => {
+            return run(code, { interpreter, filename });
         });
     } catch (err) {
         log_error(err.message || err);
@@ -425,43 +447,47 @@ if (options.version || options.V) {
 } else if (options.h || options.help) {
     var name = process.argv[1];
     var intro = banner.replace(/(Jankiewicz\n)[\s\S]+$/, '$1');
-    console.log(format('%s\nusage:\n  %s -q | -c | -h | -t | -b <file> | -d | -e <code> | <filename>\n' +
-                       '\n  [-h --help]\t\tthis help message\n  [-e --eval]\t\texecute code\n  [-V --v' +
-                       'ersion]\tdisplay version information according to srfi-176\n  [-c --compile]\t' +
-                       'parse and compile the file into binary file format\n  [-b --boostrap]\tpoint t' +
-                       'o a file that should be used for boostraping standard library,\n\t\t\tdefault ' +
-                       'is ./dist/std.xcb. use none to disable boostraping\n  [-q --quiet]\t\tdon\'t d' +
-                       'isplay banner in REPL\n  [-d --dynamic]\trun interpreter with dynamic scope\n ' +
-                       ' [-t --trace]\t\tprint JavaScript and scheme stack traces when extensions is th' +
-                       'rown\n\nif called without arguments it will run the REPL and if called with on' +
-                       'e argument\nit will treat it as filename and execute it.',
+    console.log(format('%s\nusage:\n  %s -q | -c | -h | -t | -j | -b <file> | -d | -e <code> | <filena' +
+                       'me>\n\n  [-h --help]\t\tthis help message\n  [-e --eval]\t\texecute code\n  [-' +
+                       'V --version]\tdisplay version information according to srfi-176\n  [-c --compi' +
+                       'le]\tparse and compile the file into binary file format\n  [-b --bootstrap]\tp' +
+                       'oint to a file that should be used for bootstrapping standard library,\n\t\t\t' +
+                       'default is ./dist/std.xcb. use none to disable bootstrapping\n  [-q --quiet]\t' +
+                       '\tdon\'t display banner in REPL\n  [-d --dynamic]\trun interpreter with dynami' +
+                       'c scope\n  [-t --trace]\t\tenable tracing: report line, column and file on err' +
+                       'ors and\n\t\t\tcollect a Scheme \'stack\' trace\n  [-j --js-trace]\talso print' +
+                       ' the JavaScript stack trace on errors\n\nif called without arguments it will r' +
+                       'un the REPL and if called with one argument\nit will treat it as filename and ' +
+                       'execute it.',
                        intro, path.basename(name)));
 } else {
-    const dynamic = options.d || options.dynamic;
-    const entry = '   ' + (dynamic ? 'dynamic' : 'lexical') + ' scope $1';
+    const entry = '   ' + (use_dynamic ? 'dynamic' : 'lexical') + ' scope $1';
     if (process.stdin.isTTY && !quiet) {
         console.log(banner.replace(/(\n\nLIPS.+)/m, entry));
     }
     var prompt = 'lips> ';
     var continue_prompt = '... ';
-    var terminal = !!process.stdin.isTTY && !(process.env.EMACS || process.env.INSIDE_EMACS);
-    buffer = make_buffer(process.stdout);
+    const is_emacs = process.env.EMACS || process.env.INSIDE_EMACS;
+    var is_terminal = !!process.stdin.isTTY && !is_emacs;
+    output = is_emacs ? process.stdout : make_buffer(process.stdout);
     const history_size = Number(env.LIPS_REPL_HISTORY_SIZE);
     const history_size_valid = !Number.isNaN(history_size) && history_size > 0;
     rl = readline.createInterface({
         input: process.stdin,
-        output: buffer,
+        output,
         prompt: prompt,
-        historySize: history_size_valid ? historySize : 1000,
-        terminal
+        historySize: history_size_valid ? history_size : 1000,
+        terminal: is_terminal
     });
-    rl.on('close', () => {
-        setTimeout(() => {
-            rl.setPrompt('');
-            buffer.flush('\n');
-        }, 10);
-    });
-    setupHistory(rl, terminal ? env.LIPS_REPL_HISTORY : '', run_repl);
+    if (!is_emacs) {
+        rl.on('close', () => {
+            setTimeout(() => {
+                rl.setPrompt('');
+                output.flush('\n');
+            }, 10);
+        });
+    }
+    setupHistory(rl, is_terminal ? env.LIPS_REPL_HISTORY : '', run_repl);
 }
 
 function is_open(token) {
@@ -583,9 +609,6 @@ function run_repl(err, rl) {
     // we use promise loop to fix issue when copy paste list of S-Expression
     const is_emacs = process.env.EMACS || process.env.INSIDE_EMACS;
     let prev_eval = Promise.resolve();
-    if (process.stdin.isTTY || is_emacs) {
-        rl.prompt();
-    }
     let prev_line;
     function is_brackets_mode() {
         return !!cmd.match(brackets_re);
@@ -602,7 +625,7 @@ function run_repl(err, rl) {
                 rl.setPrompt(continue_prompt);
             }
             rl.prompt();
-            if (terminal) {
+            if (is_terminal) {
                 rl.write(' '.repeat(prompt.length - continue_prompt.length));
             }
         } else {
@@ -695,7 +718,10 @@ function run_repl(err, rl) {
             }
         }, 0);
     });
-    bootstrap(interp).then(function() {
+    bootstrap(interpreter).then(function() {
+        if (process.stdin.isTTY || is_emacs) {
+            rl.prompt();
+        }
         if (SUPPORTS_PASTE_BRACKETS) {
             // this make sure that the paste brackets ANSI escape
             // is added to cmd so they can be processed in 'line' event
@@ -719,7 +745,7 @@ function run_repl(err, rl) {
                 if (cmd.match(/\x1b\[201~$/)) {
                     cmd = code;
                 }
-                if (terminal) {
+                if (is_terminal) {
                     const output = ansi_rewrite_above(scheme(code));
                     process.stdout.write(output);
                 }
@@ -732,7 +758,9 @@ function run_repl(err, rl) {
                     rl.pause();
                     cmd = '';
                     prev_eval = prev_eval.then(function() {
-                        const result = run(code, interp, dynamic, null, options.t || options.trace, false);
+                        const result = run(code, {
+                            interpreter
+                        });
                         return result;
                     }).then(function(result) {
                         if (process.stdin.isTTY) {
@@ -761,8 +789,7 @@ function run_repl(err, rl) {
                     continue_multiline(code);
                 }
             } catch (e) {
-                console.error(e.message);
-                console.error(e.stack);
+                print_error(e, use_js_trace);
                 cmd = '';
                 rl.setPrompt(prompt);
                 rl.prompt();

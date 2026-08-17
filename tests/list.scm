@@ -1,4 +1,4 @@
-(test "list: append"
+(test "append"
       (lambda (t)
         (t.is (append '(1 2 3) 10) '(1 2 3 . 10))
         (t.is (append '((1 2 3)) 10) '((1 2 3) . 10))
@@ -15,7 +15,7 @@
         (t.is (append '() '(foo) '() '(bar)) '(foo bar))))
 
 
-(test "list: cycles"
+(test "cycles"
       (lambda (t)
         ;; not cycle bug #44
         (let* ((x (list 1 2))

@@ -1,5 +1,7 @@
 #!/usr/bin/env lips
 
+#!no-cycle
+
 (define (dump expr)
   (let ((result (open-output-string)))
     (write expr result)

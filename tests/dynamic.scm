@@ -1,7 +1,7 @@
 (define-macro (exec code)
   (lips.evaluate code &(:use_dynamic true)))
 
-(test "dynamic: let"
+(test "let"
       (lambda (t)
         (t.is (exec (begin
                       (define (f)
@@ -11,7 +11,7 @@
                         (f))))
               20)))
 
-(test "dynamic: no closures"
+(test "no closures"
       (lambda (t)
         (t.is (exec (begin
                        (define f (let ((x 10))
@@ -19,7 +19,7 @@
                        (try (t) (catch (e) #t))))
               #t)))
 
-(test "dynamic: function parameters"
+(test "function parameters"
       (lambda (t)
         (t.is (exec (begin
                       (define (f y)
@@ -28,7 +28,7 @@
                         (f 10))))
               20)))
 
-(test "dynamic: set"
+(test "set"
       (lambda (t)
         (t.is (exec (begin
                       (define (f)
@@ -39,7 +39,7 @@
               100)))
 
 ;; https://www.reddit.com/r/lisp/comments/1943lg6/comment/khehb28/?context=3
-(test "dynamic: stak"
+(test "stak"
       (lambda (t)
         (t.is
          (exec (begin
@@ -66,7 +66,7 @@
                       (stak 18 12 6)))
          7)))
 
-(test "dynamic: close?"
+(test "close?"
       (lambda (t)
         (t.is (exec (begin
 

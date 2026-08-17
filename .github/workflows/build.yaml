@@ -3,7 +3,7 @@ name: Build and test
 on:
   push:
     paths:
-      - "template/Makefile"
+      - "templates/Makefile"
       - "package.json"
       - "package-lock.json"
       - "Makefile"
@@ -12,19 +12,21 @@ on:
       - "bin/*"
       - "lib/*"
       - "src/*"
+      - "benchmarks/**"
       - ".github/workflows/build.yaml"
     branches:
       - master
       - devel
   pull_request:
     paths:
-      - "template/Makefile"
+      - "templates/Makefile"
       - "Makefile"
       - "scripts/*"
       - "tests/*"
       - "bin/*"
       - "lib/*"
       - "src/*"
+      - "benchmarks/**"
       - ".github/workflows/build.yaml"
     branches:
       - master
@@ -33,23 +35,74 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # A push to devel/master and a same-repo PR (e.g. devel->master) fire for the
+    # same commit and would run twice. The push run already covers internal
+    # branches, so skip the pull_request run unless it comes from a fork (which
+    # produces no push event). This dedupes without cancelling anything.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     steps:
       - name: Update deps
         run: sudo apt-get update
       - name: Install ImageMagick
         run: sudo apt-get -y install graphicsmagick
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
       - run: npm ci
       - run: make
       - run: make lint
+      # fast bootstrap + core-eval sanity check (lexical and dynamic scope)
+      # before the full suite; also guards against a dynamic-mode boot hang
+      - run: make smoke
       - run: make test
       - run: make coverage
       - name: Coveralls
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  benchmark:
+    runs-on: ubuntu-latest
+    # same dedupe as `build`: run on push, and on PRs only from forks
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: checkout
+        uses: actions/checkout@v7
+      - name: setup node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: build
+        run: make
+      - name: run benchmark
+        shell: bash
+        run: |
+          set -o pipefail
+          node bin/lips.js benchmarks/suite.scm | tee benchmark_output.txt
+      - name: validate benchmark output
+        run: grep -q "ops/sec" benchmark_output.txt
+      - name: clean uncommited files
+        run: git reset --hard
+      - name: store / compare benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        continue-on-error: true
+        with:
+          name: LIPS interpreter benchmark
+          tool: benchmarkjs
+          output-file-path: benchmark_output.txt
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          gh-pages-branch: benchmark-data
+          benchmark-data-dir-path: data
+          auto-push: ${{ github.event_name != 'pull_request' }}
+          summary-always: true
+          comment-always: true
+          alert-threshold: '150%'
+          fail-on-alert: false
+          comment-on-alert: true

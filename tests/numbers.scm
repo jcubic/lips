@@ -1,10 +1,10 @@
-(test "numbers: operation without args"
+(test "operation without args"
       (lambda (t)
         (t.is (+) 0)
         (t.is (*) 1)
         (t.is (to.throw (-)) true)))
 
-(test "numbers: rational"
+(test "rational"
       (lambda (t)
         (let* ((a 1/2) (b 1/4) (a+b (+ a b)))
           (t.is (= a+b 3/4) true)
@@ -13,21 +13,61 @@
           (t.is (number->string (+ 1/2 1/2 1.0)) "2.0")
           (t.is (number->string (+ 1/2 1/2 1/2)) "3/2"))))
 
-(test "numbers: complex rational"
+(test "complex rational"
       (lambda (t)
         (t.is  (/ (make-rectangular 1 2) (make-rectangular 2 10))
                (/ 1+2i 2+10i))))
 
-(test "numbers: NaN"
+(test "NaN"
       (lambda (t)
-        (t.is (= +nan.0 +nan.0) false)
-        (t.is (eq? +nan.0 +nan.0) false)
-        (t.is (eqv? +nan.0 +nan.0) true)
-        (t.is (equal? +nan.0 +nan.0) true)
-        (t.is (eq? 10 +nan.0) false)
-        (t.is (eq? +nan.0 10) false)))
+        (t.is (= +nan.0 +nan.0) #f)
+        (t.is (eq? +nan.0 +nan.0) #f)
+        (t.is (eqv? +nan.0 +nan.0) #t)
+        (t.is (equal? +nan.0 +nan.0) #t)
+        (t.is (eq? 10 +nan.0) #f)
+        (t.is (eq? +nan.0 10) #f)
+        (t.is (< +nan.0 10) #f)
+        (t.is (< 10 +nan.0) #f)
+        (t.is (> +nan.0 10) #f)
+        (t.is (> 10 +nan.0) #f)
+        (t.is (<= +nan.0 10) #f)
+        (t.is (<= 10 +nan.0) #f)
+        (t.is (>= +nan.0 10) #f)
+        (t.is (>= 10 +nan.0) #f)))
 
-(test "numbers: complex NaN"
+(test "+inf.0/-inf.0"
+      (lambda (t)
+        (t.is (> +inf.0 10) #t)
+        (t.is (> 10 +inf.0) #f)
+        (t.is (> -10 +inf.0) #f)
+        (t.is (> +inf.0 -10) #t)
+
+        (t.is (> -inf.0 10) #f)
+        (t.is (> 10 -inf.0) #t)
+        (t.is (> -10 -inf.0) #t)
+        (t.is (> -inf.0 -10) #f)
+
+        (t.is (= +inf.0 -inf.0) #f)
+        (t.is (> +inf.0 -inf.0) #t)
+        (t.is (< +inf.0 -inf.0) #f)
+        (t.is (< +nan.0 +inf.0) #f)
+        (t.is (< +inf.0 +nan.0) #f)
+        (t.is (> +nan.0 +inf.0) #f)
+        (t.is (> +inf.0 +nan.0) #f)
+        (t.is (<= +nan.0 +inf.0) #f)
+        (t.is (<= +inf.0 +nan.0) #f)
+        (t.is (>= +nan.0 +inf.0) #f)
+        (t.is (>= +inf.0 +nan.0) #f)
+        (t.is (< +nan.0 -inf.0) #f)
+        (t.is (< -inf.0 +nan.0) #f)
+        (t.is (> +nan.0 -inf.0) #f)
+        (t.is (> -inf.0 +nan.0) #f)
+        (t.is (<= +nan.0 -inf.0) #f)
+        (t.is (<= -inf.0 +nan.0) #f)
+        (t.is (>= +nan.0 -inf.0) #f)
+        (t.is (>= -inf.0 +nan.0) #f)))
+
+(test "complex NaN"
       (lambda (t)
         (t.is (number->string +nan.0+10i) "+nan.0+10i")
         (t.is (number->string +nan.0+10.0i) "+nan.0+10.0i")
@@ -45,7 +85,7 @@
         (t.is (number->string 10.0-nan.0i) "10.0+nan.0i")
         (t.is (number->string 1/2-nan.0i) "1/2+nan.0i")))
 
-(test "numbers: operator + with NaN"
+(test "operator + with NaN"
       (lambda (t)
         (t.is (+ +nan.0+nan.0i 10) +nan.0+nan.0i)
         (t.is (+ +nan.0+nan.0i 10.0) +nan.0+nan.0i)
@@ -101,7 +141,7 @@
         (t.is (+ 1/2 +nan.0) +nan.0)
         (t.is (+ 10+10i +nan.0) +nan.0+10i)))
 
-(test "numbers: operator + with +inf.0"
+(test "operator + with +inf.0"
       (lambda (t)
         (t.is (+ +inf.0+inf.0i 10) +inf.0+inf.0i)
         (t.is (+ +inf.0+inf.0i 10.0) +inf.0+inf.0i)
@@ -157,7 +197,7 @@
         (t.is (+ 1/2 +inf.0) +inf.0)
         (t.is (+ 10+10i +inf.0) +inf.0+10i)))
 
-(test "numbers: operator / with NaN"
+(test "operator / with NaN"
       (lambda (t)
         (t.is (/ +nan.0+nan.0i 10) +nan.0+nan.0i)
         (t.is (/ +nan.0+nan.0i 10.0) +nan.0+nan.0i)
@@ -230,7 +270,7 @@
         (t.is (/ +nan.0+1/2i 0.5+10i) +nan.0+nan.0i)
         (t.is (/ +nan.0+0.5i 0.5+10i) +nan.0+nan.0i)))
 
-(test "numbers: complex infinity"
+(test "complex infinity"
       (lambda (t)
         (t.is (number->string +inf.0+10i) "+inf.0+10i")
         (t.is (number->string +inf.0+10.0i) "+inf.0+10.0i")
@@ -248,7 +288,7 @@
         (t.is (number->string 10.0-inf.0i) "10.0-inf.0i")
         (t.is (number->string 1/2-inf.0i) "1/2-inf.0i")))
 
-(test "numbers: not numbers"
+(test "not numbers"
       (lambda (t)
         (t.is (. (lips.parse "0.1/0.1") 0) '0.1/0.1)
         (t.is (to.throw (lips.parse "#i1/2i+0.1+0.1")) true)
@@ -257,7 +297,7 @@
         (t.is (. (lips.parse "/2/3") 0) '/2/3) ;; not regex
         (t.is (to.throw (lips.parse "#e0.1/0.1")) true)))
 
-(test "numbers: literals"
+(test "literals"
       (lambda (t)
 
         (t.is (number->string (. (lips.parse "#i1e10") 0)) "1.0e+10")
@@ -428,7 +468,7 @@
         (t.is (number->string #b#i1/100+1/100i) "0.25+0.25i")
         (t.is (number->string #b#i-1/100+1/100i) "-0.25+0.25i")))
 
-(test "numbers: string->number"
+(test "string->number"
       (lambda (t)
         ;; edge cases - big nums and hex
         (t.is (string->number "1e2" 16) 482)
@@ -463,7 +503,7 @@
         (t.is (string->number "#o10+10i" 10) 8+8i)
         (t.is (string->number "#b10+10i" 10) 2+2i)))
 
-(test "numbers: complex"
+(test "complex"
       (lambda (t)
         (t.is 10+0i 10)
         (t.is 10+0i 10)
@@ -486,7 +526,7 @@
         (t.is (number->string #i1/2+2/4i) "0.5+0.5i")
         (t.is (number->string #e0.5+0.1i) "1/2+1/10i")))
 
-(test "numbers: modulo functions"
+(test "modulo functions"
       (lambda (t)
         (t.is (modulo 13 4) 1)
         (t.is (remainder 13 4) 1)
@@ -502,7 +542,7 @@
 
         (t.is (remainder -13 -4.0) -1.0)))
 
-(test "numbers: operator +"
+(test "operator +"
       (lambda (t)
         (t.is (+ 1 1.0 1/10) 2.1)
         (t.is (number->string (+ 1/2 1/2 1.0)) "2.0")
@@ -562,7 +602,7 @@
         (t.is (+ 1/2+0.1i 1/2) 1+0.1i)
         (t.is (+ 1/2+0.1i 0.1) 0.6+0.1i)))
 
-(test "numbers: operator -"
+(test "operator -"
       (lambda (t)
         (t.is (- 1 1.0 1/10) -0.1)
         (t.is (number->string (- 1/2 1/2 1.0)) "-1.0")
@@ -624,7 +664,7 @@
         (t.is (- 1/2+0.1i 1/2) 0.1i)
         (t.is (- 1/2+0.1i 0.1) 0.4+0.1i)))
 
-(test "numbers: operator /"
+(test "operator /"
       (lambda (t)
         ;; single arg
         (t.is (/ 10) 1/10)
@@ -715,7 +755,7 @@
         (t.is (/ 1/2+1.0i 1.0) 0.5+1.0i)
         (t.is (/ 1/2+1i 1.0) 0.5+1.0i)))
 
-(test "numbers: operator *"
+(test "operator *"
       (lambda (t)
         (t.is (* 10 10) 100)
         (t.is (* 10 1/10) 1)
@@ -771,7 +811,7 @@
         (t.is (* 10+10.0i 10-10.0i) 200.0+0.0i)
         (t.is (* 10+1/2i 10-1/2i) 401/4)))
 
-(test "numbers: sqrt"
+(test "sqrt"
       (lambda (t)
         (for-each (lambda (x)
                     (t.is (= (sqrt (* x x)) x) #t))
@@ -796,7 +836,7 @@
 
         (t.is (sqrt -9) 3i)))
 
-(test "numbers: eq?"
+(test "eq?"
       (lambda (t)
 
         ;; eq? on numbers is unspecified - in lisp if two numbers are the same
@@ -814,7 +854,7 @@
                 (list (exact? ret) (= ret 1i) (not (eq? ret 1i))))
               '(#t #t #f))))
 
-(test "numbers: bignum"
+(test "bignum"
       (lambda (t)
 
         (define (! n) (apply * (cdr (range (+ n 1)))))
@@ -822,7 +862,7 @@
         (t.snapshot (! 10))
         (t.snapshot (--> (! 8000) (toString)))))
 
-(test "numbers: positive?"
+(test "positive?"
       (lambda (t)
         (t.is (positive? 10) #t)
         (t.is (positive? 1/2) #t)
@@ -832,7 +872,7 @@
         (t.is (positive? -1/2) #f)
         (t.is (positive? -0.5) #f)))
 
-(test "numbers: negative?"
+(test "negative?"
       (lambda (t)
         (t.is (negative? 10) #f)
         (t.is (negative? 1/2) #f)
@@ -842,7 +882,7 @@
         (t.is (negative? -1/2) #t)
         (t.is (negative? -0.5) #t)))
 
-(test "numbers: types"
+(test "types"
       (lambda (t)
         (t.is (real? +nan.0) #t)
         (t.is (rational? -inf.0) #f)
@@ -881,7 +921,7 @@
         #;(t.is (nan? -nan.0-nan.0i) #t)
         (t.is (nan? 1+2i) #f)))
 
-(test "numbers: zeros"
+(test "zeros"
       (lambda (t)
         (let ((a 0) (b 0) (c 0.0) (d 0.0))
           (t.is (eq? a b) #t)
@@ -890,7 +930,7 @@
           (t.is (= a b) #t)
           (t.is (= a c) #t))))
 
-(test "numbers: negative zero"
+(test "negative zero"
       (lambda (t)
         (let ((a 0) (b -0))
           (t.is (eq? a b) #t)
@@ -914,7 +954,7 @@
         (t.is (/ 0.0 -37) -0.0)
         (t.is (/ 0 -37) 0)))
 
-(test "numbers: exact->inexact"
+(test "exact->inexact"
       (lambda (t)
         (t.is (exact->inexact 10) 10.0)
         (t.is (exact->inexact 1/2) 0.5)
@@ -929,7 +969,7 @@
         (t.is (exact->inexact 1/2+10i) 0.5+10.0i)
         (t.is (exact->inexact 1/2+10.0i) 0.5+10.0i)))
 
-(test "numbers: inexact->exact"
+(test "inexact->exact"
       (lambda (t)
         (t.is (inexact->exact 0.1) 1/10)
         (t.is (inexact->exact 1/10) 1/10)
@@ -953,7 +993,7 @@
         (t.is (inexact->exact +10i) +10i)
         (t.is (inexact->exact +1/10i) +1/10i)))
 
-(test "numbers: operation exp"
+(test "operation exp"
       (lambda (t)
         ;; big int
         (t.is (exp 2) 7.38905609893065)
@@ -970,7 +1010,7 @@
         (t.is (exp +2-2i) -3.074932320639359-6.71884969742825i)
         (t.is (exp -2+2i) -0.05631934999212789+0.12306002480577674i)))
 
-(test "numbers: operation expt"
+(test "operation expt"
       (lambda (t)
         (t.is (expt 10 2) 100)
         (t.is (expt 10 1/2) 3.1622776601683795)
@@ -1037,12 +1077,12 @@
         (t.is (expt 0.5 -10-10i) 816.2504880317307+618.3131413676737i)
         (t.is (expt -0.5 -10-10i) 3.5940738147512644e16+2.7225258707836444e16i)))
 
-(test "numbers: expt => e"
+(test "expt => e"
       (lambda (t)
         ;; ref: https://twitter.com/martinmbauer/status/1766449192958898506
         (t.is (exact->inexact (expt (expt (expt +i +i) (/ 1 Math.PI)) -2)) Math.E)))
 
-(test "numbers: sin"
+(test "sin"
       (lambda (t)
         (for-each (lambda (l)
                     (let ((num (car l))
@@ -1057,7 +1097,7 @@
                     (0.5+0.5i 0.5406126857131534+0.4573041531842493i)
                     (0.5i +0.5210953054937474i)))))
 
-(test "numbers: cos"
+(test "cos"
       (lambda (t)
         (for-each (lambda (l)
                     (let* ((num (car l))
@@ -1072,7 +1112,7 @@
                     (0.5+0.5i 0.9895848833999199-0.24982639750046154i)
                     (+0.5i 1.1276259652063807)))))
 
-(test "numbers: tan"
+(test "tan"
       (lambda (t)
         (for-each (lambda (l)
                     (let* ((num (car l))
@@ -1087,7 +1127,7 @@
                     (1/2+1/2i 0.40389645531602575+0.5640831412674985i)
                     (+1/2i +0.46211715726000974i)))))
 
-(test "numbers: atan"
+(test "atan"
       (lambda (t)
         (t.is (atan 10+10i) 1.5207132443509341+0.04991641756298178i)
         (t.is (atan -10+10i) -1.5207132443509341+0.04991641756298178i)
@@ -1108,14 +1148,14 @@
         (t.is (atan -inf.0) -1.5707963267948966)
         (t.is (atan +nan.0) +nan.0)))
 
-(test "numbers: should calculate odd? / even?"
+(test "should calculate odd? / even?"
       (lambda (t)
         (t.is (odd? 1) #t)
         (t.is (odd? 2) #f)
         (t.is (even? 10) #t)
         (t.is (even? 21) #f)))
 
-(test "numbers: should throw exception odd? / event?"
+(test "should throw exception odd? / event?"
       (lambda (t)
         (for-each (lambda (op?)
                     (t.is (to.throw (op? 10+10i)) #t)
@@ -1124,7 +1164,7 @@
                     (t.is (to.throw (op? 1.2)) #t))
                   '(even? odd?))))
 
-(test "numbers: abs"
+(test "abs"
       (lambda (t)
         (let ((specs '((10 10)
                        (0.5 0.5)
@@ -1163,7 +1203,7 @@
           (t.is (abs 0.5-0.5i) 0.7071067811865476)
           (t.is (abs 0.5+0.5i) 0.7071067811865476))))
 
-(test "numbers: floor/quotient on big int rational"
+(test "floor/quotient on big int rational"
       (lambda (t)
         (let ((result 1002003004005006007008009010011012013014015016017018019020021022023024025026027028029030031032033034035036037038039040041042043044045046047048049050051052053054055056057058059060061062063064065066067068069070071072073074075076077078079080081082083084085086087088089090091092093094095096097098099100101102103104105106107108109110111112113114115116117118119120121122123124125126127128129130131132133134135136137138139140141142143144145146147148149150151152153154155156157158159160161162163164165166167168169170171172173174175176177178179180181182183184185186187188189190191192193194195196197198199200201202203204205206207208209210211212213214215216217218219220221222223224225226227228229230231232233234235236237238239240241242243244245246247248249250251252253254255256257258259260261262263264265266267268269270271272273274275276277278279280281282283284285286287288289290291292293294295296297298299300301302303304305306307308309310311312313314315316317318319320321322323324325326327328329330331332333334335336337338339340341342343344345346347348349350351352353354355356357358359360361362363364365366367368369370371372373374375376377378379380381382383384385386387388389390391392393394395396397398399400401402403404405406407408409410411412413414415416417418419420421422423424425426427428429430431432433434435436437438439440441442443444445446447448449450451452453454455456457458459460461462463464465466467468469470471472473474475476477478479480481482483484485486487488489490491492493494495496497498499500501502503504505506507508509510511512513514515516517518519520521522523524525526527528529530531532533534535536537538539540541542543544545546547548549550551552553554555556557558559560561562563564565566567568569570571572573574575576577578579580581582583584585586587588589590591592593594595596597598599600601602603604605606607608609610611612613614615616617618619620621622623624625626627628629630631632633634635636637638639640641642643644645646647648649650651652653654655656657658659660661662663664665666667668669670671672673674675676677678679680681682683684685686687688689690691692693694695696697698699700701702703704705706707708709710711712713714715716717718719720721722723724725726727728729730731732733734735736737738739740741742743744745746747748749750751752753754755756757758759760761762763764765766767768769770771772773774775776777778779780781782783784785786787788789790791792793794795796797798799800801802803804805806807808809810811812813814815816817818819820821822823824825826827828829830831832833834835836837838839840841842843844845846847848849850851852853854855856857858859860861862863864865866867868869870871872873874875876877878879880881882883884885886887888889890891892893894895896897898899900901902903904905906907908909910911912913914915916917918919920921922923924925926927928929930931932933934935936937938939940941942943944945946947948949950951952953954955956957958959960961962963964965966967968969970971972973974975976977978979980981982983984985986987988989990991992993994995996997999))
           (t.is (floor (/ (expt 1000 999) 998001)) result)

@@ -99,64 +99,6 @@ Since environments are JavaScript objects you can access its properties like `__
 
 Here you can access name of the lexical environment.
 
-## Frames
-
-In LIPS inspired by [R programming language](http://adv-r.had.co.nz/Environments.html), there are
-two procedures `parent.frame` and `parent.frames` you can use them to get access to function
-call stack environments.
-
-```scheme
-(define (foo)
-  (define x 20)
-  (bar))
-
-(define (bar)
-  (define x 30)
-  (baz))
-
-(define (baz)
-   (for-each (lambda (env)
-                (let-env env
-                  (print x)))
-     (parent.frames)))
-
-(define x 10)
-(foo)
-;; ==> 10
-;; ==> 20
-;; ==> 30
-```
-
-You can mix lexical scope chain with frames:
-
-```scheme
-(define (foo)
-  (define x 10)
-  (let ((y "world"))
-    (bar)))
-
-(define (bar)
-  (define x 20)
-  (let ((y "hello"))
-    (baz)))
-
-(define (baz)
-   (for-each (lambda (env)
-               (display env.__name__)
-               (display " ==> ")
-               (print (Object.keys env.__env__))
-               (display env.__parent__.__name__)
-               (display " ==> ")
-               (print (Object.keys env.__parent__.__env__)))
-     ;; car is top level environment
-     (cdr (parent.frames))))
-(foo)
-;; ==> let ==> #(y)
-;; ==> lambda ==> #(arguments parent.frame x)
-;; ==> let ==> #(y)
-;; ==> lambda ==> #(arguments parent.frame x)
-```
-
 ## Global environment
 
 in `lips.env` is user global environment but real global environment where all functions and macros that are

@@ -1,13 +1,13 @@
 <h1 align="center">
-  <img src="https://github.com/jcubic/lips/blob/master/assets/lips.svg?raw=true"
+  <img src="https://github.com/jcubic/lips/blob/devel/assets/lips.svg?raw=true"
        alt="LIPS - Scheme Based Powerful Lisp Language" />
 </h1>
 
 [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/LIPS_scheme)](https://twitter.com/LIPS_scheme)
-[![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.21-blue.svg)](https://www.npmjs.com/package/lips)
+[![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.22-blue.svg)](https://www.npmjs.com/package/lips)
 ![1.0.0 Complete](https://img.shields.io/github/milestones/progress-percent/jcubic/lips/1?label=1.0.0%20Complete)
-[![Build and test](https://github.com/jcubic/lips/actions/workflows/build.yaml/badge.svg?branch=master&event=push)](https://github.com/jcubic/lips/actions/workflows/build.yaml)
-[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=master&0496d868b30892b4af288606c85ba936)](https://coveralls.io/github/jcubic/lips?branch=master)
+[![Build and test](https://github.com/jcubic/lips/actions/workflows/build.yaml/badge.svg?branch=devel&event=push)](https://github.com/jcubic/lips/actions/workflows/build.yaml)
+[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=devel&07a19642aa48ee1a29d94b4a4976733a)](https://coveralls.io/github/jcubic/lips?branch=devel)
 [![Join Gitter Chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jcubic/lips)
 ![NPM Download Count](https://img.shields.io/npm/dm/lips)
 ![JSDelivr Download count](https://img.shields.io/jsdelivr/npm/hm/lips)
@@ -37,6 +37,7 @@ The name is a recursive acronym which stands for LIPS Is Pretty Simple.
 * Full numerical tower and Big Integer support.
 * Powerful introspection.
 * Great integration with JavaScript.
+* Full continuations and TCO.
 * Code formatting (pretty print).
 * Lisp and hygienic Scheme macros and macroexpand.
 * Builtin help system.
@@ -195,7 +196,7 @@ npm install -g lips@beta
 
 you can run the interpreter from the terminal:
 
-![LIPS: Scheme interactive terminal](https://github.com/jcubic/lips/blob/master/assets/screencast.gif?raw=true)
+![LIPS: Scheme interactive terminal](https://github.com/jcubic/lips/blob/devel/assets/screencast.gif?raw=true)
 
 
 You can also run code in a string with:
@@ -234,7 +235,7 @@ Executables also return a S-Expression according to SRFI-176 use `lips --version
 
 ## FOSDEM'23 Presentation [Video]
 
-[![FOSDEM 2023 - LIPS Scheme: Powerful introspection and extensibility](https://github.com/jcubic/lips/blob/master/assets/fosdem-intro.png?raw=true)](https://fosdem.org/2023/schedule/event/lipsscheme/)
+[![FOSDEM 2023 - LIPS Scheme: Powerful introspection and extensibility](https://github.com/jcubic/lips/blob/devel/assets/fosdem-intro.png?raw=true)](https://fosdem.org/2023/schedule/event/lipsscheme/)
 
 ## Limitations
 
@@ -243,7 +244,7 @@ Because LIPS is tree walking interpreter, sometimes it may be slow. Especially i
 process long arrays and use callback function. If the array is quite large each piece of code
 inside the callback may slow down the processing. For example see:
 
-script [reference.scm](https://github.com/jcubic/lips/blob/master/scripts/reference.scm)
+script [reference.scm](https://github.com/jcubic/lips/blob/devel/scripts/reference.scm)
 
 That generates reference documentation for all builtin functions and macros.
 The slow part is `(names.sort name-compare)` (`Array::sort`) that take quite time to calculate,
@@ -267,13 +268,6 @@ Examples:
 * [React with Hooks](https://codepen.io/jcubic/pen/PoKQmpq?editors=1000) - on click the UI freezes for ~300ms, you can see warnings in dev tools.
 
 The issue with performance is tracked in [#197](https://github.com/jcubic/lips/issues/197).
-
-### JavaScript callbacks
-
-Another limitation is when using JavaScript libraries that require normal values but get a Promise instead.
-This can happen with React/Preact and when the component returns a Promise. Some macros can be async
-(return a Promise), which will break the React app when used in components. An example of a macro that is async is
-`do` macro. So when using React/Preact and when you need to use a promise, use promise quotation and `useEffect`.
 
 ## Supported SRFI
 
@@ -347,8 +341,8 @@ in Web (e.g. in Web REPL) you can also use full URL:
 - [x] Full support for R5RS
 - [ ] Full support for R7RS
   - [ ] R7RS libraries (`import`/`export`/`define-library`).
-  - [ ] Continuations.
-  - [ ] Tail Call Optimization (TCO).
+  - [x] Continuations.
+  - [x] Tail Call Optimization (TCO).
   - [ ] Fully tested Numerical Tower.
 - [x] Fully working binary compiler (for faster parsing and loading std lib).
 - [ ] Finish `syntax-rules` (ignore limitations of current approach).
@@ -358,7 +352,7 @@ in Web (e.g. in Web REPL) you can also use full URL:
 ### Future Plans
 - [ ] Picture language (possibly inspired by P5.js, see [SRFI-203](https://srfi.schemers.org/srfi-203/srfi-203.html)).
 - [ ] Stepper/Debugger.
-- [ ] Allow to use read/port in syntax extensions (similar to CL reader macros).
+- [x] Allow to use read/port in syntax extensions (similar to CL reader macros).
 - [ ] Proper expansion time for both macro systems.
 - [ ] Fully working and tested R7RS hygienic Macros (`syntax-rules`).
 - [ ] All recursive function in JS don't consume stack.
@@ -379,16 +373,19 @@ If you enjoy the library, you can write about it on a blog post and share inform
 Don't forget to link to the project website (it's
 [good for SEO](https://itnext.io/seo-for-open-source-projects-1a6b17ffeb8b)).
 
-Of course, if you want you can also contribute with code, but there are way easier ways to help.
+Of course, if you like, you can also contribute with code, but there are way easier ways to help.
 
-I would also love to see if you use the library, I may even share the links of projects that use it.
+I would also love to see if you use the library; I may even share the links of projects that use it.
 
 ## Acknowledgments
-* Font used in logo is [Telegrafico](https://www.dafont.com/telegrafico.font) by [ficod](https://www.deviantart.com/ficod).
+* The font used in the logo is [Telegrafico](https://www.dafont.com/telegrafico.font) by [ficod](https://www.deviantart.com/ficod).
 * The cover image for GitHub and Blog Posts use clipart by [Baptiste Gaultier](https://openclipart.org/artist/b.gaultier).
 * Part of the current Parser is inspired by implementation in [BiwaScheme](https://www.biwascheme.org/) by Yutaka HARA (yhara).
+* [TCO](https://lips.js.org/docs/scheme-intro/core#tail-call-optimization) and
+  [Continuations](https://lips.js.org/docs/scheme-intro/continuations) implementations inspired by [js-scheme](https://bluishcoder.co.nz/jsscheme/) by Alex Yakovlev.
+* Quasiquote is based on Alan Bawden's paper "Quasiquotation in Lisp".
 * `fetch` polyfill use [unfetch](https://github.com/developit/unfetch) by Jason Miller.
-* Browser `init` function use [ContentLoaded](http://javascript.nwbox.com/ContentLoaded/).
+* The browser `init` function uses [ContentLoaded](http://javascript.nwbox.com/ContentLoaded/).
 * The rationalize algorithm is based on [Kawa Scheme](https://www.gnu.org/software/kawa/index.html) by Per M.A. Bothner, Alan Bawden and Marc Feeley.
 * `ucs2decode` function taken from [punycode.js](https://github.com/bestiejs/punycode.js) by [Mathias Bynens](https://mathiasbynens.be/).
 * [Rosetta Code](https://rosettacode.org/) was used for:
@@ -407,7 +404,7 @@ Special thanks:
 * [Lassi Kortela](https://github.com/lassik) for helping with Scheme code.
 * [Niels Wijers](https://github.com/nielswijers) for handing over the [lips npm name](https://www.npmjs.com/package/lips).
 
-Thanks for [Algolia DocSearch](https://docsearch.algolia.com/) for providing free search on LIPS website.
+Thanks to [Algolia DocSearch](https://docsearch.algolia.com/) for providing free search on the LIPS website.
 
 ## License
 

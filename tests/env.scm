@@ -1,4 +1,4 @@
-(test "env: unset & parent env"
+(test "unset & parent env"
       (lambda (t)
         (define (string-append str)
            (let ((string-append (--> lips.env.__parent__ (get "string-append"))))

@@ -1,6 +1,6 @@
 {
   "name": "lips",
-  "version": "1.0.0-beta.21",
+  "version": "1.0.0-beta.22",
   "description": "Simple Scheme Like Lisp in JavaScript",
   "type": "module",
   "main": "dist/lips.min.js",
@@ -10,9 +10,13 @@
     "require": "./dist/lips.cjs"
   },
   "unpkg": "dist/lips.min.js",
+  "ava": {
+    "snapshotDir": "tests/snapshots"
+  },
   "scripts": {
-    "test": "c8 ava --timeout 10m --verbose tests/test.js",
-    "test-update": "c8 ava --update-snapshots --timeout 10m --verbose tests/test.js",
+    "test": "c8 ava --timeout 10m --verbose tests/tests-gen/*.test.js tests/interpreters.js",
+    "test-file": "c8 ava --timeout 10m --verbose tests/test.js",
+    "test-update": "c8 ava --update-snapshots --timeout 10m --verbose tests/tests-gen/*.test.js tests/interpreters.js",
     "coverage": "c8 report --reporter=lcov --reporter=json --reporter=text"
   },
   "repository": {
@@ -216,50 +220,59 @@
     }
   },
   "devDependencies": {
-    "@babel/core": "^7.26.0",
-    "@babel/eslint-parser": "^7.25.9",
-    "@babel/plugin-external-helpers": "^7.25.9",
-    "@babel/plugin-proposal-unicode-property-regex": "^7.16.7",
-    "@babel/plugin-transform-async-to-generator": "^7.25.9",
-    "@babel/plugin-transform-regenerator": "^7.25.9",
-    "@babel/plugin-transform-runtime": "^7.25.9",
-    "@babel/preset-env": "^7.26.0",
-    "@babel/runtime": "^7.26.0",
-    "@babel/runtime-corejs2": "^7.26.0",
-    "@mermaid-js/mermaid-cli": "^11.4.0",
-    "@rollup/plugin-babel": "^6.0.4",
-    "@rollup/plugin-commonjs": "^28.0.1",
-    "@rollup/plugin-node-resolve": "^15.3.0",
-    "acorn": "^8.14.0",
-    "ava": "^6.2.0",
+    "@babel/core": "^7.29.7",
+    "@babel/eslint-parser": "^7.29.7",
+    "@babel/plugin-external-helpers": "^7.29.7",
+    "@babel/plugin-proposal-unicode-property-regex": "^7.18.6",
+    "@babel/plugin-transform-async-to-generator": "^7.29.7",
+    "@babel/plugin-transform-regenerator": "^7.29.8",
+    "@babel/plugin-transform-runtime": "^7.29.7",
+    "@babel/preset-env": "^7.29.7",
+    "@babel/runtime": "^7.29.7",
+    "@mermaid-js/mermaid-cli": "^11.16.0",
+    "@rollup/plugin-babel": "^7.1.0",
+    "@rollup/plugin-commonjs": "^29.0.3",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-strip": "^3.0.4",
+    "acorn": "^8.18.0",
+    "ava": "^6.4.1",
     "benchmark": "^2.1.4",
-    "c8": "^10.1.2",
-    "coveralls-next": "^4.2.1",
-    "eslint": "^8.57.1",
-    "mermaid": "^11.4.0",
+    "c8": "^10.1.3",
+    "eslint": "^9.39.5",
+    "glob": "^13.0.6",
+    "mermaid": "^11.16.1",
     "microtime": "^3.1.1",
-    "nyc": "^17.1.0",
-    "preact": "^10.24.3",
-    "preact-render-to-string": "^6.5.11",
-    "rollup": "^4.24.4",
+    "nyc": "^18.0.0",
+    "preact": "^10.29.8",
+    "preact-render-to-string": "^6.7.0",
+    "puppeteer": "^25.8.0",
+    "rollup": "^4.62.4",
     "rollup-plugin-node-globals": "^1.4.0",
-    "tsup": "^8.3.5",
-    "typescript": "^5.7.3",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
     "uglify-js": "^3.19.3"
   },
-  "peerDepencies": {
-    "cbor-extract": "^0.3.1",
-    "bn.js": "^5.2.0"
+  "peerDependencies": {
+    "bn.js": "^5.2.0",
+    "cbor-extract": "^2.2.0"
   },
   "dependencies": {
-    "@jcubic/lily": "^0.4.0",
-    "bn.js": "^5.2.1",
+    "@babel/runtime-corejs3": "^7.29.0",
+    "@jcubic/lily": "^0.5.0",
+    "bn.js": "^5.2.0",
     "cbor-extract": "^2.2.0",
     "cbor-x": "^1.6.0",
     "compare-versions": "^6.1.1",
     "lzjb-pack": "^0.2.0",
     "prism-cli": "^0.5.3",
-    "prismjs": "^1.29.0",
+    "prismjs": "^1.30.0",
     "unfetch": "^5.0.0"
+  },
+  "allowScripts": {
+    "puppeteer@23.11.1": true,
+    "microtime": true,
+    "esbuild": true,
+    "core-js-pure": true,
+    "cbor-extract": true
   }
 }
