@@ -9,7 +9,24 @@ permissions:
   id-token: write
 
 jobs:
+  test:
+      - name: Update deps
+        run: sudo apt-get update
+      - name: Install ImageMagick
+        run: sudo apt-get -y install graphicsmagick
+      - name: checkout
+        uses: actions/checkout@v7
+      - name: setup node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: npm ci
+      - run: make
+      - run: make lint
+      - run: make smoke
+      - run: make test
   publish:
+    needs: [test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
