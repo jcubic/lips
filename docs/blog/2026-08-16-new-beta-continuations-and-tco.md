@@ -6,15 +6,17 @@ image: /img/continuations.png
 tags: [release]
 ---
 
-I'm excited to introduce a new beta version of LIPS Scheme. The most important features of this version
-are full continuations and TCO (Tail Call Optimization). They were inspired by
-[js-scheme](https://bluishcoder.co.nz/jsscheme/) by Alex Yakovlev.
+I'm excited to introduce a new beta version of LIPS Scheme. The most important features of this
+version are full [continuations](docs/scheme-intro/continuations) and [TCO (Tail Call
+Optimization)](/docs/scheme-intro/core#tail-call-optimization). They were inspired by
+[JS-Scheme](https://bluishcoder.co.nz/jsscheme/) by Alex Yakovlev.
 
 <!-- truncate -->
 
 ## Continuations
 
-You can now finally play with continuations. Here is a simple example of an early exit from a recursive named let.
+You can now finally play with [continuations](docs/scheme-intro/continuations). Here is a simple
+example of an early exit from a recursive named let.
 
 ```scheme
 (define (find fn lst)
@@ -35,8 +37,6 @@ You can now finally play with continuations. Here is a simple example of an earl
 ;; ==> 0
 ;; ==> (0 1 2 3 4 5 6 7)
 ```
-
-You can read about continuations in [Scheme Tutorial](/docs/scheme-intro/continuations)
 
 ## JavaScript generators
 
@@ -67,7 +67,7 @@ for (const i of integers(10)) {
 // ==> 9
 ```
 
-Now, thanks to continuations, the same thing can be done in LIPS Scheme.
+Now, thanks to [continuations](docs/scheme-intro/continuations), the same thing can be done in LIPS Scheme.
 
 ```scheme
 (define (integers x)
@@ -82,7 +82,7 @@ Now, thanks to continuations, the same thing can be done in LIPS Scheme.
 ;; ==> #(0 1 2 3 4 5 6 7 8 9)
 ```
 
-You can also use the generator with the `do-iterator` macro:
+You can also use the generator with the [do-iterator](/reference#do-iterator) macro:
 
 ```scheme
 (do-iterator
@@ -131,7 +131,7 @@ The JavaScript generators are a syntax sugar for the
 [JavaScript iterator protocol](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols)
 
 The implementation of generator use that protocol, the missing piece to be able to create a generator in LIPS
-were continuations.
+were [continuations](docs/scheme-intro/continuations).
 
 This is the source code that was based for the generator:
 
@@ -182,20 +182,21 @@ The iterator in JavaScript is an object that has a next property that is a funct
 
 There are two types of iterators: the normal iterator that has a `Symbol.iterator` property that
 holds a function, which returns the iterator. Or async iterator with `Symbol.asyncIterator` that has
-the same function. The function `async-generator` uses `Symbol.asyncIterator` instead of `Symbol.iterator`.
-
-For working with an iterator, there is a macro `do-iterator` that works similarly to the `do` macro but accepts
-iterator (it also has a single list as the first element instead of a list of lists).
-
-There is also the `iterator->array` function. Both macro and function are iterator agnostic and accept both iterators.
+the same function. The function [async-generator](/reference#async-generator) uses
+`Symbol.asyncIterator` instead of `Symbol.iterator`.
 
 The difference is that the next function in the async iterator can return a Promise.
 
+For working with an iterator, there is also the [iterator->array](/reference#iterator->array)
+function. Both macro [do-iterator](/reference#do-iterator) and function are iterator agnostic and
+accept both iterators.
+
 ## Tail Call Optimizations
 
-This is another feature implemented together with continuations inspired by JS-Scheme. You can now
-use recursion that doesn't consume the stack. There are still some memory increases, but the
-memory-allocated objects are garbage collected during the long loop.
+This is another feature implemented together with [continuations](docs/scheme-intro/continuations)
+inspired by [JS-Scheme](https://bluishcoder.co.nz/jsscheme/). You can now use recursion that doesn't
+consume the stack. There are still some memory increases, but the memory-allocated objects are
+garbage collected during the long loop.
 
 Here is an example that you can test:
 
@@ -212,7 +213,7 @@ Here is an example that you can test:
 
 ## "Stack" Trace
 
-You can create a 'stack' trace out of continuations:
+You can create a 'stack' trace out of [continuations](docs/scheme-intro/continuations):
 
 ```scheme
 (trace #t)
@@ -230,7 +231,7 @@ You can create a 'stack' trace out of continuations:
 (trace #f)
 ```
 
-You can also directly inspect the continuations and extract meta information:
+You can also directly inspect the [continuations](docs/scheme-intro/continuations) and extract meta information:
 
 ```scheme
 (trace #t)
@@ -294,7 +295,7 @@ syntax is supported, only character classes and `+`/`*` quantifiers.
 
 ## Quasiquote and Macroexpand
 
-Quasiquote was rewritten based on a paper
+[Quasiquote](/docs/scheme-intro/data-types#quasiquote) was rewritten based on a paper
 ["Quasiquotation in Lisp" by Alen Bawden](https://duckduckgo.com/?q=Alan+Bawden+lisp+quasi+quotation+in+lisp&ia=web).
 
 Same as `macroexpand`/`macroexpand-1` that are now functions similar to Common Lisp.
@@ -371,7 +372,7 @@ Up to 1.82x speed improvement
 
 ### Second example
 
-Here is another script with the `Array::forEach` Ccheme callback.
+Here is another script with the `Array::forEach` Scheme callback.
 
 ```scheme
 (define (calc x)
