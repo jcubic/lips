@@ -114,6 +114,9 @@ test: dist/std.xcb tests/tests-gen/.stamp
 test-file: dist/std.xcb
 	@$(NPM) run test-file -- -- -f $(FILE)
 
+test-file-update: dist/std.xcb
+	@$(NPM) run test-file-update -- -- -f $(FILE)
+
 test-update: dist/std.scm
 	@$(NPM) run test-update
 
