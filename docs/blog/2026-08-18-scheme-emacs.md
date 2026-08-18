@@ -3,7 +3,7 @@ slug: evaluate-scheme-in-emacs
 title: "Problem with Evaluating Scheme Expressions in Emacs"
 authors: jcubic
 image: /img/emacs-expression.png
-tags: [schemem emacs]
+tags: [scheme, emacs]
 ---
 
 I was checking the new beta release of LIPS Scheme in GNU Emacs. I was searching for a way to
