@@ -1,1 +1,0 @@
-"use strict";(globalThis.webpackChunknew_docs||=[]).push([[8947],{6600(a){a.exports=JSON.parse('{"authors":[{"name":"Jakub T. Jankiewicz","title":"LIPS maintainer","url":"https://jakub.jankiewicz.org/","imageURL":"https://github.com/jcubic.png","key":"jcubic","page":null,"count":6}]}')}}]);

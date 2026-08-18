@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunknew_docs||=[]).push([[6154],{9391(a){a.exports=JSON.parse('{"tag":{"label":"javascript","permalink":"/blog/tags/javascript","allTagsPath":"/blog/tags","count":4,"unlisted":false},"listMetadata":{"permalink":"/blog/tags/javascript","page":1,"postsPerPage":10,"totalPages":1,"totalCount":4,"blogDescription":"Blog","blogTitle":"Blog"}}')}}]);

@@ -4,11 +4,25 @@
         <title>LIPS Scheme blog</title>
         <link>https://lips.js.org/blog</link>
         <description>LIPS Scheme blog RSS Feed</description>
-        <lastBuildDate>Mon, 17 Aug 2026 00:00:00 GMT</lastBuildDate>
+        <lastBuildDate>Tue, 18 Aug 2026 00:00:00 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
         <generator>https://github.com/jpmonette/feed</generator>
         <language>en</language>
         <copyright>Copyright © 2026 Jakub T. Jankiewicz</copyright>
+        <item>
+            <title><![CDATA[Problem with Evaluating Scheme Expressions in Emacs]]></title>
+            <link>https://lips.js.org/blog/evaluate-scheme-in-emacs</link>
+            <guid>https://lips.js.org/blog/evaluate-scheme-in-emacs</guid>
+            <pubDate>Tue, 18 Aug 2026 00:00:00 GMT</pubDate>
+            <description><![CDATA[I was checking the new beta release of LIPS Scheme in GNU Emacs. I was searching for a way to]]></description>
+            <content:encoded><![CDATA[<p>I was checking the new beta release of LIPS Scheme in GNU Emacs. I was searching for a way to
+execute an expression in Scheme mode when using the cmuscheme Scheme REPL in the other window. It
+turned out that it&#39;s standard <code>C-x C-e</code> (<a href="https://www.gnu.org/software/emacs/manual/html_node/emacs/Lisp-Eval.html">same as for
+elisp</a>). The problem is
+that it displays the prompt multiple times when you execute code that doesn&#39;t produce any output.</p>
+<br/><a href="/blog/evaluate-scheme-in-emacs">see the rest of the article</a>]]></content:encoded>
+            <category>schemem emacs</category>
+        </item>
         <item>
             <title><![CDATA[LIPS Scheme 1.0.0-beta.22 with Continuations and TCO]]></title>
             <link>https://lips.js.org/blog/beta-continuations-and-tco</link>
@@ -20,6 +34,9 @@ version are full <a href="/docs/scheme-intro/continuations">continuations</a> an
 Optimization)</a>. They were inspired by
 <a href="https://bluishcoder.co.nz/jsscheme/">JS-Scheme</a> by Alex Yakovlev.</p>
 <br/><a href="/blog/beta-continuations-and-tco">see the rest of the article</a>]]></content:encoded>
+            <category>scheme</category>
+            <category>javascript</category>
+            <category>lips</category>
             <category>release</category>
         </item>
         <item>
