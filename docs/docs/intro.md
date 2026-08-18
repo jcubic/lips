@@ -12,7 +12,7 @@ When using the LIPS Scheme interpreter in a browser, you need to include the mai
 <script src="https://unpkg.com/lips@beta/dist/lips.min.js"></script>
 ```
 
-or [jsDelivr](https://www.jsdelivr.com/) that is somewhat faster:
+or [jsDelivr](https://www.jsdelivr.com/), which is somewhat faster:
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/lips@beta/dist/lips.min.js"></script>
@@ -33,7 +33,7 @@ After adding the script tag with the main file, you can use Scheme code within a
 
 :::info
 
-Only the core of LIPS is written in JavaScript, almost half of it it's written in Scheme.
+Only the core of LIPS is written in JavaScript, almost half of if it's written in Scheme.
 So if you want to load the standard library (to have full LIPS), you should use `bootstrap` or
 `data-bootstrap` attribute that will load it for you. You can optionally specify the location of the
 file.
@@ -49,8 +49,8 @@ file.
 </script>
 ```
 
-`xcb` file is simple binary format that LIPS uses to speed up parsing the the code. You can also use
-`.scm` file or `.min.scm` file that may be little bit bigger.
+`xcb` file is a simple binary format that LIPS uses to speed up parsing the code. You can also use
+`.scm` file or `.min.scm` file that may be a little bit bigger.
 
 :::info
 
@@ -68,7 +68,7 @@ You can also use `src` attribute to link to source file. Like you normally do wi
 
 ## Node.js
 
-To install LIPS you can use
+To install LIPS, you can use
 [NPM](https://www.freecodecamp.org/news/what-is-npm-a-node-package-manager-tutorial-for-beginners/),
 you first need to
 [install Node.js](https://www.freecodecamp.org/news/how-to-install-node-js-and-npm-on-windows-2/).
@@ -77,10 +77,10 @@ you first need to
 npm install -g lips@beta
 ```
 
-You should use beta, because the so call stable version is really old and outdated. Because of so
-many breaking changes no new stable version was released and instead 1.0 beta started.
+You should use beta because the so call stable version is really old and outdated. Because of so
+many breaking changes, no new stable version was released and instead 1.0 beta started.
 
-If LIPS is installed globally just use `lips` command to start the REPL:
+If LIPS is installed globally, just use `lips` command to start the REPL:
 
 ![LIPS REPL session in Terminal](/img/screencast.gif)
 
@@ -109,14 +109,14 @@ You can also use `npx` inside script shebang:
 
 :::info
 
-If you run this code outside of [Node.js project](#nodejs-project) npx will install the
+If you run this code outside [Node.js project](#nodejs-project) npx will install the
 package before execution.
 
 :::
 
 ### Node.js project
 
-After you have installed LIPS you can create a new Node.js project and write LIPS Scheme code
+After you have installed LIPS, you can create a new Node.js project and write LIPS Scheme code
 instead of JavaScript, using everything Node.js provides. See documentation about [Integration with
 JavaScript](/docs/lips/intro#integration-with-javascript).
 
@@ -149,7 +149,7 @@ TailwindCSS](https://shubhamjain.co/2024/02/29/why-is-number-package-have-59m-do
 
 :::
 
-## Executing LIPS programmatically
+## Executing LIPS Programmatically
 
 You can also execute LIPS from JavaScript:
 
@@ -220,13 +220,13 @@ about `let-env` expression check [documentation about LIPS environments](/docs/l
 ### Rationale
 Initially the library was created with optional
 [dynamic scope](https://en.wikipedia.org/wiki/Scope_(computer_science)#Dynamic_scope). The reason for it was
-that it was supposed to be used as scriptng language for the Emacs in the browser, probably as a fork
-of [Ymacs](https://lisperator.net/ymacs/). The idea was abandoned but the dynamic scope remained as part
+that it was supposed to be used as a scripting language for GNU Emacs in the browser, probably as a fork
+of [Ymacs](https://lisperator.net/ymacs/). The idea was abandoned, but the dynamic scope remained as part
 of the library.
 
 ### REPL
 
-To enable dynamic scope in the Node REPL, you execute it with `-d` or `--dynamic` option.
+To enable dynamic scope in the Node REPL, you execute it with the `-d` or `--dynamic` option.
 
 ```
 $ lips -d
@@ -273,7 +273,7 @@ You can use the flag when creating scripts:
 
 ### Interpreter
 
-When using `Interpreter` class you can use:
+When using the `Interpreter` class, you can use:
 
 ```javascript
 interpreter.exec('code', { use_dynamic: true });
@@ -289,10 +289,10 @@ import { exec } from 'lips';
 exec('(define (foo) (* x x)) (let ((x 10)) (print (foo)))', { use_dynamic: true });
 ```
 
-## Editor support
+## Editor Support
 
-Note that Scheme is a popular language and editors usually support its syntax. But also not every editor
+Note that Scheme is a popular language, and editors usually support its syntax. But also, not every editor
 may support literal regular expressions that are part of LIPS. If your editor doesn't support them,
-you can report an issue if the project is Open Source. Literal Regular Expressions are also part
+you can report an issue if the project is open source. Literal Regular Expressions are also part
 of [Gauche](https://practical-scheme.net/gauche/man/gauche-refe/Regular-expressions.html) and
 [GNU Kawa](https://www.gnu.org/software/kawa/Regular-expressions.html).

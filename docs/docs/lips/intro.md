@@ -20,12 +20,12 @@ LIPS define `#null` and `#void` as Parser constants so they can be used inside q
 
 :::info
 
-`#null` is the same as JavaScript `null` value and it's a false value. Similar to
+`#null` is the same as the JavaScript `null` value, and it's a false value. Similar to
 [Kawa Scheme](https://www.gnu.org/software/kawa/index.html) that use `#!null`.
 
 :::
 
-`#void` constants is the same as result of `(values)` or `(if #f #f)`. In Scheme it's unspecified value,
+`#void` constants are the same as the result of `(values)` or `(if #f #f)`. In Scheme it's an unspecified value,
 but in LIPS it's JavaScript undefined. `#void` is not false value.
 
 ```scheme
