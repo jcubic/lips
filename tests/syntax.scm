@@ -243,7 +243,29 @@
     (t.is (foo ()) '(foo ()))
     (t.is (foo (x)) '(foo (x)))
     (t.is (foo (x y)) '(foo (x y)))
-    (t.is (foo (a b) (c d)) '(foo (a b) (c d)))))
+    (t.is (foo (a b) (c d)) '(foo (a b) (c d)))
+    ;; multiple groups where the inner ellipsis matches nothing must keep
+    ;; the per-group structure, not collapse (regression: crashed with
+    ;; "ellipis not transformed")
+    (t.is (foo () ()) '(foo () ()))
+    (t.is (foo (a) (b)) '(foo (a) (b)))))
+
+(test "nested ellipsis with empty inner group (conde shape)"
+  (lambda (t)
+    ;; a leading fixed pattern var followed by an inner ellipsis, inside an
+    ;; outer ellipsis - the shape miniKanren's `conde` expands to. When a
+    ;; group's inner ellipsis is empty it used to drop later groups and leak
+    ;; the ellipsis (#546 follow-up).
+    (define-syntax test
+      (syntax-rules ()
+        ((_ (g0 g ...) ...) (list (list g0 g ...) ...))))
+
+    (t.is (test (1)) '((1)))
+    (t.is (test (1) (2)) '((1) (2)))
+    (t.is (test (1) (2) (3)) '((1) (2) (3)))
+    (t.is (test (1 2) (3)) '((1 2) (3)))
+    (t.is (test (1) (2 3)) '((1) (2 3)))
+    (t.is (test (1 2) (3 4)) '((1 2) (3 4)))))
 
 (test "cons 1st and 2nd in lists"
   (lambda (t)

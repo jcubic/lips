@@ -4880,7 +4880,26 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
                     log('>> 2');
                     if (ellipsis) {
                         log('NIL');
-                        bindings['...'].symbols[name] = nil;
+                        // Empty match for THIS ellipsis group. Append an empty
+                        // (()) entry (i.e. `new Pair(code, nil)` with code=nil)
+                        // so the per-group structure is preserved across the
+                        // outer ellipsis, mirroring the non-empty branch below.
+                        // Overwriting with a single nil collapses the groups:
+                        // ((g0 g ...) ...) over (1)(2) must give g = (() ()),
+                        // not () - otherwise later groups vanish and the inner
+                        // ellipsis leaks (#546 follow-up).
+                        const entry = new Pair(nil, nil);
+                        if (bindings['...'].symbols[name]) {
+                            let node = bindings['...'].symbols[name];
+                            if (is_nil(node)) {
+                                node = new Pair(nil, entry);
+                            } else {
+                                node = node.append(entry);
+                            }
+                            bindings['...'].symbols[name] = node;
+                        } else {
+                            bindings['...'].symbols[name] = entry;
+                        }
                     } else {
                         log('NULL');
                         bindings['...'].symbols[name] = null;
