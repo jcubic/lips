@@ -1,6 +1,7 @@
 ## 1.0.0-beta.23
 ### Bugfix
 * fix handling of free variables from syntax rule expansion [#546](https://github.com/jcubic/lips/issues/546)
+* fix unquote vector/array in tail position
 
 ## 1.0.0-beta.22
 ### Breaking

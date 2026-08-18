@@ -339,6 +339,18 @@
         (let ((result `((foo ,(- 10 3)) ,@(cdr '(c)) . ,(car '(cons)))))
           (t.is result '((foo 7) . cons)))))
 
+(test "quasiquote: unquoted vector in tail position keeps identity"
+      (lambda (t)
+        ;; a vector is not a list, so an unquoted vector in the dotted-tail
+        ;; position must become the improper tail verbatim, not be spliced
+        ;; (regression: `(a . ,#(2)) used to produce (a 2))
+        (let ((v (vector 2)))
+          (t.is `(a . ,v) (cons 'a v))
+          (t.is (eq? (cdr `(a . ,v)) v) #t))
+        ;; same via append, which quasiquote expands into
+        (t.is (append '(1) (vector 2 3)) (cons 1 (vector 2 3)))
+        (t.is (append '(a) 'x) '(a . x))))
+
 (test "quasiquote: should process list after double unquote-splicing (#362)"
       (lambda (t)
         (let ((x '(1 2 3))

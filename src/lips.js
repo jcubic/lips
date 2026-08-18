@@ -10400,6 +10400,18 @@ var global_env = new Environment({
             if (is_null(item)) {
                 return acc;
             }
+            // R7RS: the last argument becomes the tail verbatim. A vector is
+            // not a list, so it must not be spliced - attach it as the
+            // improper tail (Pair::append would otherwise convert the array
+            // into a list, e.g. `(a . ,#(2)) => (a 2) instead of (a . #(2))).
+            if (i === last && item instanceof Array) {
+                let p = acc;
+                while (is_pair(p) && !is_nil(p.cdr)) {
+                    p = p.cdr;
+                }
+                p.cdr = item;
+                return acc;
+            }
             return acc.append(item);
         }, nil);
     }, `(append! arg1 ...)
