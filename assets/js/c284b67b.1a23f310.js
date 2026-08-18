@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunknew_docs||=[]).push([[7915],{197(e){e.exports=JSON.parse('{"tag":{"label":"scheme","permalink":"/blog/tags/scheme","allTagsPath":"/blog/tags","count":4,"unlisted":false},"listMetadata":{"permalink":"/blog/tags/scheme","page":1,"postsPerPage":10,"totalPages":1,"totalCount":4,"blogDescription":"Blog","blogTitle":"Blog"}}')}}]);

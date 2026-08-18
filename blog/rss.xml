@@ -21,7 +21,8 @@ turned out that it&#39;s standard <code>C-x C-e</code> (<a href="https://www.gnu
 elisp</a>). The problem is
 that it displays the prompt multiple times when you execute code that doesn&#39;t produce any output.</p>
 <br/><a href="/blog/evaluate-scheme-in-emacs">see the rest of the article</a>]]></content:encoded>
-            <category>schemem emacs</category>
+            <category>scheme</category>
+            <category>emacs</category>
         </item>
         <item>
             <title><![CDATA[LIPS Scheme 1.0.0-beta.22 with Continuations and TCO]]></title>
