@@ -3,7 +3,7 @@ slug: beta-continuations-and-tco
 title: "LIPS Scheme 1.0.0-beta.22 with Continuations and TCO"
 authors: jcubic
 image: /img/continuations.png
-tags: [release]
+tags: [scheme, javascript, lips, release]
 ---
 
 I'm excited to introduce a new beta version of LIPS Scheme. The most important features of this
