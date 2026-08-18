@@ -5127,15 +5127,20 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
 // :: to original symbols
 // ----------------------------------------------------------------------
 function clear_gensyms(node, gensyms) {
+    if (!gensyms.length) {
+        return node;
+    }
     function traverse(node) {
         if (is_pair(node)) {
-            if (!gensyms.length) {
-                return node;
-            }
             const car = traverse(node.car);
             const cdr = traverse(node.cdr);
-            // TODO: check if it's safe to modify the list
-            //       some funky modify of code can happen in macro
+            // Only rebuild the pair when a gensym was actually replaced
+            // inside it. Rebuilding unconditionally deep-copies every list a
+            // macro returns, which breaks identity - e.g. a macro that yields
+            // a free variable's value would return a copy, so `eq?` fails.
+            if (car === node.car && cdr === node.cdr) {
+                return node;
+            }
             return new Pair(car, cdr);
         } else if (node instanceof LSymbol) {
             var replacement = gensyms.find((gensym) => {

@@ -920,6 +920,22 @@
         (inc! n)
         (t.is n 2)))
 
+(test "should preserve identity of a value returned from a macro"
+      (lambda (t)
+
+        ;; a macro that returns a free variable must return the SAME object,
+        ;; not a copy - clear_gensyms must not deep-copy the result value
+        (define *d* (list 'done))
+        (define-syntax getd
+          (syntax-rules ()
+            ((_) *d*)))
+        (t.is (eq? (getd) *d*) #t)
+        (t.is (eq? (getd) (getd)) #t)
+
+        ;; mutating the original is visible through the macro result
+        (set-car! *d* 'changed)
+        (t.is (car (getd)) 'changed)))
+
 (test "should ignore ellipsis in middle for 2 elements"
       (lambda (t)
         ;; code for define-values from R7RS spec
