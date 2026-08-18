@@ -5152,6 +5152,22 @@ function clear_gensyms(node, gensyms) {
     return traverse(node);
 }
 // ----------------------------------------------------------------------
+// :: A binding is stable (safe to alias with a Reference) when its owning
+// :: environment is a strict ancestor of the transient expansion `scope` -
+// :: it existed before the expansion and is not rebound while it runs.
+// :: Aliasing into `scope` itself (or another expansion's scope) risks a
+// :: Reference cycle, so those are snapshotted by value instead.
+function is_stable_target(scope, target_env) {
+    var env = scope.__parent__;
+    while (env) {
+        if (env === target_env) {
+            return true;
+        }
+        env = env.__parent__;
+    }
+    return false;
+}
+// -------------------------------------------------------------------------
 function transform_syntax(options = {}) {
     const {
         bindings,
@@ -5210,8 +5226,25 @@ function transform_syntax(options = {}) {
             }
             const gensym_name = gensym(name);
             if (ref) {
-                const value = scope.get(name);
-                scope.set(gensym_name, value);
+                // A free identifier that resolves to a STABLE, REAL binding is
+                // aliased with a Reference: reads and set! then both reach the
+                // original cell (fixes set! on free vars, e.g. amb's
+                // *amb-stack*). "Stable" = the target env existed before this
+                // expansion (a strict ancestor of `scope`); "real" = the
+                // target name is not itself a gensym. Aliasing into a
+                // transient nested-macro scope (or to another gensym) points
+                // at a slot that gets rebound during expansion and can form a
+                // cross-expansion Reference cycle, so snapshot those by value.
+                const target = ref.resolve(name);
+                if (target && !is_gensym(target.name) &&
+                        is_stable_target(scope, target.env)) {
+                    scope.set(gensym_name, new Reference(target.name, target.env));
+                } else {
+                    const value = scope.get(name, { throwError: false });
+                    if (typeof value !== 'undefined') {
+                        scope.set(gensym_name, value);
+                    }
+                }
             } else {
                 const value = scope.get(name, { throwError: false });
                 // value is not in scope, but it's JavaScript object
@@ -8468,7 +8501,12 @@ Environment.prototype.new_frame = function(fn, args) {
 // -------------------------------------------------------------------------
 Environment.prototype._lookup = function(name) {
     if (this.__env__.hasOwnProperty(name)) {
-        return Value(this.__env__[name], 'get');
+        const value = this.__env__[name];
+        if (value instanceof Reference) {
+            // follow the alias to the original binding (already a Value wrapper)
+            return value.lookup();
+        }
+        return Value(value, 'get');
     }
     if (this.__parent__) {
         return this.__parent__._lookup(name);
@@ -8640,6 +8678,10 @@ Environment.prototype.constant = function(name, value) {
 };
 // -------------------------------------------------------------------------
 Environment.prototype.has = function(name) {
+    return Value.of('get', this._lookup(name));
+};
+// -------------------------------------------------------------------------
+Environment.prototype.has_own = function(name) {
     return this.__env__.hasOwnProperty(name);
 };
 // -------------------------------------------------------------------------
@@ -8649,11 +8691,38 @@ Environment.prototype.ref = function(name) {
         if (!env) {
             break;
         }
-        if (env.has(name)) {
+        if (env.has_own(name)) {
             return env;
         }
         env = env.__parent__;
     }
+};
+// -------------------------------------------------------------------------
+// Resolve NAME to the {env, name} of the binding it ultimately denotes,
+// following hygienic Reference aliases (and chains of them). Returns null
+// when NAME is unbound. Used by set! so assignment reaches the original
+// cell, and its result reads back consistently with `get`.
+Environment.prototype.resolve = function(name, seen) {
+    seen = seen || new Set();
+    var env = this;
+    while (env) {
+        if (env.has_own(name)) {
+            const value = env.__env__[name];
+            if (value instanceof Reference) {
+                // a Reference that loops back on itself points into a
+                // transient nested-macro scope - report it as unresolvable
+                // so the caller snapshots the value instead of aliasing.
+                if (seen.has(value)) {
+                    return null;
+                }
+                seen.add(value);
+                return value._env.resolve(value._name, seen);
+            }
+            return { env, name };
+        }
+        env = env.__parent__;
+    }
+    return null;
 };
 // -------------------------------------------------------------------------
 Environment.prototype.parents = function() {
@@ -8665,6 +8734,32 @@ Environment.prototype.parents = function() {
     }
     return result;
 };
+// -------------------------------------------------------------------------
+// ----------------------------------------------------------------------
+// :: A hygienic alias: a gensym introduced by syntax-rules for a free
+// :: identifier binds to a Reference that points at the ORIGINAL binding
+// :: (name + owning environment). Reads (via _lookup) and writes (via
+// :: next_set/resolve) both follow it, so `set!` mutates the original cell
+// :: instead of a throwaway copy. References chain (nested syntax-rules).
+// ----------------------------------------------------------------------
+class Reference {
+    constructor(name, env) {
+        this._name = name;
+        this._env = env;
+    }
+    // owning environment of the target binding (follows nested references)
+    ref() {
+        return this._env.ref(this._name);
+    }
+    // the target's Value wrapper (recurses through nested references)
+    lookup() {
+        return this._env._lookup(this._name);
+    }
+    // {env, name} of the ultimate target (follows nested references)
+    resolve() {
+        return this._env.resolve(this._name);
+    }
+}
 // -------------------------------------------------------------------------
 // :: Quote function used to pause evaluation from Macro
 // -------------------------------------------------------------------------
@@ -9975,6 +10070,9 @@ var global_env = new Environment({
                         // loop so continuations work across the macro boundary.
                         // The gensym->literal fixup (clear_gensyms) is applied to
                         // the produced value by whoever evaluates the expansion.
+                        if (is_debug('hygiene')) {
+                            console.log({ names });
+                        }
                         return new SyntaxExpansion(expr, new_env, names);
                     }
                     rules = rules.cdr;
@@ -12681,8 +12779,11 @@ function next_set(state) {
     state.cc = this.__continuation__;
     const symbol = this.__object__.valueOf();
     const value = state.object;
-    const ref = env.ref(symbol);
-    if (!ref) {
+    // resolve through hygienic Reference aliases so that assigning a renamed
+    // free identifier mutates the ORIGINAL binding (name + env), not the
+    // gensym's throwaway slot
+    const resolved = env.resolve(symbol);
+    if (!resolved) {
         // case (set! fn.toString (lambda () "xxx"))
         const parts = symbol.split('.');
         if (parts.length > 1) {
@@ -12699,7 +12800,7 @@ function next_set(state) {
         }
         throw new Error('Unbound variable `' + symbol + '\'');
     }
-    ref.set(symbol, value);
+    resolved.env.set(resolved.name, value);
     delete state.object;
     state.ready = true;
 }
@@ -12825,7 +12926,7 @@ function next_pair(state) {
             }
             state.ready = !is_promise(state.object);
         } else {
-            throw new Error(`${type(first)} ${env.get('repr')(first)} is not callable while evaluating ` +
+            throw new Error(`${type(first)} ${to_string(first)} is not callable while evaluating ` +
                             to_string(this.__code__));
         }
     } else {

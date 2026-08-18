@@ -888,6 +888,38 @@
 
         (t.is (foo) '((1) (2) (3)))))
 
+(test "should set! a free identifier's original binding (hygiene)"
+      (lambda (t)
+
+        ;; set! on a free (template) identifier must mutate the ORIGINAL
+        ;; binding it refers to, not a hygienic throwaway copy
+        (define *g* 0)
+        (define-syntax setg
+          (syntax-rules ()
+            ((_) (set! *g* 5))))
+        (setg)
+        (t.is *g* 5)
+
+        ;; referential transparency: the free `*g*` refers to the binding
+        ;; visible where the macro was defined (the global), not a same-named
+        ;; local at the use site
+        (define *h* 0)
+        (define-syntax seth
+          (syntax-rules ()
+            ((_) (set! *h* 5))))
+        (let ((*h* 99))
+          (seth)
+          (t.is *h* 99))
+        (t.is *h* 5)
+
+        ;; set! on a macro argument mutates the caller's variable
+        (define n 1)
+        (define-syntax inc!
+          (syntax-rules ()
+            ((_ v) (set! v (+ v 1)))))
+        (inc! n)
+        (t.is n 2)))
+
 (test "should ignore ellipsis in middle for 2 elements"
       (lambda (t)
         ;; code for define-values from R7RS spec
@@ -1650,3 +1682,15 @@
 
         (t.is (f 10 20 30 'a 'b)
               #((10 b ()) (20 b ()) (30 b ()) (a b ())))))
+
+(test "global set! var hygiene"
+      (lambda (t)
+        (define *g* 0)
+
+        (define-syntax setg
+          (syntax-rules ()
+            ((_) (set! *g* 5))))
+
+        (setg)
+
+        (t.is *g* 5)))

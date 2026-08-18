@@ -1,3 +1,7 @@
+## 1.0.0-beta.23
+### Bugfix
+* fix modification of free variables from syntax rule expansion
+
 ## 1.0.0-beta.22
 ### Breaking
 * syntax extensions now expect a reference to a function or a macro
