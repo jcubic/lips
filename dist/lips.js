@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Wed, 19 Aug 2026 20:22:20 +0000
+ * build: Wed, 19 Aug 2026 20:52:33 +0000
  */
 
 (function (global, factory) {
@@ -8740,8 +8740,26 @@
           if (!LSymbol.is(code, literal) && code_literal !== literal && !LSymbol.is(pattern, code)) {
             return false;
           }
-          var ref = expansion.ref(literal);
-          return !ref || ref === define || ref === global_env;
+          // R7RS 4.3.2: the input matches the literal iff both denote the
+          // SAME binding, or both are unbound. Resolve the pattern literal
+          // in the macro's DEFINITION env and the input in the USE env
+          // (following hygienic Reference aliases). This is the general
+          // rule that subsumes the old "unbound / global / def-env"
+          // heuristic: an auxiliary keyword like `else` is unbound in both
+          // (match); a literal that is a user-defined identifier - even a
+          // macro bound in an interaction env, or one renamed to a gensym
+          // by a nesting macro - still matches when the input refers to
+          // the same binding; and a literal shadowed by a local binding at
+          // the use site (input rebound elsewhere) fails.
+          var pat_den = define ? define.resolve(pattern.valueOf()) : null;
+          var code_den = expansion ? expansion.resolve(code.valueOf()) : null;
+          if (!pat_den && !code_den) {
+            return true;
+          }
+          if (!pat_den || !code_den) {
+            return false;
+          }
+          return pat_den.env === code_den.env && pat_den.name === code_den.name;
         }
       }
       if (Array.isArray(pattern) && Array.isArray(code)) {
@@ -17314,10 +17332,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Wed, 19 Aug 2026 20:22:20 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Wed, 19 Aug 2026 20:52:33 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Wed, 19 Aug 2026 20:22:20 +0000').valueOf();
+    var date = LString('Wed, 19 Aug 2026 20:52:33 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -17356,7 +17374,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Wed, 19 Aug 2026 20:22:20 +0000';
+  var date = 'Wed, 19 Aug 2026 20:52:33 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

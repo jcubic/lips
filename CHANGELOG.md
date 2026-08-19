@@ -18,6 +18,10 @@
 * fix resolving nested identifiers in syntax-rules
 * fix trailing ellipsis `(x ... last)` losing items when the input list was
   built by an accumulating recursive macro
+* fix `syntax-rules` literal matching for a literal that denotes a user-defined
+  identifier (e.g. a macro bound in an interaction env, or one renamed to a
+  gensym by a nesting macro) - it now matches when the input denotes the same
+  binding, instead of only recognising unbound or base-global literals
 
 ## 1.0.0-beta.22
 ### Breaking

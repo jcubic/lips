@@ -4788,8 +4788,26 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
                     !LSymbol.is(pattern, code)) {
                     return false;
                 }
-                const ref = expansion.ref(literal);
-                return !ref || ref === define || ref === global_env;
+                // R7RS 4.3.2: the input matches the literal iff both denote the
+                // SAME binding, or both are unbound. Resolve the pattern literal
+                // in the macro's DEFINITION env and the input in the USE env
+                // (following hygienic Reference aliases). This is the general
+                // rule that subsumes the old "unbound / global / def-env"
+                // heuristic: an auxiliary keyword like `else` is unbound in both
+                // (match); a literal that is a user-defined identifier - even a
+                // macro bound in an interaction env, or one renamed to a gensym
+                // by a nesting macro - still matches when the input refers to
+                // the same binding; and a literal shadowed by a local binding at
+                // the use site (input rebound elsewhere) fails.
+                const pat_den = define ? define.resolve(pattern.valueOf()) : null;
+                const code_den = expansion ? expansion.resolve(code.valueOf()) : null;
+                if (!pat_den && !code_den) {
+                    return true;
+                }
+                if (!pat_den || !code_den) {
+                    return false;
+                }
+                return pat_den.env === code_den.env && pat_den.name === code_den.name;
             }
         }
         if (Array.isArray(pattern) && Array.isArray(code)) {

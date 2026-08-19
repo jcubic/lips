@@ -1170,8 +1170,13 @@
         (t.is (alist "foo" 1 "bar" 2 "baz" 3)
               '(("foo" . 1) ("bar" . 2) ("baz" . 3)))))
 
-(test.failing "nested _"
+(test "nested _"
        (lambda (t)
+         ;; %foo is defined inside foo, so its literals `foo`/`bar` are renamed
+         ;; to gensyms by foo's expansion. A use-site `foo` (also renamed to the
+         ;; same gensym) must still match the literal - the input and the literal
+         ;; denote the same binding (the `foo` macro), even though it lives in an
+         ;; interaction env rather than the base global env.
          (define-syntax foo
            (syntax-rules ()
              ((_)
