@@ -1,7 +1,12 @@
 ## 1.0.0-beta.23
+### Feature
+* add `free-identifier=?` [#296](https://github.com/jcubic/lips/issues/296)
 ### Bugfix
 * fix handling of free variables from syntax rule expansion [#546](https://github.com/jcubic/lips/issues/546)
 * fix unquote vector/array in tail position
+* fix define inside syntax-rules [#170](https://github.com/jcubic/lips/issues/170)
+* fix unquote vector/array in tail position
+* fix nested ellipsis with empty identifier
 
 ## 1.0.0-beta.22
 ### Breaking
