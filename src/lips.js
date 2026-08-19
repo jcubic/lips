@@ -4771,14 +4771,18 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
             return same_atom(pattern, code);
         }
         if (pattern instanceof LSymbol) {
-            const literal = pattern.literal(); // TODO: literal() may be SLOW
-            if (symbols.includes(literal)) {
-                // R7RS 4.3.2: an input identifier matches a pattern literal when
-                // it is the SAME identifier - compared by denotation, not by its
-                // (possibly hygienically renamed) surface name. Compare LITERAL
-                // names so an auxiliary keyword like `else` that another macro
-                // renamed to a gensym (#:else) still matches - the renaming
-                // leaves its literal name, and hence its denotation, unchanged.
+            // A pattern symbol is a LITERAL when it IS one of the declared
+            // literals by IDENTITY (`symbols` holds their valueOf), not merely
+            // by name. This is LIPS's "mark": a nested macro renames its free
+            // identifiers to distinct gensyms, so a pattern variable that
+            // happens to share a literal's NAME is not mistaken for the literal
+            // - their identities (gensym vs plain) differ.
+            if (symbols.includes(pattern.valueOf())) {
+                // R7RS 4.3.2: the input matches the literal when it denotes the
+                // same identifier - compared by LITERAL name, so an auxiliary
+                // keyword like `else` that another macro renamed to a gensym
+                // still matches (renaming leaves the literal name unchanged).
+                const literal = pattern.literal(); // TODO: literal() may be SLOW
                 const code_literal = code instanceof LSymbol ? code.literal() : code;
                 if (!LSymbol.is(code, literal) && code_literal !== literal &&
                     !LSymbol.is(pattern, code)) {
@@ -5205,7 +5209,11 @@ function get_identifiers(node) {
     let symbols = [];
     while (!is_nil(node)) {
         const x = node.car;
-        symbols.push(x.valueOf());
+        // a pattern variable substituted into a nested literals list can be a
+        // non-identifier (e.g. a number) - it cannot be a literal, skip it
+        if (x instanceof LSymbol) {
+            symbols.push(x.valueOf());
+        }
         node = node.cdr;
     }
     return symbols;
@@ -5247,10 +5255,14 @@ function collect_macros(node, env, captured_macros = Object.create(null)) {
     return captured_macros;
 }
 // -------------------------------------------------------------------------
-function validate_identifiers(node) {
+function validate_identifiers(node, { lenient = false } = {}) {
     while (!is_nil(node)) {
         const x = node.car;
-        if (!(x instanceof LSymbol)) {
+        // a nested literals list may receive a non-identifier by substituting a
+        // pattern variable; those are ignored (see get_identifiers) so
+        // validation is skipped for a transcribed macro. A directly-written
+        // literals list is still validated to catch author mistakes.
+        if (!lenient && !(x instanceof LSymbol)) {
             throw new Error('syntax-rules: wrong identifier');
         }
         node = node.cdr;
@@ -5744,17 +5756,23 @@ function transform_syntax(options = {}) {
                     value.__name__ === 'syntax-rules';
             }
             if (is_syntax) {
+                // transcribe the literals list like the rules (same rename
+                // cache) so a literal that is an enclosing macro's pattern
+                // variable is substituted, and free-identifier literals (e.g.
+                // `else`) get the same gensym in the literals list and in the
+                // patterns - the matcher then recognizes them by identity.
                 if (expr.cdr.car instanceof LSymbol) {
+                    // custom ellipsis: (syntax-rules ellipsis (literals) ...)
                     rest = new Pair(
                         traverse(expr.cdr.car, { disabled }),
                         new Pair(
-                            expr.cdr.cdr.car,
+                            traverse(expr.cdr.cdr.car, { disabled }),
                             traverse(expr.cdr.cdr.cdr, { disabled })
                         )
                     );
                 } else {
                     rest = new Pair(
-                        expr.cdr.car,
+                        traverse(expr.cdr.car, { disabled }),
                         traverse(expr.cdr.cdr, { disabled })
                     );
                 }
@@ -10123,10 +10141,15 @@ var global_env = new Environment({
         var { use_dynamic, error } = options;
         const macro = source.cdr;
         var env = this;
+        // a macro produced by another macro's expansion (source position is a
+        // gensym) may carry non-identifier literals substituted from pattern
+        // variables - validate leniently there, strictly when written by
+        // hand
+        const lenient = source.car instanceof LSymbol && source.car.is_gensym();
         if (macro.car instanceof LSymbol) {
-            validate_identifiers(macro.cdr.car);
+            validate_identifiers(macro.cdr.car, { lenient });
         } else {
-            validate_identifiers(macro.car);
+            validate_identifiers(macro.car, { lenient });
         }
         const captured_macros = collect_macros(macro, env);
         const syntax = new Syntax(function(code, { macro_expand }) {
@@ -10198,9 +10221,6 @@ var global_env = new Environment({
                         // loop so continuations work across the macro boundary.
                         // The gensym->literal fixup (clear_gensyms) is applied to
                         // the produced value by whoever evaluates the expansion.
-                        if (is_debug('hygiene')) {
-                            console.log({ names });
-                        }
                         return new SyntaxExpansion(expr, new_env, names);
                     }
                     rules = rules.cdr;

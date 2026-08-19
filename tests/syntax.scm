@@ -1233,6 +1233,24 @@
 
         (t.is (foo 10) '("foo" 10))))
 
+(test "nested syntax-rules literal from outer pattern variable"
+      (lambda (t)
+        ;; a nested macro's literal that is the outer macro's pattern variable
+        ;; is substituted into the literals list, and matched by IDENTITY - so a
+        ;; like-named pattern variable is not mistaken for it
+        (define-syntax outer
+          (syntax-rules ()
+            ((_ ph body)
+             (let ()
+               (define-syntax inner
+                 (syntax-rules (ph)
+                   ((_ ph) 'is-ph)
+                   ((_ x) 'not-ph)))
+               (inner body)))))
+
+        (t.is (outer PH PH) 'is-ph)
+        (t.is (outer PH other) 'not-ph)))
+
 (test "should throw error on missing ellipsis symbol"
       (lambda (t)
         (t.is

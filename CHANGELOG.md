@@ -7,6 +7,7 @@
 * fix define inside syntax-rules [#170](https://github.com/jcubic/lips/issues/170)
 * fix unquote vector/array in tail position
 * fix nested ellipsis with empty identifier
+* fix resolving nested identifiers in syntax-rules
 
 ## 1.0.0-beta.22
 ### Breaking
