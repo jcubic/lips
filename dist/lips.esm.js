@@ -4,7 +4,7 @@
  * | |   \ \     | |  | || . \/ __>  | |
  * | |    > \    | |_ | ||  _/\__ \  | |
  * | |   / ^ \   |___||_||_|  <___/  | |
- *  \_\ /_/ \_\                     /_/ v. 1.0.0-beta.22.1
+ *  \_\ /_/ \_\                     /_/ v. DEV
  *
  * LIPS is Pretty Simple - Scheme based Powerful LISP in JavaScript
  *
@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Mon, 17 Aug 2026 10:58:44 +0000
+ * build: Wed, 19 Aug 2026 09:36:56 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -8719,7 +8719,14 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
     if (pattern instanceof LSymbol) {
       var literal = pattern.literal(); // TODO: literal() may be SLOW
       if (symbols.includes(literal)) {
-        if (!LSymbol.is(code, literal) && !LSymbol.is(pattern, code)) {
+        // R7RS 4.3.2: an input identifier matches a pattern literal when
+        // it is the SAME identifier - compared by denotation, not by its
+        // (possibly hygienically renamed) surface name. Compare LITERAL
+        // names so an auxiliary keyword like `else` that another macro
+        // renamed to a gensym (#:else) still matches - the renaming
+        // leaves its literal name, and hence its denotation, unchanged.
+        var code_literal = code instanceof LSymbol ? code.literal() : code;
+        if (!LSymbol.is(code, literal) && code_literal !== literal && !LSymbol.is(pattern, code)) {
           return false;
         }
         var ref = expansion.ref(literal);
@@ -8811,20 +8818,39 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
         }
         if (is_nil(code)) {
           if (ellipsis) {
-            bindings['...'].symbols[_name3] = _nil;
+            // Empty match for THIS ellipsis group. Append an empty
+            // (()) entry (i.e. `new Pair(code, nil)` with code=nil)
+            // so the per-group structure is preserved across the
+            // outer ellipsis, mirroring the non-empty branch below.
+            // Overwriting with a single nil collapses the groups:
+            // ((g0 g ...) ...) over (1)(2) must give g = (() ()),
+            // not () - otherwise later groups vanish and the inner
+            // ellipsis leaks (#546 follow-up).
+            var entry = new Pair(_nil, _nil);
+            if (bindings['...'].symbols[_name3]) {
+              var _node = bindings['...'].symbols[_name3];
+              if (is_nil(_node)) {
+                _node = new Pair(_nil, entry);
+              } else {
+                _node = _node.append(entry);
+              }
+              bindings['...'].symbols[_name3] = _node;
+            } else {
+              bindings['...'].symbols[_name3] = entry;
+            }
           } else {
             bindings['...'].symbols[_name3] = null;
           }
         } else if (is_pair(code) && (is_pair(code.car) || is_nil(code.car))) {
           if (ellipsis) {
             if (bindings['...'].symbols[_name3]) {
-              var _node = bindings['...'].symbols[_name3];
-              if (is_nil(_node)) {
-                _node = new Pair(_nil, new Pair(code, _nil));
+              var _node2 = bindings['...'].symbols[_name3];
+              if (is_nil(_node2)) {
+                _node2 = new Pair(_nil, new Pair(code, _nil));
               } else {
-                _node = _node.append(new Pair(code, _nil));
+                _node2 = _node2.append(new Pair(code, _nil));
               }
-              bindings['...'].symbols[_name3] = _node;
+              bindings['...'].symbols[_name3] = _node2;
             } else {
               bindings['...'].symbols[_name3] = new Pair(code, _nil);
             }
@@ -8860,8 +8886,8 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
             if (!bindings['...'].symbols[_name3]) {
               bindings['...'].symbols[_name3] = new Pair(code, _nil);
             } else {
-              var _node2 = bindings['...'].symbols[_name3];
-              bindings['...'].symbols[_name3] = _node2.append(new Pair(code, _nil));
+              var _node3 = bindings['...'].symbols[_name3];
+              bindings['...'].symbols[_name3] = _node3.append(new Pair(code, _nil));
             }
           } else if (pattern.car instanceof LSymbol && is_pair(pattern.cdr) && LSymbol.is(pattern.cdr.car, ellipsis_symbol)) {
             // empty ellipsis with rest  (a b ... . d) #290
@@ -8879,31 +8905,31 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
           bindings['...'].lists.push(_nil);
           return true;
         }
-        var _node3 = code;
+        var _node4 = code;
         var _new_state = _objectSpread(_objectSpread({}, state), {}, {
           pattern_names: names,
           ellipsis: true
         });
-        while (is_pair(_node3)) {
-          if (!traverse(pattern.car, _node3.car, _new_state)) {
+        while (is_pair(_node4)) {
+          if (!traverse(pattern.car, _node4.car, _new_state)) {
             return false;
           }
-          _node3 = _node3.cdr;
+          _node4 = _node4.cdr;
         }
         return true;
       }
       if (Array.isArray(pattern.car)) {
         var names = [...pattern_names];
-        var _node4 = code;
+        var _node5 = code;
         var _new_state2 = _objectSpread(_objectSpread({}, state), {}, {
           pattern_names: names,
           ellipsis: true
         });
-        while (is_pair(_node4)) {
-          if (!traverse(pattern.car, _node4.car, _new_state2)) {
+        while (is_pair(_node5)) {
+          if (!traverse(pattern.car, _node5.car, _new_state2)) {
             return false;
           }
-          _node4 = _node4.cdr;
+          _node5 = _node5.cdr;
         }
         return true;
       }
@@ -8999,15 +9025,20 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
 // :: to original symbols
 // ----------------------------------------------------------------------
 function clear_gensyms(node, gensyms) {
+  if (!gensyms.length) {
+    return node;
+  }
   function traverse(node) {
     if (is_pair(node)) {
-      if (!gensyms.length) {
-        return node;
-      }
       var car = traverse(node.car);
       var cdr = traverse(node.cdr);
-      // TODO: check if it's safe to modify the list
-      //       some funky modify of code can happen in macro
+      // Only rebuild the pair when a gensym was actually replaced
+      // inside it. Rebuilding unconditionally deep-copies every list a
+      // macro returns, which breaks identity - e.g. a macro that yields
+      // a free variable's value would return a copy, so `eq?` fails.
+      if (car === node.car && cdr === node.cdr) {
+        return node;
+      }
       return new Pair(car, cdr);
     } else if (node instanceof LSymbol) {
       var replacement = gensyms.find(gensym => {
@@ -9024,6 +9055,22 @@ function clear_gensyms(node, gensyms) {
   return traverse(node);
 }
 // ----------------------------------------------------------------------
+// :: A binding is stable (safe to alias with a Reference) when its owning
+// :: environment is a strict ancestor of the transient expansion `scope` -
+// :: it existed before the expansion and is not rebound while it runs.
+// :: Aliasing into `scope` itself (or another expansion's scope) risks a
+// :: Reference cycle, so those are snapshotted by value instead.
+function is_stable_target(scope, target_env) {
+  var env = scope.__parent__;
+  while (env) {
+    if (env === target_env) {
+      return true;
+    }
+    env = env.__parent__;
+  }
+  return false;
+}
+// -------------------------------------------------------------------------
 function transform_syntax() {
   var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
   var bindings = options.bindings,
@@ -9079,8 +9126,26 @@ function transform_syntax() {
       }
       var gensym_name = gensym(name);
       if (ref) {
-        var value = scope.get(name);
-        scope.set(gensym_name, value);
+        // A free identifier that resolves to a STABLE, REAL binding is
+        // aliased with a Reference: reads and set! then both reach the
+        // original cell (fixes set! on free vars, e.g. amb's
+        // *amb-stack*). "Stable" = the target env existed before this
+        // expansion (a strict ancestor of `scope`); "real" = the
+        // target name is not itself a gensym. Aliasing into a
+        // transient nested-macro scope (or to another gensym) points
+        // at a slot that gets rebound during expansion and can form a
+        // cross-expansion Reference cycle, so snapshot those by value.
+        var target = ref.resolve(name);
+        if (target && !is_gensym(target.name) && is_stable_target(scope, target.env)) {
+          scope.set(gensym_name, new Reference(target.name, target.env));
+        } else {
+          var value = scope.get(name, {
+            throwError: false
+          });
+          if (typeof value !== 'undefined') {
+            scope.set(gensym_name, value);
+          }
+        }
       } else {
         var _value = scope.get(name, {
           throwError: false
@@ -12411,7 +12476,12 @@ Environment.prototype.new_frame = function (fn, args) {
 // -------------------------------------------------------------------------
 Environment.prototype._lookup = function (name) {
   if (this.__env__.hasOwnProperty(name)) {
-    return Value(this.__env__[name], 'get');
+    var value = this.__env__[name];
+    if (value instanceof Reference) {
+      // follow the alias to the original binding (already a Value wrapper)
+      return value.lookup();
+    }
+    return Value(value, 'get');
   }
   if (this.__parent__) {
     return this.__parent__._lookup(name);
@@ -12589,6 +12659,10 @@ Environment.prototype.constant = function (name, value) {
 };
 // -------------------------------------------------------------------------
 Environment.prototype.has = function (name) {
+  return Value.of('get', this._lookup(name));
+};
+// -------------------------------------------------------------------------
+Environment.prototype.has_own = function (name) {
   return this.__env__.hasOwnProperty(name);
 };
 // -------------------------------------------------------------------------
@@ -12598,11 +12672,41 @@ Environment.prototype.ref = function (name) {
     if (!env) {
       break;
     }
-    if (env.has(name)) {
+    if (env.has_own(name)) {
       return env;
     }
     env = env.__parent__;
   }
+};
+// -------------------------------------------------------------------------
+// Resolve NAME to the {env, name} of the binding it ultimately denotes,
+// following hygienic Reference aliases (and chains of them). Returns null
+// when NAME is unbound. Used by set! so assignment reaches the original
+// cell, and its result reads back consistently with `get`.
+Environment.prototype.resolve = function (name, seen) {
+  seen = seen || new Set();
+  var env = this;
+  while (env) {
+    if (env.has_own(name)) {
+      var value = env.__env__[name];
+      if (value instanceof Reference) {
+        // a Reference that loops back on itself points into a
+        // transient nested-macro scope - report it as unresolvable
+        // so the caller snapshots the value instead of aliasing.
+        if (seen.has(value)) {
+          return null;
+        }
+        seen.add(value);
+        return value._env.resolve(value._name, seen);
+      }
+      return {
+        env,
+        name
+      };
+    }
+    env = env.__parent__;
+  }
+  return null;
 };
 // -------------------------------------------------------------------------
 Environment.prototype.parents = function () {
@@ -12614,6 +12718,32 @@ Environment.prototype.parents = function () {
   }
   return result;
 };
+// -------------------------------------------------------------------------
+// ----------------------------------------------------------------------
+// :: A hygienic alias: a gensym introduced by syntax-rules for a free
+// :: identifier binds to a Reference that points at the ORIGINAL binding
+// :: (name + owning environment). Reads (via _lookup) and writes (via
+// :: next_set/resolve) both follow it, so `set!` mutates the original cell
+// :: instead of a throwaway copy. References chain (nested syntax-rules).
+// ----------------------------------------------------------------------
+class Reference {
+  constructor(name, env) {
+    this._name = name;
+    this._env = env;
+  }
+  // owning environment of the target binding (follows nested references)
+  ref() {
+    return this._env.ref(this._name);
+  }
+  // the target's Value wrapper (recurses through nested references)
+  lookup() {
+    return this._env._lookup(this._name);
+  }
+  // {env, name} of the ultimate target (follows nested references)
+  resolve() {
+    return this._env.resolve(this._name);
+  }
+}
 // -------------------------------------------------------------------------
 // :: Quote function used to pause evaluation from Macro
 // -------------------------------------------------------------------------
@@ -12954,10 +13084,10 @@ var global_env = new Environment({
       // 'name same as (quote name) according to macro
       symbol = code.car.car;
     } else {
-      var _env2 = this;
+      var env = this;
       dynamic_env = this;
       var ret = evaluate(code.car, {
-        env: _env2,
+        env,
         error,
         dynamic_env,
         use_dynamic
@@ -13013,6 +13143,42 @@ var global_env = new Environment({
   }, "(empty? object)\n\n         Function that returns #t if value is nil (an empty list) or undefined."),
   // ------------------------------------------------------------------
   gensym: doc('gensym', gensym, "(gensym)\n\n         Generates a unique symbol that is not bound anywhere,\n         to use with macros as meta name."),
+  // ------------------------------------------------------------------
+  'free-identifier=?': doc('free-identifier=?', function (a, b) {
+    // R7RS/R6RS: two identifiers are free-identifier=? when they refer to
+    // the SAME binding - compared by denotation, so an identifier that
+    // hygiene renamed to a gensym still equals the identifier it came
+    // from. Different literal names are never equal; with the same literal
+    // name they are equal when both are unbound (the same free/auxiliary
+    // identifier, e.g. `else`) or both resolve to the same binding. This
+    // lets an unhygienic (define-macro) macro recognize auxiliary keywords
+    // that a surrounding hygienic macro renamed.
+    if (!(a instanceof LSymbol) || !(b instanceof LSymbol)) {
+      return false;
+    }
+    if (a.literal() !== b.literal()) {
+      return false;
+    }
+    var env = this instanceof Environment ? this : global_env;
+    var target = id => {
+      // resolve through hygienic References; a bare gensym with no
+      // binding falls back to its literal name
+      var t = env.resolve(id.valueOf());
+      if (!t && id.is_gensym()) {
+        t = env.resolve(id.literal());
+      }
+      return t;
+    };
+    var ta = target(a);
+    var tb = target(b);
+    if (!ta && !tb) {
+      return true;
+    }
+    if (ta && tb) {
+      return ta.env === tb.env && ta.name === tb.name;
+    }
+    return false;
+  }, "(free-identifier=? a b)\n\n        Returns #t if the two identifiers refer to the same binding, comparing\n        by denotation rather than surface name - so an identifier that a\n        hygienic macro renamed to a gensym still equals the identifier it was\n        renamed from. Both unbound with the same literal name (e.g. an\n        auxiliary keyword like else) counts as the same free identifier."),
   // ------------------------------------------------------------------
   load: doc('load', function load(file, env) {
     typecheck('load', file, 'string');
@@ -13733,6 +13899,11 @@ var global_env = new Environment({
             // loop so continuations work across the macro boundary.
             // The gensym->literal fixup (clear_gensyms) is applied to
             // the produced value by whoever evaluates the expansion.
+            if (is_debug('hygiene')) {
+              console.log({
+                names
+              });
+            }
             return new SyntaxExpansion(expr, new_env, names);
           }
           rules = rules.cdr;
@@ -14002,6 +14173,18 @@ var global_env = new Environment({
         return item;
       }
       if (is_null(item)) {
+        return acc;
+      }
+      // R7RS: the last argument becomes the tail verbatim. A vector is
+      // not a list, so it must not be spliced - attach it as the
+      // improper tail (Pair::append would otherwise convert the array
+      // into a list, e.g. `(a . ,#(2)) => (a 2) instead of (a . #(2))).
+      if (i === last && item instanceof Array) {
+        var p = acc;
+        while (is_pair(p) && !is_nil(p.cdr)) {
+          p = p.cdr;
+        }
+        p.cdr = item;
         return acc;
       }
       return acc.append(item);
@@ -16189,8 +16372,11 @@ function next_set(state) {
   state.cc = this.__continuation__;
   var symbol = this.__object__.valueOf();
   var value = state.object;
-  var ref = env.ref(symbol);
-  if (!ref) {
+  // resolve through hygienic Reference aliases so that assigning a renamed
+  // free identifier mutates the ORIGINAL binding (name + env), not the
+  // gensym's throwaway slot
+  var resolved = env.resolve(symbol);
+  if (!resolved) {
     // case (set! fn.toString (lambda () "xxx"))
     var parts = symbol.split('.');
     if (parts.length > 1) {
@@ -16209,7 +16395,7 @@ function next_set(state) {
     }
     throw new Error('Unbound variable `' + symbol + '\'');
   }
-  ref.set(symbol, value);
+  resolved.env.set(resolved.name, value);
   delete state.object;
   state.ready = true;
 }
@@ -16221,18 +16407,47 @@ function next_define(state) {
     env = env.__parent__;
   }
   var value = state.object;
+  var target = this.__object__;
+  // R7RS: a macro-introduced identifier used as a TOP-LEVEL definition binds
+  // its plain (un-renamed) name, so the definition is visible to code written
+  // at the use site - matching Chicken/Guile/most R7RS Schemes. Internal
+  // (lexical body) definitions stay hygienically renamed and private. The
+  // gensym is kept as a Reference alias to the freshly bound cell so that
+  // references to it elsewhere in the same expansion still resolve (and so
+  // several expansions of the same macro share the plain binding).
+  var alias = null;
+  if (target instanceof LSymbol && target.is_gensym() && is_toplevel_env(env)) {
+    alias = target;
+    target = LSymbol(target.literal());
+  }
   if (this._state.new_expr && (is_function(value) && is_lambda(value) || value instanceof Syntax || is_parameter(value))) {
-    var fn_name = this.__object__.valueOf();
+    var fn_name = target.valueOf();
     if (fn_name instanceof LString) {
       fn_name = fn_name.valueOf();
     }
     value.__name__ = fn_name;
   }
-  env.set(this.__object__, value, this._state.doc, true);
+  env.set(target, value, this._state.doc, true);
+  if (alias) {
+    env.set(alias, new Reference(target.valueOf(), env));
+  }
   state.env = env;
   state.cc = this.__continuation__;
   delete state.object;
   state.ready = true;
+}
+// -------------------------------------------------------------------------
+// A top-level environment is the global/stdlib env, the user env, or the
+// current interaction environment - definitions there are program/REPL
+// top-level, as opposed to a lexical body scope (let/lambda/...).
+function is_toplevel_env(env) {
+  if (env === global_env || env === user_env) {
+    return true;
+  }
+  var interaction = global_env.get('**interaction-environment**', {
+    throwError: false
+  });
+  return env === interaction;
 }
 function evaluate_lambda(fn, args, state, cc) {
   state.cc = cc.__continuation__;
@@ -16328,7 +16543,7 @@ function next_pair(state) {
       }
       state.ready = !is_promise(state.object);
     } else {
-      throw new Error("".concat(type(first), " ").concat(env.get('repr')(first), " is not callable while evaluating ") + to_string(this.__code__));
+      throw new Error("".concat(type(first), " ").concat(to_string(first), " is not callable while evaluating ") + to_string(this.__code__));
     }
   } else {
     state.object = this.__object__.car;
@@ -16922,15 +17137,15 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Mon, 17 Aug 2026 10:58:44 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Wed, 19 Aug 2026 09:36:56 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Mon, 17 Aug 2026 10:58:44 +0000').valueOf();
+  var date = LString('Wed, 19 Aug 2026 09:36:56 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
   var _build = [_year, _format(_date.getMonth() + 1), _format(_date.getDate())].join('-');
-  var banner = "\n  __ __                          __\n / / \\ \\       _    _  ___  ___  \\ \\\n| |   \\ \\     | |  | || . \\/ __>  | |\n| |    > \\    | |_ | ||  _/\\__ \\  | |\n| |   / ^ \\   |___||_||_|  <___/  | |\n \\_\\ /_/ \\_\\                     /_/\n\nLIPS Interpreter 1.0.0-beta.22.1 (".concat(_build, ") <https://lips.js.org>\nCopyright (c) 2018-").concat(_year, " Jakub T. Jankiewicz\n\nType (env) to see environment with functions macros and variables. You can also\nuse (help name) to display help for specific function or macro, (apropos name)\nto display list of matched names in environment and (dir object) to list\nproperties of an object.\n").replace(/^.*\n/, '');
+  var banner = "\n  __ __                          __\n / / \\ \\       _    _  ___  ___  \\ \\\n| |   \\ \\     | |  | || . \\/ __>  | |\n| |    > \\    | |_ | ||  _/\\__ \\  | |\n| |   / ^ \\   |___||_||_|  <___/  | |\n \\_\\ /_/ \\_\\                     /_/\n\nLIPS Interpreter DEV (".concat(_build, ") <https://lips.js.org>\nCopyright (c) 2018-").concat(_year, " Jakub T. Jankiewicz\n\nType (env) to see environment with functions macros and variables. You can also\nuse (help name) to display help for specific function or macro, (apropos name)\nto display list of matched names in environment and (dir object) to list\nproperties of an object.\n").replace(/^.*\n/, '');
   return banner;
 }();
 // -------------------------------------------------------------------------
@@ -16963,8 +17178,8 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
-var version = '1.0.0-beta.22.1';
-var date = 'Mon, 17 Aug 2026 10:58:44 +0000';
+var version = 'DEV';
+var date = 'Wed, 19 Aug 2026 09:36:56 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

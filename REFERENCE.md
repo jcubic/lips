@@ -1907,6 +1907,17 @@ If there are missing inputs or other escape characters it
 will error.
 ```
 
+## free-identifier=?
+```
+(free-identifier=? a b)
+
+Returns #t if the two identifiers refer to the same binding, comparing
+by denotation rather than surface name - so an identifier that a
+hygienic macro renamed to a gensym still equals the identifier it was
+renamed from. Both unbound with the same literal name (e.g. an
+auxiliary keyword like else) counts as the same free identifier.
+```
+
 ## freeze-list!
 ```
 (freeze-list! list)

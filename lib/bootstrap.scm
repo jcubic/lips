@@ -718,15 +718,11 @@
    Helper macro used by cond.")
 
 ;; -----------------------------------------------------------------------------
-(define (%else-literal? obj)
-  "(%else-literal? obj)
-
-   Checks if object is symbol else."
-  (and (symbol? obj)
-       (or (eq? obj 'else)
-           (eq? (--> (new lips.LString (obj.literal))
-                     (cmp "else")) 0))))
-
+;; `cond` is a Lisp (define-macro) macro, so it receives syntax verbatim -
+;; including `else`/`=>` that a surrounding hygienic macro renamed to a gensym.
+;; Unhygienic macros can't rely on syntax-rules' automatic literal matching, so
+;; they compare auxiliary keywords by denotation with free-identifier=? (R7RS
+;; 4.3.2 / R6RS free-identifier=?), which sees through the renaming.
 ;; -----------------------------------------------------------------------------
 (define-macro (cond . list)
   "(cond (predicate? . body)
@@ -745,12 +741,13 @@
       (let* ((item (car list))
              (value (gensym))
              (first (car item))
-             (fn (and (not (null? (cdr item))) (eq? (cadr item) '=>)))
+             (fn (and (not (null? (cdr item)))
+                      (free-identifier=? (cadr item) '=>)))
              (expression (if fn
                              (caddr item)
                              (cdr item)))
              (rest (cdr list)))
-        (if (%else-literal? first)
+        (if (free-identifier=? first 'else)
             `(begin
                ,@expression)
             `(let ((,value ,first))

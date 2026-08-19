@@ -4773,7 +4773,15 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
         if (pattern instanceof LSymbol) {
             const literal = pattern.literal(); // TODO: literal() may be SLOW
             if (symbols.includes(literal)) {
-                if (!LSymbol.is(code, literal) && !LSymbol.is(pattern, code)) {
+                // R7RS 4.3.2: an input identifier matches a pattern literal when
+                // it is the SAME identifier - compared by denotation, not by its
+                // (possibly hygienically renamed) surface name. Compare LITERAL
+                // names so an auxiliary keyword like `else` that another macro
+                // renamed to a gensym (#:else) still matches - the renaming
+                // leaves its literal name, and hence its denotation, unchanged.
+                const code_literal = code instanceof LSymbol ? code.literal() : code;
+                if (!LSymbol.is(code, literal) && code_literal !== literal &&
+                    !LSymbol.is(pattern, code)) {
                     return false;
                 }
                 const ref = expansion.ref(literal);
@@ -9247,6 +9255,48 @@ var global_env = new Environment({
 
          Generates a unique symbol that is not bound anywhere,
          to use with macros as meta name.`),
+    // ------------------------------------------------------------------
+    'free-identifier=?': doc('free-identifier=?', function(a, b) {
+        // R7RS/R6RS: two identifiers are free-identifier=? when they refer to
+        // the SAME binding - compared by denotation, so an identifier that
+        // hygiene renamed to a gensym still equals the identifier it came
+        // from. Different literal names are never equal; with the same literal
+        // name they are equal when both are unbound (the same free/auxiliary
+        // identifier, e.g. `else`) or both resolve to the same binding. This
+        // lets an unhygienic (define-macro) macro recognize auxiliary keywords
+        // that a surrounding hygienic macro renamed.
+        if (!(a instanceof LSymbol) || !(b instanceof LSymbol)) {
+            return false;
+        }
+        if (a.literal() !== b.literal()) {
+            return false;
+        }
+        const env = this instanceof Environment ? this : global_env;
+        const target = id => {
+            // resolve through hygienic References; a bare gensym with no
+            // binding falls back to its literal name
+            let t = env.resolve(id.valueOf());
+            if (!t && id.is_gensym()) {
+                t = env.resolve(id.literal());
+            }
+            return t;
+        };
+        const ta = target(a);
+        const tb = target(b);
+        if (!ta && !tb) {
+            return true;
+        }
+        if (ta && tb) {
+            return ta.env === tb.env && ta.name === tb.name;
+        }
+        return false;
+    }, `(free-identifier=? a b)
+
+        Returns #t if the two identifiers refer to the same binding, comparing
+        by denotation rather than surface name - so an identifier that a
+        hygienic macro renamed to a gensym still equals the identifier it was
+        renamed from. Both unbound with the same literal name (e.g. an
+        auxiliary keyword like else) counts as the same free identifier.`),
     // ------------------------------------------------------------------
     load: doc('load', function load(file, env) {
         typecheck('load', file, 'string');

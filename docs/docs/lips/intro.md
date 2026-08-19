@@ -79,6 +79,32 @@ It also implements:
   [anaphoric syntax-rules macros](/docs/scheme-intro/macros#anaphoric-hygienic-macros).
 * [SRFI-147](https://srfi.schemers.org/srfi-147/) which allows defining a new syntax-rules macros to define syntax-rules macros.
 
+### Mixing Lisp and hygienic macros
+
+The two macro systems have different notions of identifier equality, and that
+surfaces when they are combined. `syntax-rules` is hygienic: a free identifier
+in a template (including an auxiliary keyword such as `else` or `=>`) is renamed
+to a gensym so it cannot be accidentally captured. Lisp macros (`define-macro`)
+are unhygienic: they receive syntax verbatim, so when a hygienic macro expands
+into a Lisp-macro form the Lisp macro sees the *renamed* identifier (for example
+`#:else` instead of `else`).
+
+Because of this a Lisp macro cannot recognize an auxiliary keyword with `eq?` —
+that only compares the surface name. Compare by *denotation* with
+`free-identifier=?` instead, which sees through the renaming (this is exactly
+how `syntax-rules` matches literals, per R7RS 4.3.2):
+
+```scheme
+(free-identifier=? 'else 'else)  ;; ==> #t
+;; and #t as well when one side was hygienically renamed to #:else
+```
+
+This is how the built-in `cond` (a Lisp macro) recognizes `else` and `=>` even
+when they arrive renamed from a surrounding hygienic macro. It is a limitation
+of combining unhygienic Lisp macros with hygienic ones: an unhygienic macro that
+treats certain identifiers as keywords must compare them with
+`free-identifier=?`. Hygienic (`syntax-rules`) macros do this automatically.
+
 ### Gensyms
 With lisp macros you can use [gensyms](/docs/scheme-intro/macros#gensyms), they are special Scheme
 symbols that use JavaScript symbols behind the scene, so they are proven to be unique. Additionally

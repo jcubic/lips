@@ -794,6 +794,52 @@
 
         (t.is (foo 1 ++ 2) '(1 1 1 2))))
 
+(test "auxiliary literal matches when renamed by another macro"
+      (lambda (t)
+        ;; R7RS 4.3.2: an input identifier matches a pattern literal by
+        ;; denotation, not surface name. When `bar` expands to (foo a else b),
+        ;; hygiene renames `else` (an unbound auxiliary keyword) to a gensym;
+        ;; it must still match foo's `else` literal.
+        (define-syntax foo
+          (syntax-rules (else)
+            ((_ x else y) (if x x y))))
+        (define-syntax bar
+          (syntax-rules ()
+            ((_ a b) (foo a else b))))
+
+        (t.is (foo #f else 20) 20)
+        (t.is (foo 5 else 20) 5)
+        (t.is (bar #f 30) 30)
+        (t.is (bar 7 30) 7)
+
+        ;; also via cond's else/=> reached through a macro expansion - cond is
+        ;; a define-macro that recognizes the renamed keywords with
+        ;; free-identifier=?
+        (define-syntax classify
+          (syntax-rules ()
+            ((_ a) (cond ((zero? a) 'zero) (else 'other)))))
+        (t.is (classify 0) 'zero)
+        (t.is (classify 10) 'other)
+
+        (define-syntax double-if
+          (syntax-rules ()
+            ((_ a) (cond (a => (lambda (x) (* x 2))) (else 'no)))))
+        (t.is (double-if 21) 42)
+        (t.is (double-if #f) 'no)))
+
+(test "free-identifier=?"
+      (lambda (t)
+        ;; identifiers compare by denotation, seeing through hygienic renaming
+        (t.is (free-identifier=? 'else 'else) #t)
+        (t.is (free-identifier=? 'else 'other) #f)
+        (t.is (free-identifier=? 'car 'car) #t)   ; same global binding
+        (t.is (free-identifier=? 5 'else) #f)     ; non-identifiers
+
+        ;; a keyword renamed by a hygienic macro still equals the original
+        (define-macro (renamed-else=? x) (free-identifier=? x 'else))
+        (define-syntax via (syntax-rules () ((_) (renamed-else=? else))))
+        (t.is (via) #t)))
+
 (test "scope with rewriting"
       (lambda (t)
         ;; ref: https://www.cs.utah.edu/plt/scope-sets/
