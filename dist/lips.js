@@ -8,7 +8,7 @@
  *
  * LIPS is Pretty Simple - Scheme based Powerful LISP in JavaScript
  *
- * Copyright (c) 2018-2024 Jakub T. Jankiewicz <https://jcubic.pl/me>
+ * Copyright (c) 2018-2026 Jakub T. Jankiewicz <https://jcubic.pl/me>
  * Released under the MIT license
  *
  * includes:
@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Wed, 19 Aug 2026 21:56:02 +0000
+ * build: Wed, 19 Aug 2026 22:04:19 +0000
  */
 
 (function (global, factory) {
@@ -17385,10 +17385,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Wed, 19 Aug 2026 21:56:02 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Wed, 19 Aug 2026 22:04:19 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Wed, 19 Aug 2026 21:56:02 +0000').valueOf();
+    var date = LString('Wed, 19 Aug 2026 22:04:19 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -17427,7 +17427,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Wed, 19 Aug 2026 21:56:02 +0000';
+  var date = 'Wed, 19 Aug 2026 22:04:19 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);
