@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Wed, 19 Aug 2026 20:52:33 +0000
+ * build: Wed, 19 Aug 2026 21:56:02 +0000
  */
 
 (function (global, factory) {
@@ -9496,7 +9496,9 @@
     }
     function traverse(expr) {
       var _ref30 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-        disabled = _ref30.disabled;
+        disabled = _ref30.disabled,
+        quoted = _ref30.quoted,
+        in_syntax = _ref30.in_syntax;
       var is_array = Array.isArray(expr);
       if (is_array && expr.length === 0) {
         return expr;
@@ -9511,6 +9513,28 @@
           second = expr.cdr.car;
           rest_second = expr.cdr.cdr;
         }
+        // Inside `(quote <datum>)` the datum is literal data: transcribe it
+        // in "quoted" mode so pattern variables are still substituted but
+        // free identifiers are emitted verbatim (never hygiene-renamed).
+        // R7RS quoted identifiers are plain symbols regardless of the
+        // macro's scope; renaming them to gensyms only works out when
+        // clear_gensyms fixes up the macro's RETURN value, so data reaching
+        // the program by a side effect (set!/define) would otherwise keep a
+        // `#:name` gensym. The quote keyword itself is still transcribed
+        // normally so it resolves hygienically.
+        // Not while transcribing a NESTED syntax-rules definition
+        // (in_syntax): there a quoted identifier may be the inner macro's
+        // pattern variable/ellipsis (e.g. case-lambda's `'(p :::)`), so it
+        // must stay renamed consistently with the inner patterns - the
+        // inner macro applies its own quote handling when it expands.
+        if (!quoted && !disabled && !in_syntax && first instanceof LSymbol && first.literal() === 'quote' && !(first.valueOf() in bindings.symbols) && is_pair(expr.cdr)) {
+          return new Pair(traverse(first, {
+            disabled
+          }), traverse(expr.cdr, {
+            disabled,
+            quoted: true
+          }));
+        }
         // escape ellispsis from R7RS e.g. (... ...)
         if (!disabled && is_pair(first) && LSymbol.is(first.car, ellipsis_symbol)) {
           return new Pair(first.cdr.car, traverse(expr.cdr));
@@ -9522,7 +9546,9 @@
           var values = Object.values(_symbols2);
           if (values.length && values.every(x => x === null)) {
             return traverse(rest_second, {
-              disabled
+              disabled,
+              quoted,
+              in_syntax
             });
           }
           var keys = get_names(_symbols2);
@@ -9540,7 +9566,9 @@
             if (is_nil(bindings['...'].lists[0])) {
               if (!is_spread) {
                 return traverse(rest_second, {
-                  disabled
+                  disabled,
+                  quoted,
+                  in_syntax
                 });
               }
               return _nil;
@@ -9603,7 +9631,9 @@
               if (is_array) {
                 if (rest_second) {
                   var _rest9 = traverse(rest_second, {
-                    disabled
+                    disabled,
+                    quoted,
+                    in_syntax
                   });
                   return result.concat(_rest9);
                 }
@@ -9611,7 +9641,9 @@
               }
               if (!is_nil(expr.cdr.cdr) && !LSymbol.is(expr.cdr.cdr.car, ellipsis_symbol)) {
                 var _rest0 = traverse(expr.cdr.cdr, {
-                  disabled
+                  disabled,
+                  quoted,
+                  in_syntax
                 });
                 return result.append(_rest0);
               }
@@ -9672,7 +9704,9 @@
             if (is_pair(expr.cdr)) {
               if (is_pair(expr.cdr.cdr) || expr.cdr.cdr instanceof LSymbol) {
                 var node = traverse(expr.cdr.cdr, {
-                  disabled
+                  disabled,
+                  quoted,
+                  in_syntax
                 });
                 if (_is_null) {
                   return node;
@@ -9688,11 +9722,13 @@
           }
         }
         var head = traverse(first, {
-          disabled
+          disabled,
+          quoted,
+          in_syntax
         });
         var rest;
         var is_syntax;
-        if (first instanceof LSymbol) {
+        if (!quoted && first instanceof LSymbol) {
           var value = scope.get(first, {
             throwError: false
           });
@@ -9707,22 +9743,29 @@
           if (expr.cdr.car instanceof LSymbol) {
             // custom ellipsis: (syntax-rules ellipsis (literals) ...)
             rest = new Pair(traverse(expr.cdr.car, {
-              disabled
+              disabled,
+              in_syntax: true
             }), new Pair(traverse(expr.cdr.cdr.car, {
-              disabled
+              disabled,
+              in_syntax: true
             }), traverse(expr.cdr.cdr.cdr, {
-              disabled
+              disabled,
+              in_syntax: true
             })));
           } else {
             rest = new Pair(traverse(expr.cdr.car, {
-              disabled
+              disabled,
+              in_syntax: true
             }), traverse(expr.cdr.cdr, {
-              disabled
+              disabled,
+              in_syntax: true
             }));
           }
         } else {
           rest = traverse(expr.cdr, {
-            disabled
+            disabled,
+            quoted,
+            in_syntax
           });
         }
         return new Pair(head, rest);
@@ -9736,6 +9779,16 @@
         if (_symbols3.includes(_name8)) {
           var msg = "missing ellipsis symbol next to name `".concat(_name8, "'");
           throw new Error("syntax-rules: ".concat(msg));
+        }
+        if (quoted) {
+          // literal datum inside quote: substitute pattern variables, but
+          // emit any other identifier as its plain symbol - never rename
+          // it to a hygiene gensym (see the quote handling above).
+          var pname = expr.valueOf();
+          if (pname in bindings.symbols) {
+            return bindings.symbols[pname];
+          }
+          return LSymbol(expr.literal());
         }
         var _value2 = transform(expr);
         if (typeof _value2 !== 'undefined') {
@@ -17332,10 +17385,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Wed, 19 Aug 2026 20:52:33 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Wed, 19 Aug 2026 21:56:02 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Wed, 19 Aug 2026 20:52:33 +0000').valueOf();
+    var date = LString('Wed, 19 Aug 2026 21:56:02 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -17374,7 +17427,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Wed, 19 Aug 2026 20:52:33 +0000';
+  var date = 'Wed, 19 Aug 2026 21:56:02 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

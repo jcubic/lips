@@ -1195,7 +1195,12 @@
 
          (t.is (foo) '("foo" (10) bar "bar"))))
 
-(test.failing "nesting, renaming and scope"
+;; Like "nested _", but the matched literal `foo` also appears in the
+;; template's QUOTED output and the result is delivered by a side effect
+;; (set!). Identifiers inside quote are literal data and must not be
+;; hygiene-renamed, otherwise the gensym `#:foo` would leak into `result`
+;; (clear_gensyms only fixes up a macro's return value, not set! data).
+(test "nesting, renaming and scope"
        (lambda (t)
          (let ((result 10))
            (define-syntax foo
@@ -1934,3 +1939,21 @@
         (t.is (acc (10 20 30) (5)) '(steps (5 10 20) last 30))
         ;; the empty-head case: (x ... y) over a single-element built list
         (t.is (acc () (99)) '(steps () last 99))))
+
+;; Identifiers inside `quote` are literal data, not code, so a macro must
+;; transcribe them verbatim rather than hygiene-rename them. When quoted data
+;; reaches the program through a side effect (set!/define) there is no return
+;; value for the gensym fixup to run on, so renaming would leak `#:name`.
+(test "quoted data in a macro template is not hygiene-renamed"
+      (lambda (t)
+        (let ((x 0))
+          (define-syntax set-list
+            (syntax-rules ()
+              ((_) (set! x '(a b c)))))
+          (set-list)
+          (t.is x '(a b c)))
+        ;; pattern variables inside quote are still substituted
+        (define-syntax wrap
+          (syntax-rules ()
+            ((_ y) '(before y after))))
+        (t.is (wrap middle) '(before middle after))))

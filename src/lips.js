@@ -5620,7 +5620,7 @@ function transform_syntax(options = {}) {
         return Object.keys(object).concat(Object.getOwnPropertySymbols(object));
     }
 
-    function traverse(expr, { disabled } = {}) {
+    function traverse(expr, { disabled, quoted, in_syntax } = {}) {
         log('traverse>> ', expr);
         const is_array = Array.isArray(expr);
         if (is_array && expr.length === 0) {
@@ -5638,6 +5638,28 @@ function transform_syntax(options = {}) {
                 rest_second = expr.cdr.cdr;
             }
             log({ first, second, rest_second });
+            // Inside `(quote <datum>)` the datum is literal data: transcribe it
+            // in "quoted" mode so pattern variables are still substituted but
+            // free identifiers are emitted verbatim (never hygiene-renamed).
+            // R7RS quoted identifiers are plain symbols regardless of the
+            // macro's scope; renaming them to gensyms only works out when
+            // clear_gensyms fixes up the macro's RETURN value, so data reaching
+            // the program by a side effect (set!/define) would otherwise keep a
+            // `#:name` gensym. The quote keyword itself is still transcribed
+            // normally so it resolves hygienically.
+            // Not while transcribing a NESTED syntax-rules definition
+            // (in_syntax): there a quoted identifier may be the inner macro's
+            // pattern variable/ellipsis (e.g. case-lambda's `'(p :::)`), so it
+            // must stay renamed consistently with the inner patterns - the
+            // inner macro applies its own quote handling when it expands.
+            if (!quoted && !disabled && !in_syntax && first instanceof LSymbol &&
+                first.literal() === 'quote' &&
+                !(first.valueOf() in bindings.symbols) && is_pair(expr.cdr)) {
+                return new Pair(
+                    traverse(first, { disabled }),
+                    traverse(expr.cdr, { disabled, quoted: true })
+                );
+            }
             // escape ellispsis from R7RS e.g. (... ...)
             if (!disabled && is_pair(first) &&
                 LSymbol.is(first.car, ellipsis_symbol)) {
@@ -5654,7 +5676,7 @@ function transform_syntax(options = {}) {
                 const values = Object.values(symbols);
                 if (values.length && values.every(x => x === null)) {
                     log('>>> 1 (a)');
-                    return traverse(rest_second, { disabled });
+                    return traverse(rest_second, { disabled, quoted, in_syntax });
                 }
                 var keys = get_names(symbols);
                 // case of list as first argument ((x . y) ...) or (x ... ...)
@@ -5672,7 +5694,7 @@ function transform_syntax(options = {}) {
                     // nesting here?
                     if (is_nil(bindings['...'].lists[0])) {
                         if (!is_spread) {
-                            return traverse(rest_second, { disabled });
+                            return traverse(rest_second, { disabled, quoted, in_syntax });
                         }
                         log(rest_second);
                         return nil;
@@ -5749,14 +5771,14 @@ function transform_syntax(options = {}) {
                         if (is_array) {
                             if (rest_second) {
                                 log({ rest_second, expr });
-                                const rest = traverse(rest_second, { disabled });
+                                const rest = traverse(rest_second, { disabled, quoted, in_syntax });
                                 return result.concat(rest);
                             }
                             return result;
                         }
                         if (!is_nil(expr.cdr.cdr) &&
                             !LSymbol.is(expr.cdr.cdr.car, ellipsis_symbol)) {
-                            const rest = traverse(expr.cdr.cdr, { disabled });
+                            const rest = traverse(expr.cdr.cdr, { disabled, quoted, in_syntax });
                             return result.append(rest);
                         }
                         return result;
@@ -5830,7 +5852,7 @@ function transform_syntax(options = {}) {
                     if (is_pair(expr.cdr)) {
                         if (is_pair(expr.cdr.cdr) ||
                             expr.cdr.cdr instanceof LSymbol) {
-                            const node = traverse(expr.cdr.cdr, { disabled });
+                            const node = traverse(expr.cdr.cdr, { disabled, quoted, in_syntax });
                             log({node});
                             if (is_null) {
                                 return node;
@@ -5848,10 +5870,10 @@ function transform_syntax(options = {}) {
                     return result;
                 }
             }
-            const head = traverse(first, { disabled });
+            const head = traverse(first, { disabled, quoted, in_syntax });
             let rest;
             let is_syntax;
-            if ((first instanceof LSymbol)) {
+            if (!quoted && (first instanceof LSymbol)) {
                 const value = scope.get(first, { throwError: false });
                 is_syntax = value instanceof Macro &&
                     value.__name__ === 'syntax-rules';
@@ -5865,21 +5887,21 @@ function transform_syntax(options = {}) {
                 if (expr.cdr.car instanceof LSymbol) {
                     // custom ellipsis: (syntax-rules ellipsis (literals) ...)
                     rest = new Pair(
-                        traverse(expr.cdr.car, { disabled }),
+                        traverse(expr.cdr.car, { disabled, in_syntax: true }),
                         new Pair(
-                            traverse(expr.cdr.cdr.car, { disabled }),
-                            traverse(expr.cdr.cdr.cdr, { disabled })
+                            traverse(expr.cdr.cdr.car, { disabled, in_syntax: true }),
+                            traverse(expr.cdr.cdr.cdr, { disabled, in_syntax: true })
                         )
                     );
                 } else {
                     rest = new Pair(
-                        traverse(expr.cdr.car, { disabled }),
-                        traverse(expr.cdr.cdr, { disabled })
+                        traverse(expr.cdr.car, { disabled, in_syntax: true }),
+                        traverse(expr.cdr.cdr, { disabled, in_syntax: true })
                     );
                 }
                 log('REST >>>> ', rest);
             } else {
-                rest = traverse(expr.cdr, { disabled });
+                rest = traverse(expr.cdr, { disabled, quoted, in_syntax });
             }
             log({
                 a: true,
@@ -5902,6 +5924,16 @@ function transform_syntax(options = {}) {
             if (symbols.includes(name)) {
                 const msg = `missing ellipsis symbol next to name \`${name}'`;
                 throw new Error(`syntax-rules: ${msg}`);
+            }
+            if (quoted) {
+                // literal datum inside quote: substitute pattern variables, but
+                // emit any other identifier as its plain symbol - never rename
+                // it to a hygiene gensym (see the quote handling above).
+                const pname = expr.valueOf();
+                if (pname in bindings.symbols) {
+                    return bindings.symbols[pname];
+                }
+                return LSymbol(expr.literal());
             }
             const value = transform(expr);
             if (typeof value !== 'undefined') {
