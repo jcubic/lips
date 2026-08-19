@@ -1843,16 +1843,16 @@
 
         (t.is *g* 5)))
 
-(test.failing "Identifiers in syntax-rules can't be shadowed by local variables #291"
+(test "Identifiers in syntax-rules can't be shadowed by local variables #291"
       (lambda (t)
-
         (t.is (to.throw (eval '(begin
                                  (define-syntax if+
                                    (syntax-rules (then else)
                                      ((_ test then expr1 else expr2) (if test expr1 expr2))))
 
                                  (let ((else #f) (x 10))
-                                   (if+ (even? x) then (/ x 2) else (/ (+ x 1) 2))) #t)))
+                                   (if+ (even? x) then (/ x 2) else (/ (+ x 1) 2))))
+                              (--> (interaction-environment) (inherit 'test-291a))))
               #t)
 
         (t.is (eval '(begin
@@ -1862,6 +1862,6 @@
 
                        (define else #f)
                        (let ((el_se #f) (x 10))
-                         (if+ (even? x) then (/ x 2) else (/ (+ x 1) 2)))
-                       (unset! else))
-                    (interaction-environment)))))
+                         (if+ (even? x) then (/ x 2) else (/ (+ x 1) 2))))
+                    (--> (interaction-environment) (inherit 'test-291b)))
+              5)))
