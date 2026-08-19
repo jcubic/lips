@@ -5189,6 +5189,7 @@ function clear_gensyms(node, gensyms) {
 // :: it existed before the expansion and is not rebound while it runs.
 // :: Aliasing into `scope` itself (or another expansion's scope) risks a
 // :: Reference cycle, so those are snapshotted by value instead.
+// -------------------------------------------------------------------------
 function is_stable_target(scope, target_env) {
     var env = scope.__parent__;
     while (env) {
@@ -5200,6 +5201,63 @@ function is_stable_target(scope, target_env) {
     return false;
 }
 // -------------------------------------------------------------------------
+function get_identifiers(node) {
+    let symbols = [];
+    while (!is_nil(node)) {
+        const x = node.car;
+        symbols.push(x.valueOf());
+        node = node.cdr;
+    }
+    return symbols;
+}
+// -------------------------------------------------------------------------
+// #172: capture the macros the templates reference AT DEFINITION time.
+// Referential transparency means a free identifier in a template
+// denotes the binding visible where the macro was defined; if that
+// binding is a syntactic keyword (macro), a later set!/redefinition of
+// the same name must not change what this macro expands to. Variables
+// stay live (they are locations - set! is visible), so only macros are
+// snapshotted. Over-collecting from patterns/literals is harmless: a
+// pattern variable is substituted before rename, so its capture (if
+// any) is never consulted.
+// -------------------------------------------------------------------------
+function collect_macros(node, env, captured_macros = Object.create(null)) {
+    if (node instanceof LSymbol) {
+        const name = node.valueOf();
+        // only plain identifiers can name a macro; a dotted symbol
+        // (lips.foo.bar) is a JS property access whose lookup can throw
+        if (typeof name === 'string' && !name.includes('.') &&
+            !(name in captured_macros)) {
+            let value;
+            try {
+                value = env.get(name, { throwError: false });
+            } catch (e) {
+                value = undefined;
+            }
+            if (is_macro(value)) {
+                captured_macros[name] = value;
+            }
+        }
+    } else if (is_pair(node)) {
+        collect_macros(node.car, env, captured_macros);
+        collect_macros(node.cdr, env, captured_macros);
+    } else if (Array.isArray(node)) {
+        node.forEach(node => collect_macros(node, env, captured_macros));
+    }
+    return captured_macros;
+}
+// -------------------------------------------------------------------------
+function validate_identifiers(node) {
+    while (!is_nil(node)) {
+        const x = node.car;
+        if (!(x instanceof LSymbol)) {
+            throw new Error('syntax-rules: wrong identifier');
+        }
+        node = node.cdr;
+    }
+}
+
+// -------------------------------------------------------------------------
 function transform_syntax(options = {}) {
     const {
         bindings,
@@ -5207,6 +5265,7 @@ function transform_syntax(options = {}) {
         scope,
         symbols,
         names,
+        captured = null,
         ellipsis: ellipsis_symbol } = options;
     const gensyms = {};
     function valid_symbol(symbol) {
@@ -5257,7 +5316,18 @@ function transform_syntax(options = {}) {
                 return gensyms[name];
             }
             const gensym_name = gensym(name);
-            if (ref) {
+            // #172: this identifier denoted a MACRO where the syntax was
+            // defined. Normal live resolution already handles let/letrec-syntax
+            // (the def-env chain gives the right binding, incl. recursion), so
+            // only fall back to the captured macro when the name NO LONGER
+            // denotes a macro - i.e. it was set!-overwritten with a value.
+            // Referential transparency then keeps the template expanding via
+            // the original macro instead of erroring on the new value.
+            const restore = captured && (name in captured) &&
+                !is_macro(scope.get(name, { throwError: false }));
+            if (restore) {
+                scope.set(gensym_name, captured[name]);
+            } else if (ref) {
                 // A free identifier that resolves to a STABLE, REAL binding is
                 // aliased with a Reference: reads and set! then both reach the
                 // original cell (fixes set! on free vars, e.g. amb's
@@ -5723,6 +5793,7 @@ function transform_syntax(options = {}) {
     }
     return traverse(expr, {});
 }
+
 // ----------------------------------------------------------------------
 // :: Check for nullish values
 // ----------------------------------------------------------------------
@@ -10051,31 +10122,13 @@ var global_env = new Environment({
     'syntax-rules': new Macro('syntax-rules', function(source, options) {
         var { use_dynamic, error } = options;
         const macro = source.cdr;
-        // TODO: find identifiers and freeze the scope when defined #172
         var env = this;
-        function get_identifiers(node) {
-            let symbols = [];
-            while (!is_nil(node)) {
-                const x = node.car;
-                symbols.push(x.valueOf());
-                node = node.cdr;
-            }
-            return symbols;
-        }
-        function validate_identifiers(node) {
-            while (!is_nil(node)) {
-                const x = node.car;
-                if (!(x instanceof LSymbol)) {
-                    throw new Error('syntax-rules: wrong identifier');
-                }
-                node = node.cdr;
-            }
-        }
         if (macro.car instanceof LSymbol) {
             validate_identifiers(macro.cdr.car);
         } else {
             validate_identifiers(macro.car);
         }
+        const captured_macros = collect_macros(macro, env);
         const syntax = new Syntax(function(code, { macro_expand }) {
             log('>> SYNTAX');
             log(code);
@@ -10128,7 +10181,8 @@ var global_env = new Environment({
                             scope,
                             lex_scope: var_scope,
                             names,
-                            ellipsis
+                            ellipsis,
+                            captured: captured_macros
                         });
                         log('OUPUT>>> ', new_expr);
                         // TODO: if expression is undefined throw an error

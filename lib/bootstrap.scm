@@ -1212,7 +1212,7 @@
                                     ,(%class-lambda fn)))
                     functions))
           (let ((item (car lst)))
-            (if (eq? (car item) 'constructor)
+            (if (free-identifier=? (car item) 'constructor)
                 (iter functions item (cdr lst))
                 (iter (cons item functions) constructor (cdr lst))))))))
 

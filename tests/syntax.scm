@@ -803,6 +803,7 @@
         (define-syntax foo
           (syntax-rules (else)
             ((_ x else y) (if x x y))))
+
         (define-syntax bar
           (syntax-rules ()
             ((_ a b) (foo a else b))))
@@ -1293,9 +1294,24 @@
                 (foo foo))
               #t)))
 
-(test.failing "let-syntax and set! of definition"
+(test "set! overwrites a macro binding (dynamic)"
+      (lambda (t)
+        ;; LIPS is dynamic: set! on a syntactic keyword overwrites the binding
+        ;; with the value (like Gauche; Guile errors instead). The name is then
+        ;; an ordinary variable, so using it in operator position is an error.
+        (define-syntax h
+          (syntax-rules ()
+            ((h 2) -3)))
+        (set! h 42)
+        (t.is h 42)
+        (t.is (to.throw (h 2)) #t)))
+
+(test "let-syntax and set! of definition"
       (lambda (t)
         ;; https://github.com/jcubic/lips/issues/172
+        ;; Referential transparency: f's `g` denotes the macro g as it was at
+        ;; f's DEFINITION, captured then - so (f 1) -> (g 2) still expands to -3
+        ;; even though a later set! overwrote g with a function.
         (define-syntax g
           (syntax-rules ()
             ((g 2) -3)))
@@ -1304,7 +1320,10 @@
                           ((f 1) (g 2)))))
                 (set! g (lambda (x) -1000))
                 (f 1))
-              -3)))
+              -3)
+
+        ;; the overwrite is still visible directly: g now denotes the function
+        (t.is (g 42) -1000)))
 
 (test "syntax-rules -> syntax-rules"
       (lambda (t)
@@ -1326,7 +1345,7 @@
                 (list x y))
               '(1 2))))
 
-(test.failing "syntax-parameterize SRFI 139"
+(test.failing "syntax-parameterize (SRFI-139)"
       (lambda (t)
 
          (define-syntax-parameter it
@@ -1751,7 +1770,7 @@
         (t.is (alist foo 10 bar 20 baz 30)
               '((foo . 10) (bar . 20) (baz . 30)))))
 
-(test "nested syntax rules (SRFI-239 case)"
+(test "nested syntax rules (SRFI-239)"
       (lambda (t)
         (define-syntax foo
           (syntax-rules ()
