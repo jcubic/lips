@@ -414,4 +414,4 @@ Thanks to [Algolia DocSearch](https://docsearch.algolia.com/) for providing free
 ## License
 
 Released under [MIT](http://opensource.org/licenses/MIT) license<br/>
-Copyright (c) 2018-2024 [Jakub T. Jankiewicz](https://jcubic.pl/me)
+Copyright (c) 2018-2026 [Jakub T. Jankiewicz](https://jcubic.pl/me)
