@@ -542,7 +542,7 @@
     ((_ "step" arg ...)
      (join " " (vector->list  (vector (repr arg) ...))))
     ((_ message arg ...)
-     (error (format "~a ~a" message (_ "step" arg ...))))))
+     (error (format "~a ~a" message (syntax-error "step" arg ...))))))
 
 ;; -----------------------------------------------------------------------------
 ;; based on https://srfi.schemers.org/srfi-0/srfi-0.html

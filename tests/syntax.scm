@@ -698,7 +698,7 @@
         (define-syntax L
           (syntax-rules ()
             ((_) '())
-            ((_ a b ...) (cons a (_ b ...)))))
+            ((_ a b ...) (cons a (L b ...)))))
 
         (t.is (L 1 2 3) '(1 2 3))))
 
@@ -1883,3 +1883,49 @@
                          (if+ (even? x) then (/ x 2) else (/ (+ x 1) 2))))
                     (--> (interaction-environment) (inherit 'test-291b)))
               5)))
+
+;; R7RS 4.3.2: the underscore `_` is a wildcard - it matches any input and
+;; creates no binding.
+(test "underscore is a non-binding wildcard"
+      (lambda (t)
+        (define-syntax second
+          (syntax-rules ()
+            ((_ _ x _) x)))
+        ;; the two _ positions match but do not capture anything
+        (t.is (second 1 2 3) 2)))
+
+;; R7RS 4.3.2: `_` in a template is the literal symbol `_`, not a pattern
+;; variable - it is transcribed verbatim and never renamed for hygiene.
+(test "underscore in template is the literal symbol"
+      (lambda (t)
+        (define-syntax quote-underscore
+          (syntax-rules ()
+            ((_ x) (list (quote _) x))))
+        (t.is (quote-underscore 5) '(_ 5))))
+
+;; The keyword position of a pattern is never matched as a literal, even when
+;; `_` is declared a literal identifier (this is what SRFI-197 relies on).
+(test "underscore literal does not break the keyword position"
+      (lambda (t)
+        (define-syntax pick
+          (syntax-rules (_)
+            ;; keyword is `pick`; `_` is a literal used inside the pattern
+            ((pick (a _ b)) (list 'has-underscore a b))
+            ((pick (a b)) (list 'plain a b))))
+        (t.is (pick (1 _ 2)) '(has-underscore 1 2))
+        (t.is (pick (1 2)) '(plain 1 2))))
+
+;; A trailing ellipsis that matches zero items must still assign the single
+;; remaining element to the fixed trailing pattern - regression for a list
+;; built by an accumulating recursive macro and re-matched with (x ... last).
+(test "trailing ellipsis with empty head over a built list"
+      (lambda (t)
+        (define-syntax acc
+          (syntax-rules ()
+            ((_ () (step ... last-step))
+             (list 'steps (list step ...) 'last last-step))
+            ((_ (a . rest) (out ...))
+             (acc rest (out ... a)))))
+        (t.is (acc (10 20 30) (5)) '(steps (5 10 20) last 30))
+        ;; the empty-head case: (x ... y) over a single-element built list
+        (t.is (acc () (99)) '(steps () last 99))))

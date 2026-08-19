@@ -1,6 +1,14 @@
 ## 1.0.0-beta.23
+### Breaking
+* `syntax-rules` now treats `_` as the R7RS wildcard: it matches any input
+  without binding, is transcribed verbatim as the literal symbol `_` in a
+  template, and the pattern keyword position is ignored. The previous
+  behaviour where `_` in a template denoted the macro itself (self-recursion)
+  is gone - recurse by the macro's own name instead.
 ### Feature
 * add `free-identifier=?` [#296](https://github.com/jcubic/lips/issues/296)
+* add SRFI-197 (Pipeline Operators): `chain`, `chain-and`, `chain-when`,
+  `chain-lambda`, `nest`, `nest-reverse`
 ### Bugfix
 * fix handling of free variables from syntax rule expansion [#546](https://github.com/jcubic/lips/issues/546)
 * fix unquote vector/array in tail position
@@ -8,6 +16,8 @@
 * fix unquote vector/array in tail position
 * fix nested ellipsis with empty identifier
 * fix resolving nested identifiers in syntax-rules
+* fix trailing ellipsis `(x ... last)` losing items when the input list was
+  built by an accumulating recursive macro
 
 ## 1.0.0-beta.22
 ### Breaking

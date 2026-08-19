@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Wed, 19 Aug 2026 18:52:34 +0000
+ * build: Wed, 19 Aug 2026 20:22:20 +0000
  */
 
 (function (global, factory) {
@@ -8805,15 +8805,36 @@
             if (!is_pair(code)) {
               return false;
             }
+            // Split off the trailing fixed items without mutating the
+            // input: `code` may share pair structure with bindings from
+            // an earlier expansion (e.g. a list built by (acc ... a)
+            // and re-matched by (x ... last) in a recursive macro), and
+            // severing it in place corrupts that shared structure.
+            code = code.clone();
             var code_len = code.length();
-            var list = code;
-            var _trailing = improper_list ? 1 : 1;
-            while (code_len - _trailing > list_len) {
-              list = list.cdr;
-              code_len--;
+            // The ellipsis head matches the leading items; the last
+            // `list_len` items match the fixed trailing pattern.
+            var head_len = code_len - list_len;
+            var _rest5;
+            if (head_len <= 0) {
+              // the ellipsis matches zero items - every input item
+              // belongs to the trailing pattern. The loop below can
+              // never leave an empty head (it keeps at least the
+              // first pair), so handle it explicitly, otherwise a
+              // single trailing item (e.g. (x ... y) over (a)) is
+              // wrongly assigned to the ellipsis.
+              _rest5 = code;
+              code = _nil;
+            } else {
+              var list = code;
+              var _trailing = improper_list ? 1 : 1;
+              while (code_len - _trailing > list_len) {
+                list = list.cdr;
+                code_len--;
+              }
+              _rest5 = list.cdr;
+              list.cdr = _nil;
             }
-            var _rest5 = list.cdr;
-            list.cdr = _nil;
             var new_sate = _objectSpread(_objectSpread({}, state), {}, {
               trailing: improper_list
             });
@@ -8824,6 +8845,11 @@
         }
         if (pattern.car instanceof LSymbol) {
           var _name3 = pattern.car.__name__;
+          // R7RS: `(_ ...)` matches any number of inputs and binds
+          // nothing (unless `_` is a declared literal).
+          if (is_wildcard(pattern.car) && !symbols.includes(_name3)) {
+            return true;
+          }
           if (bindings['...'].symbols[_name3] && !pattern_names.includes(_name3) && !ellipsis) {
             throw new Error('syntax: named ellipsis can only appear onces');
           }
@@ -8954,6 +8980,12 @@
         if (symbols.includes(_name4)) {
           return true;
         }
+        // R7RS 4.3.2: the wildcard `_` matches any input and creates no
+        // binding. (A `_` declared as a literal is handled above, so this
+        // only fires for the auxiliary underscore.)
+        if (is_wildcard(pattern)) {
+          return true;
+        }
         if (ellipsis) {
           var _bindings$$symbols, _bindings$$symbols$_n;
           (_bindings$$symbols$_n = (_bindings$$symbols = bindings['...'].symbols)[_name4]) !== null && _bindings$$symbols$_n !== void 0 ? _bindings$$symbols$_n : _bindings$$symbols[_name4] = [];
@@ -8972,8 +9004,13 @@
           }
           var _car = pattern.car.valueOf();
           var _cdr = pattern.cdr.valueOf();
-          bindings.symbols[_car] = code.car;
-          bindings.symbols[_cdr] = _nil;
+          // `_` is a wildcard - match but do not bind (see R7RS 4.3.2)
+          if (!is_wildcard(pattern.car)) {
+            bindings.symbols[_car] = code.car;
+          }
+          if (!is_wildcard(pattern.cdr)) {
+            bindings.symbols[_cdr] = _nil;
+          }
           return true;
           //return is_pair(code.cdr) && code.cdr.length() > 1;
         }
@@ -8988,11 +9025,11 @@
               return false;
             }
             var _name5 = pattern.cdr.valueOf();
-            if (!(_name5 in bindings.symbols)) {
+            if (!is_wildcard(pattern.cdr) && !(_name5 in bindings.symbols)) {
               bindings.symbols[_name5] = _nil;
             }
             _name5 = pattern.car.valueOf();
-            if (!(_name5 in bindings.symbols)) {
+            if (!is_wildcard(pattern.car) && !(_name5 in bindings.symbols)) {
               bindings.symbols[_name5] = code.car;
             }
             return true;
@@ -9026,9 +9063,41 @@
         return false;
       }
     }
+
+    // R7RS 4.3.2: the keyword that begins the pattern is not involved in the
+    // matching - it is neither a pattern variable nor a literal. Match the
+    // argument lists (the pattern/code tails), ignoring the keyword position,
+    // so a `_` (or any name) there never has to match or bind the invoked
+    // keyword. This is also what lets SRFI-197's placeholder trick work: when
+    // `placeholder` is substituted with `_` into a nested macro's literals,
+    // the rules' own leading `_` keyword must still be ignored, not matched as
+    // that literal.
+    if (is_pair(pattern) && is_pair(code)) {
+      // R7RS 4.3.2: the keyword that begins the pattern is not involved in
+      // the matching - it is neither a pattern variable nor a literal. So we
+      // must NOT compare it (comparing fails when the keyword happens to be a
+      // declared literal, e.g. `_` becomes a literal in SRFI-197's %chain via
+      // the placeholder trick). We still bind the keyword NAME to the invoked
+      // keyword so templates that reference it by name keep resolving (the
+      // historical `or`/self-recursion behaviour) - except the wildcard `_`,
+      // which never binds.
+      if (pattern.car instanceof LSymbol && !is_wildcard(pattern.car) && !symbols.includes(pattern.car.__name__)) {
+        bindings.symbols[pattern.car.__name__] = code.car;
+      }
+      if (traverse(pattern.cdr, code.cdr)) {
+        return bindings;
+      }
+      return;
+    }
     if (traverse(pattern, code)) {
       return bindings;
     }
+  }
+  // ----------------------------------------------------------------------
+  // R7RS 4.3.2: the wildcard `_` operator
+  // ----------------------------------------------------------------------
+  function is_wildcard(symbol) {
+    return symbol.literal() === '_';
   }
   // ----------------------------------------------------------------------
   // :: This function is called after syntax-rules macro is evaluated
@@ -9178,6 +9247,20 @@
       var name = symbol.valueOf();
       if (name === ellipsis_symbol) {
         throw new Error('syntax: internal error, ellipis not transformed');
+      }
+      // R7RS: `_` and `...` are auxiliary syntax, not pattern variables -
+      // transcribe them verbatim (never rename to a gensym, never substitute
+      // a match), unless declared a literal (handled below). `...` only
+      // reaches here under a CUSTOM ellipsis (the default `...` is caught by
+      // the ellipsis_symbol check above); keeping it literal is what lets a
+      // macro pass `_`/`...` through as data across a hygiene boundary, e.g.
+      // SRFI-197's placeholder trick where the inserted `_ ...` must stay
+      // free-identifier=? to the `_`/`...` a caller writes.
+      if (is_wildcard(symbol) && !symbols.includes(name)) {
+        return LSymbol('_');
+      }
+      if (name === '...' && !symbols.includes(name)) {
+        return LSymbol('...');
       }
       // symbols are gensyms from nested syntax-rules
       var n_type = typeof name;
@@ -17231,10 +17314,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Wed, 19 Aug 2026 18:52:34 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Wed, 19 Aug 2026 20:22:20 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Wed, 19 Aug 2026 18:52:34 +0000').valueOf();
+    var date = LString('Wed, 19 Aug 2026 20:22:20 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -17273,7 +17356,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Wed, 19 Aug 2026 18:52:34 +0000';
+  var date = 'Wed, 19 Aug 2026 20:22:20 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);
