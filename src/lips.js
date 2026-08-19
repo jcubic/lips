@@ -12848,20 +12848,50 @@ function next_define(state) {
         env = env.__parent__;
     }
     const value = state.object;
+    let target = this.__object__;
+    // R7RS: a macro-introduced identifier used as a TOP-LEVEL definition binds
+    // its plain (un-renamed) name, so the definition is visible to code written
+    // at the use site - matching Chicken/Guile/most R7RS Schemes. Internal
+    // (lexical body) definitions stay hygienically renamed and private. The
+    // gensym is kept as a Reference alias to the freshly bound cell so that
+    // references to it elsewhere in the same expansion still resolve (and so
+    // several expansions of the same macro share the plain binding).
+    let alias = null;
+    if (target instanceof LSymbol && target.is_gensym() &&
+        is_toplevel_env(env)) {
+        alias = target;
+        target = LSymbol(target.literal());
+    }
     if (this._state.new_expr &&
         ((is_function(value) && is_lambda(value)) ||
          (value instanceof Syntax) || is_parameter(value))) {
-        let fn_name = this.__object__.valueOf();
+        let fn_name = target.valueOf();
         if (fn_name instanceof LString) {
             fn_name = fn_name.valueOf();
         }
         value.__name__ = fn_name;
     }
-    env.set(this.__object__, value, this._state.doc, true);
+    env.set(target, value, this._state.doc, true);
+    if (alias) {
+        env.set(alias, new Reference(target.valueOf(), env));
+    }
     state.env = env;
     state.cc = this.__continuation__;
     delete state.object;
     state.ready = true;
+}
+// -------------------------------------------------------------------------
+// A top-level environment is the global/stdlib env, the user env, or the
+// current interaction environment - definitions there are program/REPL
+// top-level, as opposed to a lexical body scope (let/lambda/...).
+function is_toplevel_env(env) {
+    if (env === global_env || env === user_env) {
+        return true;
+    }
+    const interaction = global_env.get('**interaction-environment**', {
+        throwError: false
+    });
+    return env === interaction;
 }
 
 // -------------------------------------------------------------------------

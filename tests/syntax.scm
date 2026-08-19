@@ -1,3 +1,38 @@
+
+;; A template identifier defined at TOP LEVEL by a macro is visible
+;; under its plain name at the use site - the Chicken/Guile/most-R7RS
+;; behaviour.
+(define-syntax syntax-def
+  (syntax-rules ()
+    ((_ v)
+     (define syntax/foo v))))
+
+(syntax-def 77)
+
+;; several expansions share the plain top-level binding (=> (1 2 3))
+(define-syntax make-counter
+  (syntax-rules ()
+    ((_ name)
+     (begin
+       (define syntax/counter 0)
+       (define (name)
+         (set! syntax/counter (+ syntax/counter 1))
+         syntax/counter)))))
+
+(make-counter syntax/tick)
+(make-counter syntax/tock)
+(define syntax/counter-result (list (syntax/tick) (syntax/tick) (syntax/tock)))
+
+;; a macro that both defines and uses the identifier internally
+(define-syntax create-defuse
+  (syntax-rules ()
+    ((_ v)
+     (begin
+       (define syntax/defuse v)
+       syntax/defuse))))
+
+(create-defuse 42)
+
 (test "hygiene"
       (lambda (t)
         (define result (let ((f (lambda (x) (+ x 1))))
@@ -792,6 +827,16 @@
         (def foo 10)
         (def-2 bar 20)
         (t.is (+ foo bar) 30)))
+
+(test "top-level macro-introduced define binds the plain name (R7RS)"
+      (lambda (t)
+        (t.is syntax/foo 77)
+        (t.is syntax/counter-result '(1 2 3))
+        (t.is syntax/defuse 42)
+
+        ;; but an INTERNAL (lexical body) macro-define stays hygienic/private
+        (define-syntax def-priv (syntax-rules () ((_ y) (define priv y))))
+        (t.is (to.throw (let () (def-priv 10) priv)) #t)))
 
 (test.failing "free variables"
       (lambda (t)
