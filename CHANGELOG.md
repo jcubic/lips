@@ -9,7 +9,7 @@
   `chain-lambda`, `nest`, `nest-reverse`
 * a missing R7RS `exact-integer-sqrt` function
 * add `raise-continuable` function
-* add R7RS `guard` macro
+* new `guard` macro (based on R7RS spec)
 * add procedure argument to `assoc`
 ### Bugfix
 * fix handling of free variables from syntax rule expansion [#546](https://github.com/jcubic/lips/issues/546)
@@ -21,8 +21,10 @@
 * fix trailing ellipsis `(x ... last)` in recursive macro
 * fix `syntax-rules` literal matching for a literal that denotes a user-defined identifier
 * fix renaming inside `quote` in a `syntax-rules`
-* fix handling an empty symbol `||`
-* fix `char-foldcase` and `boolean=?`
+* fix for chibi tests:
+  * fix handling an empty symbol `||`
+  * fix `char-foldcase` and `boolean=?`
+  * fix `call-with-values` and `with-exception-handler`
 
 ## 1.0.0-beta.22
 ### Breaking
