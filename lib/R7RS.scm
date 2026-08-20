@@ -1870,9 +1870,9 @@
 (define (current-second)
   "(current-second)
 
-   Functionn return exact integer of the seconds since January 1, 1970"
-  (inexact->exact (truncate (/ (+ %%start-jiffy (current-jiffy))
-                               (jiffies-per-second)))))
+   Functionn return inexact integer of the seconds since January 1, 1970"
+  (exact->inexact (/ (+ %%start-jiffy (current-jiffy))
+                     (jiffies-per-second))))
 
 ;; -----------------------------------------------------------------------------
 (define %%start-jiffy

@@ -1269,7 +1269,7 @@ Returns the default stdout port.
 ```
 (current-second)
 
-Functionn return exact integer of the seconds since January 1, 1970
+Functionn return inexact integer of the seconds since January 1, 1970
 ```
 
 ## curry

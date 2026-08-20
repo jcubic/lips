@@ -454,7 +454,7 @@
 (define (error-object-irritants obj) "(error-object-irritants error-object)\u000A\u000AReturns a list of the irritants encapsulated by error-object." (if (error-object? obj) obj.args))
 (define (get-environment-variables) "(get-environment-variables)\u000A\u000AReturns all process environment variables as an alist. This function returns\u000Aan empty list when called in the browser." (if (eq? self window) (quote ()) (object->alist process.env)))
 (define (get-environment-variable name) "(get-environment-variable name)\u000A\u000AReturns given environment variable. This function returns #void\u000Awhen called in the browser." (if (not (eq? self window)) (. process.env name)))
-(define (current-second) "(current-second)\u000A\u000AFunctionn return exact integer of the seconds since January 1, 1970" (inexact->exact (truncate (/ (+ %%start-jiffy (current-jiffy)) (jiffies-per-second)))))
+(define (current-second) "(current-second)\u000A\u000AFunctionn return inexact integer of the seconds since January 1, 1970" (exact->inexact (/ (+ %%start-jiffy (current-jiffy)) (jiffies-per-second))))
 (define %%start-jiffy (truncate (* 1000 (if (eq? self window) performance.timing.navigationStart performance.timeOrigin))) "Constant value that indicates start jiffy of the scheme process.")
 (define (current-jiffy) "(current-jiffy)\u000A\u000AReturn current jiffy. In LIPS is jiffy since start of the process.\u000AYou can divide this value by (jiffies-per-second) to get seconds since\u000Astart of the process. And you can add %%start-jiffy to get jiffy since\u000AJanuary 1, 1970." (inexact->exact (truncate (* (performance.now) 1000))))
 (define (jiffies-per-second) 1000000)
