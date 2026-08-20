@@ -9899,6 +9899,11 @@ var global_env = new Environment({
         // restores the exact set that was in effect here - escaping a `try`
         // drops its handler, re-entering one re-arms it.
         cc._state.handlers = state.handlers.slice();
+        // snapshot the active dynamic-wind winder stack (a Scheme list). When
+        // this continuation is invoked, the guards for extents left/entered
+        // between now and then are run (see the is_continuation branch in
+        // next_pair). *winders* only exists once R7RS.scm has loaded.
+        cc._state.winders = global_env.get('*winders*', { throwError: false });
         state.cc = new Continuation('call/cc', null, source, state, function(state) {
             state.env = this.__env__;
             state.cc = this.__continuation__;
@@ -13244,9 +13249,21 @@ function next_pair(state) {
         if (is_lambda(first)) {
             evaluate_lambda(first, args, state, this);
         } else if (is_continuation(first)) {
+            const clone = first.clone(false);
+            // run dynamic-wind guards for the extents being left/entered between
+            // here and the continuation's capture point, BEFORE jumping. The
+            // winder stack (a Scheme list) was snapshotted at capture in call/cc;
+            // %do-wind runs the relevant after/before thunks and resets
+            // *winders*. Skip when unchanged (the common case, incl. no winds).
+            const save = clone._state.winders;
+            if (save !== undefined) {
+                const current = global_env.get('*winders*', { throwError: false });
+                if (save !== current) {
+                    call_function(global_env.get('%do-wind'), [save], state);
+                }
+            }
             state.ready = true;
             state.object = args[0];
-            const clone = first.clone(false);
             // restore the try handlers captured when this continuation was
             // created, so escaping/re-entering a `try` updates the active set.
             if (clone._state.handlers) {

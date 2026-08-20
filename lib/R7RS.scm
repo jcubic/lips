@@ -455,16 +455,60 @@
   (string.upper))
 
 ;; -----------------------------------------------------------------------------
+;; dynamic-wind with support for re-entrant continuations (Hieb, Dybvig &
+;; Bruggeman; see also the R7RS rationale). A global stack of (before . after)
+;; "winders" records the active dynamic-wind extents. call/cc snapshots the
+;; winder stack at capture time; invoking the captured continuation runs the
+;; `after` thunks of the extents being LEFT and the `before` thunks of the
+;; extents being (re)entered - so a continuation that jumps out of or back into
+;; a dynamic-wind body re-runs the right guards.
+;; -----------------------------------------------------------------------------
+(define *winders* '())
+
+(define (%common-tail a b)
+  ;; longest shared suffix of two winder stacks (compared by identity)
+  (let ((la (length a))
+        (lb (length b)))
+    (let loop ((a (if (> la lb) (list-tail a (- la lb)) a))
+               (b (if (> lb la) (list-tail b (- lb la)) b)))
+      (if (eq? a b)
+          a
+          (loop (cdr a) (cdr b))))))
+
+;; -----------------------------------------------------------------------------
+(define (%do-wind target)
+  (let ((tail (%common-tail target *winders*)))
+    ;; leaving: run `after` from the current stack down to the common tail
+    (let loop ((w *winders*))
+      (if (not (eq? w tail))
+          (begin
+            (set! *winders* (cdr w))
+            ((cdr (car w)))
+            (loop (cdr w)))))
+    ;; entering: run `before` from the common tail up to the target stack
+    (let loop ((w target))
+      (if (not (eq? w tail))
+          (begin
+            (loop (cdr w))
+            ((car (car w)))
+            (set! *winders* w))))))
+
+;; -----------------------------------------------------------------------------
 (define (dynamic-wind before thunk after)
   "(dynamic-wind before thunk after)
 
    Accepts 3 procedures/lambdas and executes before, then thunk, and
-   always after even if an error occurs in thunk."
+   always after even if an error occurs in thunk. before is re-run and after
+   is run again when a continuation captured inside thunk is re-entered or
+   escapes across the dynamic-wind boundary."
   (before)
+  (set! *winders* (cons (cons before after) *winders*))
   (let ((result (try (thunk)
                      (catch (e)
+                            (set! *winders* (cdr *winders*))
                             (after)
-                            (error e)))))
+                            (raise e)))))
+    (set! *winders* (cdr *winders*))
     (after)
     result))
 

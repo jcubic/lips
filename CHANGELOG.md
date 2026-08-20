@@ -21,10 +21,10 @@
 * fix trailing ellipsis `(x ... last)` in recursive macro
 * fix `syntax-rules` literal matching for a literal that denotes a user-defined identifier
 * fix renaming inside `quote` in a `syntax-rules`
-* fix for chibi tests:
+* fix for chibi R7RS tests:
   * fix handling an empty symbol `||`
   * fix `char-foldcase` and `boolean=?`
-  * fix `call-with-values` and `with-exception-handler`
+  * fix `call-with-values`, `with-exception-handler`, and `dynamic-wind`
 
 ## 1.0.0-beta.22
 ### Breaking
