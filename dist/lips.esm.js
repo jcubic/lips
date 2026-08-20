@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Thu, 20 Aug 2026 09:52:38 +0000
+ * build: Thu, 20 Aug 2026 15:24:52 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -4692,14 +4692,20 @@ function LipsError(message, args) {
 }
 LipsError.prototype = new Error();
 LipsError.prototype.constructor = LipsError;
-
 // -------------------------------------------------------------------------
 // :: Fake exception to handle try catch to break the execution
 // :: of body expression #163
 // -------------------------------------------------------------------------
 class IgnoreException extends Error {}
+// -------------------------------------------------------------------------
 class Unterminated extends Error {}
-
+class Continuable extends Error {
+  constructor(object) {
+    super('Continuable');
+    this.__object__ = object;
+    this.__cc__ = null;
+  }
+}
 // -------------------------------------------------------------------------
 function augment_exception(e, object) {
   if (!is_object(e) || is_native(e)) {
@@ -4727,7 +4733,8 @@ function augment_exception(e, object) {
 // -------------------------------------------------------------------------
 function unify_error_message(e) {
   if (is_augmented(e)) {
-    if (!e.message.match(/at line/)) {
+    var _e$message;
+    if (!((_e$message = e.message) !== null && _e$message !== void 0 && _e$message.match(/at line/))) {
       e.message += " at line ".concat(e.__line__ + 1, " and column ").concat(e.__col__);
       if (e.__file__) {
         e.message += " in ".concat(e.__file__);
@@ -13717,6 +13724,13 @@ var global_env = new Environment({
     // restores the exact set that was in effect here - escaping a `try`
     // drops its handler, re-entering one re-arms it.
     cc._state.handlers = state.handlers.slice();
+    // snapshot the active dynamic-wind winder stack (a Scheme list). When
+    // this continuation is invoked, the guards for extents left/entered
+    // between now and then are run (see the is_continuation branch in
+    // next_pair). *winders* only exists once R7RS.scm has loaded.
+    cc._state.winders = global_env.get('*winders*', {
+      throwError: false
+    });
     state.cc = new Continuation('call/cc', null, source, state, function (state) {
       state.env = this.__env__;
       state.cc = this.__continuation__;
@@ -14815,6 +14829,10 @@ var global_env = new Environment({
     state.ready = false;
     return state;
   }), "(try expr (catch (e) code))\n         (try expr (catch (e) code) (finally code))\n         (try expr (finally code))\n\n         Macro that executes expr and catches any exceptions thrown. If catch is provided\n         it's executed when an error is thrown. If finally is provided it's always\n         executed at the end."),
+  // ------------------------------------------------------------------
+  'raise-continuable': doc('raise-continuable', function (object) {
+    throw new Continuable(object);
+  }, "(raise-continuable message)"),
   // ------------------------------------------------------------------
   'raise': doc('raise', function (obj) {
     throw obj;
@@ -15988,6 +16006,9 @@ function tco_error_handler(e, state, code) {
   if (e instanceof State) {
     return e.object;
   }
+  if (e instanceof Continuable) {
+    e.__cc__ = state.cc;
+  }
   if (e instanceof IgnoreException) {
     return;
   }
@@ -16195,6 +16216,7 @@ var __quote__ = global_env.get('quote');
 var __set__ = global_env.get('set!');
 var __define__ = global_env.get('define');
 var __apply__ = global_env.get('apply');
+var __call_with_values__ = global_env.get('call-with-values');
 var iternal_macros = [__if__, __begin__, __set__, __define__, global_env.get('let')];
 function is_internal_macro(macro) {
   return iternal_macros.includes(macro);
@@ -16762,9 +16784,23 @@ function next_pair(state) {
     if (is_lambda(first)) {
       evaluate_lambda(first, args, state, this);
     } else if (is_continuation(first)) {
+      var clone = first.clone(false);
+      // run dynamic-wind guards for the extents being left/entered between
+      // here and the continuation's capture point, BEFORE jumping. The
+      // winder stack (a Scheme list) was snapshotted at capture in call/cc;
+      // %do-wind runs the relevant after/before thunks and resets
+      // *winders*. Skip when unchanged (the common case, incl. no winds).
+      var save = clone._state.winders;
+      if (save !== undefined) {
+        var current = global_env.get('*winders*', {
+          throwError: false
+        });
+        if (save !== current) {
+          call_function(global_env.get('%do-wind'), [save], state);
+        }
+      }
       state.ready = true;
       state.object = args[0];
-      var clone = first.clone(false);
       // restore the try handlers captured when this continuation was
       // created, so escaping/re-entering a `try` updates the active set.
       if (clone._state.handlers) {
@@ -16778,6 +16814,21 @@ function next_pair(state) {
       typecheck('apply', last, ['pair', 'nil'], args.length + 2);
       last = global_env.get('list->array').call(global_env, last);
       evaluate_lambda(_fn, args.concat(last), state, this);
+    } else if (first === __call_with_values__ && is_lambda(args[1])) {
+      // Run the CONSUMER in this (the main) trampoline, so a continuation
+      // captured outside and invoked by the consumer escapes correctly.
+      // Calling it through the JS wrapper (consumer.apply) would run a
+      // NESTED trampoline: the escape then re-runs the outer context
+      // inside it AND lets this native frame return, double-executing -
+      // which breaks call/cc, e.g. R7RS `guard`'s no-exception path. The
+      // producer is a normal call that returns its value(s).
+      var _args3 = _slicedToArray(args, 2),
+        producer = _args3[0],
+        consumer = _args3[1];
+      typecheck('call-with-values', producer, 'function', 1);
+      var maybe = call_function(producer, [], state);
+      var vals = maybe instanceof Values ? maybe.valueOf() : is_undef(maybe) ? [] : [maybe];
+      evaluate_lambda(consumer, vals, state, this);
     } else if (is_parameter(first)) {
       // a dynamic variable created by make-parameter. Look up the
       // effective binding in the dynamic environment (parameterize
@@ -17401,10 +17452,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Thu, 20 Aug 2026 09:52:38 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Thu, 20 Aug 2026 15:24:52 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Thu, 20 Aug 2026 09:52:38 +0000').valueOf();
+  var date = LString('Thu, 20 Aug 2026 15:24:52 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -17443,7 +17494,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Thu, 20 Aug 2026 09:52:38 +0000';
+var date = 'Thu, 20 Aug 2026 15:24:52 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

@@ -278,8 +278,10 @@ Predicate that tests if value is an array.
 ## assoc
 ```
 (assoc obj alist)
+(assoc obj alist proc)
 
 Returns pair from alist that match given key using equal? check.
+If procedure is providate it's used instead of equal?.
 ```
 
 ## assq
@@ -2659,8 +2661,10 @@ Returns the maximum of its arguments.
 ## member
 ```
 (member obj list)
+(member obj list proc)
 
 Returns first object in the list that match using equal? function.
+If 3rd argument passed it use it as a comparator.
 ```
 
 ## memq
@@ -3153,6 +3157,11 @@ Convert radians to degrees.
 (raise obj)
 
 Throws the object verbatim (no wrapping an a new Error).
+```
+
+## raise-continuable
+```
+(raise-continuable message)
 ```
 
 ## random
@@ -4456,7 +4465,8 @@ Creates a loop, it executes cond and body until cond expression is false.
 (with-exception-handler handler thunk)
 
 Procedure call and return value of thunk function, if exception happen
-it call handler procedure.
+it call handler procedure. When raise-continuable is captured it will
+continue execution of the thunk in place when the continuable was rased.
 ```
 
 ## with-input-from-file

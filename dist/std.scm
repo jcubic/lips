@@ -2699,12 +2699,16 @@
   (%mem/search car eqv? obj list))
 
 ;; -----------------------------------------------------------------------------
-(define (member obj list)
+(define (member obj list . rest)
   "(member obj list)
+   (member obj list proc)
 
-   Returns first object in the list that match using equal? function."
-  (typecheck "member" list '("nil" "pair"))
-  (%mem/search car equal? obj list))
+   Returns first object in the list that match using equal? function.
+   If 3rd argument passed it use it as a comparator."
+  (typecheck "member" list '("nil" "pair") 2)
+  (let ((compare? (if (null? rest) equal? (car rest))))
+    (typecheck "member" compare? "function" 3)
+    (%mem/search car compare? obj list)))
 
 ;; -----------------------------------------------------------------------------
 (define (%assoc/accessor name)
@@ -2716,37 +2720,41 @@
     (caar x)))
 
 ;; -----------------------------------------------------------------------------
-(define (%assoc/search op obj alist)
-  "(%assoc/search op obj alist)
+(define (%assoc/search name op obj alist)
+  "(%assoc/search name op obj alist)
 
    Generic function that used in assoc functions with defined comparator
    function."
-  (typecheck "assoc" alist (vector "nil" "pair"))
-  (let ((ret (%mem/search (%assoc/accessor "assoc") op obj alist)))
+  (typecheck name alist (vector "nil" "pair"))
+  (let ((ret (%mem/search (%assoc/accessor name) op obj alist)))
     (if ret
         (car ret)
         ret)))
 
 ;; -----------------------------------------------------------------------------
-(define assoc (%doc
-               "(assoc obj alist)
+(define (assoc obj alist . rest)
+  "(assoc obj alist)
+   (assoc obj alist proc)
 
-                Returns pair from alist that match given key using equal? check."
-               (curry %assoc/search equal?)))
+   Returns pair from alist that match given key using equal? check.
+   If procedure is providate it's used instead of equal?."
+  (let ((compare? (if (null? rest) equal? (car rest))))
+    (typecheck "member" compare? "function" 3)
+    (%assoc/search "assoc" compare? obj alist)))
 
 ;; -----------------------------------------------------------------------------
 (define assq (%doc
               "(assq obj alist)
 
                Returns pair from a list that matches given key using eq? check."
-              (curry %assoc/search eq?)))
+              (curry %assoc/search "assq" eq?)))
 
 ;; -----------------------------------------------------------------------------
 (define assv (%doc
               "(assv obj alist)
 
                Returns pair from alist that match given key using eqv? check."
-              (curry %assoc/search eqv?)))
+              (curry %assoc/search "assv" eqv?)))
 
 ;; -----------------------------------------------------------------------------
 ;; STRING FUNCTIONS
@@ -3773,6 +3781,14 @@
 ;; Released under MIT license
 
 ;; -----------------------------------------------------------------------------
+(define (environment)
+  "(environment)
+
+   Function returns full R7RS environment since LIPS doesn't support libraries.
+   It's compatiblity layer function to run R7RS chibi tests"
+  (scheme-report-environment 7))
+
+;; -----------------------------------------------------------------------------
 (define (list-match? predicate list)
   "(list-match? predicate list)
 
@@ -4073,16 +4089,25 @@
    More arguments will give an error.")
 
 ;; -----------------------------------------------------------------------------
+(define (%same pred lst)
+  "(%same fn list)
+
+   Function compare if all items are the same according to predicate."
+  (cond ((null? lst) #t)
+        ((null? (cdr lst)) #t)
+        ((pred (car lst) (cadr lst)) (%same pred (cdr lst)))
+        (else #f)))
+
+;; -----------------------------------------------------------------------------
 (define (boolean=? . args)
   "(boolean=? b1 b2 ...)
 
    Checks if all arguments are boolean and if they are the same."
   (if (< (length args) 2)
       (error "boolean=?: too few arguments")
-      (reduce (lambda (acc item)
-                (and (boolean? item) (eq? acc item)))
-              (car args)
-              (cdr args))))
+      (%same (lambda (a b)
+               (and (boolean? a) (eq? a b)))
+             args)))
 
 ;; -----------------------------------------------------------------------------
 (define (port? x)
@@ -4202,16 +4227,59 @@
   (string.upper))
 
 ;; -----------------------------------------------------------------------------
+;; -----------------------------------------------------------------------------
+;; dynamic-wind with support for re-entrant continuations (Hieb, Dybvig &
+;; Bruggeman; see also the R7RS rationale). A global stack of (before . after)
+;; "winders" records the active dynamic-wind extents. call/cc snapshots the
+;; winder stack at capture time; invoking the captured continuation runs the
+;; `after` thunks of the extents being LEFT and the `before` thunks of the
+;; extents being (re)entered - so a continuation that jumps out of or back into
+;; a dynamic-wind body re-runs the right guards.
+;; -----------------------------------------------------------------------------
+(define *winders* '())
+
+(define (%common-tail a b)
+  ;; longest shared suffix of two winder stacks (compared by identity)
+  (let ((la (length a))
+        (lb (length b)))
+    (let loop ((a (if (> la lb) (list-tail a (- la lb)) a))
+               (b (if (> lb la) (list-tail b (- lb la)) b)))
+      (if (eq? a b)
+          a
+          (loop (cdr a) (cdr b))))))
+
+(define (%do-wind target)
+  (let ((tail (%common-tail target *winders*)))
+    ;; leaving: run `after` from the current stack down to the common tail
+    (let loop ((w *winders*))
+      (if (not (eq? w tail))
+          (begin
+            (set! *winders* (cdr w))
+            ((cdr (car w)))
+            (loop (cdr w)))))
+    ;; entering: run `before` from the common tail up to the target stack
+    (let loop ((w target))
+      (if (not (eq? w tail))
+          (begin
+            (loop (cdr w))
+            ((car (car w)))
+            (set! *winders* w))))))
+
 (define (dynamic-wind before thunk after)
   "(dynamic-wind before thunk after)
 
    Accepts 3 procedures/lambdas and executes before, then thunk, and
-   always after even if an error occurs in thunk."
+   always after even if an error occurs in thunk. before is re-run and after
+   is run again when a continuation captured inside thunk is re-entered or
+   escapes across the dynamic-wind boundary."
   (before)
+  (set! *winders* (cons (cons before after) *winders*))
   (let ((result (try (thunk)
                      (catch (e)
+                            (set! *winders* (cdr *winders*))
                             (after)
-                            (error e)))))
+                            (raise e)))))
+    (set! *winders* (cdr *winders*))
     (after)
     result))
 
@@ -4220,10 +4288,15 @@
   "(with-exception-handler handler thunk)
 
    Procedure call and return value of thunk function, if exception happen
-   it call handler procedure."
+   it call handler procedure. When raise-continuable is captured it will
+   continue execution of the thunk in place when the continuable was rased."
   (try (thunk)
        (catch (e)
-              (handler e))))
+              (if (continuation? e.__cc__)
+                  (e.__cc__ (handler e.__object__))
+                  (begin
+                    (handler e)
+                    (raise e))))))
 
 ;; -----------------------------------------------------------------------------
 ;; macro definition taken from R7RS spec
@@ -4317,9 +4390,9 @@
 (define-syntax cond-expand
   (syntax-rules (and or not else r7rs srfi-0 srfi-2 srfi-4 srfi-6 srfi-10
                      srfi-22 srfi-23 srfi-28 srfi-46 srfi-69 srfi-98 srfi-111
-                     srfi-139 srfi-147 srfi-156 srfi-176 srfi-193 srfi-195 srfi-210
-                     srfi-236 lips r7rs complex full-unicode ieee-float ratios
-                     exact-complex full-numeric-tower)
+                     srfi-139 srfi-147 srfi-156 srfi-176 srfi-193 srfi-195 srfi-197
+                     srfi-210 srfi-236 lips r7rs complex full-unicode ieee-float
+                     ratios exact-complex full-numeric-tower)
     ((cond-expand) (syntax-error "Unfulfilled cond-expand"))
     ((cond-expand (else body ...))
      (begin body ...))
@@ -4439,7 +4512,7 @@
 
    Returns lowercase character using the Unicode simple case-folding algorithm."
   (typecheck "char-foldcase" char "character")
-  (new LCharacter (%foldcase-string char.__char__)))
+  (new lips.LCharacter (%foldcase-string char.__char__)))
 
 ;; -----------------------------------------------------------------------------
 (define (string-foldcase string)
@@ -5391,32 +5464,29 @@
 
 ;; -----------------------------------------------------------------------------
 (define-syntax guard
-  (syntax-rules (catch aux =>)
-    ((_ aux)
-     '())
-    ((_ aux (cond result) rest ...)
-     (let ((it cond))
-       (if it
-           result
-           (guard aux rest ...))))
-    ((_ aux (cond => fn) rest ...)
-     (let ((it cond))
-       (if it
-           (fn it)
-           (guard aux rest ...))))
-    ((_ aux (cond) rest ...)
-     (let ((it cond))
-       (if it
-           it
-           (guard aux rest ...))))
-    ((_ (var cond1 cond2 ...)
-        body ...)
-     (try
-       body ...
-       (catch (var)
-              (guard aux
-                     cond1
-                     cond2 ...)))))
+  (syntax-rules ()
+    ((guard (var clause ...) e1 e2 ...)
+     ((call/cc
+       (lambda (guard-k)
+         (with-exception-handler
+          (lambda (condition)
+            ((call/cc
+              (lambda (handler-k)
+                (guard-k
+                 (lambda ()
+                   (let ((var condition))
+                     (guard-aux
+                      (handler-k
+                       (lambda ()
+                         (raise-continuable condition)))
+                      clause ...))))))))
+          (lambda ()
+            (call-with-values
+                (lambda () e1 e2 ...)
+              (lambda args
+                (guard-k
+                 (lambda ()
+                   (apply values args))))))))))))
   "(guard (variable (cond)
                     (cond => fn)
                     (cond2 result))
@@ -5424,6 +5494,39 @@
 
    Macro that executes the body and when there is exception, triggered by
    raise it's saved in variable that can be tested by conditions.")
+
+(define-syntax guard-aux
+  (syntax-rules (else =>)
+    ((guard-aux reraise (else result1 result2 ...))
+     (begin result1 result2 ...))
+    ((guard-aux reraise (test => result))
+     (let ((temp test))
+       (if temp
+           (result temp)
+           reraise)))
+    ((guard-aux reraise (test => result)
+                clause1 clause2 ...)
+     (let ((temp test))
+       (if temp
+           (result temp)
+           (guard-aux reraise clause1 clause2 ...))))
+    ((guard-aux reraise (test))
+     (or test reraise))
+    ((guard-aux reraise (test) clause1 clause2 ...)
+     (let ((temp test))
+       (if temp
+           temp
+           (guard-aux reraise clause1 clause2 ...))))
+    ((guard-aux reraise (test result1 result2 ...))
+     (if test
+         (begin result1 result2 ...)
+         reraise))
+    ((guard-aux reraise
+                (test result1 result2 ...)
+                clause1 clause2 ...)
+     (if test
+         (begin result1 result2 ...)
+         (guard-aux reraise clause1 clause2 ...)))))
 
 ;; -----------------------------------------------------------------------------
 (define-syntax define-library/export
@@ -5583,6 +5686,8 @@
           (set! seed (car new-seed))
           (set! seed (modulo (+ (* seed a) c) m)))
       (exact->inexact (/ seed m)))))
+
+
 ;; -----------------------------------------------------------------------------
 ;; init internal fs for LIPS Scheme Input/Output functions
 ;; -----------------------------------------------------------------------------
