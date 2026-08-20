@@ -3600,7 +3600,8 @@ e.g.:
 (set-object! obj key value)
 (set-object! obj key value strict)
 
-Function set a property of a JavaScript object. strict option doesn't unbox the value
+Function set a property of a JavaScript object. When the strict option
+is used the value is not unboxed.
 ```
 
 ## set-repr!
