@@ -11395,7 +11395,10 @@ var global_env = new Environment({
     // Numbers
     // ------------------------------------------------------------------
     gcd: doc('gcd', function gcd(...args) {
-        typecheck_args('lcm', args, 'number');
+        typecheck_args('gcd', args, 'number');
+        if (!args.length) {
+            return LNumber(0);
+        }
         return args.reduce(function(result, item) {
             return result.gcd(item);
         });
@@ -11405,14 +11408,24 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     lcm: doc('lcm', function lcm(...args) {
         typecheck_args('lcm', args, 'number');
+        if (!args.length) {
+            return LNumber(1);
+        }
         // ref: https://rosettacode.org/wiki/Least_common_multiple#JavaScript
+        let inexact;
         var n = args.length, a = abs(args[0]);
         for (var i = 1; i < n; i++) {
+            if (is_undef(inexact) && LNumber.isFloat(args[i])) {
+                inexact = true;
+            }
             var b = abs(args[i]), c = a;
             while (a && b) {
                 a > b ? a %= b : b %= a;
             }
             a = abs(c * args[i]) / (a + b);
+        }
+        if (inexact) {
+            return LFloat(a);
         }
         return LNumber(a);
     }, `(lcm n1 n2 ...)

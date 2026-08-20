@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Thu, 20 Aug 2026 20:26:18 +0000
+ * build: Thu, 20 Aug 2026 23:18:02 +0000
  */
 
 'use strict';
@@ -14967,7 +14967,10 @@ var global_env = new Environment({
     for (var _len32 = arguments.length, args = new Array(_len32), _key33 = 0; _key33 < _len32; _key33++) {
       args[_key33] = arguments[_key33];
     }
-    typecheck_args('lcm', args, 'number');
+    typecheck_args('gcd', args, 'number');
+    if (!args.length) {
+      return LNumber(0);
+    }
     return args.reduce(function (result, item) {
       return result.gcd(item);
     });
@@ -14978,16 +14981,26 @@ var global_env = new Environment({
       args[_key34] = arguments[_key34];
     }
     typecheck_args('lcm', args, 'number');
+    if (!args.length) {
+      return LNumber(1);
+    }
     // ref: https://rosettacode.org/wiki/Least_common_multiple#JavaScript
+    var inexact;
     var n = args.length,
       a = abs(args[0]);
     for (var i = 1; i < n; i++) {
+      if (is_undef(inexact) && LNumber.isFloat(args[i])) {
+        inexact = true;
+      }
       var b = abs(args[i]),
         c = a;
       while (a && b) {
         a > b ? a %= b : b %= a;
       }
       a = abs(c * args[i]) / (a + b);
+    }
+    if (inexact) {
+      return LFloat(a);
     }
     return LNumber(a);
   }, "(lcm n1 n2 ...)\n\n        Function that returns the least common multiple of the arguments."),
@@ -17527,10 +17540,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Thu, 20 Aug 2026 20:26:18 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Thu, 20 Aug 2026 23:18:02 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Thu, 20 Aug 2026 20:26:18 +0000').valueOf();
+  var date = LString('Thu, 20 Aug 2026 23:18:02 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -17569,7 +17582,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Thu, 20 Aug 2026 20:26:18 +0000';
+var date = 'Thu, 20 Aug 2026 23:18:02 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
