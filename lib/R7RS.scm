@@ -236,6 +236,17 @@
 (define (truncate-quotient x y)  (quotient x y))
 (define (truncate-remainder x y) (remainder x y))
 
+(define (exact-integer-sqrt num)
+  "(exact-integer-sqrt num)
+
+   Returns two values (s r) representing the exact integer square root and the
+   remainder of num, where num = s^2 + r. num must be a non-negative integer."
+  (typecheck-number "exact-integer-sqrt" num '("integer" "bigint"))
+  (if (< num 0)
+      (error "exact-integer-sqrt: number must be positive")
+      (let ((s (num.exact_sqrt)))
+        (values s (- num (* s s))))))
+
 (define (log z . rest)
   "(log z)
    (log z1 z2)

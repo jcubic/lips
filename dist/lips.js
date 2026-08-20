@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Wed, 19 Aug 2026 22:04:19 +0000
+ * build: Thu, 20 Aug 2026 09:52:38 +0000
  */
 
 (function (global, factory) {
@@ -3446,7 +3446,7 @@
           result = str;
         }
         return acc + result;
-      });
+      }, '');
       var chars = {
         t: '\t',
         r: '\r',
@@ -3721,7 +3721,7 @@
     }
     var str = this.valueOf();
     // those special characters can be normal symbol when printed
-    if (quote && str.match(/(^;|[\s()[\]'])/)) {
+    if (quote && str.match(/(^;|[\s()[\]'])/) || !str) {
       return "|".concat(str, "|");
     }
     return str;
@@ -10681,6 +10681,10 @@
     }
   };
   // -------------------------------------------------------------------------
+  LNumber.prototype.exact_sqrt = function () {
+    return LNumber(Math.floor(Math.sqrt(this.__value__)));
+  };
+  // -------------------------------------------------------------------------
   LNumber.prototype.serialize = function () {
     return this.__value__;
   };
@@ -12002,11 +12006,30 @@
     return LBigInteger(ret);
   };
   // -------------------------------------------------------------------------
+  LBigInteger.sqrt = function (n) {
+    if (n < 2n) return n;
+    var x0 = 1n;
+    // Pierwsze przybliżenie: przesunięcie bitowe o połowę długości liczby drastycznie przyspiesza pętlę
+    var x1 = n / x0 + x0 >> 1n;
+    while (x0 !== x1 && x0 !== x1 - 1n) {
+      x0 = x1;
+      x1 = n / x0 + x0 >> 1n;
+    }
+    return x0 < x1 ? x0 : x1;
+  };
+  // -------------------------------------------------------------------------
+  LBigInteger.prototype.exact_sqrt = function () {
+    var value = this.__value__;
+    if (LNumber.isNative(value)) {
+      return LBigInteger(LBigInteger.sqrt(this.__value__));
+    }
+  };
+  // -------------------------------------------------------------------------
   LBigInteger.prototype.sqrt = function () {
     var value;
     var minus = this.cmp(0) < 0;
     if (LNumber.isNative(this.__value__)) {
-      value = LNumber(Math.sqrt(minus ? -this.valueOf() : this.valueOf()));
+      value = Math.sqrt(minus ? -this.valueOf() : this.valueOf());
     } else if (LNumber.isBN(this.__value__)) {
       value = minus ? this.__value__.neg().sqrt() : this.__value__.sqrt();
     }
@@ -12016,7 +12039,7 @@
         im: value
       });
     }
-    return value;
+    return LNumber(value);
   };
   // -------------------------------------------------------------------------
   LNumber.NaN = LNumber(NaN);
@@ -17385,10 +17408,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Wed, 19 Aug 2026 22:04:19 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Thu, 20 Aug 2026 09:52:38 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Wed, 19 Aug 2026 22:04:19 +0000').valueOf();
+    var date = LString('Thu, 20 Aug 2026 09:52:38 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -17427,7 +17450,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Wed, 19 Aug 2026 22:04:19 +0000';
+  var date = 'Thu, 20 Aug 2026 09:52:38 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

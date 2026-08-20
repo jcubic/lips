@@ -1510,6 +1510,10 @@
 ;; source https://github.com/scheme-requests-for-implementation/srfi-158
 ;; -----------------------------------------------------------------------------
 (define (make-coroutine-generator proc)
+  "(make-coroutine-generator proc)
+
+   Create a Scheme generator. An argument is a proceedure that accept one argument,
+   usually yield. When called it suspeds the executing and returns a new value."
   (define void (if #f #f))
   (define return #f)
   (define resume #f)
@@ -3987,6 +3991,17 @@
 (define (truncate/ x y)          (quotient&remainder x y))
 (define (truncate-quotient x y)  (quotient x y))
 (define (truncate-remainder x y) (remainder x y))
+
+(define (exact-integer-sqrt num)
+  "(exact-integer-sqrt num)
+
+   Returns two values (s r) representing the exact integer square root and the
+   remainder of num, where num = s^2 + r. num must be a non-negative integer."
+  (typecheck-number "exact-integer-sqrt" num '("integer" "bigint"))
+  (if (< num 0)
+      (error "exact-integer-sqrt: number must be positive")
+      (let ((s (num.exact_sqrt)))
+        (values s (- num (* s s))))))
 
 (define (log z . rest)
   "(log z)

@@ -1661,6 +1661,14 @@ Function that converts real number to exact rational number.
 Convert exact number to inexact.
 ```
 
+## exact-integer-sqrt
+```
+(exact-integer-sqrt num)
+
+Returns two values (s r) representing the exact integer square root and the
+remainder of num, where num = s^2 + r. num must be a non-negative integer.
+```
+
 ## exact-integer?
 ```
 (exact-integer? n)
@@ -2491,6 +2499,14 @@ Returns magnitude of the complex number in polar coordinate system.
 
 Allocate new unsigned 8-bit integer vector (C unsigned char) of length k,
 with optional initial values.
+```
+
+## make-coroutine-generator
+```
+(make-coroutine-generator proc)
+
+Create a Scheme generator. An argument is a proceedure that accept one argument,
+usually yield. When called it suspeds the executing and returns a new value.
 ```
 
 ## make-f32vector

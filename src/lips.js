@@ -6853,6 +6853,10 @@ LNumber.types = {
     }
 };
 // -------------------------------------------------------------------------
+LNumber.prototype.exact_sqrt = function() {
+    return LNumber(Math.floor(Math.sqrt(this.__value__)));
+};
+// -------------------------------------------------------------------------
 LNumber.prototype.serialize = function() {
     return this.__value__;
 };
@@ -8061,18 +8065,39 @@ LBigInteger.prototype._op = function(op, n) {
     return LBigInteger(ret);
 };
 // -------------------------------------------------------------------------
+LBigInteger.sqrt = function(n) {
+    if (n < 2n) return n;
+
+    let x0 = 1n;
+    // Pierwsze przybliżenie: przesunięcie bitowe o połowę długości liczby drastycznie przyspiesza pętlę
+    let x1 = (n / x0 + x0) >> 1n;
+
+    while (x0 !== x1 && x0 !== x1 - 1n) {
+        x0 = x1;
+        x1 = (n / x0 + x0) >> 1n;
+    }
+    return x0 < x1 ? x0 : x1;
+};
+// -------------------------------------------------------------------------
+LBigInteger.prototype.exact_sqrt = function() {
+    let value = this.__value__;
+    if (LNumber.isNative(value)) {
+        return LBigInteger(LBigInteger.sqrt(this.__value__));
+    }
+};
+// -------------------------------------------------------------------------
 LBigInteger.prototype.sqrt = function() {
     var value;
     var minus = this.cmp(0) < 0;
     if (LNumber.isNative(this.__value__)) {
-        value = LNumber(Math.sqrt(minus ? -this.valueOf() : this.valueOf()));
+        value = Math.sqrt(minus ? -this.valueOf() : this.valueOf());
     } else if (LNumber.isBN(this.__value__)) {
         value = minus ? this.__value__.neg().sqrt() : this.__value__.sqrt();
     }
     if (minus) {
         return LComplex({ re: 0, im: value });
     }
-    return value;
+    return LNumber(value);
 };
 // -------------------------------------------------------------------------
 LNumber.NaN = LNumber(NaN);
@@ -9273,7 +9298,7 @@ var global_env = new Environment({
         This function converts each input into a string and prints
         the result to the standard output (by default it's the
         console but it can be defined in user code). This function
-        calls \`(newline)\` after printing each input.`), 
+        calls \`(newline)\` after printing each input.`),
     // ------------------------------------------------------------------
     'stack-trace': doc(function(cc) {
         typecheck('stack-trace', cc, 'continuation');
