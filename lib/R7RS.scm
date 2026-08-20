@@ -481,6 +481,7 @@
                   (e.__cc__ (handler e.__cc__))
                   (handler e)))))
 
+
 ;; -----------------------------------------------------------------------------
 ;; macro definition taken from R7RS spec
 ;; -----------------------------------------------------------------------------
@@ -1647,32 +1648,29 @@
 
 ;; -----------------------------------------------------------------------------
 (define-syntax guard
-  (syntax-rules (catch aux =>)
-    ((_ aux)
-     '())
-    ((_ aux (cond result) rest ...)
-     (let ((it cond))
-       (if it
-           result
-           (guard aux rest ...))))
-    ((_ aux (cond => fn) rest ...)
-     (let ((it cond))
-       (if it
-           (fn it)
-           (guard aux rest ...))))
-    ((_ aux (cond) rest ...)
-     (let ((it cond))
-       (if it
-           it
-           (guard aux rest ...))))
-    ((_ (var cond1 cond2 ...)
-        body ...)
-     (try
-       body ...
-       (catch (var)
-              (guard aux
-                     cond1
-                     cond2 ...)))))
+  (syntax-rules ()
+    ((guard (var clause ...) e1 e2 ...)
+     ((call/cc
+       (lambda (guard-k)
+         (with-exception-handler
+          (lambda (condition)
+            ((call/cc
+              (lambda (handler-k)
+                (guard-k
+                 (lambda ()
+                   (let ((var condition))
+                     (guard-aux
+                      (handler-k
+                       (lambda ()
+                         (raise-continuable condition)))
+                      clause ...))))))))
+          (lambda ()
+            (call-with-values
+                (lambda () e1 e2 ...)
+              (lambda args
+                (guard-k
+                 (lambda ()
+                   (apply values args))))))))))))
   "(guard (variable (cond)
                     (cond => fn)
                     (cond2 result))
@@ -1680,6 +1678,39 @@
 
    Macro that executes the body and when there is exception, triggered by
    raise it's saved in variable that can be tested by conditions.")
+
+(define-syntax guard-aux
+  (syntax-rules (else =>)
+    ((guard-aux reraise (else result1 result2 ...))
+     (begin result1 result2 ...))
+    ((guard-aux reraise (test => result))
+     (let ((temp test))
+       (if temp
+           (result temp)
+           reraise)))
+    ((guard-aux reraise (test => result)
+                clause1 clause2 ...)
+     (let ((temp test))
+       (if temp
+           (result temp)
+           (guard-aux reraise clause1 clause2 ...))))
+    ((guard-aux reraise (test))
+     (or test reraise))
+    ((guard-aux reraise (test) clause1 clause2 ...)
+     (let ((temp test))
+       (if temp
+           temp
+           (guard-aux reraise clause1 clause2 ...))))
+    ((guard-aux reraise (test result1 result2 ...))
+     (if test
+         (begin result1 result2 ...)
+         reraise))
+    ((guard-aux reraise
+                (test result1 result2 ...)
+                clause1 clause2 ...)
+     (if test
+         (begin result1 result2 ...)
+         (guard-aux reraise clause1 clause2 ...)))))
 
 ;; -----------------------------------------------------------------------------
 (define-syntax define-library/export
