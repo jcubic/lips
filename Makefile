@@ -1,4 +1,4 @@
-.PHONY: ALL publish test test-file test-update coveralls lint zero coverage codespell benchmark smoke
+.PHONY: ALL publish test test-file test-update coveralls lint zero coverage codespell benchmark smoke srfi
 
 VERSION=1.0.0-beta.22.1
 VERSION_DASH=`echo -n "${VERSION}" | sed "s/-/%E2%80%93/"`
@@ -154,3 +154,6 @@ codespell:
 
 lint:
 	$(ESLINT) src/lips.js lib/js/bookmark.js bin/lips.js
+
+srfi:
+	git grep -Eo 'SRFI-[0-9]+' README.md | sed -e 's/.*-//' -e 's/.*/&,/' | sort -n | uniq
