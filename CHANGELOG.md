@@ -19,6 +19,7 @@
 * fix `syntax-rules` literal matching for a literal that denotes a user-defined identifier
 * fix renaming inside `quote` in a `syntax-rules`
 * fix handling an empty symbol `||`
+* fix `char-foldcase` and `boolean=?`
 
 ## 1.0.0-beta.22
 ### Breaking
