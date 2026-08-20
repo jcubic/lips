@@ -1063,13 +1063,23 @@
   (let* ((start (if (null? rest) 0 (car rest)))
          (end (if (or (null? rest) (null? (cdr rest)))
                   (bytevector-length from)
-                  (cadr rest))))
-    (let ((i at) (j start))
-      (while (and (< j end)
-                  (< i (bytevector-length to)))
-        (bytevector-u8-set! to i (bytevector-u8-ref from j))
-        (set! i (+ i 1))
-        (set! j (+ j 1))))))
+                  (cadr rest)))
+         ;; number of bytes to copy, clamped to the space left in `to`
+         (count (min (- end start) (- (bytevector-length to) at))))
+    ;; `to` and `from` may be the same bytevector and the ranges may overlap,
+    ;; so R7RS mandates memmove (not memcpy) semantics: copy backward when the
+    ;; destination is to the right of the source, otherwise forward.
+    (if (> at start)
+        (let loop ((k (- count 1)))
+          (if (>= k 0)
+              (begin
+                (bytevector-u8-set! to (+ at k) (bytevector-u8-ref from (+ start k)))
+                (loop (- k 1)))))
+        (let loop ((k 0))
+          (if (< k count)
+              (begin
+                (bytevector-u8-set! to (+ at k) (bytevector-u8-ref from (+ start k)))
+                (loop (+ k 1))))))))
 
 ;; -----------------------------------------------------------------------------
 (define string->utf8
@@ -1103,7 +1113,7 @@
       (if (null? rest)
           (decoder.decode v)
           (let* ((start (car rest))
-                 (len (--> (Array.from string) 'length))
+                 (len (--> (Array.from v) 'length))
                  (end (if (null? (cdr rest)) len (cadr rest))))
             (decoder.decode (v.slice start end)))))))
 
