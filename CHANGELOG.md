@@ -25,6 +25,7 @@
   * fix handling an empty symbol `||`
   * fix `char-foldcase` and `boolean=?`
   * fix `call-with-values`, `with-exception-handler`, and `dynamic-wind`
+  * fix `bytevector-copy!`
 
 ## 1.0.0-beta.22
 ### Breaking
