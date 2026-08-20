@@ -17,6 +17,14 @@
 ;; Released under MIT license
 
 ;; -----------------------------------------------------------------------------
+(define (environment)
+  "(environment)
+
+   Function returns full R7RS environment since LIPS doesn't support libraries.
+   It's compatiblity layer function to run R7RS chibi tests"
+  (scheme-report-environment 7))
+
+;; -----------------------------------------------------------------------------
 (define (list-match? predicate list)
   "(list-match? predicate list)
 
