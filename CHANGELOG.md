@@ -5,6 +5,7 @@
   template, and the pattern keyword position is ignored.
 * `set-object!` 4th argument is no strict option to prevent unboxing
 * `current-second` now returns inexact value (as per R7RS spec)
+* `float`, `ceiling`, and `round` now return inexact
 ### Feature
 * add `free-identifier=?` [#296](https://github.com/jcubic/lips/issues/296)
 * add SRFI-197 (Pipeline Operators): `chain`, `chain-and`, `chain-when`,

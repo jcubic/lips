@@ -7025,7 +7025,7 @@ LNumber.prototype.isBigNumber = function() {
 ['floor', 'ceil', 'round'].forEach(fn => {
     LNumber.prototype[fn] = function() {
         if (this.float || LNumber.isFloat(this.__value__)) {
-            return LNumber(Math[fn](this.__value__));
+            return LFloat(Math[fn](this.__value__));
         }
         return LNumber(Math[fn](this.valueOf()));
     };
