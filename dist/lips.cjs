@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Thu, 20 Aug 2026 19:12:50 +0000
+ * build: Thu, 20 Aug 2026 20:26:18 +0000
  */
 
 'use strict';
@@ -8864,6 +8864,33 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
           if (!traverse(pattern.cdr.cdr, _rest5, new_sate)) {
             return false;
           }
+        } else if (pattern.cdr.cdr instanceof LSymbol) {
+          // (x ... . rest): an ellipsis directly followed by a dotted
+          // rest. Bind `rest` to the input's tail (nil for a proper
+          // list, the improper cdr otherwise), then match `x ...`
+          // against the proper part with a plain ellipsis pattern -
+          // reusing the normal machinery so the binding of `x` has the
+          // shape the template transcriber expects. (The old improper
+          // paths below built an inconsistent binding that broke a
+          // nested/multi-element template, e.g. define-values'
+          // `(var0 var1 ... . warn)`.)
+          var tail, proper;
+          if (is_pair(code)) {
+            proper = code.clone();
+            var last = proper.last_pair();
+            tail = last.cdr;
+            last.cdr = _nil;
+          } else {
+            proper = _nil;
+            tail = code;
+          }
+          if (!is_wildcard(pattern.cdr.cdr)) {
+            bindings.symbols[pattern.cdr.cdr.valueOf()] = tail;
+          }
+          var ell = new Pair(pattern.car, new Pair(pattern.cdr.car, _nil));
+          return traverse(ell, proper, _objectSpread(_objectSpread({}, state), {}, {
+            trailing: false
+          }));
         }
       }
       if (pattern.car instanceof LSymbol) {
@@ -9021,10 +9048,13 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
     if (is_pair(pattern) && is_pair(code)) {
       var rest_pattern = pattern.car instanceof LSymbol && pattern.cdr instanceof LSymbol;
       if (trailing && rest_pattern) {
-        // handle (x ... y . z)
-        if (!is_nil(code.cdr)) {
-          return false;
-        }
+        // handle (x ... y . z): the ellipsis split leaves the final
+        // fixed element in code.car (bound to `y`) and the dotted tail
+        // in code.cdr (bound to `z`). For a PROPER input code.cdr is
+        // nil, so `z` binds to nil; for an IMPROPER input it is the
+        // dotted tail. (Previously this rejected any non-nil cdr and
+        // always bound `z` to nil, so `(x ... y . z)` never matched an
+        // improper list.)
         var _car = pattern.car.valueOf();
         var _cdr = pattern.cdr.valueOf();
         // `_` is a wildcard - match but do not bind (see R7RS 4.3.2)
@@ -9032,10 +9062,9 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
           bindings.symbols[_car] = code.car;
         }
         if (!is_wildcard(pattern.cdr)) {
-          bindings.symbols[_cdr] = _nil;
+          bindings.symbols[_cdr] = code.cdr;
         }
         return true;
-        //return is_pair(code.cdr) && code.cdr.length() > 1;
       }
       if (is_nil(code.cdr)) {
         // last item in in call using in recursive calls on
@@ -9737,6 +9766,25 @@ function transform_syntax() {
           }
           return _result;
         }
+      }
+      if (is_array) {
+        // A vector literal with no `x ...` repetition at THIS position
+        // (those are handled by the ellipsis branches above). Transcribe
+        // the first element and recurse on the rest of the vector - so a
+        // later ellipsis, e.g. #(a b ...), still expands - then rebuild a
+        // vector. The Pair reconstruction below is list-only and would
+        // otherwise turn #(a) into the improper list (a . #void).
+        var _head = traverse(first, {
+          disabled,
+          quoted,
+          in_syntax
+        });
+        var tail = traverse(expr.slice(1), {
+          disabled,
+          quoted,
+          in_syntax
+        });
+        return [_head].concat(tail);
       }
       var head = traverse(first, {
         disabled,
@@ -14155,6 +14203,17 @@ var global_env = new Environment({
         symbols = get_identifiers(macro.car);
         rules = macro.cdr;
       }
+      // R7RS 4.3.2: a literal takes priority over the ellipsis. If the
+      // ellipsis identifier is ALSO declared as a literal it loses its
+      // special meaning and is matched/transcribed as an ordinary literal
+      // (e.g. `(syntax-rules ... (...) ((_ x) '(x ...)))` yields
+      // `(x ...)`, not a repetition). Disable it with a sentinel that no
+      // identifier can equal - LSymbol.is only matches strings/symbols by
+      // name, an LSymbol, or a RegExp, never a bare JS Symbol.
+      var ellipsis_name = ellipsis instanceof LSymbol ? ellipsis.valueOf() : ellipsis;
+      if (symbols.includes(ellipsis_name)) {
+        ellipsis = Symbol.for('lips-disabled-ellipsis');
+      }
       try {
         while (!is_nil(rules)) {
           var rule = rules.car.car;
@@ -17468,10 +17527,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Thu, 20 Aug 2026 19:12:50 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Thu, 20 Aug 2026 20:26:18 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Thu, 20 Aug 2026 19:12:50 +0000').valueOf();
+  var date = LString('Thu, 20 Aug 2026 20:26:18 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -17510,7 +17569,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Thu, 20 Aug 2026 19:12:50 +0000';
+var date = 'Thu, 20 Aug 2026 20:26:18 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

@@ -343,6 +343,12 @@
           (values 1 2))
         (t.is (cons a b) '(1 2))))
 
+(test "define-values with several vars and a dotted rest"
+      (lambda (t)
+        (define-values (x y . z)
+          (values 1 2 3 4))
+        (t.is (list x y z) '(1 2 (3 4)))))
+
 (test "iterators"
       (lambda (t)
         (let ((obj (object))

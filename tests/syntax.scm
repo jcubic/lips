@@ -2002,3 +2002,40 @@
             ((_ x y ...) #(x y ...))))   ;; non-quoted, leading fixed + ellipsis
         (t.is (vec 1) '#(1 2 3))
         (t.is (vec 0 1 2 3) '#(0 1 2 3))))
+
+;; An ellipsis followed by fixed items and a dotted rest, `(x ... y . rest)`,
+;; must match an improper (dotted) input - binding `rest` to the tail.
+(test "ellipsis with fixed suffix and dotted rest matches improper list"
+      (lambda (t)
+        (define-syntax split
+          (syntax-rules ()
+            ((_ (x ... y . rest)) (list '(x ...) 'y 'rest))
+            ((_ . e) 'error)))
+        (t.is (split (1 2 3 4)) '((1 2 3) 4 ()))
+        (t.is (split (1 2 3 4 . 9)) '((1 2 3) 4 9))
+        (define-syntax part-2x
+          (syntax-rules ()
+            ((_ (a b (m n) ... x y . rest))
+             (vector (list a b) (list m ...) (list n ...) (list x y)
+                     (cons "rest:" 'rest)))
+            ((_ . rest) 'error)))
+        (t.is (part-2x (10 20 (31 32) (41 42) (51 52) 63 77))
+              '#((10 20) (31 41 51) (32 42 52) (63 77) ("rest:")))
+        (t.is (part-2x (10 20 (31 32) (41 42) (51 52) 63 77 . "tail"))
+              '#((10 20) (31 41 51) (32 42 52) (63 77) ("rest:" . "tail")))))
+
+;; An ellipsis directly followed by a dotted rest, `(x ... . rest)`, must match
+;; both proper and improper lists (binding `rest` to the tail), including when
+;; the ellipsis variable is used in a nested/multi-element template.
+(test "ellipsis directly followed by a dotted rest"
+      (lambda (t)
+        (define-syntax split
+          (syntax-rules ()
+            ((_ (x ... . rest)) (list '(x ...) 'rest))))
+        (t.is (split (1 2 3 . 9)) '((1 2 3) 9))
+        (t.is (split (1 2 3)) '((1 2 3) ()))
+        (define-syntax wrap-rest
+          (syntax-rules ()
+            ((_ (a b ... . rest)) '(a ((w b) ...) rest))))
+        (t.is (wrap-rest (x p q r . z)) '(x ((w p) (w q) (w r)) z))
+        (t.is (wrap-rest (x p q r)) '(x ((w p) (w q) (w r)) ()))))

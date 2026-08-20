@@ -34,6 +34,11 @@
     ellipsis identifier is also declared as a literal
   * fix vector literals in a `syntax-rules` template being turned into an
     improper list
+  * fix `syntax-rules` pattern `(x ... y . rest)` not matching an improper
+    (dotted) list
+  * fix `syntax-rules` pattern `(x ... . rest)` (ellipsis before a dotted rest),
+    which crashed the template transcriber - fixes `define-values` with a dotted
+    tail, e.g. `(define-values (x y . z) (values 1 2 3 4))`
   * fix `bytevector-copy!`, `utf8->string`, and `vector-copy!`
   * fix `list-copy` on non list
 

@@ -4925,6 +4925,32 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
                     if (!traverse(pattern.cdr.cdr, rest, new_sate)) {
                         return false;
                     }
+                } else if (pattern.cdr.cdr instanceof LSymbol) {
+                    // (x ... . rest): an ellipsis directly followed by a dotted
+                    // rest. Bind `rest` to the input's tail (nil for a proper
+                    // list, the improper cdr otherwise), then match `x ...`
+                    // against the proper part with a plain ellipsis pattern -
+                    // reusing the normal machinery so the binding of `x` has the
+                    // shape the template transcriber expects. (The old improper
+                    // paths below built an inconsistent binding that broke a
+                    // nested/multi-element template, e.g. define-values'
+                    // `(var0 var1 ... . warn)`.)
+                    let tail, proper;
+                    if (is_pair(code)) {
+                        proper = code.clone();
+                        const last = proper.last_pair();
+                        tail = last.cdr;
+                        last.cdr = nil;
+                    } else {
+                        proper = nil;
+                        tail = code;
+                    }
+                    if (!is_wildcard(pattern.cdr.cdr)) {
+                        bindings.symbols[pattern.cdr.cdr.valueOf()] = tail;
+                    }
+                    const ell = new Pair(pattern.car,
+                                         new Pair(pattern.cdr.car, nil));
+                    return traverse(ell, proper, { ...state, trailing: false });
                 }
             }
             if (pattern.car instanceof LSymbol) {
@@ -5114,10 +5140,13 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
                 pattern.cdr instanceof LSymbol;
             if (trailing && rest_pattern) {
                 log('>> 13 (a)');
-                // handle (x ... y . z)
-                if (!is_nil(code.cdr)) {
-                    return false;
-                }
+                // handle (x ... y . z): the ellipsis split leaves the final
+                // fixed element in code.car (bound to `y`) and the dotted tail
+                // in code.cdr (bound to `z`). For a PROPER input code.cdr is
+                // nil, so `z` binds to nil; for an IMPROPER input it is the
+                // dotted tail. (Previously this rejected any non-nil cdr and
+                // always bound `z` to nil, so `(x ... y . z)` never matched an
+                // improper list.)
                 const car = pattern.car.valueOf();
                 const cdr = pattern.cdr.valueOf();
                 // `_` is a wildcard - match but do not bind (see R7RS 4.3.2)
@@ -5125,10 +5154,9 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
                     bindings.symbols[car] = code.car;
                 }
                 if (!is_wildcard(pattern.cdr)) {
-                    bindings.symbols[cdr] = nil;
+                    bindings.symbols[cdr] = code.cdr;
                 }
                 return true;
-                //return is_pair(code.cdr) && code.cdr.length() > 1;
             }
             if (is_nil(code.cdr)) {
                 log('>> 13 (b)');
@@ -10676,16 +10704,12 @@ var global_env = new Environment({
         return Macro.defmacro('quasiquote', function(source, state) {
             const arg = source.cdr;
             let result;
-            log('>> QUASIQUOTE');
-            log(arg.car);
             if (plain_quasiquote(arg.car)) {
                 // fully literal quasiquote behaves like quote (shared constant)
                 result = quote(arg.car);
             } else {
                 result = qq_expand(arg.car, 1);
             }
-            log('<< QUASIQUOTE OUTPUT');
-            log(result);
             // returning something other than `state` makes evaluate_code set
             // it as the object to evaluate next, so the generated builder code
             // runs through the normal evaluate loop.
