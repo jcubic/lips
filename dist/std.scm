@@ -475,12 +475,10 @@
    using key like syntax. If no values are used it will create a JavaScript
    shorthand objects where keys are used for keys and the values."
   (let ((name (gensym "name"))
-        (r-only (gensym "r-only"))
         (quot (if (null? rest) false (car rest))))
     (if (null? expr)
         `(alist->object ())
-        `(let ((,name ,(Object.fromEntries (new Array)))
-               (,r-only ,(Object.fromEntries (new Array (new Array "writable" false)))))
+        `(let ((,name ,(Object.fromEntries (new Array))))
            ,@(let loop ((lst expr) (result '()))
                (if (null? lst)
                    (reverse result)
@@ -497,22 +495,13 @@
                            (if (or (key? second) no-second)
                                (let ((code `(set-object! ,name ,prop #void)))
                                  (loop (cdr lst) (cons code result)))
-                               (let ((code (if readonly
-                                               (if (and (pair? second) (key? (car second)))
-                                                   `(set-object! ,name
-                                                                 ,prop
-                                                                 ,(%object-expander readonly second quot)
-                                                                 ,r-only)
-                                                   (if quot
-                                                       `(set-object! ,name ,prop ',second ,r-only)
-                                                       `(set-object! ,name ,prop ,second ,r-only)))
-                                               (if (and (pair? second) (key? (car second)))
-                                                   `(set-object! ,name
-                                                                 ,prop
-                                                                 ,(%object-expander readonly second))
-                                                   (if quot
-                                                       `(set-object! ,name ,prop ',second)
-                                                       `(set-object! ,name ,prop ,second))))))
+                               (let ((code (if (and (pair? second) (key? (car second)))
+                                               `(set-object! ,name
+                                                             ,prop
+                                                             ,(%object-expander readonly second))
+                                               (if quot
+                                                   `(set-object! ,name ,prop ',second)
+                                                   `(set-object! ,name ,prop ,second)))))
                                  (loop (cddr lst) (cons code result)))))))))
            ,(if readonly
                 `(Object.preventExtensions ,name))
