@@ -1830,22 +1830,21 @@ function match_or_null(re, char) {
 // -------------------------------------------------------------------------
 // Lips Exception used in error function
 // -------------------------------------------------------------------------
-function LipsError(message, args) {
-    this.name = 'LipsError';
-    this.message = message;
-    this.args = args;
-    this.stack = (new Error()).stack;
+class LIPSError extends Error {
+    constructor(message, args) {
+        super(message);
+        this.name = 'Error';
+        this.args = args;
+    }
 }
-LipsError.prototype = new Error();
-LipsError.prototype.constructor = LipsError;
 // -------------------------------------------------------------------------
 // :: Fake exception to handle try catch to break the execution
 // :: of body expression #163
 // -------------------------------------------------------------------------
 class IgnoreException extends Error { }
 // -------------------------------------------------------------------------
-class Unterminated extends Error { }
-class RuntimeError extends Error { }
+class Unterminated extends LIPSError { }
+class RuntimeError extends LIPSError { }
 class PromiseRejection extends RuntimeError { }
 
 class Continuable extends Error {
@@ -13965,7 +13964,7 @@ read_only(OutputStringPort, '__class__', 'output-string-port');
 read_only(InputStringPort, '__class__', 'input-string-port');
 read_only(InputFilePort, '__class__', 'input-file-port');
 read_only(OutputFilePort, '__class__', 'output-file-port');
-read_only(LipsError, '__class__', 'lips-error');
+read_only(LIPSError, '__class__', 'lips-error');
 [LNumber, LComplex, LRational, LFloat, LBigInteger].forEach(cls => {
     read_only(cls, '__class__', 'number');
 });
@@ -14019,7 +14018,7 @@ export {
     Pair,
     Values,
     QuotedPromise,
-    LipsError as Error,
+    LIPSError as Error,
     is_directive as _is_directive,
 
     quote,
@@ -14093,7 +14092,7 @@ const lips = {
     Pair,
     Values,
     QuotedPromise,
-    Error: LipsError,
+    Error: LIPSError,
 
     quote,
 
