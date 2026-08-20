@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Thu, 20 Aug 2026 16:34:20 +0000
+ * build: Thu, 20 Aug 2026 17:23:21 +0000
  */
 
 'use strict';
@@ -13894,7 +13894,12 @@ var global_env = new Environment({
     key = key.valueOf();
     if (arguments.length === 2) {
       delete obj[key];
-    } else if (is_prototype(obj) && is_function(value)) {
+      return;
+    }
+    if (!Object.isExtensible(obj) && !is_undef(obj[key])) {
+      throw new Error("Can't change read only property");
+    }
+    if (is_prototype(obj) && is_function(value)) {
       obj[key] = unbind(value);
       obj[key][__prototype__] = true;
     } else if (is_function(value) || is_native(value) || is_nil(value) || strict) {
@@ -13902,7 +13907,7 @@ var global_env = new Environment({
     } else {
       obj[key] = value && !is_prototype(value) ? value.valueOf() : value;
     }
-  }, "(set-object! obj key value)\n        (set-object! obj key value strict)\n\n        Function set a property of a JavaScript object. strict option doesn't unbox the value"),
+  }, "(set-object! obj key value)\n        (set-object! obj key value strict)\n\n        Function set a property of a JavaScript object. When the strict option\n        is used the value is not unboxed."),
   // ------------------------------------------------------------------
   'null-environment': doc('null-environment', function () {
     return global_env.inherit('null');
@@ -17451,10 +17456,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Thu, 20 Aug 2026 16:34:20 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Thu, 20 Aug 2026 17:23:21 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Thu, 20 Aug 2026 16:34:20 +0000').valueOf();
+  var date = LString('Thu, 20 Aug 2026 17:23:21 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -17493,7 +17498,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Thu, 20 Aug 2026 16:34:20 +0000';
+var date = 'Thu, 20 Aug 2026 17:23:21 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

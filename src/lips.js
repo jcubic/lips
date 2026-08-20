@@ -10079,7 +10079,12 @@ var global_env = new Environment({
         key = key.valueOf();
         if (arguments.length === 2) {
             delete obj[key];
-        } else if (is_prototype(obj) && is_function(value)) {
+            return;
+        }
+        if (!Object.isExtensible(obj) && !is_undef(obj[key])) {
+            throw new Error("Can't change read only property");
+        }
+        if (is_prototype(obj) && is_function(value)) {
             obj[key] = unbind(value);
             obj[key][__prototype__] = true;
         } else if (is_function(value) || is_native(value) || is_nil(value) || strict) {
@@ -10090,7 +10095,8 @@ var global_env = new Environment({
     }, `(set-object! obj key value)
         (set-object! obj key value strict)
 
-        Function set a property of a JavaScript object. strict option doesn't unbox the value`),
+        Function set a property of a JavaScript object. When the strict option
+        is used the value is not unboxed.`),
     // ------------------------------------------------------------------
     'null-environment': doc('null-environment', function() {
         return global_env.inherit('null');
