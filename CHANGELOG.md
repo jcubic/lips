@@ -7,6 +7,7 @@
 * add `free-identifier=?` [#296](https://github.com/jcubic/lips/issues/296)
 * add SRFI-197 (Pipeline Operators): `chain`, `chain-and`, `chain-when`,
   `chain-lambda`, `nest`, `nest-reverse`
+* a missing R7RS `exact-integer-sqrt` function
 ### Bugfix
 * fix handling of free variables from syntax rule expansion [#546](https://github.com/jcubic/lips/issues/546)
 * fix unquote vector/array in tail position
@@ -17,6 +18,7 @@
 * fix trailing ellipsis `(x ... last)` in recursive macro
 * fix `syntax-rules` literal matching for a literal that denotes a user-defined identifier
 * fix renaming inside `quote` in a `syntax-rules`
+* fix handling an empty symbol `||`
 
 ## 1.0.0-beta.22
 ### Breaking
