@@ -1,3 +1,7 @@
+(define (aprox-equal a b . rest)
+  (let ((epsilon (if (null? rest) 0.00001 (car rest))))
+    (< (abs (- a b) epsilon))))
+
 (define-macro (t.is a b)
   "(t.is a b)
 
