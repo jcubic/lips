@@ -544,7 +544,7 @@ function parse_symbol(arg) {
                 result = str;
             }
             return acc + result;
-        });
+        }, '');
         const chars = {
             t: '\t',
             r: '\r',
@@ -818,7 +818,7 @@ LSymbol.prototype.toString = function(quote) {
     }
     var str = this.valueOf();
     // those special characters can be normal symbol when printed
-    if (quote && str.match(/(^;|[\s()[\]'])/)) {
+    if (quote && str.match(/(^;|[\s()[\]'])/) || !str) {
         return `|${str}|`;
     }
     return str;
