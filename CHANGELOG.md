@@ -30,6 +30,8 @@
   * fix `bytevector-copy!` argument semantics and overlapping copies
   * fix `syntax-rules` ellipsis escape `(... <template>)` to substitute pattern
     variables in the escaped template
+  * fix `syntax-rules` giving a literal priority over the ellipsis when the
+    ellipsis identifier is also declared as a literal
   * fix `bytevector-copy!`, `utf8->string`, and `vector-copy!`
   * fix `list-copy` on non list
 

@@ -10355,6 +10355,18 @@ var global_env = new Environment({
                 symbols = get_identifiers(macro.car);
                 rules = macro.cdr;
             }
+            // R7RS 4.3.2: a literal takes priority over the ellipsis. If the
+            // ellipsis identifier is ALSO declared as a literal it loses its
+            // special meaning and is matched/transcribed as an ordinary literal
+            // (e.g. `(syntax-rules ... (...) ((_ x) '(x ...)))` yields
+            // `(x ...)`, not a repetition). Disable it with a sentinel that no
+            // identifier can equal - LSymbol.is only matches strings/symbols by
+            // name, an LSymbol, or a RegExp, never a bare JS Symbol.
+            const ellipsis_name = ellipsis instanceof LSymbol
+                ? ellipsis.valueOf() : ellipsis;
+            if (symbols.includes(ellipsis_name)) {
+                ellipsis = Symbol.for('lips-disabled-ellipsis');
+            }
             try {
                 while (!is_nil(rules)) {
                     var rule = rules.car.car;

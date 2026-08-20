@@ -1970,3 +1970,20 @@
         (t.is (elli-esc) '...)
         (t.is (elli-esc 100) '(100 ...))
         (t.is (elli-esc 100 200) '(... 100 200))))
+
+;; R7RS 4.3.2: a literal takes priority over the ellipsis. When the ellipsis
+;; identifier is also declared as a literal it loses its special meaning and is
+;; matched/transcribed as an ordinary literal.
+(test "literal takes priority over the ellipsis"
+      (lambda (t)
+        (define-syntax elli-lit
+          (syntax-rules ... (...)
+            ((_ x) '(x ...))))
+        (t.is (elli-lit 100) '(100 ...))
+        ;; and `...` matches as a literal in the pattern
+        (define-syntax elli-lit-pat
+          (syntax-rules ... (...)
+            ((_ ...) 'literal-ellipsis)
+            ((_ x) 'variable)))
+        (t.is (elli-lit-pat ...) 'literal-ellipsis)
+        (t.is (elli-lit-pat 5) 'variable)))
