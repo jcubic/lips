@@ -10068,7 +10068,7 @@ var global_env = new Environment({
          with name being first element of the list. This form expands to
          \`(define function-name (lambda args body))\``),
     // ------------------------------------------------------------------
-    'set-object!': doc('set-object!', function(obj, key, value, options = null) {
+    'set-object!': doc('set-object!', function(obj, key, value, strict = false) {
         var obj_type = typeof obj;
         if (is_null(obj) || (obj_type !== 'object' && obj_type !== 'function')) {
             var msg = typeErrorMessage('set-object!', type(obj), ['object', 'function']);
@@ -10082,20 +10082,15 @@ var global_env = new Environment({
         } else if (is_prototype(obj) && is_function(value)) {
             obj[key] = unbind(value);
             obj[key][__prototype__] = true;
-        } else if (is_function(value) || is_native(value) || is_nil(value)) {
+        } else if (is_function(value) || is_native(value) || is_nil(value) || strict) {
             obj[key] = value;
         } else {
             obj[key] = value && !is_prototype(value) ? value.valueOf() : value;
         }
-        if (options) {
-            const value = obj[key];
-            Object.defineProperty(obj, key, { ...options, value });
-        }
     }, `(set-object! obj key value)
-        (set-object! obj key value props)
+        (set-object! obj key value strict)
 
-        Function set a property of a JavaScript object. props should be a vector of pairs,
-        passed to Object.defineProperty.`),
+        Function set a property of a JavaScript object. strict option doesn't unbox the value`),
     // ------------------------------------------------------------------
     'null-environment': doc('null-environment', function() {
         return global_env.inherit('null');

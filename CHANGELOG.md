@@ -3,6 +3,7 @@
 * `syntax-rules` now treats `_` as the R7RS wildcard: it matches any input
   without binding, is transcribed verbatim as the literal symbol `_` in a
   template, and the pattern keyword position is ignored.
+* `set-object!` 4th argument is no strict option to prevent unboxing
 ### Feature
 * add `free-identifier=?` [#296](https://github.com/jcubic/lips/issues/296)
 * add SRFI-197 (Pipeline Operators): `chain`, `chain-and`, `chain-when`,
@@ -25,7 +26,7 @@
   * fix handling an empty symbol `||`
   * fix `char-foldcase` and `boolean=?`
   * fix `call-with-values`, `with-exception-handler`, and `dynamic-wind`
-  * fix `bytevector-copy!` and `utf8->string`
+  * fix `bytevector-copy!`, `utf8->string`, and `vector-copy!`
 
 ## 1.0.0-beta.22
 ### Breaking

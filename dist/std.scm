@@ -3963,11 +3963,11 @@
   Fill vector with a given value in given range. If start is not given is start
   at 0. If end is not given it fill till the end if the vector."
  (typecheck "vector->fill!" vector "array")
- (let recur ((n (- end start 1)))
-    (if (>= n start)
-        (begin
-          (set-object! vector n fill)
-          (recur (- n 1))))))
+ (let recur ((n (- end 1)))
+   (if (>= n start)
+       (begin
+         (set-object! vector n fill true)
+         (recur (- n 1))))))
 
 ;; -----------------------------------------------------------------------------
 (define-syntax let*-values

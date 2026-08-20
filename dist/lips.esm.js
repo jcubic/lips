@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Thu, 20 Aug 2026 15:24:52 +0000
+ * build: Thu, 20 Aug 2026 16:34:20 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -13878,7 +13878,7 @@ var global_env = new Environment({
   define: doc(Macro.internal('define'), "(define name expression)\n         (define name expression \"doc string\")\n         (define (function-name . args) . body)\n\n         Macro for defining values. It can be used to define variables,\n         or functions. If the first argument is list it will create a function\n         with name being first element of the list. This form expands to\n         `(define function-name (lambda args body))`"),
   // ------------------------------------------------------------------
   'set-object!': doc('set-object!', function (obj, key, value) {
-    var options = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : null;
+    var strict = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : false;
     var obj_type = typeof obj;
     if (is_null(obj) || obj_type !== 'object' && obj_type !== 'function') {
       var msg = typeErrorMessage('set-object!', type(obj), ['object', 'function']);
@@ -13892,18 +13892,12 @@ var global_env = new Environment({
     } else if (is_prototype(obj) && is_function(value)) {
       obj[key] = unbind(value);
       obj[key][__prototype__] = true;
-    } else if (is_function(value) || is_native(value) || is_nil(value)) {
+    } else if (is_function(value) || is_native(value) || is_nil(value) || strict) {
       obj[key] = value;
     } else {
       obj[key] = value && !is_prototype(value) ? value.valueOf() : value;
     }
-    if (options) {
-      var _value5 = obj[key];
-      Object.defineProperty(obj, key, _objectSpread(_objectSpread({}, options), {}, {
-        value: _value5
-      }));
-    }
-  }, "(set-object! obj key value)\n        (set-object! obj key value props)\n\n        Function set a property of a JavaScript object. props should be a vector of pairs,\n        passed to Object.defineProperty."),
+  }, "(set-object! obj key value)\n        (set-object! obj key value strict)\n\n        Function set a property of a JavaScript object. strict option doesn't unbox the value"),
   // ------------------------------------------------------------------
   'null-environment': doc('null-environment', function () {
     return global_env.inherit('null');
@@ -16189,8 +16183,8 @@ function lambda_scope(self, fn, code, args, _ref48) {
           set(name, value);
           break;
         } else if (is_pair(name)) {
-          var _value6 = args[i];
-          set(name.car, _value6);
+          var _value5 = args[i];
+          set(name.car, _value5);
         }
       }
       if (is_nil(name.cdr)) {
@@ -17452,10 +17446,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Thu, 20 Aug 2026 15:24:52 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Thu, 20 Aug 2026 16:34:20 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Thu, 20 Aug 2026 15:24:52 +0000').valueOf();
+  var date = LString('Thu, 20 Aug 2026 16:34:20 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -17494,7 +17488,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Thu, 20 Aug 2026 15:24:52 +0000';
+var date = 'Thu, 20 Aug 2026 16:34:20 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

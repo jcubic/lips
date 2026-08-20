@@ -3598,10 +3598,9 @@ e.g.:
 ## set-object!
 ```
 (set-object! obj key value)
-(set-object! obj key value props)
+(set-object! obj key value strict)
 
-Function set a property of a JavaScript object. props should be a vector of pairs,
-passed to Object.defineProperty.
+Function set a property of a JavaScript object. strict option doesn't unbox the value
 ```
 
 ## set-repr!
