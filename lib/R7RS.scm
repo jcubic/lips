@@ -317,16 +317,25 @@
    More arguments will give an error.")
 
 ;; -----------------------------------------------------------------------------
+(define (%same pred lst)
+  "(%same fn list)
+
+   Function compare if all items are the same according to predicate."
+  (cond ((null? lst) #t)
+        ((null? (cdr lst)) #t)
+        ((pred (car lst) (cadr lst)) (%same pred (cdr lst)))
+        (else #f)))
+
+;; -----------------------------------------------------------------------------
 (define (boolean=? . args)
   "(boolean=? b1 b2 ...)
 
    Checks if all arguments are boolean and if they are the same."
   (if (< (length args) 2)
       (error "boolean=?: too few arguments")
-      (reduce (lambda (acc item)
-                (and (boolean? item) (eq? acc item)))
-              (car args)
-              (cdr args))))
+      (%same (lambda (a b)
+               (and (boolean? a) (eq? a b)))
+             args)))
 
 ;; -----------------------------------------------------------------------------
 (define (port? x)
