@@ -2996,7 +2996,8 @@
   `(define ,spec
      ,str
      (typecheck ,(symbol->string (car spec)) ,(cadr spec) "character")
-     (not (null? (--> chr (toString) (match ,re))))))
+     (let ((str (chr.valueOf)))
+       (list? (match ,re str)))))
 
 ;; -----------------------------------------------------------------------------
 (%define-chr-re (char-whitespace? chr)
