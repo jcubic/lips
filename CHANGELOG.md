@@ -27,6 +27,7 @@
   * fix `char-foldcase` and `boolean=?`
   * fix `call-with-values`, `with-exception-handler`, and `dynamic-wind`
   * fix `bytevector-copy!`, `utf8->string`, and `vector-copy!`
+  * fix `list-copy` on non list
 
 ## 1.0.0-beta.22
 ### Breaking

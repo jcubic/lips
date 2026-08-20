@@ -1477,10 +1477,11 @@
 
    Copy the object passed as argument but only if it's list. The car elements
    of the list are not copied, they are passed as is."
-  (typecheck "list-copy" obj #("pair" "nil"))
-  (if (null? obj)
-      obj
-      (obj.clone false)))
+  (if (list? obj)
+      (if (null? obj)
+          obj
+          (obj.clone false))
+      obj))
 
 ;; -----------------------------------------------------------------------------
 (define (list-set! l k obj)
