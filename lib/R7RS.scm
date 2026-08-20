@@ -21,7 +21,7 @@
   "(environment)
 
    Function returns full R7RS environment since LIPS doesn't support libraries.
-   It's compatiblity layer function to run R7RS chibi tests"
+   It's compatibility layer function to run R7RS chibi tests"
   (scheme-report-environment 7))
 
 ;; -----------------------------------------------------------------------------
