@@ -478,9 +478,10 @@
   (try (thunk)
        (catch (e)
               (if (continuation? e.__cc__)
-                  (e.__cc__ (handler e.__cc__))
-                  (handler e)))))
-
+                  (e.__cc__ (handler e.__object__))
+                  (begin
+                    (handler e)
+                    (raise e))))))
 
 ;; -----------------------------------------------------------------------------
 ;; macro definition taken from R7RS spec

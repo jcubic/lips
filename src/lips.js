@@ -1849,8 +1849,9 @@ class RuntimeError extends Error { }
 class PromiseRejection extends RuntimeError { }
 
 class Continuable extends Error {
-    constructor(message) {
-        super(message);
+    constructor(object) {
+        super('Continuable');
+        this.__object__ = object;
         this.__cc__ = null;
     }
 }
@@ -1881,7 +1882,7 @@ function augment_exception(e, object) {
 // -------------------------------------------------------------------------
 function unify_error_message(e) {
     if (is_augmented(e)) {
-        if (!e.message.match(/at line/)) {
+        if (!e.message?.match(/at line/)) {
             e.message += ` at line ${e.__line__ + 1} and column ${e.__col__}`;
             if (e.__file__) {
                 e.message += ` in ${e.__file__}`;
@@ -11238,8 +11239,8 @@ var global_env = new Environment({
          it's executed when an error is thrown. If finally is provided it's always
          executed at the end.`),
     // ------------------------------------------------------------------
-    'raise-continuable': doc('raise-continuable', function(message) {
-        throw new Continuable(message);
+    'raise-continuable': doc('raise-continuable', function(object) {
+        throw new Continuable(object);
     }, `(raise-continuable message)`),
     // ------------------------------------------------------------------
     'raise': doc('raise', function(obj) {
@@ -12682,6 +12683,7 @@ const __quote__ = global_env.get('quote');
 const __set__ = global_env.get('set!');
 const __define__ = global_env.get('define');
 const __apply__ = global_env.get('apply');
+const __call_with_values__ = global_env.get('call-with-values');
 
 const iternal_macros = [
     __if__,
@@ -13258,6 +13260,20 @@ function next_pair(state) {
             typecheck('apply', last, ['pair', 'nil'], args.length + 2);
             last = global_env.get('list->array').call(global_env, last);
             evaluate_lambda(fn, args.concat(last), state, this);
+        } else if (first === __call_with_values__ && is_lambda(args[1])) {
+            // Run the CONSUMER in this (the main) trampoline, so a continuation
+            // captured outside and invoked by the consumer escapes correctly.
+            // Calling it through the JS wrapper (consumer.apply) would run a
+            // NESTED trampoline: the escape then re-runs the outer context
+            // inside it AND lets this native frame return, double-executing -
+            // which breaks call/cc, e.g. R7RS `guard`'s no-exception path. The
+            // producer is a normal call that returns its value(s).
+            const [producer, consumer] = args;
+            typecheck('call-with-values', producer, 'function', 1);
+            const maybe = call_function(producer, [], state);
+            const vals = maybe instanceof Values ? maybe.valueOf()
+                : (is_undef(maybe) ? [] : [maybe]);
+            evaluate_lambda(consumer, vals, state, this);
         } else if (is_parameter(first)) {
             // a dynamic variable created by make-parameter. Look up the
             // effective binding in the dynamic environment (parameterize
