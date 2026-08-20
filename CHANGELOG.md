@@ -32,6 +32,8 @@
     variables in the escaped template
   * fix `syntax-rules` giving a literal priority over the ellipsis when the
     ellipsis identifier is also declared as a literal
+  * fix vector literals in a `syntax-rules` template being turned into an
+    improper list
   * fix `bytevector-copy!`, `utf8->string`, and `vector-copy!`
   * fix `list-copy` on non list
 

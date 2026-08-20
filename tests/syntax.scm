@@ -1987,3 +1987,18 @@
             ((_ x) 'variable)))
         (t.is (elli-lit-pat ...) 'literal-ellipsis)
         (t.is (elli-lit-pat 5) 'variable)))
+
+;; A vector literal in a syntax-rules template must be transcribed back into a
+;; vector (pattern variables substituted), not collapsed into an improper list.
+(test "vector literal in a macro template"
+      (lambda (t)
+        (let-syntax ((vector-lit
+                      (syntax-rules ()
+                        ((vector-lit) '#(b)))))
+          (t.is (vector-lit) '#(b)))
+        (define-syntax vec
+          (syntax-rules ()
+            ((_ x) '#(x 2 3))            ;; pattern var inside quoted vector
+            ((_ x y ...) #(x y ...))))   ;; non-quoted, leading fixed + ellipsis
+        (t.is (vec 1) '#(1 2 3))
+        (t.is (vec 0 1 2 3) '#(0 1 2 3))))

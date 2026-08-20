@@ -5882,6 +5882,17 @@ function transform_syntax(options = {}) {
                     return result;
                 }
             }
+            if (is_array) {
+                // A vector literal with no `x ...` repetition at THIS position
+                // (those are handled by the ellipsis branches above). Transcribe
+                // the first element and recurse on the rest of the vector - so a
+                // later ellipsis, e.g. #(a b ...), still expands - then rebuild a
+                // vector. The Pair reconstruction below is list-only and would
+                // otherwise turn #(a) into the improper list (a . #void).
+                const head = traverse(first, { disabled, quoted, in_syntax });
+                const tail = traverse(expr.slice(1), { disabled, quoted, in_syntax });
+                return [head].concat(tail);
+            }
             const head = traverse(first, { disabled, quoted, in_syntax });
             let rest;
             let is_syntax;
