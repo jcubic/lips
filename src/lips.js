@@ -5667,12 +5667,17 @@ function transform_syntax(options = {}) {
                     traverse(expr.cdr, { disabled, quoted: true })
                 );
             }
-            // escape ellispsis from R7RS e.g. (... ...)
+            // ellipsis escape from R7RS: `(<ellipsis> <template>)` produces
+            // <template> with ellipses NOT treated specially. The template is
+            // still transcribed (pattern variables substituted, free
+            // identifiers renamed) - only `...` itself is left literal - so it
+            // is traversed with `disabled: true`, not emitted verbatim.
             if (!disabled && is_pair(first) &&
-                LSymbol.is(first.car, ellipsis_symbol)) {
+                LSymbol.is(first.car, ellipsis_symbol) &&
+                is_pair(first.cdr)) {
                 return new Pair(
-                    first.cdr.car,
-                    traverse(expr.cdr)
+                    traverse(first.cdr.car, { disabled: true, quoted, in_syntax }),
+                    traverse(expr.cdr, { disabled, quoted, in_syntax })
                 );
             }
             if (second && LSymbol.is(second, ellipsis_symbol) && !disabled) {

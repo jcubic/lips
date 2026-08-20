@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Thu, 20 Aug 2026 17:23:21 +0000
+ * build: Thu, 20 Aug 2026 19:12:50 +0000
  */
 
 'use strict';
@@ -9540,9 +9540,21 @@ function transform_syntax() {
           quoted: true
         }));
       }
-      // escape ellispsis from R7RS e.g. (... ...)
-      if (!disabled && is_pair(first) && LSymbol.is(first.car, ellipsis_symbol)) {
-        return new Pair(first.cdr.car, traverse(expr.cdr));
+      // ellipsis escape from R7RS: `(<ellipsis> <template>)` produces
+      // <template> with ellipses NOT treated specially. The template is
+      // still transcribed (pattern variables substituted, free
+      // identifiers renamed) - only `...` itself is left literal - so it
+      // is traversed with `disabled: true`, not emitted verbatim.
+      if (!disabled && is_pair(first) && LSymbol.is(first.car, ellipsis_symbol) && is_pair(first.cdr)) {
+        return new Pair(traverse(first.cdr.car, {
+          disabled: true,
+          quoted,
+          in_syntax
+        }), traverse(expr.cdr, {
+          disabled,
+          quoted,
+          in_syntax
+        }));
       }
       if (second && LSymbol.is(second, ellipsis_symbol) && !disabled) {
         var _symbols2 = bindings['...'].symbols;
@@ -17456,10 +17468,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Thu, 20 Aug 2026 17:23:21 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Thu, 20 Aug 2026 19:12:50 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Thu, 20 Aug 2026 17:23:21 +0000').valueOf();
+  var date = LString('Thu, 20 Aug 2026 19:12:50 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -17498,7 +17510,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Thu, 20 Aug 2026 17:23:21 +0000';
+var date = 'Thu, 20 Aug 2026 19:12:50 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

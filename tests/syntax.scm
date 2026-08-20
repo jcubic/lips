@@ -1957,3 +1957,16 @@
           (syntax-rules ()
             ((_ y) '(before y after))))
         (t.is (wrap middle) '(before middle after))))
+
+;; R7RS 4.3.2 ellipsis escape: (<ellipsis> <template>) transcribes <template>
+;; with `...` treated literally, but pattern variables are still substituted.
+(test "ellipsis escape substitutes pattern variables"
+      (lambda (t)
+        (define-syntax elli-esc
+          (syntax-rules ()
+            ((_) '(... ...))
+            ((_ x) '(... (x ...)))
+            ((_ x y) '(... (... x y)))))
+        (t.is (elli-esc) '...)
+        (t.is (elli-esc 100) '(100 ...))
+        (t.is (elli-esc 100 200) '(... 100 200))))
