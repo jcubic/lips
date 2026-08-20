@@ -40,6 +40,7 @@ get_files().then(filenames => {
             (load "@lips/lib/srfi/258.scm")
             (load "@lips/tests/helpers/helpers.scm"))
           (define test (require "ava"))
+          (trace #t)
         `);
         return exec(files.join('\n\n'));
     });
