@@ -473,10 +473,13 @@
   "(with-exception-handler handler thunk)
 
    Procedure call and return value of thunk function, if exception happen
-   it call handler procedure."
+   it call handler procedure. When raise-continuable is captured it will
+   continue execution of the thunk in place when the continuable was rased."
   (try (thunk)
        (catch (e)
-              (handler e))))
+              (if (continuation? e.__cc__)
+                  (e.__cc__ (handler e.__cc__))
+                  (handler e)))))
 
 ;; -----------------------------------------------------------------------------
 ;; macro definition taken from R7RS spec

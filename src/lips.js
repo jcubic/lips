@@ -1838,16 +1838,22 @@ function LipsError(message, args) {
 }
 LipsError.prototype = new Error();
 LipsError.prototype.constructor = LipsError;
-
 // -------------------------------------------------------------------------
 // :: Fake exception to handle try catch to break the execution
 // :: of body expression #163
 // -------------------------------------------------------------------------
 class IgnoreException extends Error { }
+// -------------------------------------------------------------------------
 class Unterminated extends Error { }
 class RuntimeError extends Error { }
 class PromiseRejection extends RuntimeError { }
 
+class Continuable extends Error {
+    constructor(message) {
+        super(message);
+        this.__cc__ = null;
+    }
+}
 // -------------------------------------------------------------------------
 function augment_exception(e, object) {
     if (!is_object(e) || is_native(e)) {
@@ -11232,6 +11238,10 @@ var global_env = new Environment({
          it's executed when an error is thrown. If finally is provided it's always
          executed at the end.`),
     // ------------------------------------------------------------------
+    'raise-continuable': doc('raise-continuable', function(message) {
+        throw new Continuable(message);
+    }, `(raise-continuable message)`),
+    // ------------------------------------------------------------------
     'raise': doc('raise', function(obj) {
         throw obj;
     }, `(raise obj)
@@ -12466,6 +12476,9 @@ const __continue__ = Symbol.for('__continue__');
 function tco_error_handler(e, state, code) {
     if (e instanceof State) {
         return e.object;
+    }
+    if (e instanceof Continuable) {
+        e.__cc__ = state.cc;
     }
     if (e instanceof IgnoreException) {
         return;
