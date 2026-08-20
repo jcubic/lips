@@ -661,12 +661,16 @@
   (%mem/search car eqv? obj list))
 
 ;; -----------------------------------------------------------------------------
-(define (member obj list)
+(define (member obj list . rest)
   "(member obj list)
+   (member obj list proc)
 
-   Returns first object in the list that match using equal? function."
-  (typecheck "member" list '("nil" "pair"))
-  (%mem/search car equal? obj list))
+   Returns first object in the list that match using equal? function.
+   If 3rd argument passed it use it as a comparator."
+  (typecheck "member" list '("nil" "pair") 2)
+  (let ((compare? (if (null? rest) equal? (car rest))))
+    (typecheck "member" compare? "function" 3)
+    (%mem/search car compare? obj list)))
 
 ;; -----------------------------------------------------------------------------
 (define (%assoc/accessor name)
@@ -678,37 +682,41 @@
     (caar x)))
 
 ;; -----------------------------------------------------------------------------
-(define (%assoc/search op obj alist)
-  "(%assoc/search op obj alist)
+(define (%assoc/search name op obj alist)
+  "(%assoc/search name op obj alist)
 
    Generic function that used in assoc functions with defined comparator
    function."
-  (typecheck "assoc" alist (vector "nil" "pair"))
-  (let ((ret (%mem/search (%assoc/accessor "assoc") op obj alist)))
+  (typecheck name alist (vector "nil" "pair"))
+  (let ((ret (%mem/search (%assoc/accessor name) op obj alist)))
     (if ret
         (car ret)
         ret)))
 
 ;; -----------------------------------------------------------------------------
-(define assoc (%doc
-               "(assoc obj alist)
+(define (assoc obj alist . rest)
+  "(assoc obj alist)
+   (assoc obj alist proc)
 
-                Returns pair from alist that match given key using equal? check."
-               (curry %assoc/search equal?)))
+   Returns pair from alist that match given key using equal? check.
+   If procedure is providate it's used instead of equal?."
+  (let ((compare? (if (null? rest) equal? (car rest))))
+    (typecheck "member" compare? "function" 3)
+    (%assoc/search "assoc" compare? obj alist)))
 
 ;; -----------------------------------------------------------------------------
 (define assq (%doc
               "(assq obj alist)
 
                Returns pair from a list that matches given key using eq? check."
-              (curry %assoc/search eq?)))
+              (curry %assoc/search "assq" eq?)))
 
 ;; -----------------------------------------------------------------------------
 (define assv (%doc
               "(assv obj alist)
 
                Returns pair from alist that match given key using eqv? check."
-              (curry %assoc/search eqv?)))
+              (curry %assoc/search "assv" eqv?)))
 
 ;; -----------------------------------------------------------------------------
 ;; STRING FUNCTIONS
