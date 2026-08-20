@@ -4,6 +4,7 @@
   without binding, is transcribed verbatim as the literal symbol `_` in a
   template, and the pattern keyword position is ignored.
 * `set-object!` 4th argument is no strict option to prevent unboxing
+* `current-second` now returns inexact value (as per R7RS spec)
 ### Feature
 * add `free-identifier=?` [#296](https://github.com/jcubic/lips/issues/296)
 * add SRFI-197 (Pipeline Operators): `chain`, `chain-and`, `chain-when`,
@@ -26,6 +27,9 @@
   * fix handling an empty symbol `||`
   * fix `char-foldcase` and `boolean=?`
   * fix `call-with-values`, `with-exception-handler`, and `dynamic-wind`
+  * fix `bytevector-copy!` argument semantics and overlapping copies
+  * fix `syntax-rules` ellipsis escape `(... <template>)` to substitute pattern
+    variables in the escaped template
   * fix `bytevector-copy!`, `utf8->string`, and `vector-copy!`
   * fix `list-copy` on non list
 
