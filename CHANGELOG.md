@@ -8,6 +8,9 @@
 * add SRFI-197 (Pipeline Operators): `chain`, `chain-and`, `chain-when`,
   `chain-lambda`, `nest`, `nest-reverse`
 * a missing R7RS `exact-integer-sqrt` function
+* add `raise-continuable` function
+* add R7RS `guard` macro
+* add procedure argument to `assoc`
 ### Bugfix
 * fix handling of free variables from syntax rule expansion [#546](https://github.com/jcubic/lips/issues/546)
 * fix unquote vector/array in tail position
