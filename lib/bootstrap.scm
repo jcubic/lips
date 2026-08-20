@@ -1510,6 +1510,10 @@
 ;; source https://github.com/scheme-requests-for-implementation/srfi-158
 ;; -----------------------------------------------------------------------------
 (define (make-coroutine-generator proc)
+  "(make-coroutine-generator proc)
+
+   Create a Scheme generator. An argument is a proceedure that accept one argument,
+   usually yield. When called it suspeds the executing and returns a new value."
   (define void (if #f #f))
   (define return #f)
   (define resume #f)
