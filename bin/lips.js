@@ -329,6 +329,11 @@ const interpreter = Interpreter('repl', {
     '__help': env.get('help')
 });
 
+// we use src code so we need to patch version
+Object.assign(env.__parent__.__env__['lips'], {
+    version
+});
+
 function readBinary(filename) {
     return fs.readFileSync(filename);
 }
@@ -354,7 +359,7 @@ function get_command_line_args() {
 // -----------------------------------------------------------------------------
 if (options.version || options.V) {
     // SRFI 176
-    global.output = Pair.fromArray([
+    global.output = Pair.from_array([
         ["command", "lips"],
         ["website", "https://lips.js.org"],
         ['languages', 'scheme', 'r5rs', 'r7rs'].map(LSymbol),
