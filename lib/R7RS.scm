@@ -692,7 +692,7 @@
 
    Returns lowercase character using the Unicode simple case-folding algorithm."
   (typecheck "char-foldcase" char "character")
-  (new LCharacter (%foldcase-string char.__char__)))
+  (new lips.LCharacter (%foldcase-string char.__char__)))
 
 ;; -----------------------------------------------------------------------------
 (define (string-foldcase string)
