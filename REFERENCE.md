@@ -1514,7 +1514,9 @@ Returns a list where first n elements are removed.
 (dynamic-wind before thunk after)
 
 Accepts 3 procedures/lambdas and executes before, then thunk, and
-always after even if an error occurs in thunk.
+always after even if an error occurs in thunk. before is re-run and after
+is run again when a continuation captured inside thunk is re-entered or
+escapes across the dynamic-wind boundary.
 ```
 
 ## empty?
@@ -1531,6 +1533,14 @@ Function that returns #t if value is nil (an empty list) or undefined.
 
 Function that returns a list of names (functions, macros and variables)
 that are bound in the current environment or one of its parents.
+```
+
+## environment
+```
+(environment)
+
+Function returns full R7RS environment since LIPS doesn't support libraries.
+It's compatibility layer function to run R7RS chibi tests
 ```
 
 ## environment-bound?
@@ -2507,7 +2517,7 @@ with optional initial values.
 ```
 (make-coroutine-generator proc)
 
-Create a Scheme generator. An argument is a proceedure that accept one argument,
+Create a Scheme generator. An argument is a procedure that accept one argument,
 usually yield. When called it suspeds the executing and returns a new value.
 ```
 

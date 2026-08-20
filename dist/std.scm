@@ -1512,7 +1512,7 @@
 (define (make-coroutine-generator proc)
   "(make-coroutine-generator proc)
 
-   Create a Scheme generator. An argument is a proceedure that accept one argument,
+   Create a Scheme generator. An argument is a procedure that accept one argument,
    usually yield. When called it suspeds the executing and returns a new value."
   (define void (if #f #f))
   (define return #f)
@@ -3785,7 +3785,7 @@
   "(environment)
 
    Function returns full R7RS environment since LIPS doesn't support libraries.
-   It's compatiblity layer function to run R7RS chibi tests"
+   It's compatibility layer function to run R7RS chibi tests"
   (scheme-report-environment 7))
 
 ;; -----------------------------------------------------------------------------
@@ -4227,7 +4227,6 @@
   (string.upper))
 
 ;; -----------------------------------------------------------------------------
-;; -----------------------------------------------------------------------------
 ;; dynamic-wind with support for re-entrant continuations (Hieb, Dybvig &
 ;; Bruggeman; see also the R7RS rationale). A global stack of (before . after)
 ;; "winders" records the active dynamic-wind extents. call/cc snapshots the
@@ -4248,6 +4247,7 @@
           a
           (loop (cdr a) (cdr b))))))
 
+;; -----------------------------------------------------------------------------
 (define (%do-wind target)
   (let ((tail (%common-tail target *winders*)))
     ;; leaving: run `after` from the current stack down to the common tail
@@ -4265,6 +4265,7 @@
             ((car (car w)))
             (set! *winders* w))))))
 
+;; -----------------------------------------------------------------------------
 (define (dynamic-wind before thunk after)
   "(dynamic-wind before thunk after)
 
@@ -4825,12 +4826,11 @@
                      "bytevector-copy! `at` need to be less then byte vector length"))))
   (let* ((start (if (null? rest) 0 (car rest)))
          (end (if (or (null? rest) (null? (cdr rest)))
-                  (- (bytevector-length from) start)
+                  (bytevector-length from)
                   (cadr rest))))
     (let ((i at) (j start))
-      (while (and (< i (bytevector-length to))
-                  (< i (bytevector-length from))
-                  (< j (+ start end)))
+      (while (and (< j end)
+                  (< i (bytevector-length to)))
         (bytevector-u8-set! to i (bytevector-u8-ref from j))
         (set! i (+ i 1))
         (set! j (+ j 1))))))
