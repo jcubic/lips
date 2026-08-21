@@ -7809,6 +7809,9 @@ LFloat.prototype.toString = function(radix) {
     }
     return str.replace(/^([0-9]+)e/, '$1.0e');
 };
+LFloat.prototype.pow = function(b) {
+    return LFloat(pow(this.__value__, b.__value__));
+};
 // -------------------------------------------------------------------------
 LFloat.prototype._op = function(op, n) {
     if (n instanceof LNumber) {
