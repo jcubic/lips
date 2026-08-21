@@ -2558,9 +2558,10 @@ Create new complex number from polar parameters.
 
 ## make-promise
 ```
-(make-promise fn)
+(make-promise expr)
+(make-promise done expr)
 
-Function that creates a promise from a function.
+Function that creates a promise from a function or expression.
 ```
 
 ## make-rectangular

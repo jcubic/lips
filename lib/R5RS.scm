@@ -181,14 +181,16 @@
 
 ;; -----------------------------------------------------------------------------
 (define make-promise
-  (lambda (a . rest)
-    "(make-promise fn)
-     (make-promise done fn)
+  (lambda (arg . rest)
+    "(make-promise expr)
+     (make-promise done expr)
 
-     Function that creates a promise from a function."
-    (let ((done (if (boolean? a) a))
-          (proc (if (boolean? a) (car rest) a)))
-      (typecheck "make-promise" proc "function")
+     Function that creates a promise from a function or expression."
+    (let* ((done (if (boolean? arg) arg #f))
+           (expr (if (boolean? arg) (car rest) arg))
+           (proc (if (procedure? expr)
+                     expr
+                     (lambda () expr))))
       (let ((result-ready? done)
             (result #f))
         (let ((promise (lambda ()
