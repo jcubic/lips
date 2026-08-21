@@ -423,9 +423,10 @@ function parse_complex(arg, radix = 10) {
     im = parse_num(parts[2]);
     if (parts[1]) {
         re = parse_num(parts[1]);
-    } else if (im instanceof LFloat) {
-        re = LFloat(0);
     } else {
+        // an imaginary-only literal (e.g. 0.5i, +1/10i) has an *exact* zero real
+        // part; the imaginary part carries the exactness. Using an inexact 0.0
+        // here would make (+ 1/10 0.01i) => 0.1+0.01i instead of 1/10+0.01i.
         re = LNumber(0);
     }
     if (im.cmp(0) === 0 && im.__type__ === 'bigint') {
@@ -6850,7 +6851,7 @@ function LNumber(n, force = false) {
 }
 
 LNumber._registry = new FinalizationRegistry(value => {
-  LNumber._cache.delete(value);
+    LNumber._cache.delete(value);
 });
 LNumber._cache = new Map();
 
@@ -7052,6 +7053,7 @@ LNumber.prototype.valueOf = function() {
         return this.__value__.toNumber();
     }
 };
+
 // -------------------------------------------------------------------------
 // Type coercion matrix
 // -------------------------------------------------------------------------
@@ -7075,7 +7077,10 @@ const matrix = (function() {
             integer: (a, b) => [a, b && LFloat(b.valueOf(), true)],
             float: i,
             rational: (a, b) => [a, b && LFloat(b.valueOf(), true)],
-            complex: (a, b) => [{ re: a, im: LFloat(0, true) }, b]
+            // a real number has an *exact* zero imaginary part, so subtracting an
+            // exact imaginary keeps it exact, e.g.
+            // (- 0.01 +1/10i) => 0.01-1/10i (not 0.01-0.1i).
+            complex: (a, b) => [{ re: a, im: LNumber(0) }, b]
         },
         complex: {
             bigint: complex('bigint'),
@@ -7365,9 +7370,11 @@ function lnumber_to_ratio(x) {
     // integer / bigint
     return [BigInt(x.__value__), 1n];
 }
+
 // -------------------------------------------------------------------------
-LNumber.prototype.legacy_cmp = function(n) {
-    const [a, b] = this.coerce(n);
+// comparison function where arguments are the same type
+// -------------------------------------------------------------------------
+function same_cmp(a, b) {
     function cmp(a, b) {
         if (Number.isNaN(a.__value__) || Number.isNaN(b.__value__)) {
             return NaN;
@@ -7389,7 +7396,15 @@ LNumber.prototype.legacy_cmp = function(n) {
     } else if (a instanceof LFloat) {
         return cmp(a, b);
     }
+}
+
+// -------------------------------------------------------------------------
+LNumber.prototype.legacy_cmp = function(n) {
+    const [a, b] = this.coerce(n);
+    return same_cmp(a, b);
 };
+
+// -------------------------------------------------------------------------
 LNumber.prototype.cmp = function(n) {
     if (!(n instanceof LNumber)) {
         n = LNumber(n);
@@ -7601,20 +7616,29 @@ LComplex.prototype.div = function(n) {
     } else if (!LNumber.isComplex(n)) {
         throw new Error('[LComplex::div] Invalid value');
     }
+    // dividing two complex numbers mixes the real/imaginary parts (via the
+    // conjugate), so the result is exact only when *every* component of both
+    // operands is exact; otherwise exactness is contagious and the whole result
+    // is inexact, e.g. (/ 1 1/2+1.0i) => 0.4-0.8i (not the exact 2/5-0.8i).
+    // factor() deliberately works with exact rationals for precision, so we
+    // force the result back to inexact here when any input was inexact.
+    const has_float = z => z.__re__ instanceof LFloat || z.__im__ instanceof LFloat;
+    const inexact = has_float(this) || has_float(n);
+    const to_inexact = x => inexact ? LFloat(x.valueOf(), true) : x;
     if (this.cmp(n) === 0) {
         const [ a, b ] = this.coerce(n);
         const ret = a.__im__.div(b.__im__);
-        return ret.coerce(b.__re__)[0];
+        return to_inexact(ret.coerce(b.__re__)[0]);
     }
     const [ a, b ] = this.coerce(n);
     const denom = b.factor();
     const conj = b.conjugate();
     const num = a.mul(conj);
     if (!LNumber.isComplex(num)) {
-        return num.div(denom);
+        return to_inexact(num.div(denom));
     }
-    const re = num.__re__.op('/', denom);
-    const im = num.__im__.op('/', denom);
+    const re = to_inexact(num.__re__.op('/', denom));
+    const im = to_inexact(num.__im__.op('/', denom));
     return LComplex({ re, im });
 };
 // -------------------------------------------------------------------------
