@@ -8,17 +8,23 @@
    Helper comparator for ava. It use equal? so it match two lists and strings.
    It use undecumented API that allow to delete StackTrace when assertion fail."
   (let ((attempt (gensym))
+        (e (gensym))
         (a_name (gensym))
         (b_name (gensym)))
-    `(let ((,attempt (t.try (lambda (e)
+    `(let ((,attempt (t.try (lambda (,e)
                               (let ((,a_name (round-number ,a))
                                     (,b_name (round-number ,b)))
                                 (if (equal? ,a_name ,b_name)
-                                    (--> e (pass))
-                                    (--> e (fail (concat "failed: " (repr ,a_name true)
-                                                         " != " (repr ,b_name true)
-                                                         " comparing " (repr ',a true)
-                                                         " and " (repr ',b true))))))))))
+                                    (--> ,e (pass))
+                                    (--> ,e (fail (concat
+                                                  "failed: "
+                                                  (repr ,a_name true)
+                                                  " != "
+                                                  (repr ,b_name true)
+                                                  " comparing "
+                                                  (repr ',a true)
+                                                  " and "
+                                                  (repr ',b true))))))))))
        (if (not (. ,attempt 'passed))
            (--> (. ,attempt 'errors)
                 (forEach (lambda (e)
