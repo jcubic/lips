@@ -68,6 +68,8 @@
     `1/10+0.01i` and `(- 0.01 +1/10i)` => `0.01-1/10i`; complex division is now
     inexact whenever any part is inexact, so `(/ 1 1/2+1.0i)` => `0.4-0.8i`
   * fix ``max`` and ``min`` to return inexact when any of the argument is inexact
+  * fix `expt` on float arguments
+  * make `log`/`sin`/`cos`/`atan` return inexact values
 
 ## 1.0.0-beta.22
 ### Breaking
