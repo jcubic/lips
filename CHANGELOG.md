@@ -60,7 +60,14 @@
     error instead of hanging
   * fix `atan` of a single real argument (`(atan 0.5)`, `(atan 2)`, `(atan 1/2)`,
     `(atan +inf.0)`) throwing "car of nil"
-  * correct `=` operator on mixed inexact/exact big integer
+  * make numeric comparison (`=`, `<`, `>`, `<=`, `>=`) exact instead of
+    coercing to float, fixing wrong/non-transitive results
+    (e.g. `(= 9007199254740992.0 9007199254740993)`) and `(< 1 1/2)`/`(> 1 1/2)`
+  * fix exactness of complex numbers: an imaginary literal (`0.5i`) and a real
+    number now have an exact `0` for the missing part, so `(+ 1/10 0.01i)` =>
+    `1/10+0.01i` and `(- 0.01 +1/10i)` => `0.01-1/10i`; complex division is now
+    inexact whenever any part is inexact, so `(/ 1 1/2+1.0i)` => `0.4-0.8i`
+  * fix ``max`` and ``min`` to return inexact when any of the argument is inexact
 
 ## 1.0.0-beta.22
 ### Breaking
