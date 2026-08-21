@@ -54,6 +54,12 @@
   * fix complex arithmetic broken when a real is coerced to a complex (`(* 3.14
     +i)`, `log`/`atanh` of negatives) while keeping `(make-rectangular x 0)` real
   * fix integer square root of `4` (used by `exact-integer-sqrt`) returning `1`
+  * fix infinite loop when dividing complex numbers with non-finite parts
+    (e.g. `(/ +nan.0+nan.0i +nan.0+nan.0i)`) and when converting a non-finite
+    inexact to exact (`(exact +nan.0)`, `(exact +inf.0)`), which now signal an
+    error instead of hanging
+  * fix `atan` of a single real argument (`(atan 0.5)`, `(atan 2)`, `(atan 1/2)`,
+    `(atan +inf.0)`) throwing "car of nil"
 
 ## 1.0.0-beta.22
 ### Breaking
