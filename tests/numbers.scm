@@ -1209,8 +1209,9 @@
           (t.is (floor (/ (expt 1000 999) 998001)) result)
           (t.is (quotient (expt 1000 999) 998001) result))))
 
-(test "round on rationals uses banker's rounding (ties to even)"
+(test "round"
       (lambda (t)
+        (t.is (round 0.5) 1.0)
         ;; non-ties round to nearest
         (t.is (round 7/2) 4)
         (t.is (round 7/10) 1)
@@ -1228,7 +1229,7 @@
         ;; result of rounding an exact rational is exact
         (t.is (exact? (round 7/2)) #t)))
 
-(test "rational? is true for every finite real, false for inf/nan/complex"
+(test "rational?"
       (lambda (t)
         ;; finite reals - exact and inexact - are rational
         (t.is (rational? 5) #t)
@@ -1245,7 +1246,7 @@
         (t.is (rational? 3+4i) #f)
         (t.is (rational? 'foo) #f)))
 
-(test "exact-integer-sqrt (regression: 4 returned 1)"
+(test "exact-integer-sqrt"
       (lambda (t)
         (define (s n) (call-with-values (lambda () (exact-integer-sqrt n)) list))
         (t.is (s 0) '(0 0))
