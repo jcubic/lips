@@ -214,7 +214,7 @@
 (define-syntax let*-values
   (syntax-rules (multi single)
     ((_ ()) '())
-    ((_ () body ...) (begin body ...))
+    ((_ () body ...) (let () body ...))
     ((_ ((bind obj) rest ...) . body)
      (apply (lambda bind
               (let*-values (rest ...) . body))

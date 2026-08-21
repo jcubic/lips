@@ -118,6 +118,18 @@
                 (+ div mul))
               101/5)))
 
+(test "let*-values empty bindings body is a new scope"
+      (lambda (t)
+        ;; a (define ...) in the body of an empty let*-values must be local to
+        ;; it, not leak into the surrounding scope (regression: it used to
+        ;; expand to (begin body ...) which splices the define)
+        (t.is (let ((x 1))
+                (let*-values () (define x 2) #f)
+                x)
+              1)
+        ;; an empty let*-values still evaluates its body
+        (t.is (let*-values () 42) 42)))
+
 (test "should render SXML string"
       (lambda (t)
         (define preact (require "preact"))
