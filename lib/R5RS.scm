@@ -1249,9 +1249,9 @@
 
    Return denominator of rational or same number if one is not rational."
   (typecheck "denominator" n "number")
-  (cond ((or (zero? n) (integer? n)) (if (inexact? n) 1.0 1))
+  (cond ((or (zero? n) (integer? n)) 1.0)
         ((string=? n.__type__ "rational") n.__denom__)
-        ((exact? n) 1)
+        ((exact? n) 1.0)
         (else
          (exact->inexact (denominator (inexact->exact n))))))
 
