@@ -178,7 +178,7 @@ function gen_integer_re(mnemonic, range) {
     return `${num_mnemicic_re(mnemonic)}[+-]?${range}+`;
 }
 var re_re = /^#\/((?:\\\/|[^/]|\[[^\]]*\/[^\]]*\])+)\/([gimyus]*)$/;
-var float_stre = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]+)(?:[eE][-+]?[0-9]+)?)|[0-9]+\\.)';
+var float_stre = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*)(?:[eE][-+]?[0-9]+)?)|[0-9]+\\.)';
 // TODO: extend to ([+-]1/2|float)([+-]1/2|float)
 var complex_float_stre = `(?:#[ie])?(?:[+-]?(?:[0-9][0-9_]*/[0-9][0-9_]*|nan.0|inf.0|${float_stre}|[+-]?[0-9]+))?(?:${float_stre}|[+-](?:[0-9]+/[0-9]+|[0-9]+|nan.0|inf.0))i`;
 var float_re = new RegExp(`^(#[ie])?${float_stre}$`, 'i');
@@ -299,6 +299,7 @@ function make_type_re(fn) {
 const complex_re = make_type_re(gen_complex_re);
 const rational_re = make_type_re(gen_rational_re);
 const int_re = make_type_re(gen_integer_re);
+const big_int_re = /^(([-+]?[0-9]*)(?:\.([0-9]+))?)e([-+]?[0-9]+)/i;
 
 // regexes with full range but without mnemonics for string->number
 const int_bare_re = new RegExp('^(?:' + gen_integer_re('', '[0-9a-f]') + ')$', 'i');
@@ -381,7 +382,7 @@ function parse_complex(arg, radix = 10) {
             value = LNumber(1);
         } else if (n === '-') {
             value = LNumber(-1);
-        } else if (n.match(int_bare_re)) {
+        } else if (n.match(int_bare_re) && !n.match(big_int_re)) {
             value = LNumber([n, radix]);
         } else if (n.match(rational_bare_re)) {
             var parts = n.split('/');
@@ -395,13 +396,13 @@ function parse_complex(arg, radix = 10) {
                 return float.toRational();
             }
             return float;
-        } else if (n.match(/nan.0$/)) {
+        } else if (n.match(/nan.0$/i)) {
             return LNumber(NaN);
-        } else if (n.match(/inf.0$/)) {
+        } else if (n.match(/inf.0$/i)) {
             if (n[0] === '-') {
-                return LNumber(Number.NEGATIVE_INFINITY);
+                return inf_minus;
             }
-            return LNumber(Number.POSITIVE_INFINITY);
+            return inf_plus;
         } else {
             throw new Error('Internal Parser Error');
         }
@@ -440,7 +441,7 @@ function is_int(value) {
 }
 // ----------------------------------------------------------------------
 function parse_big_int(str) {
-    var num_match = str.match(/^(([-+]?[0-9]*)(?:\.([0-9]+))?)e([-+]?[0-9]+)/i);
+    var num_match = str.match(big_int_re);
     if (num_match) {
         var exponent = parseInt(num_match[4], 10);
         var mantisa;// = parseFloat(num_match[1]);
@@ -561,8 +562,9 @@ function parse_symbol(arg) {
 }
 // ----------------------------------------------------------------------
 function parse_argument(token) {
-    if (constants.hasOwnProperty(token)) {
-        return constants[token];
+    const lower = token.toLowerCase();
+    if (constants.hasOwnProperty(lower)) {
+        return constants[lower];
     }
     let result;
     if (token.match(/^"[\s\S]*"$/)) {
@@ -7178,6 +7180,7 @@ LNumber.getType = function(n) {
         return 'bigint';
     }
 };
+
 // -------------------------------------------------------------------------
 LNumber.prototype.isFloat = function() {
     return !!(LNumber.isFloat(this.__value__) || this.float);
@@ -9410,17 +9413,27 @@ var internal_env = new Environment({
 }, undefined, 'internal');
 // ----------------------------------------------------------------------
 const nan = LNumber(NaN);
+const inf_plus = LNumber(Number.POSITIVE_INFINITY);
+const inf_minus = LNumber(Number.NEGATIVE_INFINITY);
+const inf_nan = [
+    ['+inf.0', inf_plus],
+    ['-inf.0', inf_minus],
+    ['+nan.0', nan],
+    ['-nan.0', nan]
+];
+
 const constants = {
     '#t': true,
     '#f': false,
     '#true': true,
     '#false': false,
-    '+inf.0': LNumber(Number.POSITIVE_INFINITY),
-    '-inf.0': LNumber(Number.NEGATIVE_INFINITY),
-    '+nan.0': nan,
-    '-nan.0': nan,
+    ...Object.fromEntries(inf_nan),
+    ...Object.fromEntries(inf_nan.map(([token, value]) => {
+        return ['#i' + token, value];
+    })),
     ...parsable_contants
 };
+
 // -------------------------------------------------------------------------
 var global_env = new Environment({
     eof,
