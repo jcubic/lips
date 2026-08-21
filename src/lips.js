@@ -8543,11 +8543,11 @@ function InputStringPort(string, env = global_env) {
     read_only(this, '__type__', text_port);
     this._make_defaults();
 }
+InputStringPort.prototype = Object.create(InputPort.prototype);
+InputStringPort.prototype.constructor = InputStringPort;
 InputStringPort.prototype.char_ready = function() {
     return true;
 };
-InputStringPort.prototype = Object.create(InputPort.prototype);
-InputStringPort.prototype.constructor = InputStringPort;
 InputStringPort.prototype.toString = function() {
     return `#<input-port (string)>`;
 };
