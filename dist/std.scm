@@ -2208,31 +2208,37 @@
 
 ;; -----------------------------------------------------------------------------
 (define make-promise
-  (lambda (proc)
-    "(make-promise fn)
+  (lambda (arg . rest)
+    "(make-promise expr)
+     (make-promise done expr)
 
-     Function that creates a promise from a function."
-    (typecheck "make-promise" proc "function")
-    (let ((result-ready? #f)
-          (result #f))
-      (let ((promise (lambda ()
-                       (if result-ready?
-                           result
-                           (let ((x (proc)))
-                             (if result-ready?
-                                 result
-                                 (begin (set! result-ready? #t)
-                                        (set! result x)
-                                        result)))))))
-        (set-object! promise (Symbol.for "promise") true)
-        (set! promise.toString (lambda ()
-                                 (string-append "#<promise - "
-                                                (if result-ready?
-                                                    (string-append "forced with "
-                                                                   (type result))
-                                                    "not forced")
-                                                ">")))
-        promise))))
+     Function that creates a promise from a function or expression."
+    (let* ((done (if (boolean? arg) arg #f))
+           (expr (if (boolean? arg) (car rest) arg))
+           (proc (if (procedure? expr)
+                     expr
+                     (lambda () expr))))
+      (let ((result-ready? done)
+            (result #f))
+        (let ((promise (lambda ()
+                         (if result-ready?
+                             result
+                             (let ((x (proc)))
+                               (if result-ready?
+                                   result
+                                   (begin (set! result-ready? #t)
+                                          (set! result x)
+                                          result)))))))
+          (set-object! promise (Symbol.for "promise") true)
+          (set! promise.toString (lambda ()
+                                   (string-append "#<promise - "
+                                                  (if result-ready?
+                                                      (string-append
+                                                       "forced with "
+                                                       (type result))
+                                                      "not forced")
+                                                  ">")))
+          promise)))))
 
 ;; -----------------------------------------------------------------------------
 (define-macro (delay expression)
@@ -2406,22 +2412,6 @@
 (define numbers? (curry typecheck-args "number"))
 
 ;; -----------------------------------------------------------------------------
-(define (max . args)
-  "(max n1 n2 ...)
-
-   Returns the maximum of its arguments."
-  (numbers? "max" args)
-  (apply Math.max args))
-
-;; -----------------------------------------------------------------------------
-(define (min . args)
-  "(min n1 n2 ...)
-
-   Returns the minimum of its arguments."
-  (numbers? "min" args)
-  (apply Math.min args))
-
-;; -----------------------------------------------------------------------------
 (define (make-rectangular re im)
   "(make-rectangular re im)
 
@@ -2477,11 +2467,12 @@
    any number (including complex negative and rational).
    If the value is 0 it return NaN."
   (cond ((real? z)
-         (cond ((zero? z) NaN)
-               ((> z 0) (Math.log z))
-               (else
-                (+ (Math.log (abs z))
-                   (* Math.PI +i)))))
+         (exact->inexact
+          (cond ((zero? z) NaN)
+                ((> z 0) (Math.log z))
+                (else
+                 (+ (Math.log (abs z))
+                    (* Math.PI +i))))))
         ((complex? z)
          (let ((arg (Math.atan2 (imag-part z)
                                 (real-part z))))
@@ -2522,7 +2513,7 @@
                                       (Math.cosh im))
                                :im (* (Math.cos re)
                                       (Math.sinh im)))))
-      (Math.sin n)))
+      (exact->inexact (Math.sin n))))
 
 ;; -----------------------------------------------------------------------------
 (define (cos n)
@@ -2537,7 +2528,7 @@
                                       (Math.cosh im))
                                :im (- (* (Math.sin re)
                                          (Math.sinh im))))))
-      (Math.cos n)))
+      (exact->inexact (Math.cos n))))
 
 ;; -----------------------------------------------------------------------------
 (define (tan n)
@@ -2556,7 +2547,7 @@
                                :im (/ (Math.sinh im2)
                                       (+ (Math.cos re2)
                                          (Math.cosh im2))))))
-      (Math.tan n)))
+      (exact->inexact (Math.tan n))))
 
 ;; -----------------------------------------------------------------------------
 (define (atan z . rest)
@@ -2583,7 +2574,7 @@
       (let ((x z) (y (car rest)))
         (if (and (zero? (imag-part x))
                  (zero? (imag-part y)))
-            (Math.atan2 x y)
+            (exact->inexact (Math.atan2 x y))
             (error "atan: can't call with two complex numbers")))))
 
 ;; -----------------------------------------------------------------------------
@@ -2598,7 +2589,7 @@
              (factor (Math.exp re)))
          (make-rectangular (* factor (cos im))
                            (* factor (sin im))))
-       (Math.exp n)))
+       (exact->inexact (Math.exp n))))
 
 ;; -----------------------------------------------------------------------------
 (define (modulo a b)
@@ -3292,9 +3283,9 @@
 
    Return denominator of rational or same number if one is not rational."
   (typecheck "denominator" n "number")
-  (cond ((or (zero? n) (integer? n)) (if (inexact? n) 1.0 1))
+  (cond ((or (zero? n) (integer? n)) 1.0)
         ((string=? n.__type__ "rational") n.__denom__)
-        ((exact? n) 1)
+        ((exact? n) 1.0)
         (else
          (exact->inexact (denominator (inexact->exact n))))))
 
@@ -3840,6 +3831,11 @@
    need to evaluate to result of calling values.")
 
 ;; -----------------------------------------------------------------------------
+(define-syntax delay-force
+  (syntax-rules ()
+    ((delay-force expression)
+     (make-promise #f (lambda () expression)))))
+;; -----------------------------------------------------------------------------
 (define (vector-copy vector . rest)
   "(vector-copy vector)
    (vector-copy vector start)
@@ -3964,7 +3960,7 @@
 (define-syntax let*-values
   (syntax-rules (multi single)
     ((_ ()) '())
-    ((_ () body ...) (begin body ...))
+    ((_ () body ...) (let () body ...))
     ((_ ((bind obj) rest ...) . body)
      (apply (lambda bind
               (let*-values (rest ...) . body))
@@ -4022,11 +4018,12 @@
       (let ((base (car rest)))
         (/ (log z) (log base)))
       (cond ((real? z)
-             (cond ((zero? z) NaN)
+             (exact->inexact
+              (cond ((zero? z) NaN)
                    ((> z 0) (Math.log z))
                    (else
                     (+ (Math.log (abs z))
-                       (* Math.PI +i)))))
+                       (* Math.PI +i))))))
             ((complex? z)
              (let ((arg (Math.atan2 (imag-part z)
                                     (real-part z))))

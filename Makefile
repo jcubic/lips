@@ -65,7 +65,7 @@ dist/std.scm: lib/bootstrap.scm lib/R5RS.scm lib/byte-vectors.scm lib/R7RS.scm l
 	$(CAT) lib/bootstrap.scm lib/R5RS.scm lib/byte-vectors.scm lib/R7RS.scm lib/init.scm > dist/std.scm
 
 dist/std.xcb: dist/std.scm
-	$(LIPS) -tmcq --bootstrap dist/std.scm dist/std.scm
+	$(LIPS) -tjmcq --bootstrap dist/std.scm dist/std.scm
 
 docs/reference.json: dist/std.xcb src/lips.js scripts/reference.js
 	$(NODE) ./scripts/reference.js > docs/reference.json

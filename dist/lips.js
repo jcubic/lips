@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 21 Aug 2026 13:30:18 +0000
+ * build: Fri, 21 Aug 2026 21:11:09 +0000
  */
 
 (function (global, factory) {
@@ -3070,7 +3070,7 @@
     return "".concat(num_mnemicic_re(mnemonic), "[+-]?").concat(range, "+");
   }
   var re_re = /^#\/((?:\\\/|[^/]|\[[^\]]*\/[^\]]*\])+)\/([gimyus]*)$/;
-  var float_stre = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]+)(?:[eE][-+]?[0-9]+)?)|[0-9]+\\.)';
+  var float_stre = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*)(?:[eE][-+]?[0-9]+)?)|[0-9]+\\.)';
   // TODO: extend to ([+-]1/2|float)([+-]1/2|float)
   var complex_float_stre = "(?:#[ie])?(?:[+-]?(?:[0-9][0-9_]*/[0-9][0-9_]*|nan.0|inf.0|".concat(float_stre, "|[+-]?[0-9]+))?(?:").concat(float_stre, "|[+-](?:[0-9]+/[0-9]+|[0-9]+|nan.0|inf.0))i");
   var float_re = new RegExp("^(#[ie])?".concat(float_stre, "$"), 'i');
@@ -3190,6 +3190,7 @@
   var complex_re = make_type_re(gen_complex_re);
   var rational_re = make_type_re(gen_rational_re);
   var int_re = make_type_re(gen_integer_re);
+  var big_int_re = /^(([-+]?[0-9]*)(?:\.([0-9]+))?)e([-+]?[0-9]+)/i;
 
   // regexes with full range but without mnemonics for string->number
   var int_bare_re = new RegExp('^(?:' + gen_integer_re('', '[0-9a-f]') + ')$', 'i');
@@ -3272,7 +3273,7 @@
         value = LNumber(1);
       } else if (n === '-') {
         value = LNumber(-1);
-      } else if (n.match(int_bare_re)) {
+      } else if (n.match(int_bare_re) && !n.match(big_int_re)) {
         value = LNumber([n, radix]);
       } else if (n.match(rational_bare_re)) {
         var parts = n.split('/');
@@ -3286,13 +3287,13 @@
           return float.toRational();
         }
         return float;
-      } else if (n.match(/nan.0$/)) {
+      } else if (n.match(/nan.0$/i)) {
         return LNumber(NaN);
-      } else if (n.match(/inf.0$/)) {
+      } else if (n.match(/inf.0$/i)) {
         if (n[0] === '-') {
-          return LNumber(Number.NEGATIVE_INFINITY);
+          return inf_minus;
         }
-        return LNumber(Number.POSITIVE_INFINITY);
+        return inf_plus;
       } else {
         throw new Error('Internal Parser Error');
       }
@@ -3314,9 +3315,10 @@
     im = parse_num(parts[2]);
     if (parts[1]) {
       re = parse_num(parts[1]);
-    } else if (im instanceof LFloat) {
-      re = LFloat(0);
     } else {
+      // an imaginary-only literal (e.g. 0.5i, +1/10i) has an *exact* zero real
+      // part; the imaginary part carries the exactness. Using an inexact 0.0
+      // here would make (+ 1/10 0.01i) => 0.1+0.01i instead of 1/10+0.01i.
       re = LNumber(0);
     }
     if (im.cmp(0) === 0 && im.__type__ === 'bigint') {
@@ -3333,7 +3335,7 @@
   }
   // ----------------------------------------------------------------------
   function parse_big_int(str) {
-    var num_match = str.match(/^(([-+]?[0-9]*)(?:\.([0-9]+))?)e([-+]?[0-9]+)/i);
+    var num_match = str.match(big_int_re);
     if (num_match) {
       var exponent = parseInt(num_match[4], 10);
       var mantisa; // = parseFloat(num_match[1]);
@@ -3462,8 +3464,9 @@
   }
   // ----------------------------------------------------------------------
   function parse_argument(token) {
-    if (constants.hasOwnProperty(token)) {
-      return constants[token];
+    var lower = token.toLowerCase();
+    if (constants.hasOwnProperty(lower)) {
+      return constants[lower];
     }
     var result;
     if (token.match(/^"[\s\S]*"$/)) {
@@ -4705,6 +4708,7 @@
   class IgnoreException extends Error {}
   // -------------------------------------------------------------------------
   class Unterminated extends LIPSError {}
+  class RuntimeError extends LIPSError {}
   class Continuable extends Error {
     constructor(object) {
       super('Continuable');
@@ -10890,6 +10894,7 @@
       return this.__value__.toNumber();
     }
   };
+
   // -------------------------------------------------------------------------
   // Type coercion matrix
   // -------------------------------------------------------------------------
@@ -10925,9 +10930,12 @@
         integer: (a, b) => [a, b && LFloat(b.valueOf())],
         float: i,
         rational: (a, b) => [a, b && LFloat(b.valueOf())],
+        // a real number has an *exact* zero imaginary part, so subtracting an
+        // exact imaginary keeps it exact, e.g.
+        // (- 0.01 +1/10i) => 0.01-1/10i (not 0.01-0.1i).
         complex: (a, b) => [{
           re: a,
-          im: LFloat(0)
+          im: LNumber(0)
         }, b]
       },
       complex: {
@@ -11034,6 +11042,7 @@
       return 'bigint';
     }
   };
+
   // -------------------------------------------------------------------------
   LNumber.prototype.isFloat = function () {
     return !!(LNumber.isFloat(this.__value__) || this.float);
@@ -11193,11 +11202,52 @@
     return !this.isOdd();
   };
   // -------------------------------------------------------------------------
-  LNumber.prototype.cmp = function (n) {
-    var _this$coerce5 = this.coerce(n),
-      _this$coerce6 = _slicedToArray(_this$coerce5, 2),
-      a = _this$coerce6[0],
-      b = _this$coerce6[1];
+  // Numeric comparison must be EXACT. The normal arithmetic coercion widens an
+  // exact number to float, which silently loses precision and makes =,<,>
+  // incorrect and non-transitive (R7RS 6.2.6) -- e.g.
+  // (= 9007199254740992.0 9007199254740993) would be #t and (< 1 1/2)/(> 1 1/2)
+  // would both be #f. Instead every finite real is converted to an exact rational
+  // (BigInt numerator/denominator) and compared by cross multiplication; a float
+  // is lifted to its exact dyadic value rather than the exact side being rounded.
+  // -------------------------------------------------------------------------
+  function float_to_ratio(x) {
+    // x: a finite JS double -> [BigInt numerator, BigInt denominator > 0] that
+    // is exactly equal to x (every double is a dyadic rational).
+    if (Number.isInteger(x)) {
+      return [BigInt(x), 1n];
+    }
+    var num = x;
+    var denom = 1n;
+    // |x| < 2^52 here (larger doubles are integers), so num stays a safe integer.
+    while (!Number.isInteger(num)) {
+      num *= 2;
+      denom *= 2n;
+    }
+    return [BigInt(num), denom];
+  }
+  // -------------------------------------------------------------------------
+  function lnumber_to_ratio(x) {
+    // x: an LNumber holding a finite real -> [BigInt num, BigInt denom > 0].
+    if (x instanceof LFloat) {
+      return float_to_ratio(x.__value__);
+    }
+    if (x instanceof LRational) {
+      var num = BigInt(x.__num__.__value__);
+      var denom = BigInt(x.__denom__.__value__);
+      if (denom < 0n) {
+        num = -num;
+        denom = -denom;
+      }
+      return [num, denom];
+    }
+    // integer / bigint
+    return [BigInt(x.__value__), 1n];
+  }
+
+  // -------------------------------------------------------------------------
+  // comparison function where arguments are the same type
+  // -------------------------------------------------------------------------
+  function same_cmp(a, b) {
     function cmp(a, b) {
       if (Number.isNaN(a.__value__) || Number.isNaN(b.__value__)) {
         return NaN;
@@ -11219,6 +11269,68 @@
     } else if (a instanceof LFloat) {
       return cmp(a, b);
     }
+  }
+
+  // -------------------------------------------------------------------------
+  LNumber.prototype.legacy_cmp = function (n) {
+    var _this$coerce5 = this.coerce(n),
+      _this$coerce6 = _slicedToArray(_this$coerce5, 2),
+      a = _this$coerce6[0],
+      b = _this$coerce6[1];
+    return same_cmp(a, b);
+  };
+
+  // -------------------------------------------------------------------------
+  LNumber.prototype.cmp = function (n) {
+    if (!(n instanceof LNumber)) {
+      n = LNumber(n);
+    }
+    var a_type = this.__type__;
+    var b_type = n.__type__;
+    // Fast paths for the two hottest same-representation cases.
+    if (a_type === 'float' && b_type === 'float') {
+      var av = this.__value__,
+        bv = n.__value__;
+      if (Number.isNaN(av) || Number.isNaN(bv)) {
+        return NaN;
+      }
+      return av < bv ? -1 : av > bv ? 1 : 0;
+    }
+    if (a_type === 'bigint' && b_type === 'bigint' && typeof this.__value__ === 'bigint' && typeof n.__value__ === 'bigint') {
+      var _av = this.__value__,
+        _bv = n.__value__;
+      return _av < _bv ? -1 : _av > _bv ? 1 : 0;
+    }
+    // Complex, BN big numbers, or environments without BigInt keep the legacy
+    // coercion-based comparison (unchanged behavior).
+    if (a_type === 'complex' || b_type === 'complex' || typeof BigInt === 'undefined' || LNumber.isBN(this.__value__) || LNumber.isBN(n.__value__)) {
+      return this.legacy_cmp(n);
+    }
+    // Only floats can be non-finite; handle NaN and +-inf before going exact.
+    var a_nan = a_type === 'float' && Number.isNaN(this.__value__);
+    var b_nan = b_type === 'float' && Number.isNaN(n.__value__);
+    if (a_nan || b_nan) {
+      return NaN;
+    }
+    var a_inf = a_type === 'float' && !Number.isFinite(this.__value__);
+    var b_inf = b_type === 'float' && !Number.isFinite(n.__value__);
+    if (a_inf || b_inf) {
+      var as = a_inf ? Math.sign(this.__value__) : 0;
+      var bs = b_inf ? Math.sign(n.__value__) : 0;
+      return as < bs ? -1 : as > bs ? 1 : 0;
+    }
+    // Exact comparison of two finite reals via cross multiplication.
+    var _lnumber_to_ratio = lnumber_to_ratio(this),
+      _lnumber_to_ratio2 = _slicedToArray(_lnumber_to_ratio, 2),
+      an = _lnumber_to_ratio2[0],
+      ad = _lnumber_to_ratio2[1];
+    var _lnumber_to_ratio3 = lnumber_to_ratio(n),
+      _lnumber_to_ratio4 = _slicedToArray(_lnumber_to_ratio3, 2),
+      bn = _lnumber_to_ratio4[0],
+      bd = _lnumber_to_ratio4[1];
+    var lhs = an * bd;
+    var rhs = bn * ad;
+    return lhs < rhs ? -1 : lhs > rhs ? 1 : 0;
   };
   // -------------------------------------------------------------------------
   // :: COMPLEX TYPE
@@ -11404,13 +11516,22 @@
     } else if (!LNumber.isComplex(n)) {
       throw new Error('[LComplex::div] Invalid value');
     }
+    // dividing two complex numbers mixes the real/imaginary parts (via the
+    // conjugate), so the result is exact only when *every* component of both
+    // operands is exact; otherwise exactness is contagious and the whole result
+    // is inexact, e.g. (/ 1 1/2+1.0i) => 0.4-0.8i (not the exact 2/5-0.8i).
+    // factor() deliberately works with exact rationals for precision, so we
+    // force the result back to inexact here when any input was inexact.
+    var has_float = z => z.__re__ instanceof LFloat || z.__im__ instanceof LFloat;
+    var inexact = has_float(this) || has_float(n);
+    var to_inexact = x => inexact ? LFloat(x.valueOf()) : x;
     if (this.cmp(n) === 0) {
       var _this$coerce7 = this.coerce(n),
         _this$coerce8 = _slicedToArray(_this$coerce7, 2),
         _a = _this$coerce8[0],
         _b = _this$coerce8[1];
       var ret = _a.__im__.div(_b.__im__);
-      return ret.coerce(_b.__re__)[0];
+      return to_inexact(ret.coerce(_b.__re__)[0]);
     }
     var _this$coerce9 = this.coerce(n),
       _this$coerce0 = _slicedToArray(_this$coerce9, 2),
@@ -11420,10 +11541,10 @@
     var conj = b.conjugate();
     var num = a.mul(conj);
     if (!LNumber.isComplex(num)) {
-      return num.div(denom);
+      return to_inexact(num.div(denom));
     }
-    var re = num.__re__.op('/', denom);
-    var im = num.__im__.op('/', denom);
+    var re = to_inexact(num.__re__.op('/', denom));
+    var im = to_inexact(num.__im__.op('/', denom));
     return LComplex({
       re,
       im
@@ -11617,6 +11738,7 @@
   };
   // -------------------------------------------------------------------------
   // same approximation as in guile scheme
+  // -------------------------------------------------------------------------
   LFloat.prototype.toRational = function () {
     var n = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
     if (n === null) {
@@ -11644,6 +11766,8 @@
     }
     return LFloat(value);
   };
+  // -------------------------------------------------------------------------
+  LFloat.prototype.serialize = LFloat.prototype.toString;
   // -------------------------------------------------------------------------
   // ref: https://rosettacode.org/wiki/Convert_decimal_number_to_rational
   // -------------------------------------------------------------------------
@@ -11832,10 +11956,6 @@
       num,
       denom
     });
-  };
-  // -------------------------------------------------------------------------
-  LRational.prototype.cmp = function (n) {
-    return LNumber(this.valueOf(), true).cmp(n);
   };
   // -------------------------------------------------------------------------
   LRational.prototype.toString = function () {
@@ -12425,11 +12545,11 @@
     read_only(this, '__type__', text_port);
     this._make_defaults();
   }
+  InputStringPort.prototype = Object.create(InputPort.prototype);
+  InputStringPort.prototype.constructor = InputStringPort;
   InputStringPort.prototype.char_ready = function () {
     return true;
   };
-  InputStringPort.prototype = Object.create(InputPort.prototype);
-  InputStringPort.prototype.constructor = InputStringPort;
   InputStringPort.prototype.toString = function () {
     return "#<input-port (string)>";
   };
@@ -13294,16 +13414,21 @@
   }, undefined, 'internal');
   // ----------------------------------------------------------------------
   var nan = LNumber(NaN);
-  var constants = _objectSpread({
+  var inf_plus = LNumber(Number.POSITIVE_INFINITY);
+  var inf_minus = LNumber(Number.NEGATIVE_INFINITY);
+  var inf_nan = [['+inf.0', inf_plus], ['-inf.0', inf_minus], ['+nan.0', nan], ['-nan.0', nan]];
+  var constants = _objectSpread(_objectSpread(_objectSpread({
     '#t': true,
     '#f': false,
     '#true': true,
-    '#false': false,
-    '+inf.0': LNumber(Number.POSITIVE_INFINITY),
-    '-inf.0': LNumber(Number.NEGATIVE_INFINITY),
-    '+nan.0': nan,
-    '-nan.0': nan
-  }, parsable_contants);
+    '#false': false
+  }, Object.fromEntries(inf_nan)), Object.fromEntries(inf_nan.map(_ref35 => {
+    var _ref36 = _slicedToArray(_ref35, 2),
+      token = _ref36[0],
+      value = _ref36[1];
+    return ['#i' + token, value];
+  }))), parsable_contants);
+
   // -------------------------------------------------------------------------
   var global_env = new Environment({
     eof,
@@ -13480,10 +13605,10 @@
       return unbind(a) === unbind(b);
     }, "(%same-functions a b)\n\n        A helper function that checks if the two input functions are\n        the same."),
     // ------------------------------------------------------------------
-    help: doc(new Macro('help', function (source, _ref35) {
-      var dynamic_env = _ref35.dynamic_env,
-        use_dynamic = _ref35.use_dynamic,
-        error = _ref35.error;
+    help: doc(new Macro('help', function (source, _ref37) {
+      var dynamic_env = _ref37.dynamic_env,
+        use_dynamic = _ref37.use_dynamic,
+        error = _ref37.error;
       var code = source.cdr;
       var symbol;
       if (code.car instanceof LSymbol) {
@@ -13663,7 +13788,7 @@
       }
       if (is_node()) {
         return new Promise(/*#__PURE__*/function () {
-          var _ref36 = _asyncToGenerator(function* (resolve, reject) {
+          var _ref38 = _asyncToGenerator(function* (resolve, reject) {
             try {
               yield node_ready;
               var _path = node_require('path');
@@ -13693,7 +13818,7 @@
               }
               global_env.set(PATH, _path.dirname(file));
               _fs.readFile(file, /*#__PURE__*/function () {
-                var _ref37 = _asyncToGenerator(function* (err, data) {
+                var _ref39 = _asyncToGenerator(function* (err, data) {
                   if (err) {
                     global_env.set(PATH, module_path);
                     reject(err);
@@ -13709,7 +13834,7 @@
                   }
                 });
                 return function (_x5, _x6) {
-                  return _ref37.apply(this, arguments);
+                  return _ref39.apply(this, arguments);
                 };
               }());
             } catch (e) {
@@ -13717,7 +13842,7 @@
             }
           });
           return function (_x3, _x4) {
-            return _ref36.apply(this, arguments);
+            return _ref38.apply(this, arguments);
           };
         }());
       }
@@ -14155,7 +14280,7 @@
     }, "(lambda (a b) body)\n        (lambda args body)\n        (lambda (a b . rest) body)\n\n        The lambda macro creates a new anonymous function. If the first element of\n        the body is a string and there is more elements the string is used as the\n        documentation string, that can be read using (help fn)."),
     // ------------------------------------------------------------------
     macroexpand: doc(/*#__PURE__*/function () {
-      var _ref38 = _asyncToGenerator(function* (code) {
+      var _ref40 = _asyncToGenerator(function* (code) {
         // macroexpand is a function (like Common Lisp), NOT a macro, so its
         // argument is already evaluated - quote the code you want expanded:
         // (macroexpand '(when test body)). The expansion is produced in the tco
@@ -14169,12 +14294,12 @@
         });
       });
       return function (_x7) {
-        return _ref38.apply(this, arguments);
+        return _ref40.apply(this, arguments);
       };
     }(), "(macroexpand expr)\n\n        Function that expands all macros in the quoted expression and returns\n        the expanded code. Being a function, its argument is evaluated, so pass\n        quoted code: (macroexpand '(when x y))."),
     // ------------------------------------------------------------------
     'macroexpand-1': doc(/*#__PURE__*/function () {
-      var _ref39 = _asyncToGenerator(function* (code) {
+      var _ref41 = _asyncToGenerator(function* (code) {
         // like macroexpand but expands only the outermost macro use one step
         // (does not recurse into the result or subforms). Also a function, so
         // pass quoted code: (macroexpand-1 '(when x y)).
@@ -14189,7 +14314,7 @@
         return code;
       });
       return function (_x8) {
-        return _ref39.apply(this, arguments);
+        return _ref41.apply(this, arguments);
       };
     }(), "(macroexpand-1 expr)\n\n         Function similar to macroexpand but it expands the outermost macro only\n         one level and returns the resulting code. Being a function, its argument\n         is evaluated, so pass quoted code: (macroexpand-1 '(when x y))."),
     // ------------------------------------------------------------------
@@ -14239,8 +14364,8 @@
         });
       }
       var captured_macros = collect_macros(macro, env);
-      var syntax = new Syntax(function (code, _ref40) {
-        var macro_expand = _ref40.macro_expand;
+      var syntax = new Syntax(function (code, _ref42) {
+        var macro_expand = _ref42.macro_expand;
         var scope = env.inherit('syntax');
         var var_scope = this;
         // for macros that define variables used in macro (2 levels nestting)
@@ -15219,7 +15344,11 @@
       var _a$coerce4 = _slicedToArray(_a$coerce3, 2);
       a = _a$coerce4[0];
       b = _a$coerce4[1];
-      return a.pow(b);
+      var result = a.pow(b);
+      if (LNumber.isFloat(a) || LNumber.isFloat(b)) {
+        return LFloat(result);
+      }
+      return result;
     }), "(** a b)\n\n         Function that calculates number a to to the power of b."),
     // ------------------------------------------------------------------
     '1+': doc('1+', single_math_op(function (number) {
@@ -15303,7 +15432,39 @@
       return LNumber(a).shl(b);
     }, "(<< a b)\n\n        Function that left shifts the value a by value b bits."),
     // ------------------------------------------------------------------
-    not: doc('not', is_false, "(not object)\n\n         Function that returns the Boolean negation of its argument.")
+    not: doc('not', is_false, "(not object)\n\n         Function that returns the Boolean negation of its argument."),
+    // ------------------------------------------------------------------
+    min: doc('min', function () {
+      for (var _len41 = arguments.length, args = new Array(_len41), _key42 = 0; _key42 < _len41; _key42++) {
+        args[_key42] = arguments[_key42];
+      }
+      if (args.length === 0) {
+        throw new RuntimeError('min require at list 1 argument');
+      }
+      return args.reduce(binary_math_op(function (a, b) {
+        var _a$coerce5 = a.coerce(b);
+        var _a$coerce6 = _slicedToArray(_a$coerce5, 2);
+        a = _a$coerce6[0];
+        b = _a$coerce6[1];
+        return same_cmp(a, b) === -1 ? a : b;
+      }));
+    }, "(min n1 n2 ...)\n\n        Returns the minimum of its arguments."),
+    // ------------------------------------------------------------------
+    max: doc('max', function () {
+      for (var _len42 = arguments.length, args = new Array(_len42), _key43 = 0; _key43 < _len42; _key43++) {
+        args[_key43] = arguments[_key43];
+      }
+      if (args.length === 0) {
+        throw new RuntimeError('max require at list 1 argument');
+      }
+      return args.reduce(binary_math_op(function (a, b) {
+        var _a$coerce7 = a.coerce(b);
+        var _a$coerce8 = _slicedToArray(_a$coerce7, 2);
+        a = _a$coerce8[0];
+        b = _a$coerce8[1];
+        return same_cmp(a, b) === 1 ? a : b;
+      }));
+    }, "(max n1 n2 ...)\n\n        Returns the maximum of its arguments.")
   }, undefined, 'global');
   var user_env = global_env.inherit('user-env');
   // -------------------------------------------------------------------------
@@ -15462,8 +15623,8 @@
       });
       var originalLog = console.log;
       console.log = function () {
-        for (var _len43 = arguments.length, args = new Array(_len43), _key46 = 0; _key46 < _len43; _key46++) {
-          args[_key46] = arguments[_key46];
+        for (var _len45 = arguments.length, args = new Array(_len45), _key48 = 0; _key48 < _len45; _key48++) {
+          args[_key48] = arguments[_key48];
         }
         originalLog.apply(console, args);
         process.stdout.write('');
@@ -15612,12 +15773,12 @@
       return t;
     }
     if (typeof obj === 'object') {
-      for (var _ref43 of type_mapping_entries) {
-        var _ref42 = _slicedToArray(_ref43, 2);
-        var _key42 = _ref42[0];
-        var value = _ref42[1];
+      for (var _ref45 of type_mapping_entries) {
+        var _ref44 = _slicedToArray(_ref45, 2);
+        var _key44 = _ref44[0];
+        var value = _ref44[1];
         if (obj instanceof value) {
-          return _key42;
+          return _key44;
         }
       }
       if (is_instance(obj)) {
@@ -15710,8 +15871,8 @@
           var arg = args[i];
           if (is_lips_function(arg)) {
             wrapper = function wrapper() {
-              for (var _len41 = arguments.length, args = new Array(_len41), _key43 = 0; _key43 < _len41; _key43++) {
-                args[_key43] = arguments[_key43];
+              for (var _len43 = arguments.length, args = new Array(_len43), _key45 = 0; _key45 < _len43; _key45++) {
+                args[_key45] = arguments[_key45];
               }
               return unpromise(arg.apply(this, args), unbox);
             }; // make wrapper work like output of bind
@@ -15738,12 +15899,12 @@
 
   // -------------------------------------------------------------------------
   function call_function(fn, args) {
-    var _ref45 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
-      env = _ref45.env,
-      dynamic_env = _ref45.dynamic_env,
-      use_dynamic = _ref45.use_dynamic,
-      _ref45$check_promise = _ref45.check_promise,
-      check_promise = _ref45$check_promise === void 0 ? true : _ref45$check_promise;
+    var _ref47 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
+      env = _ref47.env,
+      dynamic_env = _ref47.dynamic_env,
+      use_dynamic = _ref47.use_dynamic,
+      _ref47$check_promise = _ref47.check_promise,
+      check_promise = _ref47$check_promise === void 0 ? true : _ref47$check_promise;
     if (!fn._context) {
       read_only(fn, '_context', new LambdaContext({}), {
         hidden: true
@@ -15961,12 +16122,12 @@
   // :: code based on ideas from jsScheme by Alex Yakovlev
   // -------------------------------------------------------------------------
   class State {
-    constructor(object, cc, _ref46) {
-      var env = _ref46.env,
-        dynamic_env = _ref46.dynamic_env,
-        use_dynamic = _ref46.use_dynamic,
-        error = _ref46.error,
-        macro_expand = _ref46.macro_expand;
+    constructor(object, cc, _ref48) {
+      var env = _ref48.env,
+        dynamic_env = _ref48.dynamic_env,
+        use_dynamic = _ref48.use_dynamic,
+        error = _ref48.error,
+        macro_expand = _ref48.macro_expand;
       if (is_debug('continuations')) {
         console.log('[STATE] ' + macro_expand);
         console.trace();
@@ -16108,13 +16269,13 @@
   // -------------------------------------------------------------------------
   // :: Tail Call Optimized eval
   // -------------------------------------------------------------------------
-  function tco_generator(code, _ref47) {
-    var env = _ref47.env,
-      cc = _ref47.cc,
-      dynamic_env = _ref47.dynamic_env,
-      use_dynamic = _ref47.use_dynamic,
-      _ref47$macro_expand = _ref47.macro_expand,
-      macro_expand = _ref47$macro_expand === void 0 ? false : _ref47$macro_expand;
+  function tco_generator(code, _ref49) {
+    var env = _ref49.env,
+      cc = _ref49.cc,
+      dynamic_env = _ref49.dynamic_env,
+      use_dynamic = _ref49.use_dynamic,
+      _ref49$macro_expand = _ref49.macro_expand,
+      macro_expand = _ref49$macro_expand === void 0 ? false : _ref49$macro_expand;
     return function* () {
       if (!is_env(dynamic_env)) {
         dynamic_env = env === true ? user_env : env || user_env;
@@ -16275,11 +16436,11 @@
   }
 
   // -------------------------------------------------------------------------
-  function lambda_scope(self, fn, code, args, _ref48) {
-    var use_dynamic = _ref48.use_dynamic,
-      error = _ref48.error,
-      cc = _ref48.cc,
-      call_dynamic_env = _ref48.dynamic_env;
+  function lambda_scope(self, fn, code, args, _ref50) {
+    var use_dynamic = _ref50.use_dynamic,
+      error = _ref50.error,
+      cc = _ref50.cc,
+      call_dynamic_env = _ref50.dynamic_env;
     // lambda got scopes as context in apply
     var dynamic_env;
     if (is_context(this)) {
@@ -16819,13 +16980,13 @@
       // case (set! fn.toString (lambda () "xxx"))
       var parts = symbol.split('.');
       if (parts.length > 1) {
-        var _key44 = parts.pop();
+        var _key46 = parts.pop();
         var name = parts.join('.');
         var object = env.get(name, {
           throwError: false
         });
         if (object) {
-          env.get('set-object!').call(env, object, _key44, value);
+          env.get('set-object!').call(env, object, _key46, value);
           // set! return value is unspecified/void
           delete state.object;
           state.ready = true;
@@ -17291,9 +17452,9 @@
     this.rpc('init', [url]).catch(error => {
       console.error(error);
     });
-    this.exec = function (code, _ref49) {
-      var _ref49$use_dynamic = _ref49.use_dynamic,
-        use_dynamic = _ref49$use_dynamic === void 0 ? false : _ref49$use_dynamic;
+    this.exec = function (code, _ref51) {
+      var _ref51$use_dynamic = _ref51.use_dynamic,
+        use_dynamic = _ref51$use_dynamic === void 0 ? false : _ref51$use_dynamic;
       return this.rpc('eval', [code, use_dynamic]);
     };
   }
@@ -17302,22 +17463,25 @@
   // :: Serialization
   // -------------------------------------------------------------------------
   var serialization_map = {
-    'pair': _ref50 => {
-      var _ref51 = _slicedToArray(_ref50, 2),
-        car = _ref51[0],
-        cdr = _ref51[1];
+    'pair': _ref52 => {
+      var _ref53 = _slicedToArray(_ref52, 2),
+        car = _ref53[0],
+        cdr = _ref53[1];
       return Pair(car, cdr);
     },
     'number': function number(value) {
       if (LString.isString(value)) {
+        if (value.match(float_re)) {
+          return LFloat(parse_float(value));
+        }
         return LNumber([value, 10]);
       }
       return LNumber(value);
     },
-    'regex': function regex(_ref52) {
-      var _ref53 = _slicedToArray(_ref52, 2),
-        pattern = _ref53[0],
-        flag = _ref53[1];
+    'regex': function regex(_ref54) {
+      var _ref55 = _slicedToArray(_ref54, 2),
+        pattern = _ref55[0],
+        flag = _ref55[1];
       return new RegExp(pattern, flag);
     },
     'nil': function nil() {
@@ -17337,10 +17501,10 @@
   // class mapping to create smaller JSON
   var available_class = Object.keys(serialization_map);
   var class_map = {};
-  for (var _ref56 of Object.entries(available_class)) {
-    var _ref55 = _slicedToArray(_ref56, 2);
-    var i = _ref55[0];
-    var cls = _ref55[1];
+  for (var _ref58 of Object.entries(available_class)) {
+    var _ref57 = _slicedToArray(_ref58, 2);
+    var i = _ref57[0];
+    var cls = _ref57[1];
     class_map[cls] = +i;
   }
   function mangle_name(name) {
@@ -17407,10 +17571,10 @@
     }
     var encoder = new Encoder();
     var cbor_serialization_map = {};
-    for (var _ref59 of Object.entries(serialization_map)) {
-      var _ref58 = _slicedToArray(_ref59, 2);
-      var name = _ref58[0];
-      var _fn2 = _ref58[1];
+    for (var _ref61 of Object.entries(serialization_map)) {
+      var _ref60 = _slicedToArray(_ref61, 2);
+      var name = _ref60[0];
+      var _fn2 = _ref60[1];
       var Class = types[name];
       cbor_serialization_map[name] = serializer(Class, _fn2);
     }
@@ -17454,8 +17618,8 @@
 
   // -------------------------------------------------------------------------
   function merge_uint8_array() {
-    for (var _len42 = arguments.length, args = new Array(_len42), _key45 = 0; _key45 < _len42; _key45++) {
-      args[_key45] = arguments[_key45];
+    for (var _len44 = arguments.length, args = new Array(_len44), _key47 = 0; _key47 < _len44; _key47++) {
+      args[_key47] = arguments[_key47];
     }
     if (args.length > 1) {
       var len = args.reduce((acc, arr) => acc + arr.length, 0);
@@ -17605,10 +17769,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Fri, 21 Aug 2026 13:30:18 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Fri, 21 Aug 2026 21:11:09 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Fri, 21 Aug 2026 13:30:18 +0000').valueOf();
+    var date = LString('Fri, 21 Aug 2026 21:11:09 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -17647,7 +17811,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Fri, 21 Aug 2026 13:30:18 +0000';
+  var date = 'Fri, 21 Aug 2026 21:11:09 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);
