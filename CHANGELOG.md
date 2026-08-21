@@ -60,6 +60,7 @@
     error instead of hanging
   * fix `atan` of a single real argument (`(atan 0.5)`, `(atan 2)`, `(atan 1/2)`,
     `(atan +inf.0)`) throwing "car of nil"
+  * correct `=` operator on mixed inexact/exact big integer
 
 ## 1.0.0-beta.22
 ### Breaking

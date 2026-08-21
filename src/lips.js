@@ -7324,7 +7324,49 @@ LNumber.prototype.isEven = function() {
     return !this.isOdd();
 };
 // -------------------------------------------------------------------------
-LNumber.prototype.cmp = function(n) {
+// Numeric comparison must be EXACT. The normal arithmetic coercion widens an
+// exact number to float, which silently loses precision and makes =,<,>
+// incorrect and non-transitive (R7RS 6.2.6) -- e.g.
+// (= 9007199254740992.0 9007199254740993) would be #t and (< 1 1/2)/(> 1 1/2)
+// would both be #f. Instead every finite real is converted to an exact rational
+// (BigInt numerator/denominator) and compared by cross multiplication; a float
+// is lifted to its exact dyadic value rather than the exact side being rounded.
+// -------------------------------------------------------------------------
+function float_to_ratio(x) {
+    // x: a finite JS double -> [BigInt numerator, BigInt denominator > 0] that
+    // is exactly equal to x (every double is a dyadic rational).
+    if (Number.isInteger(x)) {
+        return [BigInt(x), 1n];
+    }
+    let num = x;
+    let denom = 1n;
+    // |x| < 2^52 here (larger doubles are integers), so num stays a safe integer.
+    while (!Number.isInteger(num)) {
+        num *= 2;
+        denom *= 2n;
+    }
+    return [BigInt(num), denom];
+}
+// -------------------------------------------------------------------------
+function lnumber_to_ratio(x) {
+    // x: an LNumber holding a finite real -> [BigInt num, BigInt denom > 0].
+    if (x instanceof LFloat) {
+        return float_to_ratio(x.__value__);
+    }
+    if (x instanceof LRational) {
+        let num = BigInt(x.__num__.__value__);
+        let denom = BigInt(x.__denom__.__value__);
+        if (denom < 0n) {
+            num = -num;
+            denom = -denom;
+        }
+        return [num, denom];
+    }
+    // integer / bigint
+    return [BigInt(x.__value__), 1n];
+}
+// -------------------------------------------------------------------------
+LNumber.prototype.legacy_cmp = function(n) {
     const [a, b] = this.coerce(n);
     function cmp(a, b) {
         if (Number.isNaN(a.__value__) || Number.isNaN(b.__value__)) {
@@ -7347,6 +7389,52 @@ LNumber.prototype.cmp = function(n) {
     } else if (a instanceof LFloat) {
         return cmp(a, b);
     }
+};
+LNumber.prototype.cmp = function(n) {
+    if (!(n instanceof LNumber)) {
+        n = LNumber(n);
+    }
+    const a_type = this.__type__;
+    const b_type = n.__type__;
+    // Fast paths for the two hottest same-representation cases.
+    if (a_type === 'float' && b_type === 'float') {
+        const av = this.__value__, bv = n.__value__;
+        if (Number.isNaN(av) || Number.isNaN(bv)) {
+            return NaN;
+        }
+        return av < bv ? -1 : (av > bv ? 1 : 0);
+    }
+    if (a_type === 'bigint' && b_type === 'bigint' &&
+        typeof this.__value__ === 'bigint' && typeof n.__value__ === 'bigint') {
+        const av = this.__value__, bv = n.__value__;
+        return av < bv ? -1 : (av > bv ? 1 : 0);
+    }
+    // Complex, BN big numbers, or environments without BigInt keep the legacy
+    // coercion-based comparison (unchanged behavior).
+    if (a_type === 'complex' || b_type === 'complex' ||
+        typeof BigInt === 'undefined' ||
+        LNumber.isBN(this.__value__) || LNumber.isBN(n.__value__)) {
+        return this.legacy_cmp(n);
+    }
+    // Only floats can be non-finite; handle NaN and +-inf before going exact.
+    const a_nan = a_type === 'float' && Number.isNaN(this.__value__);
+    const b_nan = b_type === 'float' && Number.isNaN(n.__value__);
+    if (a_nan || b_nan) {
+        return NaN;
+    }
+    const a_inf = a_type === 'float' && !Number.isFinite(this.__value__);
+    const b_inf = b_type === 'float' && !Number.isFinite(n.__value__);
+    if (a_inf || b_inf) {
+        const as = a_inf ? Math.sign(this.__value__) : 0;
+        const bs = b_inf ? Math.sign(n.__value__) : 0;
+        return as < bs ? -1 : (as > bs ? 1 : 0);
+    }
+    // Exact comparison of two finite reals via cross multiplication.
+    const [an, ad] = lnumber_to_ratio(this);
+    const [bn, bd] = lnumber_to_ratio(n);
+    const lhs = an * bd;
+    const rhs = bn * ad;
+    return lhs < rhs ? -1 : (lhs > rhs ? 1 : 0);
 };
 // -------------------------------------------------------------------------
 // :: COMPLEX TYPE
@@ -7909,10 +7997,6 @@ LRational.prototype.abs = function() {
         denom = denom.sub();
     }
     return LRational({ num, denom });
-};
-// -------------------------------------------------------------------------
-LRational.prototype.cmp = function(n) {
-    return LNumber(this.valueOf(), true).cmp(n);
 };
 // -------------------------------------------------------------------------
 LRational.prototype.toString = function() {
