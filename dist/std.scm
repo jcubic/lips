@@ -1073,34 +1073,6 @@
   `(promise (timer ,time (resolve (begin ,@expr)))))
 
 ;; -----------------------------------------------------------------------------
-(define (await value)
-  "(await value)
-
-   Unquotes a quoted promise so it can be automagically evaluated (resolved
-   to its value)."
-  (let ((env))
-    (set! env (current-environment))
-    (env.set (Symbol.for "__promise__") false)
-    (if (instanceof lips.QuotedPromise value)
-        (value.valueOf)
-        value)))
-
-;; -----------------------------------------------------------------------------
-(define-macro (quote-promise expr)
-  "(quote-promise expr) or '>expr
-
-  Macro used to escape automati awaiting of the expression. It will be wrapped
-  with a JavaScript class that behaves like Promise but will not be automatically
-  resolved by LIPS like normal promises are."
-  `(let ((env))
-      (set! env (current-environment))
-      (env.set (Symbol.for "__promise__") true)
-      (let ((env))
-        (set! env (current-environment))
-        (env.set (Symbol.for "__promise__") false)
-        ,expr)))
-
-;; -----------------------------------------------------------------------------
 (define (defmacro? obj)
   "(defmacro? expression)
 
@@ -2594,19 +2566,20 @@
    Function calculates arcus tangent of a complex number.
    If two arguments are passed and they are not complex numbers
    it calculate Math.atan2 on those arguments."
-  (if (and (null? rest) (%number-type "complex" z))
+  (if (null? rest)
       (cond ((nan? z) +nan.0)
             ((infinite? z)
              (let ((atan (/ Math.PI 2)))
                (if (< z 0)
                    (- atan)
                    atan)))
-            (else
+            ((%number-type "complex" z)
              ;; ref: https://youtu.be/d93AarE0lKg
              (let ((iz (* +i z)))
                (* (/ 1 +2i)
                   (log (/ (+ 1 iz)
-                          (- 1 iz)))))))
+                          (- 1 iz))))))
+            (else (Math.atan z)))
       (let ((x z) (y (car rest)))
         (if (and (zero? (imag-part x))
                  (zero? (imag-part y)))
