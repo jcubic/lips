@@ -7948,8 +7948,33 @@ LRational.prototype.round = function() {
     const num = this.__num__.__value__;
     const denom = this.__denom__.__value__;
     if (LNumber.isNative(num) && LNumber.isNative(denom)) {
-        const { quotient } = this._rem_quot();
-        return LNumber(quotient);
+        // R7RS: round to the nearest integer, ties to even. Work with a
+        // positive denominator and a FLOOR remainder r in [0, denom), then
+        // round up when 2r > denom, or - on an exact tie (2r == denom) - when
+        // the floor is odd.
+        const big = typeof num === 'bigint' || typeof denom === 'bigint';
+        if (big) {
+            let n = BigInt(num), d = BigInt(denom);
+            if (d < 0n) { n = -n; d = -d; }
+            let q = n / d;
+            let r = n - q * d;
+            if (r < 0n) { q -= 1n; r += d; }
+            const twice = r * 2n;
+            if (twice > d || (twice === d && (q % 2n !== 0n))) {
+                q += 1n;
+            }
+            return LNumber(q);
+        }
+        let n = num, d = denom;
+        if (d < 0) { n = -n; d = -d; }
+        let q = Math.trunc(n / d);
+        let r = n - q * d;
+        if (r < 0) { q -= 1; r += d; }
+        const twice = r * 2;
+        if (twice > d || (twice === d && (q % 2 !== 0))) {
+            q += 1;
+        }
+        return LNumber(q);
     }
     return LNumber(Math.round(this.valueOf()));
 };

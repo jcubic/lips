@@ -46,6 +46,7 @@
   * fix `lcm` and `gcd` when called without arguments and `lcm` when called on inxact value
   * fix `odd?` and `even?` on negative values
   * fix `denominator` and `numerator` on reduced rational
+  * fix `round` on half values
 
 ## 1.0.0-beta.22
 ### Breaking
