@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 21 Aug 2026 10:19:40 +0000
+ * build: Fri, 21 Aug 2026 12:06:39 +0000
  */
 
 (function (global, factory) {
@@ -10768,6 +10768,13 @@
       a = b;
       b = temp;
     }
+    // gcd(a, 0) == a. After the swap `a` holds the larger magnitude, so a zero
+    // `b` here means one operand was 0; without this guard the loop's first
+    // `a.rem(b)` divides by zero. Hit e.g. when the integer 0 is coerced to the
+    // rational 0/1 while evaluating `(+ 1/2 1/4)` (which folds starting from 0).
+    if (b.cmp(0) === 0) {
+      return a;
+    }
     while (true) {
       a = a.rem(b);
       if (a.cmp(0) === 0) {
@@ -11230,17 +11237,21 @@
     }
     var im = n.im instanceof LNumber ? n.im : LNumber(n.im);
     var re = n.re instanceof LNumber ? n.re : LNumber(n.re);
-    this.constant(im, re);
+    // A complex with an exact-zero imaginary part is a real (R7RS), so collapse
+    // it to `re` - but ONLY for user-facing construction. During internal
+    // coercion (`force`) a real is lifted to a complex `{re, im: 0}` on purpose;
+    // collapsing it there hands arithmetic a real where it expects a complex,
+    // which corrupts complex `+`/`*` (and log/atanh through them).
+    if (!force && im.cmp(0) === 0) {
+      return re;
+    }
+    this.__im__ = im;
+    this.__re__ = re;
+    this.__type__ = 'complex';
   }
   // -------------------------------------------------------------------------
   LComplex.prototype = Object.create(LNumber.prototype);
   LComplex.prototype.constructor = LComplex;
-  // -------------------------------------------------------------------------
-  LComplex.prototype.constant = function (im, re) {
-    this.__im__ = im;
-    this.__re__ = re;
-    this.__type__ = 'complex';
-  };
   // -------------------------------------------------------------------------
   LComplex.prototype.abs = function () {
     return LNumber(this.modulus());
@@ -11876,9 +11887,47 @@
     var num = this.__num__.__value__;
     var denom = this.__denom__.__value__;
     if (LNumber.isNative(num) && LNumber.isNative(denom)) {
-      var _this$_rem_quot2 = this._rem_quot(),
-        quotient = _this$_rem_quot2.quotient;
-      return LNumber(quotient);
+      // R7RS: round to the nearest integer, ties to even. Work with a
+      // positive denominator and a FLOOR remainder r in [0, denom), then
+      // round up when 2r > denom, or - on an exact tie (2r == denom) - when
+      // the floor is odd.
+      var big = typeof num === 'bigint' || typeof denom === 'bigint';
+      if (big) {
+        var _n3 = BigInt(num),
+          _d = BigInt(denom);
+        if (_d < 0n) {
+          _n3 = -_n3;
+          _d = -_d;
+        }
+        var _q = _n3 / _d;
+        var _r = _n3 - _q * _d;
+        if (_r < 0n) {
+          _q -= 1n;
+          _r += _d;
+        }
+        var _twice = _r * 2n;
+        if (_twice > _d || _twice === _d && _q % 2n !== 0n) {
+          _q += 1n;
+        }
+        return LNumber(_q);
+      }
+      var n = num,
+        d = denom;
+      if (d < 0) {
+        n = -n;
+        d = -d;
+      }
+      var q = Math.trunc(n / d);
+      var r = n - q * d;
+      if (r < 0) {
+        q -= 1;
+        r += d;
+      }
+      var twice = r * 2;
+      if (twice > d || twice === d && q % 2 !== 0) {
+        q += 1;
+      }
+      return LNumber(q);
     }
     return LNumber(Math.round(this.valueOf()));
   };
@@ -11887,9 +11936,9 @@
     var num = this.__num__.__value__;
     var denom = this.__denom__.__value__;
     if (LNumber.isNative(num) && LNumber.isNative(denom)) {
-      var _this$_rem_quot3 = this._rem_quot(),
-        remainder = _this$_rem_quot3.remainder,
-        quotient = _this$_rem_quot3.quotient;
+      var _this$_rem_quot2 = this._rem_quot(),
+        remainder = _this$_rem_quot2.remainder,
+        quotient = _this$_rem_quot2.quotient;
       if (quotient > 0 && remainder !== 0) {
         if (LNumber.isBigInteger(quotient)) {
           return LNumber(quotient + 1n);
@@ -14969,6 +15018,8 @@
       });
     }, "(gcd n1 n2 ...)\n\n        Function that returns the greatest common divisor of the arguments."),
     // ------------------------------------------------------------------
+    // ref: https://rosettacode.org/wiki/Least_common_multiple#JavaScript
+    // ------------------------------------------------------------------
     lcm: doc('lcm', function lcm() {
       for (var _len33 = arguments.length, args = new Array(_len33), _key34 = 0; _key34 < _len33; _key34++) {
         args[_key34] = arguments[_key34];
@@ -14977,12 +15028,11 @@
       if (!args.length) {
         return LNumber(1);
       }
-      // ref: https://rosettacode.org/wiki/Least_common_multiple#JavaScript
-      var inexact;
+      var inexact = LNumber.isFloat(args[0]);
       var n = args.length,
         a = abs(args[0]);
       for (var i = 1; i < n; i++) {
-        if (is_undef(inexact) && LNumber.isFloat(args[i])) {
+        if (LNumber.isFloat(args[i])) {
           inexact = true;
         }
         var b = abs(args[i]),
@@ -15055,11 +15105,16 @@
     // ------------------------------------------------------------------
     truncate: doc('truncate', function (n) {
       typecheck('truncate', n, 'number');
-      if (LNumber.isFloat(n) || LNumber.isRational(n)) {
+      var is_float = LNumber.isFloat(n);
+      if (is_float || LNumber.isRational(n)) {
         if (n instanceof LNumber) {
           n = n.valueOf();
         }
-        return LNumber(truncate(n));
+        var result = truncate(n);
+        if (is_float) {
+          return LFloat(result);
+        }
+        return LNumber(result);
       }
       return n;
     }, "(truncate n)\n\n        Function that returns the integer part (floor) of a fraction (real or rational)."),
@@ -17533,10 +17588,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Fri, 21 Aug 2026 10:19:40 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Fri, 21 Aug 2026 12:06:39 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Fri, 21 Aug 2026 10:19:40 +0000').valueOf();
+    var date = LString('Fri, 21 Aug 2026 12:06:39 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -17575,7 +17630,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Fri, 21 Aug 2026 10:19:40 +0000';
+  var date = 'Fri, 21 Aug 2026 12:06:39 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

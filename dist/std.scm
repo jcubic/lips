@@ -2384,12 +2384,12 @@
 (define (rational? x)
   "(rational? x)
 
-  Checks if the value is rational."
-  (and (number? x)
-       (not (eq? x NaN))
-       (not (eq? x Number.NEGATIVE_INFINITY))
-       (not (eq? x Number.POSITIVE_INFINITY))
-       (or (%number-type "rational" x) (integer? x))))
+   Checks if x is a rational number: a real number that is neither an infinity
+   nor a NaN. Every finite real is rational, including a finite inexact number
+   such as 3.5 or 1e308 (a float represents a dyadic rational exactly)."
+  (and (real? x)
+       (not (nan? x))
+       (not (infinite? x))))
 
 ;; -----------------------------------------------------------------------------
 (define (typecheck-args _type label _list)
@@ -3281,7 +3281,7 @@
    Return numerator of rational or same number if n is not rational."
   (typecheck "numerator" n "number")
   (cond ((integer? n) n)
-        ((rational? n) n.__num__)
+        ((string=? n.__type__ "rational") n.__num__)
         (else
          (exact->inexact (numerator (inexact->exact n))))))
 
@@ -3292,7 +3292,7 @@
    Return denominator of rational or same number if one is not rational."
   (typecheck "denominator" n "number")
   (cond ((or (zero? n) (integer? n)) (if (inexact? n) 1.0 1))
-        ((rational? n) n.__denom__)
+        ((string=? n.__type__ "rational") n.__denom__)
         ((exact? n) 1)
         (else
          (exact->inexact (denominator (inexact->exact n))))))

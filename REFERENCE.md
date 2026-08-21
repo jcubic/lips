@@ -3197,7 +3197,9 @@ the step needs to be negative otherwise it will hang in an infinite loop.
 ```
 (rational? x)
 
-Checks if the value is rational.
+Checks if x is a rational number: a real number that is neither an infinity
+nor a NaN. Every finite real is rational, including a finite inexact number
+such as 3.5 or 1e308 (a float represents a dyadic rational exactly).
 ```
 
 ## rationalize

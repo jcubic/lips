@@ -6924,6 +6924,13 @@ LNumber.prototype.gcd = function(b) {
         a = b;
         b = temp;
     }
+    // gcd(a, 0) == a. After the swap `a` holds the larger magnitude, so a zero
+    // `b` here means one operand was 0; without this guard the loop's first
+    // `a.rem(b)` divides by zero. Hit e.g. when the integer 0 is coerced to the
+    // rational 0/1 while evaluating `(+ 1/2 1/4)` (which folds starting from 0).
+    if (b.cmp(0) === 0) {
+        return a;
+    }
     while (true) {
         a = a.rem(b);
         if (a.cmp(0) === 0) {
@@ -7356,17 +7363,21 @@ object but got ${toString(n)}`;
     }
     var im = n.im instanceof LNumber ? n.im : LNumber(n.im);
     var re = n.re instanceof LNumber ? n.re : LNumber(n.re);
-    this.constant(im, re);
+    // A complex with an exact-zero imaginary part is a real (R7RS), so collapse
+    // it to `re` - but ONLY for user-facing construction. During internal
+    // coercion (`force`) a real is lifted to a complex `{re, im: 0}` on purpose;
+    // collapsing it there hands arithmetic a real where it expects a complex,
+    // which corrupts complex `+`/`*` (and log/atanh through them).
+    if (!force && im.cmp(0) === 0) {
+        return re;
+    }
+    this.__im__ = im;
+    this.__re__ = re;
+    this.__type__ = 'complex';
 }
 // -------------------------------------------------------------------------
 LComplex.prototype = Object.create(LNumber.prototype);
 LComplex.prototype.constructor = LComplex;
-// -------------------------------------------------------------------------
-LComplex.prototype.constant = function(im, re) {
-    this.__im__ = im;
-    this.__re__ = re;
-    this.__type__ = 'complex';
-};
 // -------------------------------------------------------------------------
 LComplex.prototype.abs = function() {
     return LNumber(this.modulus());

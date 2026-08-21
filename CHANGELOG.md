@@ -46,7 +46,13 @@
   * fix `lcm` and `gcd` when called without arguments and `lcm` when called on inxact value
   * fix `odd?` and `even?` on negative values
   * fix `denominator` and `numerator` on reduced rational
-  * fix `round` on half values
+  * fix `round` on rationals (round half to even)
+  * fix `rational?` returning `#f` for finite inexact numbers (e.g. `3.5`,
+    `1e308`)
+  * fix `gcd` with a `0` argument (`(gcd 0 5)`), which also made adding a
+    rational fold from 0 (e.g. `(+ 1/2 1/4)`) throw "Division by zero"
+  * fix complex arithmetic broken when a real is coerced to a complex (`(* 3.14
+    +i)`, `log`/`atanh` of negatives) while keeping `(make-rectangular x 0)` real
 
 ## 1.0.0-beta.22
 ### Breaking
