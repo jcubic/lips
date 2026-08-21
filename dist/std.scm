@@ -3283,7 +3283,7 @@
   (cond ((integer? n) n)
         ((rational? n) n.__num__)
         (else
-         (numerator (inexact->exact n)))))
+         (exact->inexact (numerator (inexact->exact n))))))
 
 ;; -----------------------------------------------------------------------------
 (define (denominator n)
@@ -3291,11 +3291,11 @@
 
    Return denominator of rational or same number if one is not rational."
   (typecheck "denominator" n "number")
-  (cond ((integer? n) n)
+  (cond ((or (zero? n) (integer? n)) (if (inexact? n) 1.0 1))
         ((rational? n) n.__denom__)
         ((exact? n) 1)
         (else
-         (denominator (inexact->exact n)))))
+         (exact->inexact (denominator (inexact->exact n))))))
 
 ;; -----------------------------------------------------------------------------
 (define (imag-part n)

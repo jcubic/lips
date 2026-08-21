@@ -7798,17 +7798,24 @@ function LRational(n, force = false) {
             return LNumber(num.div(denom));
         }
     }
-    this.constant(num, denom);
+    const gcd = num.gcd(denom);
+    if (gcd.cmp(1) !== 0) {
+        num = num.div(gcd);
+        if (num instanceof LRational) {
+            num = LNumber(num.valueOf(true));
+        }
+        denom = denom.div(gcd);
+        if (denom instanceof LRational) {
+            denom = LNumber(denom.valueOf(true));
+        }
+    }
+    this.__num__ = num;
+    this.__denom__ = denom;
+    this.__type__ = 'rational';
 }
 // -------------------------------------------------------------------------
 LRational.prototype = Object.create(LNumber.prototype);
 LRational.prototype.constructor = LRational;
-// -------------------------------------------------------------------------
-LRational.prototype.constant = function(num, denom) {
-    this.__num__ = num;
-    this.__denom__ = denom;
-    this.__type__ = 'rational';
-};
 // -------------------------------------------------------------------------
 LRational.prototype.serialize = function() {
     return {
@@ -7887,30 +7894,15 @@ LRational.prototype.cmp = function(n) {
 };
 // -------------------------------------------------------------------------
 LRational.prototype.toString = function() {
-    var gcd = this.__num__.gcd(this.__denom__);
-    var num, denom;
-    if (gcd.cmp(1) !== 0) {
-        num = this.__num__.div(gcd);
-        if (num instanceof LRational) {
-            num = LNumber(num.valueOf(true));
-        }
-        denom = this.__denom__.div(gcd);
-        if (denom instanceof LRational) {
-            denom = LNumber(denom.valueOf(true));
-        }
-    } else {
-        num = this.__num__;
-        denom = this.__denom__;
-    }
     const minus = this.cmp(0) < 0;
     if (minus) {
-        if (num.abs().cmp(denom.abs()) === 0) {
-            return num.toString();
+        if (this.__num__.abs().cmp(this.__denom__.abs()) === 0) {
+            return this.__num__.toString();
         }
-    } else if (num.cmp(denom) === 0) {
-        return num.toString();
+    } else if (this.__num__.cmp(this.__denom__) === 0) {
+        return this.__num__.toString();
     }
-    return num.toString() + '/' + denom.toString();
+    return this.__num__.toString() + '/' + this.__denom__.toString();
 };
 // -------------------------------------------------------------------------
 LRational.prototype.valueOf = function(exact) {

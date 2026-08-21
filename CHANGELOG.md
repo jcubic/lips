@@ -24,6 +24,7 @@
 * fix trailing ellipsis `(x ... last)` in recursive macro
 * fix `syntax-rules` literal matching for a literal that denotes a user-defined identifier
 * fix renaming inside `quote` in a `syntax-rules`
+* fix `denominator` of `0`
 * fix for chibi R7RS tests:
   * fix handling an empty symbol `||`
   * fix `char-foldcase` and `boolean=?`
@@ -44,6 +45,7 @@
   * fix `list-copy` on non list
   * fix `lcm` and `gcd` when called without arguments and `lcm` when called on inxact value
   * fix `odd?` and `even?` on negative values
+  * fix `denominator` and `numerator` on reduced rational
 
 ## 1.0.0-beta.22
 ### Breaking

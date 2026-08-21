@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Thu, 20 Aug 2026 23:18:02 +0000
+ * build: Fri, 21 Aug 2026 10:19:40 +0000
  */
 
 'use strict';
@@ -4689,21 +4689,20 @@ function match_or_null(re, char) {
 // -------------------------------------------------------------------------
 // Lips Exception used in error function
 // -------------------------------------------------------------------------
-function LipsError(message, args) {
-  this.name = 'LipsError';
-  this.message = message;
-  this.args = args;
-  this.stack = new Error().stack;
+class LIPSError extends Error {
+  constructor(message, args) {
+    super(message);
+    this.name = 'Error';
+    this.args = args;
+  }
 }
-LipsError.prototype = new Error();
-LipsError.prototype.constructor = LipsError;
 // -------------------------------------------------------------------------
 // :: Fake exception to handle try catch to break the execution
 // :: of body expression #163
 // -------------------------------------------------------------------------
 class IgnoreException extends Error {}
 // -------------------------------------------------------------------------
-class Unterminated extends Error {}
+class Unterminated extends LIPSError {}
 class Continuable extends Error {
   constructor(object) {
     super('Continuable');
@@ -10862,7 +10861,7 @@ LNumber.prototype.isBigNumber = function () {
 ['floor', 'ceil', 'round'].forEach(fn => {
   LNumber.prototype[fn] = function () {
     if (this.float || LNumber.isFloat(this.__value__)) {
-      return LNumber(Math[fn](this.__value__));
+      return LFloat(Math[fn](this.__value__));
     }
     return LNumber(Math[fn](this.valueOf()));
   };
@@ -11162,12 +11161,12 @@ LNumber.prototype.abs = function () {
 LNumber.prototype.isOdd = function () {
   if (LNumber.isNative(this.__value__)) {
     if (this.isBigNumber()) {
-      return this.__value__ % BigInt(2) === BigInt(1);
+      return abs(this.__value__) % BigInt(2) === BigInt(1);
     }
     if (this.__type__ === 'float') {
       throw new Error('Invalid number float');
     }
-    return this.__value__ % 2 === 1;
+    return Math.abs(this.__value__) % 2 === 1;
   } else if (LNumber.isBN(this.__value__)) {
     return this.__value__.isOdd();
   }
@@ -11711,17 +11710,24 @@ function LRational(n) {
       return LNumber(num.div(denom));
     }
   }
-  this.constant(num, denom);
+  var gcd = num.gcd(denom);
+  if (gcd.cmp(1) !== 0) {
+    num = num.div(gcd);
+    if (num instanceof LRational) {
+      num = LNumber(num.valueOf(true));
+    }
+    denom = denom.div(gcd);
+    if (denom instanceof LRational) {
+      denom = LNumber(denom.valueOf(true));
+    }
+  }
+  this.__num__ = num;
+  this.__denom__ = denom;
+  this.__type__ = 'rational';
 }
 // -------------------------------------------------------------------------
 LRational.prototype = Object.create(LNumber.prototype);
 LRational.prototype.constructor = LRational;
-// -------------------------------------------------------------------------
-LRational.prototype.constant = function (num, denom) {
-  this.__num__ = num;
-  this.__denom__ = denom;
-  this.__type__ = 'rational';
-};
 // -------------------------------------------------------------------------
 LRational.prototype.serialize = function () {
   return {
@@ -11809,30 +11815,15 @@ LRational.prototype.cmp = function (n) {
 };
 // -------------------------------------------------------------------------
 LRational.prototype.toString = function () {
-  var gcd = this.__num__.gcd(this.__denom__);
-  var num, denom;
-  if (gcd.cmp(1) !== 0) {
-    num = this.__num__.div(gcd);
-    if (num instanceof LRational) {
-      num = LNumber(num.valueOf(true));
-    }
-    denom = this.__denom__.div(gcd);
-    if (denom instanceof LRational) {
-      denom = LNumber(denom.valueOf(true));
-    }
-  } else {
-    num = this.__num__;
-    denom = this.__denom__;
-  }
   var minus = this.cmp(0) < 0;
   if (minus) {
-    if (num.abs().cmp(denom.abs()) === 0) {
-      return num.toString();
+    if (this.__num__.abs().cmp(this.__denom__.abs()) === 0) {
+      return this.__num__.toString();
     }
-  } else if (num.cmp(denom) === 0) {
-    return num.toString();
+  } else if (this.__num__.cmp(this.__denom__) === 0) {
+    return this.__num__.toString();
   }
-  return num.toString() + '/' + denom.toString();
+  return this.__num__.toString() + '/' + this.__denom__.toString();
 };
 // -------------------------------------------------------------------------
 LRational.prototype.valueOf = function (exact) {
@@ -17540,10 +17531,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Thu, 20 Aug 2026 23:18:02 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Fri, 21 Aug 2026 10:19:40 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Thu, 20 Aug 2026 23:18:02 +0000').valueOf();
+  var date = LString('Fri, 21 Aug 2026 10:19:40 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -17570,7 +17561,7 @@ read_only(OutputStringPort, '__class__', 'output-string-port');
 read_only(InputStringPort, '__class__', 'input-string-port');
 read_only(InputFilePort, '__class__', 'input-file-port');
 read_only(OutputFilePort, '__class__', 'output-file-port');
-read_only(LipsError, '__class__', 'lips-error');
+read_only(LIPSError, '__class__', 'lips-error');
 [LNumber, LComplex, LRational, LFloat, LBigInteger].forEach(cls => {
   read_only(cls, '__class__', 'number');
 });
@@ -17582,7 +17573,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Thu, 20 Aug 2026 23:18:02 +0000';
+var date = 'Fri, 21 Aug 2026 10:19:40 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
@@ -17615,7 +17606,7 @@ var lips = {
   Pair,
   Values,
   QuotedPromise,
-  Error: LipsError,
+  Error: LIPSError,
   quote,
   InputPort,
   OutputPort,
@@ -17652,7 +17643,7 @@ global_env.set('lips', lips);
 
 exports.BufferedOutputPort = BufferedOutputPort;
 exports.Environment = Environment;
-exports.Error = LipsError;
+exports.Error = LIPSError;
 exports.Formatter = Formatter;
 exports.InputBinaryFilePort = InputBinaryFilePort;
 exports.InputByteVectorPort = InputByteVectorPort;
