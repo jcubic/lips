@@ -53,6 +53,7 @@
     rational fold from 0 (e.g. `(+ 1/2 1/4)`) throw "Division by zero"
   * fix complex arithmetic broken when a real is coerced to a complex (`(* 3.14
     +i)`, `log`/`atanh` of negatives) while keeping `(make-rectangular x 0)` real
+  * fix integer square root of `4` (used by `exact-integer-sqrt`) returning `1`
 
 ## 1.0.0-beta.22
 ### Breaking

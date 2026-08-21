@@ -7363,9 +7363,9 @@ object but got ${toString(n)}`;
     }
     var im = n.im instanceof LNumber ? n.im : LNumber(n.im);
     var re = n.re instanceof LNumber ? n.re : LNumber(n.re);
-    // A complex with an exact-zero imaginary part is a real (R7RS), so collapse
-    // it to `re` - but ONLY for user-facing construction. During internal
-    // coercion (`force`) a real is lifted to a complex `{re, im: 0}` on purpose;
+    // A complex with a zero imaginary part is a real (R7RS), so collapse it to
+    // `re` - but ONLY for user-facing construction. During internal coercion
+    // (`force`) a real is lifted to a complex `{re, im: 0}` on purpose;
     // collapsing it there hands arithmetic a real where it expects a complex,
     // which corrupts complex `+`/`*` (and log/atanh through them).
     if (!force && im.cmp(0) === 0) {
@@ -8144,17 +8144,21 @@ LBigInteger.prototype._op = function(op, n) {
 };
 // -------------------------------------------------------------------------
 LBigInteger.sqrt = function(n) {
-    if (n < 2n) return n;
-
-    let x0 = 1n;
-    // Pierwsze przybliżenie: przesunięcie bitowe o połowę długości liczby drastycznie przyspiesza pętlę
-    let x1 = (n / x0 + x0) >> 1n;
-
-    while (x0 !== x1 && x0 !== x1 - 1n) {
-        x0 = x1;
-        x1 = (n / x0 + x0) >> 1n;
+    // integer square root (floor), Newton's method. The classic monotone
+    // descent starting from x = n: it strictly decreases while y < x and stops
+    // at floor(sqrt n). The previous variant seeded x0 = 1 and used an
+    // oscillation guard `x0 !== x1 - 1`; for n = 4 that fired on the very first
+    // step (x0 = 1, x1 = 2) and returned 1 instead of 2.
+    if (n < 2n) {
+        return n;
     }
-    return x0 < x1 ? x0 : x1;
+    let x = n;
+    let y = (x + 1n) >> 1n;
+    while (y < x) {
+        x = y;
+        y = (x + n / x) >> 1n;
+    }
+    return x;
 };
 // -------------------------------------------------------------------------
 LBigInteger.prototype.exact_sqrt = function() {

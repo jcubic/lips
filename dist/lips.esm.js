@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 21 Aug 2026 12:06:39 +0000
+ * build: Fri, 21 Aug 2026 12:32:21 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -11230,9 +11230,9 @@ function LComplex(n) {
   }
   var im = n.im instanceof LNumber ? n.im : LNumber(n.im);
   var re = n.re instanceof LNumber ? n.re : LNumber(n.re);
-  // A complex with an exact-zero imaginary part is a real (R7RS), so collapse
-  // it to `re` - but ONLY for user-facing construction. During internal
-  // coercion (`force`) a real is lifted to a complex `{re, im: 0}` on purpose;
+  // A complex with a zero imaginary part is a real (R7RS), so collapse it to
+  // `re` - but ONLY for user-facing construction. During internal coercion
+  // (`force`) a real is lifted to a complex `{re, im: 0}` on purpose;
   // collapsing it there hands arithmetic a real where it expects a complex,
   // which corrupts complex `+`/`*` (and log/atanh through them).
   if (!force && im.cmp(0) === 0) {
@@ -12107,15 +12107,21 @@ LBigInteger.prototype._op = function (op, n) {
 };
 // -------------------------------------------------------------------------
 LBigInteger.sqrt = function (n) {
-  if (n < 2n) return n;
-  var x0 = 1n;
-  // Pierwsze przybliżenie: przesunięcie bitowe o połowę długości liczby drastycznie przyspiesza pętlę
-  var x1 = n / x0 + x0 >> 1n;
-  while (x0 !== x1 && x0 !== x1 - 1n) {
-    x0 = x1;
-    x1 = n / x0 + x0 >> 1n;
+  // integer square root (floor), Newton's method. The classic monotone
+  // descent starting from x = n: it strictly decreases while y < x and stops
+  // at floor(sqrt n). The previous variant seeded x0 = 1 and used an
+  // oscillation guard `x0 !== x1 - 1`; for n = 4 that fired on the very first
+  // step (x0 = 1, x1 = 2) and returned 1 instead of 2.
+  if (n < 2n) {
+    return n;
   }
-  return x0 < x1 ? x0 : x1;
+  var x = n;
+  var y = x + 1n >> 1n;
+  while (y < x) {
+    x = y;
+    y = x + n / x >> 1n;
+  }
+  return x;
 };
 // -------------------------------------------------------------------------
 LBigInteger.prototype.exact_sqrt = function () {
@@ -17581,10 +17587,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Fri, 21 Aug 2026 12:06:39 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Fri, 21 Aug 2026 12:32:21 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Fri, 21 Aug 2026 12:06:39 +0000').valueOf();
+  var date = LString('Fri, 21 Aug 2026 12:32:21 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -17623,7 +17629,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Fri, 21 Aug 2026 12:06:39 +0000';
+var date = 'Fri, 21 Aug 2026 12:32:21 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

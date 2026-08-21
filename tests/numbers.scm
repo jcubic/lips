@@ -898,7 +898,7 @@
         (t.is (complex? 3) #t)
         (t.is (real? 3) #t)
         (t.is (real? -2.5+0i) #t)
-        (t.is (real? -2.5+0.0i) #f)
+        (t.is (real? -2.5+0.0i) #t)
         (t.is (real? #e1e10) #t)
         (t.is (real? +inf.0) #t)
 
@@ -1244,3 +1244,17 @@
         (t.is (rational? +nan.0) #f)
         (t.is (rational? 3+4i) #f)
         (t.is (rational? 'foo) #f)))
+
+(test "exact-integer-sqrt (regression: 4 returned 1)"
+      (lambda (t)
+        (define (s n) (call-with-values (lambda () (exact-integer-sqrt n)) list))
+        (t.is (s 0) '(0 0))
+        (t.is (s 1) '(1 0))
+        (t.is (s 4) '(2 0))
+        (t.is (s 9) '(3 0))
+        (t.is (s 8) '(2 4))
+        (t.is (s 15) '(3 6))
+        (t.is (s 16) '(4 0))
+        ;; large exact values (bigint path)
+        (t.is (s (* 123456789 123456789)) '(123456789 0))
+        (t.is (s (+ 1 (* 123456789 123456789))) '(123456789 1))))
