@@ -267,11 +267,12 @@
       (let ((base (car rest)))
         (/ (log z) (log base)))
       (cond ((real? z)
-             (cond ((zero? z) NaN)
+             (exact->inexact
+              (cond ((zero? z) NaN)
                    ((> z 0) (Math.log z))
                    (else
                     (+ (Math.log (abs z))
-                       (* Math.PI +i)))))
+                       (* Math.PI +i))))))
             ((complex? z)
              (let ((arg (Math.atan2 (imag-part z)
                                     (real-part z))))

@@ -434,11 +434,12 @@
    any number (including complex negative and rational).
    If the value is 0 it return NaN."
   (cond ((real? z)
-         (cond ((zero? z) NaN)
-               ((> z 0) (Math.log z))
-               (else
-                (+ (Math.log (abs z))
-                   (* Math.PI +i)))))
+         (exact->inexact
+          (cond ((zero? z) NaN)
+                ((> z 0) (Math.log z))
+                (else
+                 (+ (Math.log (abs z))
+                    (* Math.PI +i))))))
         ((complex? z)
          (let ((arg (Math.atan2 (imag-part z)
                                 (real-part z))))
