@@ -85,6 +85,11 @@
    need to evaluate to result of calling values.")
 
 ;; -----------------------------------------------------------------------------
+(define-syntax delay-force
+  (syntax-rules ()
+    ((delay-force expression)
+     (make-promise #f (lambda () expression)))))
+;; -----------------------------------------------------------------------------
 (define (vector-copy vector . rest)
   "(vector-copy vector)
    (vector-copy vector start)

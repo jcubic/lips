@@ -181,31 +181,35 @@
 
 ;; -----------------------------------------------------------------------------
 (define make-promise
-  (lambda (proc)
+  (lambda (a . rest)
     "(make-promise fn)
+     (make-promise done fn)
 
      Function that creates a promise from a function."
-    (typecheck "make-promise" proc "function")
-    (let ((result-ready? #f)
-          (result #f))
-      (let ((promise (lambda ()
-                       (if result-ready?
-                           result
-                           (let ((x (proc)))
-                             (if result-ready?
-                                 result
-                                 (begin (set! result-ready? #t)
-                                        (set! result x)
-                                        result)))))))
-        (set-object! promise (Symbol.for "promise") true)
-        (set! promise.toString (lambda ()
-                                 (string-append "#<promise - "
-                                                (if result-ready?
-                                                    (string-append "forced with "
-                                                                   (type result))
-                                                    "not forced")
-                                                ">")))
-        promise))))
+    (let ((done (if (boolean? a) a))
+          (proc (if (boolean? a) (car rest) a)))
+      (typecheck "make-promise" proc "function")
+      (let ((result-ready? done)
+            (result #f))
+        (let ((promise (lambda ()
+                         (if result-ready?
+                             result
+                             (let ((x (proc)))
+                               (if result-ready?
+                                   result
+                                   (begin (set! result-ready? #t)
+                                          (set! result x)
+                                          result)))))))
+          (set-object! promise (Symbol.for "promise") true)
+          (set! promise.toString (lambda ()
+                                   (string-append "#<promise - "
+                                                  (if result-ready?
+                                                      (string-append
+                                                       "forced with "
+                                                       (type result))
+                                                      "not forced")
+                                                  ">")))
+          promise)))))
 
 ;; -----------------------------------------------------------------------------
 (define-macro (delay expression)
