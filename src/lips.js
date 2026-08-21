@@ -11520,11 +11520,16 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     truncate: doc('truncate', function(n) {
         typecheck('truncate', n, 'number');
-        if (LNumber.isFloat(n) || LNumber.isRational(n)) {
+        const is_float = LNumber.isFloat(n);
+        if (is_float || LNumber.isRational(n)) {
             if (n instanceof LNumber) {
                 n = n.valueOf();
             }
-            return LNumber(truncate(n));
+            const result = truncate(n);
+            if (is_float) {
+                return LFloat(result);
+            }
+            return LNumber(result);
         }
         return n;
     }, `(truncate n)
