@@ -7294,12 +7294,12 @@ LNumber.prototype.abs = function() {
 LNumber.prototype.isOdd = function() {
     if (LNumber.isNative(this.__value__)) {
         if (this.isBigNumber()) {
-            return this.__value__ % BigInt(2) === BigInt(1);
+            return abs(this.__value__) % BigInt(2) === BigInt(1);
         }
         if (this.__type__ === 'float') {
             throw new Error('Invalid number float');
         }
-        return this.__value__ % 2 === 1;
+        return Math.abs(this.__value__) % 2 === 1;
     } else if (LNumber.isBN(this.__value__)) {
         return this.__value__.isOdd();
     }

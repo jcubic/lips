@@ -43,6 +43,7 @@
   * fix `bytevector-copy!`, `utf8->string`, and `vector-copy!`
   * fix `list-copy` on non list
   * fix `lcm` and `gcd` when called without arguments and `lcm` when called on inxact value
+  * fix `odd?` and `even?` on negative values
 
 ## 1.0.0-beta.22
 ### Breaking
