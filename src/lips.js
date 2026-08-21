@@ -7822,6 +7822,7 @@ LFloat.prototype._op = function(op, n) {
 };
 // -------------------------------------------------------------------------
 // same approximation as in guile scheme
+// -------------------------------------------------------------------------
 LFloat.prototype.toRational = function(n = null) {
     if (n === null) {
         return toRational(this.__value__.valueOf());
@@ -7845,6 +7846,8 @@ LFloat.prototype.abs = function() {
     }
     return LFloat(value);
 };
+// -------------------------------------------------------------------------
+LFloat.prototype.serialize = LFloat.prototype.toString;
 // -------------------------------------------------------------------------
 // ref: https://rosettacode.org/wiki/Convert_decimal_number_to_rational
 // -------------------------------------------------------------------------
@@ -13809,6 +13812,9 @@ var serialization_map = {
     'pair': ([car, cdr]) => Pair(car, cdr),
     'number': function(value) {
         if (LString.isString(value)) {
+            if (value.match(float_re)) {
+                return LFloat(parse_float(value));
+            }
             return LNumber([value, 10]);
         }
         return LNumber(value);
