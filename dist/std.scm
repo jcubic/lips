@@ -2566,7 +2566,7 @@
    Function calculates arcus tangent of a complex number.
    If two arguments are passed and they are not complex numbers
    it calculate Math.atan2 on those arguments."
-  (if (and (null? rest) (complex? z))
+  (if (and (null? rest) (%number-type "complex" z))
       (cond ((nan? z) +nan.0)
             ((infinite? z)
              (let ((atan (/ Math.PI 2)))
@@ -3324,7 +3324,7 @@
    Create new complex number from polar parameters."
   (typecheck "make-polar" r "number")
   (typecheck "make-polar" angle "number")
-  (if (or (complex? r) (complex? angle))
+  (if (or (%number-type "complex" r) (%number-type "complex" angle))
       (error "make-polar: argument can't be complex")
       (let ((re (* r (sin angle)))
             (im (* r (cos angle))))
