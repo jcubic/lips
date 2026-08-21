@@ -7812,9 +7812,6 @@ LFloat.prototype.toString = function(radix) {
     }
     return str.replace(/^([0-9]+)e/, '$1.0e');
 };
-LFloat.prototype.pow = function(b) {
-    return LFloat(pow(this.__value__, b.__value__));
-};
 // -------------------------------------------------------------------------
 LFloat.prototype._op = function(op, n) {
     if (n instanceof LNumber) {
@@ -11758,7 +11755,11 @@ var global_env = new Environment({
             return LComplex({ re, im });
         }
         [a, b] = a.coerce(b);
-        return a.pow(b);
+        const result = a.pow(b);
+        if (LNumber.isFloat(a) || LNumber.isFloat(b)) {
+            return LFloat(result);
+        }
+        return result;
     }), `(** a b)
 
          Function that calculates number a to to the power of b.`),
