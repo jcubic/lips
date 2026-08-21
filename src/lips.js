@@ -11422,16 +11422,17 @@ var global_env = new Environment({
 
         Function that returns the greatest common divisor of the arguments.`),
     // ------------------------------------------------------------------
+    // ref: https://rosettacode.org/wiki/Least_common_multiple#JavaScript
+    // ------------------------------------------------------------------
     lcm: doc('lcm', function lcm(...args) {
         typecheck_args('lcm', args, 'number');
         if (!args.length) {
             return LNumber(1);
         }
-        // ref: https://rosettacode.org/wiki/Least_common_multiple#JavaScript
-        let inexact;
+        let inexact = LNumber.isFloat(args[0]);
         var n = args.length, a = abs(args[0]);
         for (var i = 1; i < n; i++) {
-            if (is_undef(inexact) && LNumber.isFloat(args[i])) {
+            if (LNumber.isFloat(args[i])) {
                 inexact = true;
             }
             var b = abs(args[i]), c = a;
