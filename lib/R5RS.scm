@@ -379,22 +379,6 @@
 (define numbers? (curry typecheck-args "number"))
 
 ;; -----------------------------------------------------------------------------
-(define (max . args)
-  "(max n1 n2 ...)
-
-   Returns the maximum of its arguments."
-  (numbers? "max" args)
-  (apply Math.max args))
-
-;; -----------------------------------------------------------------------------
-(define (min . args)
-  "(min n1 n2 ...)
-
-   Returns the minimum of its arguments."
-  (numbers? "min" args)
-  (apply Math.min args))
-
-;; -----------------------------------------------------------------------------
 (define (make-rectangular re im)
   "(make-rectangular re im)
 

@@ -11853,7 +11853,31 @@ var global_env = new Environment({
         is_false,
         `(not object)
 
-         Function that returns the Boolean negation of its argument.`)
+         Function that returns the Boolean negation of its argument.`),
+    // ------------------------------------------------------------------
+    min: doc('min', function(...args) {
+        if (args.length === 0) {
+            throw new RuntimeError('min require at list 1 argument');
+        }
+        return args.reduce(binary_math_op(function(a, b) {
+            ([a, b] = a.coerce(b));
+            return same_cmp(a, b) === -1 ? a : b;
+        }));
+    }, `(min n1 n2 ...)
+
+        Returns the minimum of its arguments.`),
+    // ------------------------------------------------------------------
+    max: doc('max', function(...args) {
+        if (args.length === 0) {
+            throw new RuntimeError('max require at list 1 argument');
+        }
+        return args.reduce(binary_math_op(function(a, b) {
+            ([a, b] = a.coerce(b));
+            return same_cmp(a, b) === 1 ? a : b;
+        }));
+    }, `(max n1 n2 ...)
+
+        Returns the maximum of its arguments.`)
 }, undefined, 'global');
 var user_env = global_env.inherit('user-env');
 // -------------------------------------------------------------------------
