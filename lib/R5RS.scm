@@ -539,19 +539,20 @@
    Function calculates arcus tangent of a complex number.
    If two arguments are passed and they are not complex numbers
    it calculate Math.atan2 on those arguments."
-  (if (and (null? rest) (%number-type "complex" z))
+  (if (null? rest)
       (cond ((nan? z) +nan.0)
             ((infinite? z)
              (let ((atan (/ Math.PI 2)))
                (if (< z 0)
                    (- atan)
                    atan)))
-            (else
+            ((%number-type "complex" z)
              ;; ref: https://youtu.be/d93AarE0lKg
              (let ((iz (* +i z)))
                (* (/ 1 +2i)
                   (log (/ (+ 1 iz)
-                          (- 1 iz)))))))
+                          (- 1 iz))))))
+            (else (Math.atan z)))
       (let ((x z) (y (car rest)))
         (if (and (zero? (imag-part x))
                  (zero? (imag-part y)))
