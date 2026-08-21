@@ -6919,6 +6919,13 @@ LNumber.prototype.gcd = function(b) {
     // ref: https://rosettacode.org/wiki/Greatest_common_divisor#JavaScript
     var a = this.abs();
     b = b.abs();
+    // gcd(NaN, ...) is undefined; guarding here turns what would otherwise be an
+    // infinite loop below (NaN.rem(NaN) is NaN, whose cmp(0) is never 0) into an
+    // immediate error. The finite-input paths that build rationals guard NaN
+    // earlier (see LComplex.factor / approxRatio); this is a backstop.
+    if (a.isNaN() || b.isNaN()) {
+        throw new Error('gcd: not defined for NaN');
+    }
     if (b.cmp(a) === 1) {
         var temp = a;
         a = b;
@@ -7449,24 +7456,21 @@ LComplex.prototype.add = function(n) {
 // :: factor is used in / and modulus
 // -------------------------------------------------------------------------
 LComplex.prototype.factor = function() {
-    // fix rounding when calculating (/ 1.0 1/10+1/10i)
-    if (this.__im__ instanceof LFloat || this.__im__ instanceof LFloat) {
-        let { __re__: re, __im__: im } = this;
-        let x, y;
-        if (re instanceof LFloat) {
-            x = re.toRational().mul(re.toRational());
-        } else {
-            x = re.mul(re);
-        }
-        if (im instanceof LFloat) {
-            y = im.toRational().mul(im.toRational());
-        } else {
-            y = im.mul(im);
-        }
+    const { __re__: re, __im__: im } = this;
+    const re_float = re instanceof LFloat;
+    const im_float = im instanceof LFloat;
+    // fix rounding when calculating (/ 1.0 1/10+1/10i) by working with the
+    // rational value of finite floats. A non-finite float (NaN/±inf) has no
+    // rational value; toRational() would build a NaN/NaN LRational whose gcd
+    // reduction loops forever -- e.g. (/ +nan.0+nan.0i +nan.0+nan.0i) used to
+    // hang here. For those, fall back to plain float arithmetic (yields NaN).
+    const finite = x => !(x instanceof LFloat) || Number.isFinite(x.valueOf());
+    if ((re_float || im_float) && finite(re) && finite(im)) {
+        const x = re_float ? re.toRational().mul(re.toRational()) : re.mul(re);
+        const y = im_float ? im.toRational().mul(im.toRational()) : im.mul(im);
         return x.add(y);
-    } else {
-        return this.__re__.mul(this.__re__).add(this.__im__.mul(this.__im__));
     }
+    return re.mul(re).add(im.mul(im));
 };
 // -------------------------------------------------------------------------
 LComplex.prototype.modulus = function() {
@@ -7735,6 +7739,13 @@ LFloat.prototype.abs = function() {
 var toRational = approxRatio(1e-10);
 function approxRatio(eps) {
     return function(n) {
+        // NaN/±inf have no exact rational value; without this guard the code
+        // below builds a NaN/NaN (or infinite) LRational whose gcd reduction
+        // either loops forever or overflows the stack -- e.g. (exact +nan.0)
+        // and (exact +inf.0).
+        if (!Number.isFinite(n)) {
+            throw new Error(`Cannot convert ${n} to exact (no rational representation)`);
+        }
         const gcde = (e, x, y) => {
                 const _gcd = (a, b) => (b < e ? a : _gcd(b, a % b));
                 if (Number.isNaN(x) || Number.isNaN(y)) {
