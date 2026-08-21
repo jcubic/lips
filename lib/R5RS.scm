@@ -480,7 +480,7 @@
                                       (Math.cosh im))
                                :im (* (Math.cos re)
                                       (Math.sinh im)))))
-      (Math.sin n)))
+      (exact->inexact (Math.sin n))))
 
 ;; -----------------------------------------------------------------------------
 (define (cos n)
@@ -495,7 +495,7 @@
                                       (Math.cosh im))
                                :im (- (* (Math.sin re)
                                          (Math.sinh im))))))
-      (Math.cos n)))
+      (exact->inexact (Math.cos n))))
 
 ;; -----------------------------------------------------------------------------
 (define (tan n)
@@ -514,7 +514,7 @@
                                :im (/ (Math.sinh im2)
                                       (+ (Math.cos re2)
                                          (Math.cosh im2))))))
-      (Math.tan n)))
+      (exact->inexact (Math.tan n))))
 
 ;; -----------------------------------------------------------------------------
 (define (atan z . rest)
@@ -541,7 +541,7 @@
       (let ((x z) (y (car rest)))
         (if (and (zero? (imag-part x))
                  (zero? (imag-part y)))
-            (Math.atan2 x y)
+            (exact->inexact (Math.atan2 x y))
             (error "atan: can't call with two complex numbers")))))
 
 ;; -----------------------------------------------------------------------------
@@ -556,7 +556,7 @@
              (factor (Math.exp re)))
          (make-rectangular (* factor (cos im))
                            (* factor (sin im))))
-       (Math.exp n)))
+       (exact->inexact (Math.exp n))))
 
 ;; -----------------------------------------------------------------------------
 (define (modulo a b)
