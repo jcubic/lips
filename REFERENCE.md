@@ -3725,8 +3725,11 @@ needs to be a character object.
 ## string->list
 ```
 (string->list string)
+(string->list string start)
+(string->list string start end)
 
-Returns a list of characters created from string.
+Function that copies given range of string to list. If no start is specified it use
+start of the string, if no end is specified it convert to the end of the vector.
 ```
 
 ## string->number
@@ -3755,11 +3758,11 @@ The start and end is the range of the input string for the conversion.
 
 ## string->vector
 ```
-(string->list string)
-(string->list string start)
-(string->list string start end)
+(string->vector string)
+(string->vector string start)
+(string->vector string start end)
 
-Function that copies given range of string to list. If no start is specified it use
+Function that copies given range of string to vector. If no start is specified it use
 start of the string, if no end is specified it convert to the end of the string.
 ```
 

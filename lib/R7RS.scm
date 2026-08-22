@@ -167,16 +167,28 @@
 ;; -----------------------------------------------------------------------------
 (%range-function
  (string->vector string)
- "(string->list string)
-  (string->list string start)
-  (string->list string start end)
+ "(string->vector string)
+  (string->vector string start)
+  (string->vector string start end)
 
-  Function that copies given range of string to list. If no start is specified it use
+  Function that copies given range of string to vector. If no start is specified it use
   start of the string, if no end is specified it convert to the end of the string."
  (typecheck "string->vector" string "string")
  (--> (string.substring start end)
       (split "")
       (map (unary lips.LCharacter))))
+
+;; -----------------------------------------------------------------------------
+(%range-function
+ (string->list string)
+ "(string->list string)
+  (string->list string start)
+  (string->list string start end)
+
+  Function that copies given range of string to list. If no start is specified it use
+  start of the string, if no end is specified it convert to the end of the vector."
+ (typecheck "string->list" string "string")
+ (array->list (string->vector string start end)))
 
 ;; -----------------------------------------------------------------------------
 (%range-function

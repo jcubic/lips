@@ -80,6 +80,7 @@
   * fix parsing `#true` and `#false`
   * fix parsing strings, symbols, and numbers
   * fix foldcase on unicode characters with more that one codepoints
+  * add missing `string->list` functino
 
 ## 1.0.0-beta.22
 ### Breaking
