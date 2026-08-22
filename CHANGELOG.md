@@ -4,7 +4,7 @@
   without binding, is transcribed verbatim as the literal symbol `_` in a
   template, and the pattern keyword position is ignored.
 * `set-object!` 4th argument is no strict option to prevent unboxing
-* `current-second` now returns inexact value (as per R7RS spec)
+* `current-second` now returns an inexact value (as per R7RS spec)
 * `float`, `ceiling`, `round`, `truncate` now return inexact on inexact
 ### Feature
 * add `free-identifier=?` [#296](https://github.com/jcubic/lips/issues/296)
@@ -15,6 +15,8 @@
 * new `guard` macro (based on R7RS spec)
 * add procedure argument to `assoc`
 * add `write-shared` and `write-simple` procedures
+* add missing `string->list` function
+* add R7RS compatible `string-copy` and missing `string-copy!`
 ### Bugfix
 * fix `append` dropping a `#void` element (`(append (list #void) '(y))`), which
   also made quasiquote templates silently drop a literal or unquoted `#void`
@@ -79,9 +81,8 @@
   * support start/end in `write-bytevector`
   * fix parsing `#true` and `#false`
   * fix parsing strings, symbols, and numbers
+  * fix repr of symbols with special characters
   * fix foldcase on unicode characters with more that one codepoints
-  * add missing `string->list` functino
-  * add R7RS compatible `string-copy` and missing `string-copy!`
 
 ## 1.0.0-beta.22
 ### Breaking
