@@ -79,6 +79,7 @@
   * support start/end in `write-bytevector`
   * fix parsing `#true` and `#false`
   * fix parsing strings, symbols, and numbers
+  * fix foldcase on unicode characters with more that one codepoints
 
 ## 1.0.0-beta.22
 ### Breaking

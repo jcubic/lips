@@ -4479,10 +4479,10 @@
   "(features)
 
    Function returns implemented features as a list."
-  (let ((result '(r7rs srfi-0 srfi-2 srfi-4 srfi-6 srfi-10 srfi-22 srfi-23 srfi-28 srfi-46 srfi-69
-                  srfi-98 srfi-111 srfi-139 srfi-147 srfi-156 srfi-176 srfi-193 srfi-195 srfi-210
-                  srfi-236 lips complex exact-complex full-unicode ieee-float ratios
-                  full-numeric-tower)))
+  (let ((result '(r7rs srfi-0 srfi-1 srfi-2 srfi-4 srfi-6 srfi-8 srfi-10 srfi-22 srfi-23 srfi-26
+                  srfi-28 srfi-46 srfi-69 srfi-98 srfi-111 srfi-139 srfi-147 srfi-156 srfi-176
+                  srfi-193 srfi-195 srfi-197 srfi-203 srfi-210 srfi-236 srfi-251 lips complex
+                  exact-complex full-unicode ieee-float ratios full-numeric-tower)))
     (freeze-list! result)
     result))
 
@@ -4504,7 +4504,12 @@
 
    Returns lowercase character using the Unicode simple case-folding algorithm."
   (typecheck "char-foldcase" char "character")
-  (new lips.LCharacter (%foldcase-string char.__char__)))
+  ;; a character always folds to a single character; when full folding would
+  ;; produce several code points (e.g. ß => "ss") the character is unchanged
+  (let ((folded (%foldcase-string char.__char__)))
+    (if (= (string-length folded) 1)
+        (new lips.LCharacter folded)
+        char)))
 
 ;; -----------------------------------------------------------------------------
 (define (string-foldcase string)

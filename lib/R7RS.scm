@@ -755,7 +755,12 @@
 
    Returns lowercase character using the Unicode simple case-folding algorithm."
   (typecheck "char-foldcase" char "character")
-  (new lips.LCharacter (%foldcase-string char.__char__)))
+  ;; a character always folds to a single character; when full folding would
+  ;; produce several code points (e.g. ß => "ss") the character is unchanged
+  (let ((folded (%foldcase-string char.__char__)))
+    (if (= (string-length folded) 1)
+        (new lips.LCharacter folded)
+        char)))
 
 ;; -----------------------------------------------------------------------------
 (define (string-foldcase string)
