@@ -80,7 +80,7 @@ jobs:
           node-version: '24'
       - run: npm ci
       - name: run R7RS spec tests
-        run: make test-file -- FILE=tests/_r7rs-tests.scm
+        run: make test-r7rs
 
   benchmark:
     runs-on: ubuntu-latest

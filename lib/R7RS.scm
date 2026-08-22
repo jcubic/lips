@@ -1917,14 +1917,15 @@
 (define (error-object? obj)
   "(error-object? obj)
 
-   Checks if object is of Error object thrown by error function."
-  (instanceof lips.Error obj))
+   Checks if the object is an error."
+  (instanceof Error obj))
 
 ;; -----------------------------------------------------------------------------
 (define (error-object-message obj)
   "(error-object-message error-object)
 
    Returns the message encapsulated by error-object."
+  (typecheck "error-object-message" obj "error")
   (if (error-object? obj)
       obj.message))
 
@@ -1933,8 +1934,9 @@
   "(error-object-irritants error-object)
 
    Returns a list of the irritants encapsulated by error-object."
+  (typecheck "error-object-message" obj "error")
   (if (error-object? obj)
-      obj.args))
+      (vector->list obj.args)))
 
 ;; -----------------------------------------------------------------------------
 (define (get-environment-variables)

@@ -835,7 +835,7 @@
 
 (test #t (nan? +nan.0))
 (test #f (nan? 32))
-;; (test #t (nan? +nan.0+5.0i))
+(test #t (nan? +nan.0+5.0i))
 (test #f (nan? 1+2i))
 
 (test #t (= 1 1.0 1.0+0.0i))
@@ -1038,8 +1038,8 @@
 (test 0.0 (inexact (acos 1))) ;; may return exact number
 (test 3.14159265358979 (acos -1))
 
-;; (test 0.0-0.0i (asin 0+0.0i))
-;; (test 1.5707963267948966+0.0i (acos 0+0.0i))
+;;(test 0.0-0.0i (asin 0+0.0i))
+(test 1.5707963267948966+0.0i (acos 0+0.0i))
 
 (test 0.0 (atan 0.0 1.0))
 (test -0.0 (atan -0.0 1.0))
@@ -1842,13 +1842,14 @@
        (+ (raise-continuable "should be a number")
           23))))
 
+
 (test #t
-     (error-object? (guard (exn (else exn)) (error "BOOM!" 1 2 3))))
-;; (test "BOOM!"
-;;     (error-object-message (guard (exn (else exn)) (error "BOOM!" 1 2 3))))
-;; (test '(1 2 3)
-;;     (error-object-irritants (guard (exn (else exn)) (error "BOOM!" 1 2 3))))
-;;
+      (error-object? (guard (exn (else exn)) (error "BOOM!" 1 2 3))))
+(test "BOOM!"
+      (error-object-message (guard (exn (else exn)) (error "BOOM!" 1 2 3))))
+(test '(1 2 3)
+      (error-object-irritants (guard (exn (else exn)) (error "BOOM!" 1 2 3))))
+
 ;; (test #f
 ;;     (file-error? (guard (exn (else exn)) (error "BOOM!"))))
 ;; (test #t

@@ -12507,6 +12507,9 @@ function type(obj) {
             return 'instance';
         }
         if (obj.constructor) {
+            if (obj instanceof Error) {
+                return 'error';
+            }
             if (obj.constructor.__class__) {
                 return obj.constructor.__class__;
             }

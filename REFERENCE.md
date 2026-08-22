@@ -1622,7 +1622,7 @@ Returns the message encapsulated by error-object.
 ```
 (error-object? obj)
 
-Checks if object is of Error object thrown by error function.
+Checks if the object is an error.
 ```
 
 ## escape-regex

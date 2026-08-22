@@ -634,7 +634,7 @@ This function returns the car (item 1) of the list.")
                          (catch (e) e))))
           (t.is (error-object? err) true)
           (t.is (error-object-message err) message)
-          (t.is (error-object-irritants err) (list->vector args)))))
+          (t.is (error-object-irritants err) args))))
 
 (test "should evaluate promise of code"
       (lambda (t)
