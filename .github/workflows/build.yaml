@@ -64,6 +64,24 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+  r7rs:
+    runs-on: ubuntu-latest
+    # runs in parallel with `build`; the R7RS spec suite lives in the
+    # underscore-prefixed tests/_r7rs-tests.scm so `make test` skips it and it
+    # only runs here.
+    # same dedupe as `build`: run on push, and on PRs only from forks
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - name: checkout
+        uses: actions/checkout@v7
+      - name: setup node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: run R7RS spec tests
+        run: make test-file -- FILE=tests/_r7rs-tests.scm
+
   benchmark:
     runs-on: ubuntu-latest
     # same dedupe as `build`: run on push, and on PRs only from forks
