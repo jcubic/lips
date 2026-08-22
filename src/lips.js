@@ -7018,6 +7018,25 @@ LString.prototype.fill = function(char, start, end) {
     }
     this.__string__ = result.join('');
 };
+
+// -------------------------------------------------------------------------
+LString.prototype.copy = function(string, at, start, end) {
+    const from = [...string.__string__];
+    const to = [...this.__string__];
+    const len = from.length;
+    start ??= 0;
+    end ??= len;
+    const result = [];
+    const copy = from.slice(start, end);
+    for (let i = 0; i < len; ++i) {
+        if (i >= at && i < copy.length + at) {
+            result.push(copy[i - at]);
+        } else {
+            result.push(to[i]);
+        }
+    }
+    this.__string__ = result.join('');
+};
 // -------------------------------------------------------------------------
 // :: Number wrapper that handle BigNumbers
 // -------------------------------------------------------------------------

@@ -81,6 +81,7 @@
   * fix parsing strings, symbols, and numbers
   * fix foldcase on unicode characters with more that one codepoints
   * add missing `string->list` functino
+  * add R7RS compatible `string-copy` and missing `string-copy!`
 
 ## 1.0.0-beta.22
 ### Breaking

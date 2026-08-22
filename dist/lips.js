@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 22 Aug 2026 20:13:58 +0000
+ * build: Sat, 22 Aug 2026 20:53:30 +0000
  */
 
 (function (global, factory) {
@@ -10955,6 +10955,25 @@
     }
     this.__string__ = result.join('');
   };
+
+  // -------------------------------------------------------------------------
+  LString.prototype.copy = function (string, at, start, end) {
+    var from = [...string.__string__];
+    var to = [...this.__string__];
+    var len = from.length;
+    start !== null && start !== void 0 ? start : start = 0;
+    end !== null && end !== void 0 ? end : end = len;
+    var result = [];
+    var copy = from.slice(start, end);
+    for (var i = 0; i < len; ++i) {
+      if (i >= at && i < copy.length + at) {
+        result.push(copy[i - at]);
+      } else {
+        result.push(to[i]);
+      }
+    }
+    this.__string__ = result.join('');
+  };
   // -------------------------------------------------------------------------
   // :: Number wrapper that handle BigNumbers
   // -------------------------------------------------------------------------
@@ -18141,10 +18160,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sat, 22 Aug 2026 20:13:58 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sat, 22 Aug 2026 20:53:30 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sat, 22 Aug 2026 20:13:58 +0000').valueOf();
+    var date = LString('Sat, 22 Aug 2026 20:53:30 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -18183,7 +18202,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Sat, 22 Aug 2026 20:13:58 +0000';
+  var date = 'Sat, 22 Aug 2026 20:53:30 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

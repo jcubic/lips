@@ -3810,9 +3810,23 @@ Returns true if strings are monotonically non-increasing, ignoring the case.
 
 ## string-copy
 ```
-(string-copy x)
+(string-copy string)
+(string-copy string start)
+(string-copy string start end)
 
-Creates a new string based on given argument.
+Returns new string created from string of characters in given range.
+If no start is given it create string from 0, if no end is given it return
+string to the end.
+```
+
+## string-copy!
+```
+(string-copy! to at from)
+(string-copy! to at from start)
+(string-copy! to at from start end)
+
+Copies the characters of string from between start and end
+to string to, starting at at.
 ```
 
 ## string-downcase

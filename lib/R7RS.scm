@@ -208,6 +208,33 @@
 
 ;; -----------------------------------------------------------------------------
 (%range-function
+ (string-copy string)
+  "(string-copy string)
+   (string-copy string start)
+   (string-copy string start end)
+
+   Returns new string created from string of characters in given range.
+   If no start is given it create string from 0, if no end is given it return
+   string to the end."
+  (typecheck "string-copy" string "string")
+  (string.substring start end))
+
+;; -----------------------------------------------------------------------------
+(%range-function
+ (string-copy! to at from)
+ "(string-copy! to at from)
+  (string-copy! to at from start)
+  (string-copy! to at from start end)
+
+  Copies the characters of string from between start and end
+  to string to, starting at at."
+ (typecheck "string-copy!" to "string" 1)
+ (typecheck "string-copy!" at "number" 3)
+ (typecheck "string-copy!" from "string" 3)
+ (to.copy from at start end))
+
+;; -----------------------------------------------------------------------------
+(%range-function
  (vector-fill! vector fill)
  "(vector-fill! vector fill)
   (vector-fill! vector fill start)
