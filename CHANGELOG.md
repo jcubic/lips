@@ -77,6 +77,7 @@
   * fix Lexer to handle all unicode codepoints
   * fix `read-bytevector!` return value
   * support start/end in `write-bytevector`
+  * fix parsing `#true` and `#false`
 
 ## 1.0.0-beta.22
 ### Breaking

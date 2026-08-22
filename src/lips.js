@@ -1763,7 +1763,7 @@ const directives = [
     '#!fold-case',
     '#!no-fold-case'
 ];
-const hash_literals = ['#t', '#f'];
+const hash_literals = ['#t', '#f', '#true', '#false'];
 // ----------------------------------------------------------------------
 Object.defineProperty(Lexer, 'rules', {
     get() {

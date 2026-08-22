@@ -209,6 +209,14 @@
           (t.is (a.valueOf) "A")
           (t.is (b.valueOf) "\xFF;"))))
 
+(test "boolean literals"
+      (lambda (t)
+        ;; both short (#t/#f) and long (#true/#false) R7RS boolean literals parse
+        (t.is #t #true)
+        (t.is #f #false)
+        (t.is (list #true #false #t #f) '(#t #f #t #f))
+        (t.is (if #true 'yes 'no) 'yes)))
+
 (test "quotes with literals"
       (lambda (t)
         (t.is ''#f '(quote #f))
