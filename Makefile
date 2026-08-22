@@ -1,4 +1,4 @@
-.PHONY: ALL publish test test-file test-update coveralls lint zero coverage codespell benchmark smoke srfi
+.PHONY: ALL publish test test-file test-update coveralls lint zero coverage codespell benchmark smoke srfi install
 
 VERSION=1.0.0-beta.22.1
 VERSION_DASH=`echo -n "${VERSION}" | sed "s/-/%E2%80%93/"`
@@ -103,6 +103,9 @@ publish:
 	$(GIT) clone $(URL) --depth 1 npm
 	$(CD) npm && $(NPM) publish --access=public
 	$(RM) -rf npm
+
+install:
+	$(NPM) install -g .
 
 tests/tests-gen/.stamp: scripts/generate-tests.js $(TEST_SCM)
 	@$(NODE) scripts/generate-tests.js
