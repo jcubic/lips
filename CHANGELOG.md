@@ -15,6 +15,8 @@
 * new `guard` macro (based on R7RS spec)
 * add procedure argument to `assoc`
 ### Bugfix
+* fix `append` dropping a `#void` element (`(append (list #void) '(y))`), which
+  also made quasiquote templates silently drop a literal or unquoted `#void`
 * fix handling of free variables from syntax rule expansion [#546](https://github.com/jcubic/lips/issues/546)
 * fix unquote vector/array in tail position
 * fix define inside syntax-rules [#170](https://github.com/jcubic/lips/issues/170)

@@ -4344,7 +4344,9 @@ Pair.prototype.append = function(arg) {
         return this.append(Pair.from_array(arg));
     }
     var p = this;
-    if (p.car === undefined) {
+    // A freshly-created placeholder pair `new Pair()` has BOTH car and cdr
+    // undefined;
+    if (p.car === undefined && p.cdr === undefined) {
         if (is_pair(arg)) {
             this.car = arg.car;
             this.cdr = arg.cdr;

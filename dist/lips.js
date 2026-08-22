@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 22 Aug 2026 11:17:06 +0000
+ * build: Sat, 22 Aug 2026 11:42:29 +0000
  */
 
 (function (global, factory) {
@@ -8293,7 +8293,13 @@
       return this.append(Pair.from_array(arg));
     }
     var p = this;
-    if (p.car === undefined) {
+    // A freshly-created placeholder pair `new Pair()` has BOTH car and cdr
+    // undefined; fill it in place. We must NOT take this branch for a real
+    // one-element list holding #void, i.e. (undefined . nil): #void is JS
+    // `undefined`, so checking car alone would clobber `(#void)` and drop the
+    // element (e.g. (append (list #void) '(y)) => (y), which broke quasiquote
+    // templates that contain a literal #void).
+    if (p.car === undefined && p.cdr === undefined) {
       if (is_pair(arg)) {
         this.car = arg.car;
         this.cdr = arg.cdr;
@@ -17772,10 +17778,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sat, 22 Aug 2026 11:17:06 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sat, 22 Aug 2026 11:42:29 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sat, 22 Aug 2026 11:17:06 +0000').valueOf();
+    var date = LString('Sat, 22 Aug 2026 11:42:29 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -17814,7 +17820,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Sat, 22 Aug 2026 11:17:06 +0000';
+  var date = 'Sat, 22 Aug 2026 11:42:29 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

@@ -1286,7 +1286,7 @@
              (,end (if (or (null? rest)
                            (null? (cdr rest))
                            (null? (cddr rest)))
-                       (if #f #f)
+                       #void
                        (caddr rest))))
          (typecheck ,name-str ,port "output-port")
          (typecheck ,name-str ,data ,type)
