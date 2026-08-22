@@ -1187,7 +1187,7 @@ defined_specials.forEach(([seq, symbol, type]) => {
 */
 class Lexer {
     constructor(input, { whitespace = false, filename = null } = {}) {
-        read_only(this, '__input__', input);
+        read_only(this, '__input__', [...input]);
         read_only(this, '__file__', filename);
         var internals = {};
         // hide internals from introspection
@@ -1258,7 +1258,7 @@ class Lexer {
         }
         var found = this.next_token();
         if (found) {
-            this._token = this.__input__.substring(this._i, this._next);
+            this._token = this.substring(this._i, this._next);
             if (!this.__token__) {
                 // handle case when accessing __token__ from the syntax extension
                 // (e.g. string interpolation) as the first expression in a REPL
@@ -1267,6 +1267,9 @@ class Lexer {
             return this.token(meta);
         }
         return eof;
+    }
+    substring(start, end) {
+        return this.__input__.slice(start, end).join('');
     }
     skip() {
         if (this._next !== null) {
@@ -1282,7 +1285,7 @@ class Lexer {
         for (let i = this._i; i < len; ++i) {
             var char = this.__input__[i];
             if (char === '\n') {
-                const line = this.__input__.substring(this._i, i);
+                const line = this.substring(this._i, i);
                 this._i = i + 1;
                 ++this._line;
                 return line;
@@ -1293,7 +1296,7 @@ class Lexer {
     read_rest() {
         const i = this._i;
         this._i = this.__input__.length;
-        return this.__input__.substring(i);
+        return this.substring(i);
     }
     read_string(num) {
         const len = this.__input__.length;
@@ -1304,7 +1307,7 @@ class Lexer {
             return this.read_rest();
         }
         const end = this._i + num;
-        const result = this.__input__.substring(this._i, end);
+        const result = this.substring(this._i, end);
         const found = result.match(/\n/g);
         if (found) {
             this._line += found.length;
@@ -1354,9 +1357,9 @@ class Lexer {
         return true;
     }
     _recover_token() {
-        const re = /^([^\s()\[\]]*).*(\n[\s\S]+)?/
+        const re = /^([^\s()\[\]]*).*(\n[\s\S]+)?/;
         const offset = this._start.offset;
-        return this.__input__.substring(offset).replace(re, '$1').trim();
+        return this.substring(offset).replace(re, '$1').trim();
     }
     _backtrack(stack) {
         // restore the lexer bookkeeping saved in the most recent choice point

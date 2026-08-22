@@ -70,6 +70,7 @@
   * fix ``max`` and ``min`` to return inexact when any of the argument is inexact
   * fix `expt` on float arguments
   * make `log`/`sin`/`cos`/`atan` return inexact values
+  * fix Lexer to handle all unicode codepoints
 
 ## 1.0.0-beta.22
 ### Breaking

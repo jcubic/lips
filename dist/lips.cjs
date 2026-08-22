@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 21 Aug 2026 21:11:09 +0000
+ * build: Sat, 22 Aug 2026 10:14:36 +0000
  */
 
 'use strict';
@@ -4097,7 +4097,7 @@ class Lexer {
       whitespace = _ref0$whitespace === void 0 ? false : _ref0$whitespace,
       _ref0$filename = _ref0.filename,
       filename = _ref0$filename === void 0 ? null : _ref0$filename;
-    read_only(this, '__input__', input);
+    read_only(this, '__input__', [...input]);
     read_only(this, '__file__', filename);
     var internals = {};
     // hide internals from introspection
@@ -4167,7 +4167,7 @@ class Lexer {
     }
     var found = this.next_token();
     if (found) {
-      this._token = this.__input__.substring(this._i, this._next);
+      this._token = this.substring(this._i, this._next);
       if (!this.__token__) {
         // handle case when accessing __token__ from the syntax extension
         // (e.g. string interpolation) as the first expression in a REPL
@@ -4176,6 +4176,9 @@ class Lexer {
       return this.token(meta);
     }
     return eof;
+  }
+  substring(start, end) {
+    return this.__input__.slice(start, end).join('');
   }
   skip() {
     if (this._next !== null) {
@@ -4191,7 +4194,7 @@ class Lexer {
     for (var i = this._i; i < len; ++i) {
       var char = this.__input__[i];
       if (char === '\n') {
-        var line = this.__input__.substring(this._i, i);
+        var line = this.substring(this._i, i);
         this._i = i + 1;
         ++this._line;
         return line;
@@ -4202,7 +4205,7 @@ class Lexer {
   read_rest() {
     var i = this._i;
     this._i = this.__input__.length;
-    return this.__input__.substring(i);
+    return this.substring(i);
   }
   read_string(num) {
     var len = this.__input__.length;
@@ -4213,7 +4216,7 @@ class Lexer {
       return this.read_rest();
     }
     var end = this._i + num;
-    var result = this.__input__.substring(this._i, end);
+    var result = this.substring(this._i, end);
     var found = result.match(/\n/g);
     if (found) {
       this._line += found.length;
@@ -4273,7 +4276,7 @@ class Lexer {
   _recover_token() {
     var re = /^([^\s()\[\]]*).*(\n[\s\S]+)?/;
     var offset = this._start.offset;
-    return this.__input__.substring(offset).replace(re, '$1').trim();
+    return this.substring(offset).replace(re, '$1').trim();
   }
   _backtrack(stack) {
     // restore the lexer bookkeeping saved in the most recent choice point
@@ -17767,10 +17770,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Fri, 21 Aug 2026 21:11:09 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sat, 22 Aug 2026 10:14:36 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Fri, 21 Aug 2026 21:11:09 +0000').valueOf();
+  var date = LString('Sat, 22 Aug 2026 10:14:36 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -17809,7 +17812,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Fri, 21 Aug 2026 21:11:09 +0000';
+var date = 'Sat, 22 Aug 2026 10:14:36 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
