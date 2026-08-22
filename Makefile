@@ -158,5 +158,8 @@ codespell:
 lint:
 	$(ESLINT) src/lips.js lib/js/bookmark.js bin/lips.js
 
-srfi:
-	git grep -Eo 'SRFI-[0-9]+' README.md | sed -e 's/.*-//' -e 's/.*/&,/' | sort -n | uniq
+srfi-js:
+	@git grep -Eo 'SRFI-[0-9]+' README.md | sed -e 's/.*-//' -e 's/.*/&,/' | sort -n | uniq
+
+srfi-scheme:
+	@git grep -Eo 'SRFI-[0-9]+' README.md | sed -e 's/.*-//' | sort -n | uniq | sed -e 's/.*/srfi-&/' | tr $$'\n' ' '
