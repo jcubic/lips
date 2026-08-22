@@ -7010,7 +7010,7 @@ LString.prototype.fill = function(char, start, end) {
     end ??= len;
     const result = [];
     for (let i = 0; i < len; ++i) {
-        if (i >= start && i <= end) {
+        if (i >= start && i < end) {
             result.push(char);
         } else {
             result.push(arr[i]);
