@@ -3822,6 +3822,8 @@ Function convert a string passed as argument to lower case.
 ## string-fill!
 ```
 (string-fill! symbol char)
+(string-fill! symbol char start)
+(string-fill! symbol char start end)
 
 Function that destructively fills the string with given character.
 ```

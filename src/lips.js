@@ -6905,6 +6905,7 @@ function LString(string) {
         this.__string__ = string.valueOf();
     }
 }
+// -------------------------------------------------------------------------
 {
     const ignore = ['length', 'constructor'];
     const _keys = Object.getOwnPropertyNames(String.prototype).filter(name => {
@@ -6917,31 +6918,38 @@ function LString(string) {
         LString.prototype[key] = wrap(String.prototype[key]);
     }
 }
+// -------------------------------------------------------------------------
 LString.prototype[Symbol.iterator] = function*() {
     const chars = Array.from(this.__string__);
     for (const char of chars) {
         yield LCharacter(char);
     }
 };
+// -------------------------------------------------------------------------
 LString.prototype.serialize = function() {
     return this.valueOf();
 };
+// -------------------------------------------------------------------------
 LString.is = function(string, value) {
     return string instanceof LString &&
         string.__string__ === value;
 };
+// -------------------------------------------------------------------------
 LString.isString = function(x) {
     return x instanceof LString || typeof x === 'string';
 };
+// -------------------------------------------------------------------------
 LString.prototype.freeze = function() {
     const string = this.__string__;
     delete this.__string__;
     read_only(this, '__string__', string);
 };
+// -------------------------------------------------------------------------
 LString.prototype.get = function(n) {
     typecheck('LString::get', n, 'number');
     return Array.from(this.__string__)[n.valueOf()];
 };
+// -------------------------------------------------------------------------
 LString.prototype.cmp = function(string) {
     typecheck('LString::cmp', string, 'string');
     var a = this.valueOf();
@@ -6954,12 +6962,15 @@ LString.prototype.cmp = function(string) {
         return 1;
     }
 };
+// -------------------------------------------------------------------------
 LString.prototype.lower = function() {
     return LString(this.__string__.toLowerCase());
 };
+// -------------------------------------------------------------------------
 LString.prototype.upper = function() {
     return LString(this.__string__.toUpperCase());
 };
+// -------------------------------------------------------------------------
 LString.prototype.set = function(n, char) {
     typecheck('LString::set', n, 'number');
     typecheck('LString::set', char, ['string', 'character']);
@@ -6977,21 +6988,35 @@ LString.prototype.set = function(n, char) {
     }
     this.__string__ = string.join('');
 };
+// -------------------------------------------------------------------------
 Object.defineProperty(LString.prototype, 'length', {
     get: function() {
         return this.__string__.length;
     }
 });
+// -------------------------------------------------------------------------
 LString.prototype.clone = function() {
     return LString(this.valueOf());
 };
-LString.prototype.fill = function(char) {
+// -------------------------------------------------------------------------
+LString.prototype.fill = function(char, start, end) {
     typecheck('LString::fill', char, ['string', 'character']);
     if (char instanceof LCharacter) {
         char = char.valueOf();
     }
-    var len = this.__string__.length;
-    this.__string__ = char.repeat(len);
+    const arr = [...this.__string__];
+    const len = arr.length;
+    start ??= 0;
+    end ??= len;
+    const result = [];
+    for (let i = 0; i < len; ++i) {
+        if (i >= start && i <= end) {
+            result.push(char);
+        } else {
+            result.push(arr[i]);
+        }
+    }
+    this.__string__ = result.join('');
 };
 // -------------------------------------------------------------------------
 // :: Number wrapper that handle BigNumbers
@@ -7095,11 +7120,12 @@ function LNumber(n, force = false) {
     }
 }
 
+// -------------------------------------------------------------------------
 LNumber._registry = new FinalizationRegistry(value => {
     LNumber._cache.delete(value);
 });
 LNumber._cache = new Map();
-
+// -------------------------------------------------------------------------
 LNumber.get = function (value) {
     if (LNumber._cache.has(value)) {
         const ref = LNumber._cache.get(value);
@@ -7115,7 +7141,7 @@ LNumber.get = function (value) {
     LNumber._registry.register(obj, value);
     return obj;
 };
-
+// -------------------------------------------------------------------------
 LNumber.prototype.dec = function(n) {
     this.constant(this.__value__ - n.__value__, this.__type__);
 };

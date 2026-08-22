@@ -2781,13 +2781,21 @@
 ;;   (string-fill! x #\b)
 ;;    x)
 ;; -----------------------------------------------------------------------------
-(define (string-fill! string char)
+(define (string-fill! string char . rest)
   "(string-fill! symbol char)
+   (string-fill! symbol char start)
+   (string-fill! symbol char start end)
 
    Function that destructively fills the string with given character."
   (typecheck "string-fill!" string "string" 1)
   (typecheck "string-fill!" char "character" 2)
-  (string.fill char))
+  (let ((start (if (null? rest) 0 (car rest)))
+        (end (if (or (null? rest) (null? (cdr rest)))
+                 #void
+                 (cadr rest))))
+    (typecheck "string-fill!" start "number" 3)
+    (typecheck "string-fill!" end #("void" "number") 4)
+    (string.fill char start end)))
 
 ;; -----------------------------------------------------------------------------
 (define (identity n)

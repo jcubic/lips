@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 22 Aug 2026 19:43:03 +0000
+ * build: Sat, 22 Aug 2026 19:59:46 +0000
  */
 
 'use strict';
@@ -10838,6 +10838,7 @@ function LString(string) {
     this.__string__ = string.valueOf();
   }
 }
+// -------------------------------------------------------------------------
 {
   var ignore = ['length', 'constructor'];
   var _keys = Object.getOwnPropertyNames(String.prototype).filter(name => {
@@ -10853,30 +10854,37 @@ function LString(string) {
     LString.prototype[key] = wrap(String.prototype[key]);
   }
 }
+// -------------------------------------------------------------------------
 LString.prototype[Symbol.iterator] = function* () {
   var chars = Array.from(this.__string__);
   for (var char of chars) {
     yield LCharacter(char);
   }
 };
+// -------------------------------------------------------------------------
 LString.prototype.serialize = function () {
   return this.valueOf();
 };
+// -------------------------------------------------------------------------
 LString.is = function (string, value) {
   return string instanceof LString && string.__string__ === value;
 };
+// -------------------------------------------------------------------------
 LString.isString = function (x) {
   return x instanceof LString || typeof x === 'string';
 };
+// -------------------------------------------------------------------------
 LString.prototype.freeze = function () {
   var string = this.__string__;
   delete this.__string__;
   read_only(this, '__string__', string);
 };
+// -------------------------------------------------------------------------
 LString.prototype.get = function (n) {
   typecheck('LString::get', n, 'number');
   return Array.from(this.__string__)[n.valueOf()];
 };
+// -------------------------------------------------------------------------
 LString.prototype.cmp = function (string) {
   typecheck('LString::cmp', string, 'string');
   var a = this.valueOf();
@@ -10889,12 +10897,15 @@ LString.prototype.cmp = function (string) {
     return 1;
   }
 };
+// -------------------------------------------------------------------------
 LString.prototype.lower = function () {
   return LString(this.__string__.toLowerCase());
 };
+// -------------------------------------------------------------------------
 LString.prototype.upper = function () {
   return LString(this.__string__.toUpperCase());
 };
+// -------------------------------------------------------------------------
 LString.prototype.set = function (n, char) {
   typecheck('LString::set', n, 'number');
   typecheck('LString::set', char, ['string', 'character']);
@@ -10912,21 +10923,35 @@ LString.prototype.set = function (n, char) {
   }
   this.__string__ = string.join('');
 };
+// -------------------------------------------------------------------------
 Object.defineProperty(LString.prototype, 'length', {
   get: function get() {
     return this.__string__.length;
   }
 });
+// -------------------------------------------------------------------------
 LString.prototype.clone = function () {
   return LString(this.valueOf());
 };
-LString.prototype.fill = function (char) {
+// -------------------------------------------------------------------------
+LString.prototype.fill = function (char, start, end) {
   typecheck('LString::fill', char, ['string', 'character']);
   if (char instanceof LCharacter) {
     char = char.valueOf();
   }
-  var len = this.__string__.length;
-  this.__string__ = char.repeat(len);
+  var arr = [...this.__string__];
+  var len = arr.length;
+  start !== null && start !== void 0 ? start : start = 0;
+  end !== null && end !== void 0 ? end : end = len;
+  var result = [];
+  for (var i = 0; i < len; ++i) {
+    if (i >= start && i <= end) {
+      result.push(char);
+    } else {
+      result.push(arr[i]);
+    }
+  }
+  this.__string__ = result.join('');
 };
 // -------------------------------------------------------------------------
 // :: Number wrapper that handle BigNumbers
@@ -11031,10 +11056,13 @@ function LNumber(n) {
     this.constant(n, 'integer');
   }
 }
+
+// -------------------------------------------------------------------------
 LNumber._registry = new FinalizationRegistry(value => {
   LNumber._cache.delete(value);
 });
 LNumber._cache = new Map();
+// -------------------------------------------------------------------------
 LNumber.get = function (value) {
   if (LNumber._cache.has(value)) {
     var ref = LNumber._cache.get(value);
@@ -11048,6 +11076,7 @@ LNumber.get = function (value) {
   LNumber._registry.register(obj, value);
   return obj;
 };
+// -------------------------------------------------------------------------
 LNumber.prototype.dec = function (n) {
   this.constant(this.__value__ - n.__value__, this.__type__);
 };
@@ -18110,10 +18139,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 22 Aug 2026 19:43:03 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sat, 22 Aug 2026 19:59:46 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 22 Aug 2026 19:43:03 +0000').valueOf();
+  var date = LString('Sat, 22 Aug 2026 19:59:46 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18152,7 +18181,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 22 Aug 2026 19:43:03 +0000';
+var date = 'Sat, 22 Aug 2026 19:59:46 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
