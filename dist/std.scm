@@ -5021,18 +5021,28 @@
 (define-macro (%define-binary-output-lambda name type docstring fn)
   (let ((port (gensym 'port))
         (data (gensym 'data))
+        (start (gensym 'start))
+        (end (gensym 'end))
         (name-str (symbol->string name)))
     `(define (,name ,data . rest)
        ,docstring
        (let ((,port (if (null? rest)
                         (current-output-port)
-                        (car rest))))
+                        (car rest)))
+             (,start (if (or (null? rest) (null? (cdr rest)))
+                         0
+                         (cadr rest)))
+             (,end (if (or (null? rest)
+                           (null? (cdr rest))
+                           (null? (cddr rest)))
+                       (if #f #f)
+                       (caddr rest))))
          (typecheck ,name-str ,port "output-port")
          (typecheck ,name-str ,data ,type)
          (if (not (binary-port? ,port))
              (throw (new Error (string-append ,name-str
                                               " invalid port. Binary port required.")))
-             (,fn ,data ,port))))))
+             (,fn ,data ,port ,start ,end))))))
 
 ;; -----------------------------------------------------------------------------
 (%define-binary-output-lambda
@@ -5053,8 +5063,8 @@
   (write-bytevector bytevector port)
 
   Write byte vector into binary output port."
- (lambda (data port)
-   (port.write_u8_vector data)))
+ (lambda (data port start end)
+   (port.write_u8_vector data start end)))
 
 ;; -----------------------------------------------------------------------------
 (define open-binary-output-file
@@ -5093,8 +5103,13 @@
         (begin
           (typecheck "read-bytevector!" start "number")
           (typecheck "read-bytevector!" end "number")
-          (let ((out (read-bytevector (- end start) port)))
-            (vector.set out start end))))))
+          (let* ((count (- end start))
+                 (out (read-bytevector count port)))
+            (if (eof-object? out)
+                out
+                (begin
+                  (vector.set out start end)
+                  count)))))))
 
 ;; -----------------------------------------------------------------------------
 (define delete-file

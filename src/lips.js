@@ -8691,9 +8691,9 @@ OutputByteVectorPort.prototype.write_u8 = function(byte) {
     typecheck('OutputByteVectorPort::write_u8', byte, 'number');
     this.write(byte);
 };
-OutputByteVectorPort.prototype.write_u8_vector = function(vector) {
+OutputByteVectorPort.prototype.write_u8_vector = function(vector, start, end) {
     typecheck('OutputByteVectorPort::write_u8_vector', vector, 'uint8array');
-    this.write(vector);
+    this.write(vector.slice(start, end));
 };
 OutputByteVectorPort.prototype.toString = function() {
     return '#<output-port (bytevector)>';

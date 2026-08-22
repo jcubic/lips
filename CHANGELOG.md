@@ -72,6 +72,8 @@
   * fix `expt` on float arguments
   * make `log`/`sin`/`cos`/`atan` return inexact values
   * fix Lexer to handle all unicode codepoints
+  * fix `read-bytevector!` return value
+  * support start/end in `write-bytevector`
 
 ## 1.0.0-beta.22
 ### Breaking

@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 22 Aug 2026 10:14:36 +0000
+ * build: Sat, 22 Aug 2026 11:17:06 +0000
  */
 
 (function (global, factory) {
@@ -12692,9 +12692,9 @@
     typecheck('OutputByteVectorPort::write_u8', byte, 'number');
     this.write(byte);
   };
-  OutputByteVectorPort.prototype.write_u8_vector = function (vector) {
+  OutputByteVectorPort.prototype.write_u8_vector = function (vector, start, end) {
     typecheck('OutputByteVectorPort::write_u8_vector', vector, 'uint8array');
-    this.write(vector);
+    this.write(vector.slice(start, end));
   };
   OutputByteVectorPort.prototype.toString = function () {
     return '#<output-port (bytevector)>';
@@ -17772,10 +17772,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sat, 22 Aug 2026 10:14:36 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sat, 22 Aug 2026 11:17:06 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sat, 22 Aug 2026 10:14:36 +0000').valueOf();
+    var date = LString('Sat, 22 Aug 2026 11:17:06 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -17814,7 +17814,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Sat, 22 Aug 2026 10:14:36 +0000';
+  var date = 'Sat, 22 Aug 2026 11:17:06 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);
