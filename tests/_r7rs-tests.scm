@@ -2386,6 +2386,7 @@
 (test-numeric-syntax "#e-.0" 0 "0")
 (test-numeric-syntax "#e-0." 0 "0")
 ;; Decimal notation with suffix
+;; LIPS convert this to BigInt (TODO)
 ;; (test-numeric-syntax "1e2" 100.0 "100.0" "100.")
 ;; (test-numeric-syntax "1E2" 100.0 "100.0" "100.")
 ;; (test-numeric-syntax "1s2" 100.0 "100.0" "100.")
@@ -2431,6 +2432,7 @@
 ;; Decimal-notation complex numbers (rectangular notation)
 (test-numeric-syntax "1.0+2i" (make-rectangular 1.0 2) "1.0+2.0i" "1.0+2i" "1.+2i" "1.+2.i")
 (test-numeric-syntax "1+2.0i" (make-rectangular 1 2.0) "1.0+2.0i" "1+2.0i" "1.+2.i" "1+2.i")
+;; LIPS convert this to BigInt (TODO)
 ;;(test-numeric-syntax "1e2+1.0i" (make-rectangular 100 1.0) "100.0+1.0i" "100.+1.i")
 ;;(test-numeric-syntax "1s2+1.0i" (make-rectangular 100.0 1.0) "100.0+1.0i" "100.+1.i")
 ;;(test-numeric-syntax "1.0+1e2i" (make-rectangular 1.0 100.0) "1.0+100.0i" "1.+100.i")
@@ -2476,7 +2478,7 @@
 (test-numeric-syntax "#d1." 1.0 "1.0" "1.")
 (test-numeric-syntax "#d.1" 0.1 "0.1" ".1" "100.0e-3")
 (test-numeric-syntax "#x1e2" 482 "482")
-;; LIPS conver this to BigInt (TODO)
+;; LIPS convert this to BigInt (TODO)
 ;;(test-numeric-syntax "#d1e2" 100.0 "100.0" "100.")
 ;; Fractions with prefixes
 (test-numeric-syntax "#x10/2" 8 "8")
