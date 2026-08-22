@@ -360,8 +360,10 @@
 
 (test "escape symbols"
       (lambda (t)
-        (t.is (map symbol->string '(|name| name|| name|\|| name|\\|xxx name|\\\\| name|\\|))
-              '("name" "name" "name|" "name\\xxx" "name\\\\" "name\\"))))
+        (for-each (lambda (symbol str)
+                    (t.is (symbol->string symbol) str))
+                  '(|name| name|| name|\|| name|\\|xxx name|\\\\| name|\\|)
+                  '("name" "name" "name|" "name\\xxx" "name\\\\" "name\\"))))
 
 (test "lexer: should create tokens for simple list"
       (lambda (t)

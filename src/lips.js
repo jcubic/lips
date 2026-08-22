@@ -180,13 +180,13 @@ function gen_integer_re(mnemonic, range) {
 var re_re = /^#\/((?:\\\/|[^/]|\[[^\]]*\/[^\]]*\])+)\/([gimyus]*)$/;
 var float_stre = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*)(?:[eE][-+]?[0-9]+)?)|[0-9]+\\.)';
 // TODO: extend to ([+-]1/2|float)([+-]1/2|float)
-var complex_float_stre = `(?:#[ie])?(?:[+-]?(?:[0-9][0-9_]*/[0-9][0-9_]*|nan.0|inf.0|${float_stre}|[+-]?[0-9]+))?(?:${float_stre}|[+-](?:[0-9]+/[0-9]+|[0-9]+|nan.0|inf.0))i`;
-var float_re = new RegExp(`^(#[ie])?${float_stre}$`, 'i');
+var complex_float_stre = `(?:#[ied])?(?:[+-]?(?:[0-9][0-9_]*/[0-9][0-9_]*|nan.0|inf.0|${float_stre}|[+-]?[0-9]+))?(?:${float_stre}|[+-](?:[0-9]+/[0-9]+|[0-9]+|nan.0|inf.0))i`;
+var float_re = new RegExp(`^(#[ied])?${float_stre}$`, 'i');
 function make_complex_match_re(mnemonic, range) {
     // complex need special treatment of 10e+1i when it's hex or decimal
     var neg = mnemonic === 'x' ? `(?!\\+|${range})` : `(?!\\.|${range})`;
     var fl = '';
-    if (mnemonic === '') {
+    if (['', 'd'].includes(mnemonic)) {
         fl = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]+(?![0-9]))(?:[eE][-+]?[0-9]+)?))';
     }
     return new RegExp(`^((?:(?:${fl}|[-+]?inf.0|[-+]?nan.0|[+-]?${range}+/${range}+(?!${range})|[+-]?${range}+)${neg})?)(${fl}|[-+]?inf.0|[-+]?nan.0|[+-]?${range}+/${range}+|[+-]?${range}+|[+-])i$`, 'i');
@@ -194,7 +194,7 @@ function make_complex_match_re(mnemonic, range) {
 var complex_list_re = (function() {
     var result = {};
     [
-        [10, '', '[0-9]'],
+        [10, 'd', '[0-9]'],
         [16, 'x', '[0-9a-fA-F]'],
         [8, 'o', '[0-7]'],
         [2, 'b', '[01]']
@@ -312,7 +312,11 @@ const pre_num_parse_re = /((?:#[xodbie]){0,2})(.*)/i;
 
 function num_pre_parse(arg) {
     var parts = arg.match(pre_num_parse_re);
-    var options = {};
+    var options = {
+        inexact: undefined,
+        radix: undefined,
+        number: undefined
+    };
     if (parts[1]) {
         var type = parts[1].replace(/#/g, '').toLowerCase().split('');
         if (type.includes('x')) {
@@ -509,27 +513,93 @@ function parse_float(arg) {
 }
 // ----------------------------------------------------------------------
 function parse_string(string) {
-    // handle non JSON escapes and skip unicode escape \u (even partial)
-    string = string.replace(/\\x([0-9a-f]+);/ig, function(_, hex) {
-        return "\\u" + hex.padStart(4, '0');
-    }).replace(/\n/g, '\\n'); // in LIPS strings can be multiline
-    var m = string.match(/(\\*)(\\x[0-9A-F])/i);
-    if (m && m[1].length % 2 === 0) {
-        throw new Error(`Invalid string literal, unclosed ${m[2]}`);
+    const body = string.slice(1, -1);
+    // fast path: a string without any escape (the common case) is its own value
+    // - R7RS keeps every non-escape character verbatim, literal line endings
+    // included - so there is nothing to decode.
+    if (body.indexOf('\\') === -1) {
+        const plain = LString(body);
+        plain.freeze();
+        return plain;
     }
-    try {
-        const str =  LString(JSON.parse(string));
-        str.freeze();
-        return str;
-    } catch (e) {
-        const msg = e.message.replace(/in JSON /, '').replace(/.*Error: /, '');
-        throw new Error(`Parse Error: Invalid string literal: ${msg}`);
+    // single character escapes; \f and \/ are kept for JSON compatibility
+    const simple = {
+        a: '\x07',   // alarm         U+0007
+        b: '\b',     // backspace     U+0008
+        t: '\t',     // tab           U+0009
+        n: '\n',     // linefeed      U+000A
+        r: '\r',     // return        U+000D
+        f: '\f',     // form feed     U+000C
+        '"': '"',    // double quote  U+0022
+        '\\': '\\',  // backslash     U+005C
+        '|': '|',    // vertical line U+007C
+        '/': '/'     // solidus
+    };
+    const invalid = () => {
+        throw new Error(`Parse Error: Invalid string literal: ${string}`);
+    };
+    const is_intraline = ch => ch === ' ' || ch === '\t';
+    const is_line_ending = ch => ch === '\n' || ch === '\r';
+    let result = '';
+    for (let i = 0; i < body.length; ++i) {
+        const ch = body[i];
+        if (ch !== '\\') {
+            // any other character, a literal line ending included, stands for
+            // itself in the string literal
+            result += ch;
+            continue;
+        }
+        const esc = body[++i];
+        if (esc === undefined) {
+            invalid();
+        }
+        if (Object.prototype.hasOwnProperty.call(simple, esc)) {
+            result += simple[esc];
+        } else if (esc === 'x' || esc === 'X') {
+            // \x<hex scalar value>; - note the terminating semicolon
+            let hex = '';
+            while (++i < body.length && body[i] !== ';') {
+                hex += body[i];
+            }
+            if (body[i] !== ';' || !/^[0-9a-fA-F]+$/.test(hex)) {
+                invalid();
+            }
+            result += String.fromCodePoint(parseInt(hex, 16));
+        } else if (esc === 'u') {
+            // \uHHHH - not R7RS but supported by the old JSON based parser
+            const hex = body.substr(i + 1, 4);
+            if (!/^[0-9a-fA-F]{4}$/.test(hex)) {
+                invalid();
+            }
+            result += String.fromCharCode(parseInt(hex, 16));
+            i += 4;
+        } else if (is_intraline(esc) || is_line_ending(esc)) {
+            // line continuation: a backslash, optional intraline whitespace, a
+            // line ending and optional intraline whitespace expand to nothing
+            let j = i;
+            while (j < body.length && is_intraline(body[j])) {
+                ++j;
+            }
+            if (!(j < body.length && is_line_ending(body[j]))) {
+                invalid();
+            }
+            j += (body[j] === '\r' && body[j + 1] === '\n') ? 2 : 1;
+            while (j < body.length && is_intraline(body[j])) {
+                ++j;
+            }
+            i = j - 1;
+        } else {
+            invalid();
+        }
     }
+    const str = LString(result);
+    str.freeze();
+    return str;
 }
 // ----------------------------------------------------------------------
 function parse_symbol(arg) {
-    const debug = arg.match(/^name/);
-    const re = /(^|.)\|/g;
+    //const debug = arg.match(/llo\|/);
+    const re = /(?:^|.)\|/g;
     if (arg.match(re)) {
         // handle escaped bar and escaped slash
         arg = arg.split('|').filter(Boolean).reduce((acc, str) => {
@@ -550,15 +620,37 @@ function parse_symbol(arg) {
         const chars = {
             t: '\t',
             r: '\r',
-            n: '\n'
+            n: '\n',
+            '"': '"',
+            '|': '|'
         };
         arg = arg.replace(/\\(x[^;]+);/g, function(_, chr) {
             return String.fromCharCode(parseInt('0' + chr, 16));
-        }).replace(/\\([trn])/g, function(_, chr) {
+        }).replace(/\\([trn"\|])/g, function(_, chr) {
             return chars[chr];
+        }).replace(/\\u([0-9]{4,6})/g, function(_, string) {
+            return String.fromCharCode(parseInt(string, 16));
         });
     }
     return new LSymbol(arg);
+}
+// ----------------------------------------------------------------------
+function is_quotable_symbol(str) {
+    return !str ||
+        str.match(/(^;|[\s()[\]',"|\\])/) ||
+        is_numeric(str) ||
+        str === '.';
+}
+// ----------------------------------------------------------------------
+function is_numeric(string) {
+    if (!string.match(/[0-9a-f]|[+-]i/i)) {
+        return false;
+    }
+    return string.match(int_re) ||
+        string.match(float_re) ||
+        string.match(rational_re) ||
+        string.match(complex_re) ||
+        string.match(/[+-](nan.0|inf.0)/i)
 }
 // ----------------------------------------------------------------------
 function parse_argument(token) {
@@ -821,7 +913,8 @@ LSymbol.prototype.toString = function(quote) {
     }
     var str = this.valueOf();
     // those special characters can be normal symbol when printed
-    if (quote && str.match(/(^;|[\s()[\]'])/) || !str) {
+    if (quote && is_quotable_symbol(str)) {
+        str = str.replace(/\|/g, '\\|');
         return `|${str}|`;
     }
     return str;
@@ -1668,7 +1761,9 @@ Lexer._rules = [
     [/"/, null, null, null, Lexer.string],
     [/"/, null, null, Lexer.string_escape, Lexer.string],
     [/\\/, null, null, Lexer.string, Lexer.string_escape],
-    [/./, /\\/, null, Lexer.string_escape, Lexer.string],
+    [/\\/, /\\/, /\\/, Lexer.string_escape, Lexer.string],
+    [/\\/, /\\/, /[abtnr"\\|]/, Lexer.string_escape, Lexer.string],
+    [/[^\\]/, /\\/, null, Lexer.string_escape, Lexer.string],
 
     // hash special symbols, lexer don't need to distinguish those
     // we only care if it's not pick up by vectors literals

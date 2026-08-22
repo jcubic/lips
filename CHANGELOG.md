@@ -78,6 +78,7 @@
   * fix `read-bytevector!` return value
   * support start/end in `write-bytevector`
   * fix parsing `#true` and `#false`
+  * fix parsing strings, symbols, and numbers
 
 ## 1.0.0-beta.22
 ### Breaking
