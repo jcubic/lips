@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 22 Aug 2026 11:42:29 +0000
+ * build: Sat, 22 Aug 2026 13:35:07 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -7934,6 +7934,7 @@ function function_to_string(fn) {
 }
 // ----------------------------------------------------------------------
 // Instances extracted to make cyclomatic complexity of toString smaller
+// ----------------------------------------------------------------------
 var instances = new Map();
 // ----------------------------------------------------------------------
 [[Error, function (e) {
@@ -8229,10 +8230,140 @@ function mark_cycles(pair) {
 }
 
 // ----------------------------------------------------------------------
+// Printer for write-simple / write-shared. Unlike toString (used by write) it
+// does NOT rely on the __ref__/__cycles__ marks set by mark_cycles. When
+// `labels` is null no datum labels are emitted at all (write-simple - which, by
+// R7RS, does not terminate on cyclic structure). When `labels` is a
+// Map(pair -> number) every shared pair is printed with a `#n=` label on its
+// first occurrence and `#n#` on every later one (write-shared).
+// ----------------------------------------------------------------------
+function print_pair(pair, quote, labels) {
+  for (var _len7 = arguments.length, extra_params = new Array(_len7 > 3 ? _len7 - 3 : 0), _key7 = 3; _key7 < _len7; _key7++) {
+    extra_params[_key7 - 3] = arguments[_key7];
+  }
+  var seen = labels ? new Set() : null;
+  function value(x) {
+    return is_pair(x) ? list(x) : to_string(x, quote, true, ...extra_params);
+  }
+  function list(head) {
+    if (labels && labels.has(head)) {
+      if (seen.has(head)) {
+        return '#' + labels.get(head) + '#';
+      }
+      seen.add(head);
+      return '#' + labels.get(head) + '=' + body(head);
+    }
+    return body(head);
+  }
+  function body(head) {
+    // the cdr spine is walked iteratively so long lists don't overflow the
+    // stack; only the car direction recurses.
+    var out = '(';
+    var node = head;
+    var first = true;
+    while (true) {
+      out += (first ? '' : ' ') + value(node.car);
+      first = false;
+      var cdr = node.cdr;
+      if (is_nil(cdr)) {
+        break;
+      }
+      if (!is_pair(cdr)) {
+        out += ' . ' + value(cdr);
+        break;
+      }
+      if (labels && labels.has(cdr)) {
+        // a shared/cyclic tail is emitted in dotted form so its label is
+        // visible, e.g. (a . #1=(b c)) or (a . #0#) for a cycle
+        out += ' . ' + list(cdr);
+        break;
+      }
+      node = cdr;
+    }
+    return out + ')';
+  }
+  return list(pair);
+}
+// ----------------------------------------------------------------------
+// Find every pair that occurs more than once (shared structure, cycles
+// included) and number the labels in the order the printer first reaches them
+// (a node before its car, car before cdr).
+// ----------------------------------------------------------------------
+function shared_labels(root) {
+  var seen = new Set();
+  var shared = new Set();
+  (function detect(node) {
+    while (is_pair(node)) {
+      if (seen.has(node)) {
+        shared.add(node);
+        return;
+      }
+      seen.add(node);
+      detect(node.car);
+      node = node.cdr;
+    }
+  })(root);
+  if (shared.size === 0) {
+    return null;
+  }
+  var labels = new Map();
+  var visited = new Set();
+  var counter = 0;
+  (function assign(node) {
+    while (is_pair(node)) {
+      if (shared.has(node) && !labels.has(node)) {
+        labels.set(node, counter++);
+      }
+      if (visited.has(node)) {
+        return;
+      }
+      visited.add(node);
+      assign(node.car);
+      node = node.cdr;
+    }
+  })(root);
+  return labels;
+}
+// ----------------------------------------------------------------------
+// write-simple: no datum labels, shared structure is expanded (and a cyclic
+// structure makes this loop forever, as allowed by R7RS).
+// ----------------------------------------------------------------------
+Pair.prototype.simple = function (quote) {
+  for (var _len8 = arguments.length, extra_params = new Array(_len8 > 1 ? _len8 - 1 : 0), _key8 = 1; _key8 < _len8; _key8++) {
+    extra_params[_key8 - 1] = arguments[_key8];
+  }
+  return print_pair(this, quote, null, ...extra_params);
+};
+// ----------------------------------------------------------------------
+// write-shared: label every shared pair with datum labels (#n=/#n#).
+// ----------------------------------------------------------------------
+Pair.prototype.shared = function (quote) {
+  for (var _len9 = arguments.length, extra_params = new Array(_len9 > 1 ? _len9 - 1 : 0), _key9 = 1; _key9 < _len9; _key9++) {
+    extra_params[_key9 - 1] = arguments[_key9];
+  }
+  return print_pair(this, quote, shared_labels(this), ...extra_params);
+};
+// ----------------------------------------------------------------------
 Pair.prototype.toString = function (quote) {
   var _ref27 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
     _ref27$nested = _ref27.nested,
-    nested = _ref27$nested === void 0 ? false : _ref27$nested;
+    nested = _ref27$nested === void 0 ? false : _ref27$nested,
+    _ref27$shared = _ref27.shared,
+    shared = _ref27$shared === void 0 ? false : _ref27$shared,
+    _ref27$simple = _ref27.simple,
+    simple = _ref27$simple === void 0 ? false : _ref27$simple;
+  if (shared) {
+    return this.shared(quote, {
+      shared,
+      simple
+    });
+  }
+  if (simple) {
+    return this.simple(quote, {
+      shared,
+      simple
+    });
+  }
   var arr = [];
   if (this[__ref__]) {
     arr.push(this[__ref__] + '(');
@@ -8287,11 +8418,7 @@ Pair.prototype.append = function (arg) {
   }
   var p = this;
   // A freshly-created placeholder pair `new Pair()` has BOTH car and cdr
-  // undefined; fill it in place. We must NOT take this branch for a real
-  // one-element list holding #void, i.e. (undefined . nil): #void is JS
-  // `undefined`, so checking car alone would clobber `(#void)` and drop the
-  // element (e.g. (append (list #void) '(y)) => (y), which broke quasiquote
-  // templates that contain a literal #void).
+  // undefined;
   if (p.car === undefined && p.cdr === undefined) {
     if (is_pair(arg)) {
       this.car = arg.car;
@@ -10335,23 +10462,23 @@ function parallel(name, fn) {
 // ----------------------------------------------------------------------
 function pipe() {
   var _this10 = this;
-  for (var _len8 = arguments.length, fns = new Array(_len8), _key8 = 0; _key8 < _len8; _key8++) {
-    fns[_key8] = arguments[_key8];
+  for (var _len1 = arguments.length, fns = new Array(_len1), _key1 = 0; _key1 < _len1; _key1++) {
+    fns[_key1] = arguments[_key1];
   }
   fns.forEach((fn, i) => {
     typecheck('pipe', fn, 'function', i + 1);
   });
   return function () {
-    for (var _len9 = arguments.length, args = new Array(_len9), _key9 = 0; _key9 < _len9; _key9++) {
-      args[_key9] = arguments[_key9];
+    for (var _len10 = arguments.length, args = new Array(_len10), _key10 = 0; _key10 < _len10; _key10++) {
+      args[_key10] = arguments[_key10];
     }
     return fns.reduce((args, f) => [f.apply(_this10, args)], args)[0];
   };
 }
 // -------------------------------------------------------------------------
 function compose() {
-  for (var _len0 = arguments.length, fns = new Array(_len0), _key0 = 0; _key0 < _len0; _key0++) {
-    fns[_key0] = arguments[_key0];
+  for (var _len11 = arguments.length, fns = new Array(_len11), _key11 = 0; _key11 < _len11; _key11++) {
+    fns[_key11] = arguments[_key11];
   }
   fns.forEach((fn, i) => {
     typecheck('compose', fn, 'function', i + 1);
@@ -10368,8 +10495,8 @@ function limit_math_op(n, fn) {
   // (a very hot path). This keeps the same behaviour (clamp to n args,
   // typecheck each as a number) with no per-call allocation.
   return function () {
-    for (var _len1 = arguments.length, args = new Array(_len1), _key1 = 0; _key1 < _len1; _key1++) {
-      args[_key1] = arguments[_key1];
+    for (var _len12 = arguments.length, args = new Array(_len12), _key12 = 0; _key12 < _len12; _key12++) {
+      args[_key12] = arguments[_key12];
     }
     if (args.length > n) {
       args.length = n;
@@ -10396,8 +10523,8 @@ function reduce_math_op(fn) {
   // every call (this function is only called to define +, *, etc.)
   var reducer = binary_math_op(fn);
   return function () {
-    for (var _len10 = arguments.length, args = new Array(_len10), _key10 = 0; _key10 < _len10; _key10++) {
-      args[_key10] = arguments[_key10];
+    for (var _len13 = arguments.length, args = new Array(_len13), _key13 = 0; _key13 < _len13; _key13++) {
+      args[_key13] = arguments[_key13];
     }
     if (init !== null) {
       args = [init, ...args];
@@ -10407,8 +10534,8 @@ function reduce_math_op(fn) {
 }
 // -------------------------------------------------------------------------
 function curry(fn) {
-  for (var _len11 = arguments.length, init_args = new Array(_len11 > 1 ? _len11 - 1 : 0), _key11 = 1; _key11 < _len11; _key11++) {
-    init_args[_key11 - 1] = arguments[_key11];
+  for (var _len14 = arguments.length, init_args = new Array(_len14 > 1 ? _len14 - 1 : 0), _key14 = 1; _key14 < _len14; _key14++) {
+    init_args[_key14 - 1] = arguments[_key14];
   }
   typecheck('curry', fn, 'function');
   var len = fn.length;
@@ -10421,8 +10548,8 @@ function curry(fn) {
     // we need this so the curried function display as #<procedure>
     var curried = (() => {
       return function () {
-        for (var _len12 = arguments.length, more_args = new Array(_len12), _key12 = 0; _key12 < _len12; _key12++) {
-          more_args[_key12] = arguments[_key12];
+        for (var _len15 = arguments.length, more_args = new Array(_len15), _key15 = 0; _key15 < _len15; _key15++) {
+          more_args[_key15] = arguments[_key15];
         }
         args = args.concat(more_args);
         if (args.length >= len) {
@@ -10508,8 +10635,8 @@ function LString(string) {
     return !ignore.includes(name);
   });
   var wrap = fn => function () {
-    for (var _len14 = arguments.length, args = new Array(_len14), _key14 = 0; _key14 < _len14; _key14++) {
-      args[_key14] = arguments[_key14];
+    for (var _len17 = arguments.length, args = new Array(_len17), _key17 = 0; _key17 < _len17; _key17++) {
+      args[_key17] = arguments[_key17];
     }
     return fn.apply(this.__string__, args);
   };
@@ -12356,8 +12483,8 @@ InputPort.prototype._with_init_parser = function (make_parser, fn) {
   var self = this;
   return /*#__PURE__*/_asyncToGenerator(function* () {
     var parser = yield make_parser.call(self);
-    for (var _len15 = arguments.length, args = new Array(_len15), _key15 = 0; _key15 < _len15; _key15++) {
-      args[_key15] = arguments[_key15];
+    for (var _len18 = arguments.length, args = new Array(_len18), _key18 = 0; _key18 < _len18; _key18++) {
+      args[_key18] = arguments[_key18];
     }
     return fn(parser, ...args);
   });
@@ -12434,8 +12561,8 @@ class BufferedOutputPort extends OutputPort {
     }
   }
   _write() {
-    for (var _len16 = arguments.length, args = new Array(_len16), _key16 = 0; _key16 < _len16; _key16++) {
-      args[_key16] = arguments[_key16];
+    for (var _len19 = arguments.length, args = new Array(_len19), _key19 = 0; _key19 < _len19; _key19++) {
+      args[_key19] = arguments[_key19];
     }
     if (args.length) {
       args.forEach(arg => {
@@ -13289,8 +13416,8 @@ var native_lambda = _parse(tokenize("(lambda ()\n                               
 // -------------------------------------------------------------------------------
 var get = doc('get', function get(object) {
   var value;
-  for (var _len17 = arguments.length, args = new Array(_len17 > 1 ? _len17 - 1 : 0), _key17 = 1; _key17 < _len17; _key17++) {
-    args[_key17 - 1] = arguments[_key17];
+  for (var _len20 = arguments.length, args = new Array(_len20 > 1 ? _len20 - 1 : 0), _key20 = 1; _key20 < _len20; _key20++) {
+    args[_key20 - 1] = arguments[_key20];
   }
   var len = args.length;
   while (args.length) {
@@ -13499,8 +13626,8 @@ var global_env = new Environment({
     var env = this.env,
       dynamic_env = this.dynamic_env,
       use_dynamic = this.use_dynamic;
-    for (var _len18 = arguments.length, args = new Array(_len18), _key18 = 0; _key18 < _len18; _key18++) {
-      args[_key18] = arguments[_key18];
+    for (var _len21 = arguments.length, args = new Array(_len21), _key21 = 0; _key21 < _len21; _key21++) {
+      args[_key21] = arguments[_key21];
     }
     args.forEach(arg => {
       call_function(display, [arg], {
@@ -13524,8 +13651,8 @@ var global_env = new Environment({
   }, "(stack-trace <continuation>)\n\n        Function return stack trace if given continuation as a string.\n        You first need to enable collecting stack frames using (trace #t)."),
   // ------------------------------------------------------------------
   format: doc('format', function format(str) {
-    for (var _len19 = arguments.length, args = new Array(_len19 > 1 ? _len19 - 1 : 0), _key19 = 1; _key19 < _len19; _key19++) {
-      args[_key19 - 1] = arguments[_key19];
+    for (var _len22 = arguments.length, args = new Array(_len22 > 1 ? _len22 - 1 : 0), _key22 = 1; _key22 < _len22; _key22++) {
+      args[_key22 - 1] = arguments[_key22];
     }
     typecheck('format', str, 'string');
     var re = /(~[as%~])/g;
@@ -13587,8 +13714,8 @@ var global_env = new Environment({
   'display-error': doc('display-error', function error() {
     var port = get_internal_value(this, 'stderr');
     var repr = global_env.get('repr');
-    for (var _len20 = arguments.length, args = new Array(_len20), _key20 = 0; _key20 < _len20; _key20++) {
-      args[_key20] = arguments[_key20];
+    for (var _len23 = arguments.length, args = new Array(_len23), _key23 = 0; _key23 < _len23; _key23++) {
+      args[_key23] = arguments[_key23];
     }
     var value = args.map(repr).join(' ');
     port.write.call(global_env, value);
@@ -14160,8 +14287,8 @@ var global_env = new Environment({
   }, "(null-environment)\n\n        Returns a clean environment with only the standard library."),
   // ------------------------------------------------------------------
   'values': doc('values', function values() {
-    for (var _len21 = arguments.length, args = new Array(_len21), _key21 = 0; _key21 < _len21; _key21++) {
-      args[_key21] = arguments[_key21];
+    for (var _len24 = arguments.length, args = new Array(_len24), _key24 = 0; _key24 < _len24; _key24++) {
+      args[_key24] = arguments[_key24];
     }
     return Values(args);
   }, "(values a1 a2 ...)\n\n        If called with more then one element it will create a special\n        Values object that can be used in the call-with-values function."),
@@ -14225,8 +14352,8 @@ var global_env = new Environment({
     }
     var rest = __doc__ ? code.cdr.cdr : code.cdr;
     function lambda() {
-      for (var _len22 = arguments.length, args = new Array(_len22), _key22 = 0; _key22 < _len22; _key22++) {
-        args[_key22] = arguments[_key22];
+      for (var _len25 = arguments.length, args = new Array(_len25), _key25 = 0; _key25 < _len25; _key25++) {
+        args[_key25] = arguments[_key25];
       }
       var eval_args = lambda_scope.call(this, self, lambda, code, args, state);
       var dynamic_env = eval_args.dynamic_env,
@@ -14540,8 +14667,8 @@ var global_env = new Environment({
       return op_cache[name];
     }
     function make_list() {
-      for (var _len23 = arguments.length, items = new Array(_len23), _key23 = 0; _key23 < _len23; _key23++) {
-        items[_key23] = arguments[_key23];
+      for (var _len26 = arguments.length, items = new Array(_len26), _key26 = 0; _key26 < _len26; _key26++) {
+        items[_key26] = arguments[_key26];
       }
       return Pair.from_array(items, false);
     }
@@ -14679,8 +14806,8 @@ var global_env = new Environment({
   }, "(clone list)\n\n        Function that returns a clone of the list, that does not share any pairs with the\n        original, so the clone can be safely mutated without affecting the original."),
   // ------------------------------------------------------------------
   append: doc('append', function append() {
-    for (var _len24 = arguments.length, items = new Array(_len24), _key24 = 0; _key24 < _len24; _key24++) {
-      items[_key24] = arguments[_key24];
+    for (var _len27 = arguments.length, items = new Array(_len27), _key27 = 0; _key27 < _len27; _key27++) {
+      items[_key27] = arguments[_key27];
     }
     items = items.map(item => {
       if (is_pair(item)) {
@@ -14693,8 +14820,8 @@ var global_env = new Environment({
   // ------------------------------------------------------------------
   'append!': doc('append!', function () {
     var is_list = global_env.get('list?');
-    for (var _len25 = arguments.length, items = new Array(_len25), _key25 = 0; _key25 < _len25; _key25++) {
-      items[_key25] = arguments[_key25];
+    for (var _len28 = arguments.length, items = new Array(_len28), _key28 = 0; _key28 < _len28; _key28++) {
+      items[_key28] = arguments[_key28];
     }
     var last = items.length - 1;
     return items.reduce((acc, item, i) => {
@@ -14772,8 +14899,8 @@ var global_env = new Environment({
   }, "(nth index obj)\n\n        Function that returns the nth element of the list or array.\n        If used with a non-indexable value it will error."),
   // ------------------------------------------------------------------
   list: doc('list', function list() {
-    for (var _len26 = arguments.length, args = new Array(_len26), _key26 = 0; _key26 < _len26; _key26++) {
-      args[_key26] = arguments[_key26];
+    for (var _len29 = arguments.length, args = new Array(_len29), _key29 = 0; _key29 < _len29; _key29++) {
+      args[_key29] = arguments[_key29];
     }
     return args.reverse().reduce((list, item) => new Pair(item, list), _nil);
   }, "(list . args)\n\n        Function that creates a new list out of its arguments."),
@@ -14786,8 +14913,8 @@ var global_env = new Environment({
   }, "(substring string start end)\n\n        Function that returns the slice of the string starting at start and ending\n        with end."),
   // ------------------------------------------------------------------
   concat: doc('concat', function concat() {
-    for (var _len27 = arguments.length, args = new Array(_len27), _key27 = 0; _key27 < _len27; _key27++) {
-      args[_key27] = arguments[_key27];
+    for (var _len30 = arguments.length, args = new Array(_len30), _key30 = 0; _key30 < _len30; _key30++) {
+      args[_key30] = arguments[_key30];
     }
     args.forEach((arg, i) => typecheck('concat', arg, 'string', i + 1));
     return args.join('');
@@ -14836,7 +14963,10 @@ var global_env = new Environment({
   }, "(search pattern string)\n\n        Function that returns the first found index of the pattern inside a string."),
   // ------------------------------------------------------------------
   repr: doc('repr', function repr(obj, quote) {
-    return to_string(obj, quote);
+    for (var _len31 = arguments.length, args = new Array(_len31 > 2 ? _len31 - 2 : 0), _key31 = 2; _key31 < _len31; _key31++) {
+      args[_key31 - 2] = arguments[_key31];
+    }
+    return to_string(obj, quote, ...args);
   }, "(repr obj)\n\n        Function that returns a LIPS code representation of the object as a string."),
   // ------------------------------------------------------------------
   'escape-regex': doc('escape-regex', function (string) {
@@ -14862,8 +14992,8 @@ var global_env = new Environment({
   'new': doc('new', function (obj) {
     var cls = unbind(obj);
     var instance;
-    for (var _len28 = arguments.length, args = new Array(_len28 > 1 ? _len28 - 1 : 0), _key28 = 1; _key28 < _len28; _key28++) {
-      args[_key28 - 1] = arguments[_key28];
+    for (var _len32 = arguments.length, args = new Array(_len32 > 1 ? _len32 - 1 : 0), _key32 = 1; _key32 < _len32; _key32++) {
+      args[_key32 - 1] = arguments[_key32];
     }
     if (cls[Symbol.for("__class__")]) {
       instance = new cls(...args);
@@ -14973,8 +15103,8 @@ var global_env = new Environment({
   }, "(flatten list)\n\n        Returns a shallow list from tree structure (pairs)."),
   // ------------------------------------------------------------------
   'vector-append': doc('vector-append', function () {
-    for (var _len29 = arguments.length, args = new Array(_len29), _key29 = 0; _key29 < _len29; _key29++) {
-      args[_key29] = arguments[_key29];
+    for (var _len33 = arguments.length, args = new Array(_len33), _key33 = 0; _key33 < _len33; _key33++) {
+      args[_key33] = arguments[_key33];
     }
     if (!args.length) {
       return [];
@@ -14995,8 +15125,8 @@ var global_env = new Environment({
   'list->array': doc('list->array', to_array('list->array'), "(list->array list)\n\n         Function that converts a LIPS list into a JavaScript array."),
   // ------------------------------------------------------------------
   apply: doc('apply', function apply(fn) {
-    for (var _len30 = arguments.length, args = new Array(_len30 > 1 ? _len30 - 1 : 0), _key30 = 1; _key30 < _len30; _key30++) {
-      args[_key30 - 1] = arguments[_key30];
+    for (var _len34 = arguments.length, args = new Array(_len34 > 1 ? _len34 - 1 : 0), _key34 = 1; _key34 < _len34; _key34++) {
+      args[_key34 - 1] = arguments[_key34];
     }
     typecheck('apply', fn, 'function', 1);
     var last = args.pop();
@@ -15122,8 +15252,8 @@ var global_env = new Environment({
   }, "(list? obj)\n\n        Predicate that tests if value is a proper linked list structure.\n        The car of each pair can be any value. It returns false on cyclic lists.\""),
   // ------------------------------------------------------------------
   pluck: doc('pluck', function pluck() {
-    for (var _len31 = arguments.length, keys = new Array(_len31), _key31 = 0; _key31 < _len31; _key31++) {
-      keys[_key31] = arguments[_key31];
+    for (var _len35 = arguments.length, keys = new Array(_len35), _key35 = 0; _key35 < _len35; _key35++) {
+      keys[_key35] = arguments[_key35];
     }
     return function (obj) {
       keys = keys.map(x => x instanceof LSymbol ? x.__name__ : x);
@@ -15132,8 +15262,8 @@ var global_env = new Environment({
       } else if (keys.length === 1) {
         var _keys2 = keys,
           _keys3 = _slicedToArray(_keys2, 1),
-          _key32 = _keys3[0];
-        return obj[_key32];
+          _key36 = _keys3[0];
+        return obj[_key36];
       }
       var result = {};
       keys.forEach(key => {
@@ -15150,8 +15280,8 @@ var global_env = new Environment({
   // Numbers
   // ------------------------------------------------------------------
   gcd: doc('gcd', function gcd() {
-    for (var _len32 = arguments.length, args = new Array(_len32), _key33 = 0; _key33 < _len32; _key33++) {
-      args[_key33] = arguments[_key33];
+    for (var _len36 = arguments.length, args = new Array(_len36), _key37 = 0; _key37 < _len36; _key37++) {
+      args[_key37] = arguments[_key37];
     }
     typecheck_args('gcd', args, 'number');
     if (!args.length) {
@@ -15165,8 +15295,8 @@ var global_env = new Environment({
   // ref: https://rosettacode.org/wiki/Least_common_multiple#JavaScript
   // ------------------------------------------------------------------
   lcm: doc('lcm', function lcm() {
-    for (var _len33 = arguments.length, args = new Array(_len33), _key34 = 0; _key34 < _len33; _key34++) {
-      args[_key34] = arguments[_key34];
+    for (var _len37 = arguments.length, args = new Array(_len37), _key38 = 0; _key38 < _len37; _key38++) {
+      args[_key38] = arguments[_key38];
     }
     typecheck_args('lcm', args, 'number');
     if (!args.length) {
@@ -15210,8 +15340,8 @@ var global_env = new Environment({
   }, LNumber(0)), "(+ . numbers)\n\n        Sums all numbers passed as arguments. If single value is passed it will\n        return that value."),
   // ------------------------------------------------------------------
   '-': doc('-', function () {
-    for (var _len34 = arguments.length, args = new Array(_len34), _key35 = 0; _key35 < _len34; _key35++) {
-      args[_key35] = arguments[_key35];
+    for (var _len38 = arguments.length, args = new Array(_len38), _key39 = 0; _key39 < _len38; _key39++) {
+      args[_key39] = arguments[_key39];
     }
     if (args.length === 0) {
       throw new Error('-: procedure require at least one argument');
@@ -15228,8 +15358,8 @@ var global_env = new Environment({
   }, "(- n1 n2 ...)\n        (- n)\n\n        Subtracts n2 and subsequent numbers from n1. If only one argument is passed\n        it will negate the value."),
   // ------------------------------------------------------------------
   '/': doc('/', function () {
-    for (var _len35 = arguments.length, args = new Array(_len35), _key36 = 0; _key36 < _len35; _key36++) {
-      args[_key36] = arguments[_key36];
+    for (var _len39 = arguments.length, args = new Array(_len39), _key40 = 0; _key40 < _len39; _key40++) {
+      args[_key40] = arguments[_key40];
     }
     if (args.length === 0) {
       throw new Error('/: procedure require at least one argument');
@@ -15368,40 +15498,40 @@ var global_env = new Environment({
   // ------------------------------------------------------------------
   // Booleans
   '==': doc('==', function () {
-    for (var _len36 = arguments.length, args = new Array(_len36), _key37 = 0; _key37 < _len36; _key37++) {
-      args[_key37] = arguments[_key37];
+    for (var _len40 = arguments.length, args = new Array(_len40), _key41 = 0; _key41 < _len40; _key41++) {
+      args[_key41] = arguments[_key41];
     }
     typecheck_args('==', args, 'number');
     return seq_compare((a, b) => LNumber(a).cmp(b) === 0, args);
   }, "(== x1 x2 ...)}\n\n        Function that compares its numerical arguments and checks if they are\n        all equal."),
   // ------------------------------------------------------------------
   '>': doc('>', function () {
-    for (var _len37 = arguments.length, args = new Array(_len37), _key38 = 0; _key38 < _len37; _key38++) {
-      args[_key38] = arguments[_key38];
+    for (var _len41 = arguments.length, args = new Array(_len41), _key42 = 0; _key42 < _len41; _key42++) {
+      args[_key42] = arguments[_key42];
     }
     typecheck_numbers('>', args, ['bigint', 'float', 'rational']);
     return seq_compare((a, b) => LNumber(a).cmp(b) === 1, args);
   }, "(> x1 x2 x3 ...)\n\n        Function that compares its numerical arguments and checks if they are\n        monotonically decreasing, i.e. x1 > x2 and x2 > x3 and so on."),
   // ------------------------------------------------------------------
   '<': doc('<', function () {
-    for (var _len38 = arguments.length, args = new Array(_len38), _key39 = 0; _key39 < _len38; _key39++) {
-      args[_key39] = arguments[_key39];
+    for (var _len42 = arguments.length, args = new Array(_len42), _key43 = 0; _key43 < _len42; _key43++) {
+      args[_key43] = arguments[_key43];
     }
     typecheck_numbers('<', args, ['bigint', 'float', 'rational']);
     return seq_compare((a, b) => LNumber(a).cmp(b) === -1, args);
   }, "(< x1 x2 ...)\n\n        Function that compares its numerical arguments and checks if they are\n        monotonically increasing, i.e. x1 < x2 and x2 < x3 and so on."),
   // ------------------------------------------------------------------
   '<=': doc('<=', function () {
-    for (var _len39 = arguments.length, args = new Array(_len39), _key40 = 0; _key40 < _len39; _key40++) {
-      args[_key40] = arguments[_key40];
+    for (var _len43 = arguments.length, args = new Array(_len43), _key44 = 0; _key44 < _len43; _key44++) {
+      args[_key44] = arguments[_key44];
     }
     typecheck_numbers('<=', args, ['bigint', 'float', 'rational']);
     return seq_compare((a, b) => [0, -1].includes(LNumber(a).cmp(b)), args);
   }, "(<= x1 x2 ...)\n\n        Function that compares its numerical arguments and checks if they are\n        monotonically nondecreasing, i.e. x1 <= x2 and x2 <= x3 and so on."),
   // ------------------------------------------------------------------
   '>=': doc('>=', function () {
-    for (var _len40 = arguments.length, args = new Array(_len40), _key41 = 0; _key41 < _len40; _key41++) {
-      args[_key41] = arguments[_key41];
+    for (var _len44 = arguments.length, args = new Array(_len44), _key45 = 0; _key45 < _len44; _key45++) {
+      args[_key45] = arguments[_key45];
     }
     typecheck_numbers('>=', args, ['bigint', 'float', 'rational']);
     return seq_compare((a, b) => [0, 1].includes(LNumber(a).cmp(b)), args);
@@ -15437,8 +15567,8 @@ var global_env = new Environment({
   not: doc('not', is_false, "(not object)\n\n         Function that returns the Boolean negation of its argument."),
   // ------------------------------------------------------------------
   min: doc('min', function () {
-    for (var _len41 = arguments.length, args = new Array(_len41), _key42 = 0; _key42 < _len41; _key42++) {
-      args[_key42] = arguments[_key42];
+    for (var _len45 = arguments.length, args = new Array(_len45), _key46 = 0; _key46 < _len45; _key46++) {
+      args[_key46] = arguments[_key46];
     }
     if (args.length === 0) {
       throw new RuntimeError('min require at list 1 argument');
@@ -15453,8 +15583,8 @@ var global_env = new Environment({
   }, "(min n1 n2 ...)\n\n        Returns the minimum of its arguments."),
   // ------------------------------------------------------------------
   max: doc('max', function () {
-    for (var _len42 = arguments.length, args = new Array(_len42), _key43 = 0; _key43 < _len42; _key43++) {
-      args[_key43] = arguments[_key43];
+    for (var _len46 = arguments.length, args = new Array(_len46), _key47 = 0; _key47 < _len46; _key47++) {
+      args[_key47] = arguments[_key47];
     }
     if (args.length === 0) {
       throw new RuntimeError('max require at list 1 argument');
@@ -15625,8 +15755,8 @@ function _node_specific() {
     });
     var originalLog = console.log;
     console.log = function () {
-      for (var _len45 = arguments.length, args = new Array(_len45), _key48 = 0; _key48 < _len45; _key48++) {
-        args[_key48] = arguments[_key48];
+      for (var _len49 = arguments.length, args = new Array(_len49), _key52 = 0; _key52 < _len49; _key52++) {
+        args[_key52] = arguments[_key52];
       }
       originalLog.apply(console, args);
       process.stdout.write('');
@@ -15777,10 +15907,10 @@ function type(obj) {
   if (typeof obj === 'object') {
     for (var _ref45 of type_mapping_entries) {
       var _ref44 = _slicedToArray(_ref45, 2);
-      var _key44 = _ref44[0];
+      var _key48 = _ref44[0];
       var value = _ref44[1];
       if (obj instanceof value) {
-        return _key44;
+        return _key48;
       }
     }
     if (is_instance(obj)) {
@@ -15873,8 +16003,8 @@ function prepare_fn_args(fn, args) {
         var arg = args[i];
         if (is_lips_function(arg)) {
           wrapper = function wrapper() {
-            for (var _len43 = arguments.length, args = new Array(_len43), _key45 = 0; _key45 < _len43; _key45++) {
-              args[_key45] = arguments[_key45];
+            for (var _len47 = arguments.length, args = new Array(_len47), _key49 = 0; _key49 < _len47; _key49++) {
+              args[_key49] = arguments[_key49];
             }
             return unpromise(arg.apply(this, args), unbox);
           }; // make wrapper work like output of bind
@@ -16982,13 +17112,13 @@ function next_set(state) {
     // case (set! fn.toString (lambda () "xxx"))
     var parts = symbol.split('.');
     if (parts.length > 1) {
-      var _key46 = parts.pop();
+      var _key50 = parts.pop();
       var name = parts.join('.');
       var object = env.get(name, {
         throwError: false
       });
       if (object) {
-        env.get('set-object!').call(env, object, _key46, value);
+        env.get('set-object!').call(env, object, _key50, value);
         // set! return value is unspecified/void
         delete state.object;
         state.ready = true;
@@ -17620,8 +17750,8 @@ var cbor = function () {
 
 // -------------------------------------------------------------------------
 function merge_uint8_array() {
-  for (var _len44 = arguments.length, args = new Array(_len44), _key47 = 0; _key47 < _len44; _key47++) {
-    args[_key47] = arguments[_key47];
+  for (var _len48 = arguments.length, args = new Array(_len48), _key51 = 0; _key51 < _len48; _key51++) {
+    args[_key51] = arguments[_key51];
   }
   if (args.length > 1) {
     var len = args.reduce((acc, arr) => acc + arr.length, 0);
@@ -17771,10 +17901,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 22 Aug 2026 11:42:29 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sat, 22 Aug 2026 13:35:07 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 22 Aug 2026 11:42:29 +0000').valueOf();
+  var date = LString('Sat, 22 Aug 2026 13:35:07 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -17813,7 +17943,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 22 Aug 2026 11:42:29 +0000';
+var date = 'Sat, 22 Aug 2026 13:35:07 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

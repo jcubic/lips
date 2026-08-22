@@ -3948,6 +3948,7 @@ function function_to_string(fn) {
 }
 // ----------------------------------------------------------------------
 // Instances extracted to make cyclomatic complexity of toString smaller
+// ----------------------------------------------------------------------
 const instances = new Map();
 // ----------------------------------------------------------------------
 [
@@ -4292,7 +4293,118 @@ const pair_to_string = (function() {
 })();
 
 // ----------------------------------------------------------------------
-Pair.prototype.toString = function(quote, { nested = false } = {}) {
+// Printer for write-simple / write-shared. Unlike toString (used by write) it
+// does NOT rely on the __ref__/__cycles__ marks set by mark_cycles. When
+// `labels` is null no datum labels are emitted at all (write-simple - which, by
+// R7RS, does not terminate on cyclic structure). When `labels` is a
+// Map(pair -> number) every shared pair is printed with a `#n=` label on its
+// first occurrence and `#n#` on every later one (write-shared).
+// ----------------------------------------------------------------------
+function print_pair(pair, quote, labels, ...extra_params) {
+    const seen = labels ? new Set() : null;
+    function value(x) {
+        return is_pair(x) ? list(x) : to_string(x, quote, true, ...extra_params);
+    }
+    function list(head) {
+        if (labels && labels.has(head)) {
+            if (seen.has(head)) {
+                return '#' + labels.get(head) + '#';
+            }
+            seen.add(head);
+            return '#' + labels.get(head) + '=' + body(head);
+        }
+        return body(head);
+    }
+    function body(head) {
+        // the cdr spine is walked iteratively so long lists don't overflow the
+        // stack; only the car direction recurses.
+        var out = '(';
+        var node = head;
+        var first = true;
+        while (true) {
+            out += (first ? '' : ' ') + value(node.car);
+            first = false;
+            const cdr = node.cdr;
+            if (is_nil(cdr)) {
+                break;
+            }
+            if (!is_pair(cdr)) {
+                out += ' . ' + value(cdr);
+                break;
+            }
+            if (labels && labels.has(cdr)) {
+                // a shared/cyclic tail is emitted in dotted form so its label is
+                // visible, e.g. (a . #1=(b c)) or (a . #0#) for a cycle
+                out += ' . ' + list(cdr);
+                break;
+            }
+            node = cdr;
+        }
+        return out + ')';
+    }
+    return list(pair);
+}
+// ----------------------------------------------------------------------
+// Find every pair that occurs more than once (shared structure, cycles
+// included) and number the labels in the order the printer first reaches them
+// (a node before its car, car before cdr).
+// ----------------------------------------------------------------------
+function shared_labels(root) {
+    const seen = new Set();
+    const shared = new Set();
+    (function detect(node) {
+        while (is_pair(node)) {
+            if (seen.has(node)) {
+                shared.add(node);
+                return;
+            }
+            seen.add(node);
+            detect(node.car);
+            node = node.cdr;
+        }
+    })(root);
+    if (shared.size === 0) {
+        return null;
+    }
+    const labels = new Map();
+    const visited = new Set();
+    var counter = 0;
+    (function assign(node) {
+        while (is_pair(node)) {
+            if (shared.has(node) && !labels.has(node)) {
+                labels.set(node, counter++);
+            }
+            if (visited.has(node)) {
+                return;
+            }
+            visited.add(node);
+            assign(node.car);
+            node = node.cdr;
+        }
+    })(root);
+    return labels;
+}
+// ----------------------------------------------------------------------
+// write-simple: no datum labels, shared structure is expanded (and a cyclic
+// structure makes this loop forever, as allowed by R7RS).
+// ----------------------------------------------------------------------
+Pair.prototype.simple = function(quote, ...extra_params) {
+    return print_pair(this, quote, null, ...extra_params);
+};
+// ----------------------------------------------------------------------
+// write-shared: label every shared pair with datum labels (#n=/#n#).
+// ----------------------------------------------------------------------
+Pair.prototype.shared = function(quote, ...extra_params) {
+    return print_pair(this, quote, shared_labels(this), ...extra_params);
+};
+// ----------------------------------------------------------------------
+Pair.prototype.toString = function(quote, { nested = false, shared = false, simple = false } = {}) {
+    if (shared) {
+        return this.shared(quote, { shared, simple });
+    }
+    if (simple) {
+        return this.simple(quote, { shared, simple });
+    }
     var arr = [];
     if (this[__ref__]) {
         arr.push(this[__ref__] + '(');
@@ -11083,8 +11195,8 @@ var global_env = new Environment({
 
         Function that returns the first found index of the pattern inside a string.`),
     // ------------------------------------------------------------------
-    repr: doc('repr', function repr(obj, quote) {
-        return to_string(obj, quote);
+    repr: doc('repr', function repr(obj, quote, ...args) {
+        return to_string(obj, quote, ...args);
     }, `(repr obj)
 
         Function that returns a LIPS code representation of the object as a string.`),

@@ -1361,6 +1361,30 @@
                 (begin
                   (vector.set out start end)
                   count)))))))
+;; -----------------------------------------------------------------------------
+(define (write-shared x . rest)
+  "(write-shared obj)
+   (write-shared obj port)
+
+  Write object and always displaying datum labels on shared data"
+  (let ((port (if (null? rest)
+                  (current-output-port)
+                  (car rest))))
+    (typecheck "write-shared" port "output-port")
+    (display (repr x true false &(:shared #t)) port)))
+
+;; -----------------------------------------------------------------------------
+(define (write-simple x . rest)
+  "(write-simple obj)
+   (write-simple obj port)
+
+  Write object without displaying datum labels. It can hang when the argument
+  has cycles."
+  (let ((port (if (null? rest)
+                  (current-output-port)
+                  (car rest))))
+    (typecheck "write-simple" port "output-port")
+    (display (repr x true false &(:simple #t)) port)))
 
 ;; -----------------------------------------------------------------------------
 (define delete-file

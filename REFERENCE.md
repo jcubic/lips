@@ -4534,6 +4534,23 @@ Writes the character char (not an external representation of the character)
 to the given textual output port and returns an unspecified value.
 ```
 
+## write-shared
+```
+(write-shared obj)
+(write-shared obj port)
+
+Write object and always displaying datum labels on shared data
+```
+
+## write-simple
+```
+(write-simple obj)
+(write-simple obj port)
+
+Write object without displaying datum labels. It can hang when the argument
+has cycles.
+```
+
 ## write-string
 ```
 (write-string string)

@@ -14,6 +14,7 @@
 * add `raise-continuable` function
 * new `guard` macro (based on R7RS spec)
 * add procedure argument to `assoc`
+* add `write-shared` and `write-simple` procedures
 ### Bugfix
 * fix `append` dropping a `#void` element (`(append (list #void) '(y))`), which
   also made quasiquote templates silently drop a literal or unquoted `#void`
