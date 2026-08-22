@@ -29,7 +29,7 @@
 * fix renaming inside `quote` in a `syntax-rules`
 * fix `denominator` of `0`
 * fix `string-ref` wrong exception when index out of range
-* fix for chibi R7RS tests:
+* fix for Chibi R7RS tests:
   * fix handling an empty symbol `||`
   * fix `char-foldcase` and `boolean=?`
   * fix `call-with-values`, `with-exception-handler`, and `dynamic-wind`
