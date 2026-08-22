@@ -2857,7 +2857,10 @@
    Returns character inside string at given zero-based index."
   (typecheck "string-ref" string "string" 1)
   (typecheck "string-ref" k "number" 2)
-  (lips.LCharacter (string.get k)))
+  (let ((str (string.get k)))
+    (if (eq? str #void)
+        (throw "index out of range")
+        (lips.LCharacter str))))
 
 (define (%string-cmp name string1 string2)
   "(%string-cmp name a b)

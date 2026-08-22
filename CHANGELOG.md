@@ -25,6 +25,7 @@
 * fix `syntax-rules` literal matching for a literal that denotes a user-defined identifier
 * fix renaming inside `quote` in a `syntax-rules`
 * fix `denominator` of `0`
+* fix `string-ref` wrong exception when index out of range
 * fix for chibi R7RS tests:
   * fix handling an empty symbol `||`
   * fix `char-foldcase` and `boolean=?`
