@@ -1,6 +1,15 @@
-(define (aprox-equal a b . rest)
-  (let ((epsilon (if (null? rest) 0.00001 (car rest))))
-    (< (abs (- a b) epsilon))))
+(define DEBUG #f)
+;;(set! DEBUG "__DEBUG__")
+
+(define (with-debug a b code)
+  (if (and DEBUG (string=? DEBUG "__DEBUG__"))
+      `(begin
+         (print (concat "PASS "
+                        (repr ',a true)
+                        " and "
+                        (repr ',b true)))
+         ,code)
+      code))
 
 (define-macro (t.is a b)
   "(t.is a b)
@@ -15,7 +24,7 @@
                               (let ((,a_name (round-number ,a))
                                     (,b_name (round-number ,b)))
                                 (if (equal? ,a_name ,b_name)
-                                    (--> ,e (pass))
+                                    ,(with-debug a b `(--> ,e (pass)))
                                     (--> ,e (fail (concat
                                                   "failed: "
                                                   (repr ,a_name true)
