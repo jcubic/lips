@@ -1947,9 +1947,10 @@ class LIPSError extends Error {
 // -------------------------------------------------------------------------
 class IgnoreException extends Error { }
 // -------------------------------------------------------------------------
-class Unterminated extends LIPSError { }
 class ParseError extends LIPSError { }
+class Unterminated extends ParseError { }
 class RuntimeError extends LIPSError { }
+class TypeError extends RuntimeError { }
 class PromiseRejection extends RuntimeError { }
 
 class Continuable extends Error {
@@ -10584,7 +10585,7 @@ var global_env = new Environment({
         var obj_type = typeof obj;
         if (is_null(obj) || (obj_type !== 'object' && obj_type !== 'function')) {
             var msg = typeErrorMessage('set-object!', type(obj), ['object', 'function']);
-            throw new Error(msg);
+            throw new TypeError(msg);
         }
         typecheck('set-object!', key, ['string', 'symbol', 'number']);
         obj = unbind(obj);
@@ -11270,7 +11271,7 @@ var global_env = new Environment({
         } else if (Array.isArray(arg)) {
             return arg.reverse();
         } else {
-            throw new Error(typeErrorMessage('reverse', type(arg), 'array or pair'));
+            throw new TypeError(typeErrorMessage('reverse', type(arg), 'array or pair'));
         }
     }, `(reverse list)
 
@@ -11294,7 +11295,7 @@ var global_env = new Environment({
         } else if (obj instanceof Array) {
             return obj[index];
         } else {
-            throw new Error(typeErrorMessage('nth', type(obj), 'array or pair', 2));
+            throw new TypeError(typeErrorMessage('nth', type(obj), 'array or pair', 2));
         }
     }, `(nth index obj)
 
@@ -12424,7 +12425,7 @@ function typecheck_number(fn, arg, expected, position = null) {
         expected = expected.valueOf().toLowerCase();
     }
     if (!match && arg_type !== expected) {
-        throw new Error(typeErrorMessage(fn, arg_type, expected, position));
+        throw new TypeError(typeErrorMessage(fn, arg_type, expected, position));
     }
 }
 
@@ -12445,7 +12446,7 @@ function typecheck_args(fn, args, expected) {
 function typecheck_text_port(fn, arg, type) {
     typecheck(fn, arg, type);
     if (arg.__type__ === binary_port) {
-        throw new Error(typeErrorMessage(
+        throw new TypeError(typeErrorMessage(
             fn,
             'binary-port',
             'textual-port'
@@ -12464,7 +12465,7 @@ function typecheck(fn, arg, expected, position = null) {
     const arg_type = type(arg).toLowerCase();
     if (is_function(expected)) {
         if (!expected(arg)) {
-            throw new Error(typeErrorMessage(fn, arg_type, expected, position));
+            throw new TypeError(typeErrorMessage(fn, arg_type, expected, position));
         }
         return;
     }
@@ -12484,7 +12485,7 @@ function typecheck(fn, arg, expected, position = null) {
         expected = expected.valueOf().toLowerCase();
     }
     if (!match && arg_type !== expected) {
-        throw new Error(typeErrorMessage(fn, arg_type, expected, position));
+        throw new TypeError(typeErrorMessage(fn, arg_type, expected, position));
     }
 }
 
