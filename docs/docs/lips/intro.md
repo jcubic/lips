@@ -487,6 +487,16 @@ This returned function querySelector from document object in browser. Note that 
 as first element of the list (it's handled in special way by the parser). In any other place dot is a pair separator,
 see documentation about [Pairs in Scheme](/docs/scheme-intro/data-types#pairs).
 
+To reference the dot function as a value, use the escaped symbol `|.|`. This lets you pass it to
+higher-order functions such as `curry`:
+
+```scheme
+(define doc (curry |.| document))
+((doc 'querySelector) "body")
+;; ==> #<HTMLBodyElement>
+```
+
+Here `|.|` refers to the same function as `.` without triggering the parser's special handling.
 
 ##### Usage of `.` operators
 
