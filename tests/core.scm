@@ -201,7 +201,27 @@ This function returns the car (item 1) of the list.")
         (t.is (call-with-values * -) -1)
         (t.is (call-with-values (lambda () (values 4 5))
                 (lambda (a b) b)) 5)
-        (t.is (call-with-values (lambda () (values 4 5)) +) 9)))
+        (t.is (call-with-values (lambda () (values 4 5)) +) 9)
+        ;; an async producer (its body awaits a promise) returns a promise of the
+        ;; Values bundle; call-with-values must wait and still spread it into the
+        ;; consumer - regression: with a native consumer it returned (#<Values>)
+        (t.is (call-with-values (lambda () (Promise.resolve 10) (values 1/2 "hello")) list)
+              (list 1/2 "hello"))
+        (t.is (call-with-values (lambda () (Promise.resolve 10) (values 4 5)) +) 9)))
+
+(test.failing "first-class call-with-values keeps an escaping continuation in the consumer"
+      (lambda (t)
+        ;; KNOWN BUG: used first-class (via apply) call-with-values runs through
+        ;; the native function instead of the operator-position trampoline path,
+        ;; so a lambda consumer that escapes via a continuation runs in a nested
+        ;; trampoline and double-executes: the value is correct (21) but a
+        ;; spurious "Expecting number got void" is thrown afterwards. This is not
+        ;; specific to async producers - a sync producer fails the same way.
+        (t.is (+ 1 (call/cc (lambda (k)
+                              (apply call-with-values
+                                     (list (lambda () (values 4 5))
+                                           (lambda (a b) (k (* a b))))))))
+              21)))
 
 (test "values without wrapping"
       (lambda (t)

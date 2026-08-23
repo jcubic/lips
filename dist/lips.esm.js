@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 23 Aug 2026 17:07:17 +0000
+ * build: Sun, 23 Aug 2026 19:02:36 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -8012,29 +8012,6 @@ Pair.prototype.reverse = function () {
 };
 
 // ----------------------------------------------------------------------
-Pair.prototype.transform = function (fn) {
-  function recur(pair) {
-    if (is_pair(pair)) {
-      if (pair.replace) {
-        delete pair.replace;
-        return pair;
-      }
-      var car = fn(pair.car);
-      if (is_pair(car)) {
-        car = recur(car);
-      }
-      var cdr = fn(pair.cdr);
-      if (is_pair(cdr)) {
-        cdr = recur(cdr);
-      }
-      return new Pair(car, cdr);
-    }
-    return pair;
-  }
-  return recur(this);
-};
-
-// ----------------------------------------------------------------------
 Pair.prototype.map = function (fn) {
   if (typeof this.car !== 'undefined') {
     return new Pair(fn(this.car), is_nil(this.cdr) ? _nil : this.cdr.map(fn));
@@ -11511,7 +11488,7 @@ LNumber.prototype.op = function (op, n) {
     n = LNumber(n);
   }
   if (Number.isNaN(this.__value__) && !LNumber.isComplex(n) || !LNumber.isComplex(this) && Number.isNaN(n.__value__)) {
-    return LNumber(NaN);
+    return LNumber.NaN;
   }
   var _this$coerce = this.coerce(n),
     _this$coerce2 = _slicedToArray(_this$coerce, 2),
@@ -12316,26 +12293,6 @@ LRational.prototype.sqrt = function () {
     num,
     denom
   });
-};
-// -------------------------------------------------------------------------
-LRational.prototype.quotient = function () {
-  var num = this.__num__;
-  var denom = this.__denom__;
-  if (LNumber.isNative(num) && LNumber.isNative(denom)) {
-    if (denom.cmp(0) === 0) {
-      throw new Error("quotient: division by zero");
-    }
-    var div = num / denom;
-    if (LNumber.isBigInteger(div)) {
-      return div;
-    }
-    if (div > 0) {
-      return Math.floor(div);
-    } else {
-      return Math.ceil(div);
-    }
-  }
-  throw new Error('quotient: Invalid argument');
 };
 // -------------------------------------------------------------------------
 LRational.prototype.abs = function () {
@@ -13808,7 +13765,7 @@ var internal_env = new Environment({
   'space-unicode-regex': /[\t-\r \xA0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]/
 }, undefined, 'internal');
 // ----------------------------------------------------------------------
-var nan = LNumber(NaN);
+var nan = LNumber.NaN;
 var inf_plus = LNumber(Number.POSITIVE_INFINITY);
 var inf_minus = LNumber(Number.NEGATIVE_INFINITY);
 var inf_nan = [['+inf.0', inf_plus], ['-inf.0', inf_minus], ['+nan.0', nan], ['-nan.0', nan]];
@@ -14562,11 +14519,19 @@ var global_env = new Environment({
   'call-with-values': doc('call-with-values', function (producer, consumer) {
     typecheck('call-with-values', producer, 'function', 1);
     typecheck('call-with-values', consumer, 'function', 2);
-    var maybe = producer.apply(this);
-    if (maybe instanceof Values) {
-      return consumer.apply(this, maybe.valueOf());
-    }
-    return consumer.call(this, maybe);
+    var self = this;
+    // the producer may be async (its body awaited a promise), so its result
+    // can be a promise of the Values bundle - wait for it before deciding
+    // whether to spread. Otherwise the promise would reach the consumer as a
+    // single argument, e.g.
+    // (call-with-values (lambda () (Promise.resolve 1) (values 1 2)) list)
+    // returned (#<Values>) instead of (1 2).
+    return unpromise(producer.apply(this), function (maybe) {
+      if (maybe instanceof Values) {
+        return consumer.apply(self, maybe.valueOf());
+      }
+      return consumer.call(self, maybe);
+    });
   }, "(call-with-values producer consumer)\n\n        Calls the producer procedure with no arguments, then calls the\n        consumer procedure with the returned value as an argument -- unless\n        the returned value is a special Values object created by (values), if it is\n        the values are unpacked and the consumer is called with multiple arguments."),
   // ------------------------------------------------------------------
   'current-environment': doc('current-environment', function () {
@@ -18167,10 +18132,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 23 Aug 2026 17:07:17 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 23 Aug 2026 19:02:36 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 23 Aug 2026 17:07:17 +0000').valueOf();
+  var date = LString('Sun, 23 Aug 2026 19:02:36 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18209,7 +18174,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 23 Aug 2026 17:07:17 +0000';
+var date = 'Sun, 23 Aug 2026 19:02:36 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

@@ -10583,11 +10583,19 @@ var global_env = new Environment({
     'call-with-values': doc('call-with-values', function(producer, consumer) {
         typecheck('call-with-values', producer, 'function', 1);
         typecheck('call-with-values', consumer, 'function', 2);
-        var maybe = producer.apply(this);
-        if (maybe instanceof Values) {
-            return consumer.apply(this, maybe.valueOf());
-        }
-        return consumer.call(this, maybe);
+        const self = this;
+        // the producer may be async (its body awaited a promise), so its result
+        // can be a promise of the Values bundle - wait for it before deciding
+        // whether to spread. Otherwise the promise would reach the consumer as a
+        // single argument, e.g.
+        // (call-with-values (lambda () (Promise.resolve 1) (values 1 2)) list)
+        // returned (#<Values>) instead of (1 2).
+        return unpromise(producer.apply(this), function(maybe) {
+            if (maybe instanceof Values) {
+                return consumer.apply(self, maybe.valueOf());
+            }
+            return consumer.call(self, maybe);
+        });
     }, `(call-with-values producer consumer)
 
         Calls the producer procedure with no arguments, then calls the
