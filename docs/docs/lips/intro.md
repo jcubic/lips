@@ -1180,15 +1180,15 @@ loading `.xcb` or `.scm` files.
 
 :::info
 
-Directives `#!fold-case` and `#!no-fold-case` work only inside the parser and they are
-treated as comments, so you can't compile the code that have those directives.
+Directives `#!fold-case` and `#!no-fold-case` work only inside the parser, and they are
+treated as comments, so you can't compile the code that has those directives.
 
 :::
 
 ## loading SRFI
 
-In LIPS, you can use `(load)` with path absolute or relative to the directory of the executed LIPS
-file. But you can use special syntax that indicate the root directory of the LIPS Scheme.
+In LIPS, you can use `(load)` with an absolute or relative path to the directory of the executed LIPS
+file. But you can use special syntax that indicates the root directory of the LIPS Scheme.
 
 ```scheme
 (load "@lips/lib/srfi/1.scm")
@@ -1199,3 +1199,17 @@ Library. You can use this syntax in Node based REPL (NPM executable).  The same 
 with the web. But note that the root directory reply on the path of the LIPS Scheme script file. So
 you if you bundle the code with Webpack or Rollup, LIPS may not find the root URL and may not be
 able to load the proper file.
+
+## Reading the R7RS spec and similar documents
+
+While reading the R7RS spec using the LIPS Scheme REPL, you may find this error:
+
+:::danger
+
+You're using an invalid Unicode quote character. Run: `(set-special! "’" quote)` to allow the use of
+this type of quote
+
+:::
+
+Because some documents like R7RS use a different quotation character instead of ASCII `'` they use
+`’` (prime) because of the LaTeX typesetting system.
