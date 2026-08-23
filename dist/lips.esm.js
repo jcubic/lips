@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 23 Aug 2026 19:02:36 +0000
+ * build: Sun, 23 Aug 2026 23:19:40 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -3027,7 +3027,7 @@ function contentLoaded(win, fn) {
 // mirrors whether DEBUG is set to a truthy value (updated by Environment.set)
 // so the common (debug-off) case is a single boolean test.
 var _debug_enabled = false;
-/* c8 ignore next */
+/* c8 ignore start */
 function is_debug() {
   var _debug;
   var n = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : null;
@@ -3046,7 +3046,7 @@ function is_debug() {
   }
   return debug === n;
 }
-
+/* c8 ignore end */
 // functions generate regexes to match number rational, integer, complex, complex+rational
 function num_mnemicic_re(mnemonic) {
   return mnemonic ? "(?:#".concat(mnemonic, "(?:#[ie])?|#[ie]#").concat(mnemonic, ")") : '(?:#[ie])?';
@@ -8060,7 +8060,7 @@ var str_mapping = new Map();
 // :: Debug function that can be used with JSON.stringify
 // :: that will show symbols
 // ----------------------------------------------------------------------
-/* c8 ignore next 22 */
+/* c8 ignore start */
 function symbolize(obj) {
   if (obj && typeof obj === 'object') {
     var result = {};
@@ -8082,6 +8082,7 @@ function symbolize(obj) {
   }
   return obj;
 }
+/* c8 ignore stop */
 // ----------------------------------------------------------------------
 function basename(path) {
   return path.split(/[\\/]/).pop();
@@ -8423,6 +8424,7 @@ function mark_cycles(pair) {
     mark_node(node, 'cdr');
   });
 }
+/* c8 ignore end */
 
 // ----------------------------------------------------------------------
 // Printer for write-simple / write-shared. Unlike toString (used by write) it
@@ -13200,7 +13202,7 @@ Interpreter.prototype.exec = function (arg) {
     _options$filename = options.filename,
     filename = _options$filename === void 0 ? null : _options$filename,
     env = options.env;
-  typecheck('Interpreter::exec', arg, ['string', 'array'], 1);
+  typecheck('Interpreter::exec', arg, ['string', 'pair', 'array'], 1);
   typecheck('Interpreter::exec', use_dynamic, 'boolean', 2);
   // simple solution to overwrite this variable in each interpreter
   // before evaluation of user code. It's set on global_env (not this.__env__)
@@ -13214,7 +13216,7 @@ Interpreter.prototype.exec = function (arg) {
   if (!dynamic_env) {
     dynamic_env = env;
   }
-  if (Array.isArray(arg)) {
+  if (Array.isArray(arg) || is_pair(arg)) {
     return exec(arg, {
       env,
       dynamic_env,
@@ -15270,8 +15272,10 @@ var global_env = new Environment({
     return is_instance(obj);
   }, "(instance? obj)\n\n        Checks if object is an instance, created with a new operator"),
   // ------------------------------------------------------------------
+  'worker?': doc('worker?', is_worker, "(worker?)\n\n         Function check if the script run in Web Worker"),
+  // ------------------------------------------------------------------
   'instanceof': doc('instanceof', function (type, obj) {
-    return obj instanceof unbind(type);
+    return typeof obj === 'object' && obj instanceof unbind(type);
   }, "(instanceof type obj)\n\n        Predicate that tests if the obj is an instance of type."),
   // ------------------------------------------------------------------
   'prototype?': doc('prototype?', is_prototype, "(prototype? obj)\n\n         Predicate that tests if value is a valid JavaScript prototype,\n         i.e. calling (new) with it will not throw '<x> is not a constructor'."),
@@ -17687,8 +17691,17 @@ function is_dev() {
 }
 
 // -------------------------------------------------------------------------
+function is_worker() {
+  try {
+    return self instanceof WorkerGlobalScope;
+  } catch (e) {
+    return false;
+  }
+}
+
+// -------------------------------------------------------------------------
 function get_current_script() {
-  if (is_node()) {
+  if (is_node() || is_worker()) {
     return;
   }
   var script;
@@ -17727,7 +17740,9 @@ function bootstrap() {
 }
 // -------------------------------------------------------------------------
 function Worker(url) {
+  var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
   this.url = url;
+  var worker_id = (Date.now() + Math.random()).toString(36);
   var worker = this.worker = fworker(function () {
     var interpreter;
     var init;
@@ -17759,11 +17774,12 @@ function Worker(url) {
         }
         init.then(function () {
           // we can use ES6 inside function that's converted to blob
+          var options = data.params[1] || {};
           var code = data.params[0];
-          var use_dynamic = data.params[1];
-          interpreter.exec(code, {
-            use_dynamic
-          }).then(function (result) {
+          if (options.json) {
+            code = lips.unserialize(code);
+          }
+          interpreter.exec(code, options).then(function (result) {
             result = result.map(function (value) {
               return value && value.valueOf();
             });
@@ -17773,28 +17789,32 @@ function Worker(url) {
           });
         });
       } else if (data.method === 'init') {
-        var url = data.params[0];
-        if (typeof url !== 'string') {
+        var _url = data.params[0];
+        var _options2 = data.params[1] || {};
+        if (typeof _url !== 'string') {
           send_error('Worker RPC: url is not a string');
         } else {
-          importScripts("".concat(url, "/dist/lips.min.js"));
-          interpreter = new lips.Interpreter('worker');
-          init = bootstrap(url);
+          importScripts("".concat(_url, "/dist/lips.js"));
+          interpreter = new lips.Interpreter('worker', _options2);
+          init = lips.bootstrap("".concat(_url, "/dist/std.xcb"));
           init.then(() => {
             send_result(true);
+          }).catch(err => {
+            console.error(err.message);
+            console.error(err.__stack__.join('\n'));
           });
         }
       }
     });
   });
   this.rpc = function () {
-    var id = 0;
+    var counter = 0;
     return function rpc(method, params) {
-      var _id = ++id;
+      var id = "".concat(worker_id, "__").concat(++counter);
       return new Promise(function (resolve, reject) {
         worker.addEventListener('message', function handler(response) {
           var data = response.data;
-          if (data && data.type === 'RPC' && data.id === _id) {
+          if (data && data.type === 'RPC' && data.id === id) {
             if (data.error) {
               reject(data.error);
             } else {
@@ -17806,19 +17826,27 @@ function Worker(url) {
         worker.postMessage({
           type: 'RPC',
           method: method,
-          id: _id,
+          id,
           params: params
         });
       });
     };
   }();
-  this.rpc('init', [url]).catch(error => {
+  this.rpc('init', [url, options]).catch(error => {
     console.error(error);
   });
-  this.exec = function (code, _ref50) {
-    var _ref50$use_dynamic = _ref50.use_dynamic,
+  this.exec = function (code) {
+    var _ref50 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+      _ref50$use_dynamic = _ref50.use_dynamic,
       use_dynamic = _ref50$use_dynamic === void 0 ? false : _ref50$use_dynamic;
-    return this.rpc('eval', [code, use_dynamic]);
+    var is_code = is_pair(code);
+    if (is_code) {
+      code = serialize(code);
+    }
+    return this.rpc('eval', [code, {
+      use_dynamic,
+      json: is_code
+    }]);
   };
 }
 
@@ -18132,10 +18160,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 23 Aug 2026 19:02:36 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 23 Aug 2026 23:19:40 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 23 Aug 2026 19:02:36 +0000').valueOf();
+  var date = LString('Sun, 23 Aug 2026 23:19:40 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18174,7 +18202,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 23 Aug 2026 19:02:36 +0000';
+var date = 'Sun, 23 Aug 2026 23:19:40 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

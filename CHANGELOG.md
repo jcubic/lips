@@ -3,7 +3,7 @@
 * `syntax-rules` now treats `_` as the R7RS wildcard: it matches any input
   without binding, is transcribed verbatim as the literal symbol `_` in a
   template, and the pattern keyword position is ignored.
-* `set-object!` 4th argument is no strict option to prevent unboxing
+* `set-object!` 4th argument is now strict option to prevent unboxing
 * `current-second` now returns an inexact value (as per R7RS spec)
 * `float`, `ceiling`, `round`, `truncate` now return inexact on inexact
 * integers in scientific notation now properly return float (unless marked exact)
@@ -33,6 +33,7 @@
 * fix `denominator` of `0`
 * fix `string-ref` wrong exception when index out of range
 * fix ``call-with-values`` with promises
+* fix using inside web workers [#555](https://github.com/jcubic/lips/issues/555)
 * fix for Chibi R7RS tests:
   * fix handling an empty symbol `||`
   * fix `char-foldcase` and `boolean=?`

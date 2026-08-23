@@ -1714,15 +1714,15 @@
                       (if (not (null? (car args)))
                           (car args)
                           (iter (cdr args)))))))
-         (indexedDB (any window.indexedDB
-                         window.indexedDB
-                         window.mozIndexedDB
-                         window.webkitIndexedDB)))
+         (indexedDB (any self.indexedDB
+                         self.indexedDB
+                         self.mozIndexedDB
+                         self.webkitIndexedDB)))
     (if (not (null? indexedDB))
         (try
          (begin
            ;; open will fail in about:blank
-           (window.indexedDB.open "IndexedDBExistenceCheck" 3)
+           (self.indexedDB.open "IndexedDBExistenceCheck" 3)
            true)
          (catch (e)
                 false))
@@ -1818,8 +1818,15 @@
 (define response->text (curry response->content false))
 
 ;; -----------------------------------------------------------------------------
+(define (browser?)
+  "(browser?)
+
+  Function checks if code runs in browser. Main thread of worker."
+  (or (eq? self window) (worker?)))
+
+;; -----------------------------------------------------------------------------
 (define http-get
-  (if (eq? self window)
+  (if (browser?)
       (lambda (url binary)
         "(http-get url)
 

@@ -379,6 +379,13 @@ Function that check if the variable is defined in the given environment,
 or interaction-environment if not specified.
 ```
 
+## browser?
+```
+(browser?)
+
+Function checks if code runs in browser. Main thread of worker.
+```
+
 ## buffer->u8vector
 ```
 (buffer->u8vector bin)
@@ -4526,6 +4533,13 @@ is closed.
 Procedure open string and make it current-input-port then thunk is executed.
 After thunk is executed current-input-port is restored and string port
 is closed.
+```
+
+## worker?
+```
+(worker?)
+
+Function check if the script run in Web Worker
 ```
 
 ## write

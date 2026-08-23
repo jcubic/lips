@@ -9102,7 +9102,7 @@ Interpreter.prototype.exec = function(arg, options = {}) {
         filename = null,
         env
     } = options;
-    typecheck('Interpreter::exec', arg, ['string', 'array'], 1);
+    typecheck('Interpreter::exec', arg, ['string', 'pair', 'array'], 1);
     typecheck('Interpreter::exec', use_dynamic, 'boolean', 2);
     // simple solution to overwrite this variable in each interpreter
     // before evaluation of user code. It's set on global_env (not this.__env__)
@@ -9116,7 +9116,7 @@ Interpreter.prototype.exec = function(arg, options = {}) {
     if (!dynamic_env) {
         dynamic_env = env;
     }
-    if (Array.isArray(arg)) {
+    if (Array.isArray(arg) || is_pair(arg)) {
         return exec(arg, { env, dynamic_env, use_dynamic, filename });
     } else {
         this.__parser__.prepare(arg, { filename });
@@ -11476,8 +11476,15 @@ var global_env = new Environment({
 
         Checks if object is an instance, created with a new operator`),
     // ------------------------------------------------------------------
+    'worker?': doc(
+        'worker?',
+        is_worker,
+        `(worker?)
+
+         Function check if the script run in Web Worker`),
+    // ------------------------------------------------------------------
     'instanceof': doc('instanceof', function(type, obj) {
-        return obj instanceof unbind(type);
+        return typeof obj === 'object' && obj instanceof unbind(type);
     }, `(instanceof type obj)
 
         Predicate that tests if the obj is an instance of type.`),
@@ -13935,8 +13942,17 @@ function is_dev() {
 }
 
 // -------------------------------------------------------------------------
+function is_worker() {
+  try {
+    return self instanceof WorkerGlobalScope;
+  } catch (e) {
+    return false;
+  }
+}
+
+// -------------------------------------------------------------------------
 function get_current_script() {
-    if (is_node()) {
+    if (is_node() || is_worker()) {
         return;
     }
     let script;
@@ -13973,8 +13989,9 @@ function bootstrap(url = '') {
     return load.call(user_env, url, global_env);
 }
 // -------------------------------------------------------------------------
-function Worker(url) {
+function Worker(url, options = {}) {
     this.url = url;
+    const worker_id = (Date.now() + Math.random()).toString(36);
     const worker = this.worker = fworker(function() {
         var interpreter;
         var init;
@@ -13998,9 +14015,12 @@ function Worker(url) {
                 }
                 init.then(function() {
                     // we can use ES6 inside function that's converted to blob
+                    const options = data.params[1] || {};
                     var code = data.params[0];
-                    var use_dynamic = data.params[1];
-                    interpreter.exec(code, { use_dynamic }).then(function(result) {
+                    if (options.json) {
+                        code = lips.unserialize(code);
+                    }
+                    interpreter.exec(code, options).then(function(result) {
                         result = result.map(function(value) {
                             return value && value.valueOf();
                         });
@@ -14010,28 +14030,32 @@ function Worker(url) {
                     });
                 });
             } else if (data.method === 'init') {
-                var url = data.params[0];
+                const url = data.params[0];
+                const options = data.params[1] || {};
                 if (typeof url !== 'string') {
                     send_error('Worker RPC: url is not a string');
                 } else {
-                    importScripts(`${url}/dist/lips.min.js`);
-                    interpreter = new lips.Interpreter('worker');
-                    init = bootstrap(url);
+                    importScripts(`${url}/dist/lips.js`);
+                    interpreter = new lips.Interpreter('worker', options);
+                    init = lips.bootstrap(`${url}/dist/std.xcb`);
                     init.then(() => {
                         send_result(true);
+                    }).catch(err => {
+                        console.error(err.message);
+                        console.error(err.__stack__.join('\n'));
                     });
                 }
             }
         });
     });
     this.rpc = (function() {
-        var id = 0;
+        let counter = 0;
         return function rpc(method, params) {
-            var _id = ++id;
+            var id = `${worker_id}__${++counter}`;
             return new Promise(function(resolve, reject) {
                 worker.addEventListener('message', function handler(response) {
                     var data = response.data;
-                    if (data && data.type === 'RPC' && data.id === _id) {
+                    if (data && data.type === 'RPC' && data.id === id) {
                         if (data.error) {
                             reject(data.error);
                         } else {
@@ -14043,17 +14067,21 @@ function Worker(url) {
                 worker.postMessage({
                     type: 'RPC',
                     method: method,
-                    id: _id,
+                    id,
                     params: params
                 });
             });
         };
     })();
-    this.rpc('init', [url]).catch((error) => {
+    this.rpc('init', [url, options]).catch((error) => {
         console.error(error);
     });
-    this.exec = function(code, { use_dynamic = false }) {
-        return this.rpc('eval', [code, use_dynamic]);
+    this.exec = function(code, { use_dynamic = false } = {}) {
+        const is_code = is_pair(code);
+        if (is_code) {
+            code = serialize(code);
+        }
+        return this.rpc('eval', [code, { use_dynamic, json: is_code }]);
     };
 }
 

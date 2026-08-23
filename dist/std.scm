@@ -1714,15 +1714,15 @@
                       (if (not (null? (car args)))
                           (car args)
                           (iter (cdr args)))))))
-         (indexedDB (any window.indexedDB
-                         window.indexedDB
-                         window.mozIndexedDB
-                         window.webkitIndexedDB)))
+         (indexedDB (any self.indexedDB
+                         self.indexedDB
+                         self.mozIndexedDB
+                         self.webkitIndexedDB)))
     (if (not (null? indexedDB))
         (try
          (begin
            ;; open will fail in about:blank
-           (window.indexedDB.open "IndexedDBExistenceCheck" 3)
+           (self.indexedDB.open "IndexedDBExistenceCheck" 3)
            true)
          (catch (e)
                 false))
@@ -1818,8 +1818,15 @@
 (define response->text (curry response->content false))
 
 ;; -----------------------------------------------------------------------------
+(define (browser?)
+  "(browser?)
+
+  Function checks if code runs in browser. Main thread of worker."
+  (or (eq? self window) (worker?)))
+
+;; -----------------------------------------------------------------------------
 (define http-get
-  (if (eq? self window)
+  (if (browser?)
       (lambda (url binary)
         "(http-get url)
 
@@ -5640,7 +5647,7 @@
 ;; TODO: use browserFS or LightningFS
 ;; -----------------------------------------------------------------------------
 (define-values (current-directory set-current-directory!)
-  (if (eq? self window)
+  (if (browser?)
       (let ((cwd (string-append location.origin (--> location.pathname
                                                      (replace #/\/[^/]+$/ "/")))))
         (values
@@ -5701,7 +5708,7 @@
 
    Returns all process environment variables as an alist. This function returns
    an empty list when called in the browser."
-  (if (eq? self window)
+  (if (browser?)
       '()
       (object->alist process.env)))
 
@@ -5711,7 +5718,7 @@
 
    Returns given environment variable. This function returns #void
    when called in the browser."
-  (if (not (eq? self window))
+  (if (not (browser?))
       (. process.env name)))
 
 ;; -----------------------------------------------------------------------------
@@ -5724,9 +5731,9 @@
 
 ;; -----------------------------------------------------------------------------
 (define %%start-jiffy
-  (truncate (* 1000 (if (eq? self window)
-                        performance.timing.navigationStart
-                        performance.timeOrigin)))
+  (truncate (* 1000 (if (number? performance.timeOrigin)
+                        performance.timeOrigin
+                        performance.timing.navigationStart)))
   "Constant value that indicates start jiffy of the scheme process.")
 
 ;; -----------------------------------------------------------------------------

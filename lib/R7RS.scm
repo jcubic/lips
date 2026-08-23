@@ -1883,7 +1883,7 @@
 ;; TODO: use browserFS or LightningFS
 ;; -----------------------------------------------------------------------------
 (define-values (current-directory set-current-directory!)
-  (if (eq? self window)
+  (if (browser?)
       (let ((cwd (string-append location.origin (--> location.pathname
                                                      (replace #/\/[^/]+$/ "/")))))
         (values
@@ -1944,7 +1944,7 @@
 
    Returns all process environment variables as an alist. This function returns
    an empty list when called in the browser."
-  (if (eq? self window)
+  (if (browser?)
       '()
       (object->alist process.env)))
 
@@ -1954,7 +1954,7 @@
 
    Returns given environment variable. This function returns #void
    when called in the browser."
-  (if (not (eq? self window))
+  (if (not (browser?))
       (. process.env name)))
 
 ;; -----------------------------------------------------------------------------
@@ -1967,9 +1967,9 @@
 
 ;; -----------------------------------------------------------------------------
 (define %%start-jiffy
-  (truncate (* 1000 (if (eq? self window)
-                        performance.timing.navigationStart
-                        performance.timeOrigin)))
+  (truncate (* 1000 (if (number? performance.timeOrigin)
+                        performance.timeOrigin
+                        performance.timing.navigationStart)))
   "Constant value that indicates start jiffy of the scheme process.")
 
 ;; -----------------------------------------------------------------------------
