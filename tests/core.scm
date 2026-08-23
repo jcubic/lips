@@ -406,6 +406,31 @@ This function returns the car (item 1) of the list.")
                              (* x x))))))))
           (t.is x 36))))
 
+(test "resolve promises in an array returned from a JS method"
+      (lambda (t)
+        (t.is (--> (vector 1 2 3) (map (lambda (x) (Promise.resolve (* x 10)))))
+              #(10 20 30))))
+
+(test "resolve promises next to a list returned from a JS method"
+      (lambda (t)
+        ;; the promise sibling makes resolve_promises walk the array and rebuild
+        ;; the list element through its new-Pair branch
+        (t.is (--> (vector 0 1)
+                   (map (lambda (x) (if (zero? x) (Promise.resolve 10) (list 'a 'b)))))
+              (vector 10 (list 'a 'b)))))
+
+(test "resolve promises next to a cyclic list returned from a JS method"
+      (lambda (t)
+        ;; a cyclic sibling exercises the have-cycles branches of the rebuild
+        ;; (and must terminate rather than loop forever)
+        (define c (list 1 2 3))
+        (set-cdr! (cddr c) c)
+        (let ((r (--> (vector 0 1)
+                      (map (lambda (x) (if (zero? x) (Promise.resolve 10) c))))))
+          (t.is (vector-ref r 0) 10)
+          (t.is (car (vector-ref r 1)) 1)
+          (t.is (list-ref (vector-ref r 1) 3) 1))))
+
 (test "resolving promises in quoted promise realm"
       (lambda (t)
         (t.is (await (let ((x 2))
