@@ -13847,10 +13847,30 @@ function next_pair(state) {
             // producer is a normal call that returns its value(s).
             const [producer, consumer] = args;
             typecheck('call-with-values', producer, 'function', 1);
+            const self = this;
+            const run_consumer = (result, st) => {
+                const vals = result instanceof Values ? result.valueOf()
+                    : (is_undef(result) ? [] : [result]);
+                evaluate_lambda(consumer, vals, st, self);
+            };
             const maybe = call_function(producer, [], state);
-            const vals = maybe instanceof Values ? maybe.valueOf()
-                : (is_undef(maybe) ? [] : [maybe]);
-            evaluate_lambda(consumer, vals, state, this);
+            if (is_promise(maybe)) {
+                // the producer body was async. Await it through the trampoline
+                // (state.object = promise; the loop resolves it at the
+                // is_promise(code) branch) so a REJECTION is raised inside the
+                // current dynamic extent - and caught by an enclosing try /
+                // with-exception-handler / guard - instead of escaping as an
+                // unhandled promise rejection. Then run the consumer with the
+                // resolved value(s).
+                state.object = maybe;
+                state.ready = false;
+                state.cc = new Continuation('call-with-values', null, this.__code__,
+                                            state, function(st) {
+                    run_consumer(st.object, st);
+                });
+            } else {
+                run_consumer(maybe, state);
+            }
         } else if (is_parameter(first)) {
             // a dynamic variable created by make-parameter. Look up the
             // effective binding in the dynamic environment (parameterize
