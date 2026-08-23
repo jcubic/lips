@@ -9,7 +9,7 @@
 [![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.22.1-blue.svg)](https://www.npmjs.com/package/lips)
 ![1.0.0 Complete](https://img.shields.io/github/milestones/progress-percent/jcubic/lips/1?label=1.0.0%20Complete)
 [![Build and test](https://github.com/jcubic/lips/actions/workflows/build.yaml/badge.svg?branch=devel&event=push)](https://github.com/jcubic/lips/actions/workflows/build.yaml)
-[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=devel&25722095dd35c573eab04d139a51f741)](https://coveralls.io/github/jcubic/lips?branch=devel)
+[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=devel&940ebb2debe6ac54d465c9042d60c6ad)](https://coveralls.io/github/jcubic/lips?branch=devel)
 [![Join Gitter Chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jcubic/lips)
 ![NPM Download Count](https://img.shields.io/npm/dm/lips)
 ![JSDelivr Download count](https://img.shields.io/jsdelivr/npm/hm/lips)
@@ -346,23 +346,21 @@ in Web (e.g. in Web REPL) you can also use full URL:
 ### 1.0
 - [x] Full support for R5RS
 - [ ] Full support for R7RS
+  - [ ] R7RS libraries (`import`/`export`/`define-library`).
   - [x] Continuations.
   - [x] Tail Call Optimization (TCO).
   - [ ] Fully tested Numerical Tower.
 - [x] Fully working binary compiler (for faster parsing and loading std lib).
 - [x] Finish `syntax-rules` (ignore limitations of current approach).
-  - [x] Vectors.
-
-See also [1.0 milesone](https://github.com/jcubic/lips/issues?q=is%3Aissue%20state%3Aopen%20milestone%3A1.0)
+  - [ ] Vectors.
 
 ### Future Plans
-- [ ] R7RS libraries (`import`/`export`/`define-library`).
 - [ ] Picture language (possibly inspired by P5.js, see [SRFI-203](https://srfi.schemers.org/srfi-203/srfi-203.html)).
 - [ ] Stepper/Debugger.
-- [x] Allow using read/port in syntax extensions (similar to CL reader macros).
+- [x] Allow to use read/port in syntax extensions (similar to CL reader macros).
 - [ ] Proper expansion time for both macro systems.
-- [ ] Fully working and tested R7RS hygienic macros (`syntax-rules`).
-- [ ] All recursive functions in JS don't consume the stack.
+- [ ] Fully working and tested R7RS hygienic Macros (`syntax-rules`).
+- [ ] All recursive function in JS don't consume stack.
 
 ### WIP Side projects
 - [ ] [KISS](https://github.com/jcubic/kiss) (Chrome extension REPL).
@@ -374,9 +372,9 @@ I'm working on version 1.0. If you find any bugs, you can help by reporting them
 If you have some Scheme code that doesn't work (note about the limitations)
 don't hesitate to [report an issue](https://github.com/jcubic/lips/issues/new).
 
-You can also propose a feature or improvement to the library; it doesn't always have to be defects.
+You can also propose a feature or improvement to the library, it doesn't always have to be defects.
 
-If you enjoy the library, you can write about it in a blog post and share information about it or write on social media.
+If you enjoy the library, you can write about it on a blog post and share information about it or write on Social Media.
 Don't forget to link to the project website (it's
 [good for SEO](https://itnext.io/seo-for-open-source-projects-1a6b17ffeb8b)).
 
@@ -387,16 +385,15 @@ I would also love to see if you use the library; I may even share the links of p
 ## Acknowledgments
 * The font used in the logo is [Telegrafico](https://www.dafont.com/telegrafico.font) by [ficod](https://www.deviantart.com/ficod).
 * The cover image for GitHub and Blog Posts use clipart by [Baptiste Gaultier](https://openclipart.org/artist/b.gaultier).
-* Part of the current parser is inspired by implementation in [BiwaScheme](https://www.biwascheme.org/) by Yutaka HARA (yhara).
+* Part of the current Parser is inspired by implementation in [BiwaScheme](https://www.biwascheme.org/) by Yutaka HARA (yhara).
 * [TCO](https://lips.js.org/docs/scheme-intro/core#tail-call-optimization) and
   [Continuations](https://lips.js.org/docs/scheme-intro/continuations) implementations inspired by [js-scheme](https://bluishcoder.co.nz/jsscheme/) by Alex Yakovlev.
 * Quasiquote is based on Alan Bawden's paper "Quasiquotation in Lisp".
-* `fetch` polyfill uses [unfetch](https://github.com/developit/unfetch) by Jason Miller.
-* R7RS test suite was taken from [Chibi Scheme](https://github.com/ashinn/chibi-scheme/blob/master/tests/r7rs-tests.scm).
+* `fetch` polyfill use [unfetch](https://github.com/developit/unfetch) by Jason Miller.
 * The browser `init` function uses [ContentLoaded](http://javascript.nwbox.com/ContentLoaded/).
-* The `rationalize` algorithm is based on [Kawa Scheme](https://www.gnu.org/software/kawa/index.html) by Per M.A. Bothner, Alan Bawden and Marc Feeley.
+* The rationalize algorithm is based on [Kawa Scheme](https://www.gnu.org/software/kawa/index.html) by Per M.A. Bothner, Alan Bawden and Marc Feeley.
 * `ucs2decode` function taken from [punycode.js](https://github.com/bestiejs/punycode.js) by [Mathias Bynens](https://mathiasbynens.be/).
-* [Rosetta Code](https://rosettacode.org/) was used for the following:
+* [Rosetta Code](https://rosettacode.org/) was used for:
   * [gcd](https://rosettacode.org/wiki/Greatest_common_divisor#JavaScript),
   * [lcm](https://rosettacode.org/wiki/Least_common_multiple#JavaScript),
   * [LFloat::toRational](https://rosettacode.org/wiki/Convert_decimal_number_to_rational).
@@ -410,11 +407,11 @@ I would also love to see if you use the library; I may even share the links of p
 
 Special thanks:
 * [Lassi Kortela](https://github.com/lassik) for helping with Scheme code.
-* [Niels Wijers](https://github.com/nielswijers) for handing over the [lips npm package name](https://www.npmjs.com/package/lips).
+* [Niels Wijers](https://github.com/nielswijers) for handing over the [lips npm name](https://www.npmjs.com/package/lips).
 
 Thanks to [Algolia DocSearch](https://docsearch.algolia.com/) for providing free search on the LIPS website.
 
 ## License
 
-Released under the [MIT](http://opensource.org/licenses/MIT) license<br/>
+Released under [MIT](http://opensource.org/licenses/MIT) license<br/>
 Copyright (c) 2018-2026 [Jakub T. Jankiewicz](https://jcubic.pl/me)
