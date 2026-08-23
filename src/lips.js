@@ -488,21 +488,23 @@ function parse_float(arg) {
         if (parse.exact && simple_number) {
             return LNumber(value);
         }
-        // positive big num that eval to int e.g.: 1.2e+20
-        if (is_int(value) &&
-            Number.isSafeInteger(value) &&
-            parse.number.match(/e\+?[0-9]/i)) {
-            return LNumber(value);
-        }
-        // calculate big int and big fraction by hand
-        // it doesn't fit into JS float
-        const { mantisa, exponent } = parse_big_int(parse.number);
-        if (mantisa !== undefined && exponent !== undefined) {
-            const factor = LNumber(10).pow(LNumber(Math.abs(exponent)));
-            if (parse.exact && exponent < 0) {
-                return LRational({ num: mantisa, denom: factor });
-            } else if (exponent > 0 && (parse.exact || !parse.number.match(/\./))) {
-                return LNumber(mantisa).mul(factor);
+        if (parse.exact) {
+            // positive big num that eval to int e.g.: 1.2e+20
+            if (is_int(value) &&
+                Number.isSafeInteger(value) &&
+                parse.number.match(/e\+?[0-9]/i)) {
+                return LNumber(value);
+            }
+            // calculate big int and big fraction by hand
+            // it doesn't fit into JS float
+            const { mantisa, exponent } = parse_big_int(parse.number);
+            if (mantisa !== undefined && exponent !== undefined) {
+                const factor = LNumber(10).pow(LNumber(Math.abs(exponent)));
+                if (parse.exact && exponent < 0) {
+                    return LRational({ num: mantisa, denom: factor });
+                } else if (exponent > 0 && (parse.exact || !parse.number.match(/\./))) {
+                    return LNumber(mantisa).mul(factor);
+                }
             }
         }
     }

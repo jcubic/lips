@@ -302,7 +302,7 @@
 
         (t.is (number->string (. (lips.parse "#i1e10") 0)) "1.0e+10")
         (t.is (number->string (. (lips.parse "#i1e+10") 0)) "1.0e+10")
-        (t.is (number->string (. (lips.parse "1e10") 0)) "10000000000")
+        (t.is (number->string (. (lips.parse "1e10") 0)) "1.0e+10")
         (t.is (number->string (. (lips.parse "#e1e10") 0)) "10000000000")
         (t.is (number->string (. (lips.parse "#e1e+10") 0)) "10000000000")
         (t.is (number->string (. (lips.parse "#e1.2e+100") 0)) "12000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
@@ -317,7 +317,7 @@
         (t.is (number->string (. (lips.parse "#e1e-2") 0)) "1/100")
         (t.is (number->string (. (lips.parse "1e-2") 0)) "0.01")
         (t.is (number->string (. (lips.parse "#i1e-2") 0)) "0.01")
-        (t.is (number->string (. (lips.parse "1.2e1") 0)) "12")
+        (t.is (number->string (. (lips.parse "1.2e1") 0)) "12.0")
 
         (t.is (number->string (. (lips.parse "#i100") 0)) "100.0")
         (t.is (number->string (. (lips.parse "#i100i") 0)) "+100.0i")
@@ -374,8 +374,8 @@
         (t.is (number->string #i#x1/F) "0.06666666666666667")
         (t.is (number->string #i#x-1/F) "-0.06666666666666667")
 
-        (t.is (number->string 10e+1) "100")
-        (t.is (number->string -10e+1) "-100")
+        (t.is (number->string 10e+1) "100.0")
+        (t.is (number->string -10e+1) "-100.0")
         (t.is (number->string #i10e+1) "100.0")
         (t.is (number->string #i-10e+1) "-100.0")
 
@@ -472,7 +472,7 @@
       (lambda (t)
         ;; edge cases - big nums and hex
         (t.is (string->number "1e2" 16) 482)
-        (t.is (string->number "1e2") 100)
+        (t.is (string->number "1e2") 100.0)
 
         ;; #326
         (t.is (string->number "2" 1) +nan.0)
@@ -515,9 +515,9 @@
         (t.is (sqrt -1) +1i)
         (t.is (sqrt 0.5) 0.7071067811865476)
         (t.is (sqrt -0.5) +0.7071067811865476i)
-        (t.is (number->string 10e+10i) "+100000000000i")
-        (t.is (number->string 10e+10+10e+10i) "100000000000+100000000000i")
-        (t.is (number->string 1e+1i) "+10i")
+        (t.is (number->string 10e+10i) "+1.0e+11i")
+        (t.is (number->string 10e+10+10e+10i) "1.0e+11+1.0e+11i")
+        (t.is (number->string 1e+1i) "+10.0i")
         (t.is (number->string .1i) "+0.1i")
         (t.is (number->string (/ 10+1i +10i)) "1/10-1i")
         (t.is (number->string (make-rectangular 1/2 2/4)) "1/2+1/2i")
