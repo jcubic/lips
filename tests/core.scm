@@ -1090,6 +1090,40 @@ This function returns the car (item 1) of the list.")
           (t.is (type iterator) "async-iterator")
           (t.is (repr iterator) "#<asyncIterator(Object)>"))))
 
+(test "Pair::simple"
+      (lambda (t)
+        (t.is "((1 2 3) (1 2 3))"
+              (let ((out (open-output-string))
+                    (x (list 1 2 3)))
+                (write-simple (list x x) out)
+                (get-output-string out)))))
+
+(test "Pair:shared"
+      (lambda (t)
+        (t.is (and (member (let ((out (open-output-string))
+                                 (x (list 1 2 3)))
+                             (write-shared (list x x) out)
+                             (get-output-string out))
+                           '("(#0=(1 2 3) #0#)" "(#1=(1 2 3) #1#)"))
+                   #t)
+              #t)))
+
+(test "repr of functions"
+      (lambda (t)
+        (t.is (repr repr) "#<procedure:repr>")
+        (t.is (repr string->list) "#<procedure:string->list>")
+        (t.is (repr (lambda (x) x)) "#<procedure>")
+        (t.is (repr Array.from) "#<procedure(native)>")))
+
+(test "repr of class (js/function)"
+      (lambda (t)
+          (define-class Person Object
+            (constructor (lambda (self name)
+                           (set-object! self '_name name)))
+            (hi (lambda (self)
+                  (display (string-append self._name " says hi"))
+                  (newline))))
+          (t.is (repr Person) "#<class:Person>")))
 
 ;; TODO
 ;; begin*

@@ -1171,6 +1171,7 @@
                        (-0.5 0.5)
                        (-10 10)
                        (-1/2 1/2)
+                       (1/2 1/2)
                        (-nan.0 +nan.0)
                        (+nan.0 +nan.0)
                        (-inf.0 +inf.0)
@@ -1259,3 +1260,34 @@
         ;; large exact values (bigint path)
         (t.is (s (* 123456789 123456789)) '(123456789 0))
         (t.is (s (+ 1 (* 123456789 123456789))) '(123456789 1))))
+
+(test "gcd"
+      (lambda (t)
+        (t.is (gcd) 0)
+        (t.is (gcd 10 6) 2)))
+
+(test "lcm"
+      (lambda (t)
+        (t.is (lcm) 1)
+        (t.is (lcm 10 6) 30)))
+
+(test "ceiling"
+      (lambda (t)
+        (t.is (ceiling 2.3) 3.0)
+        (t.is (ceiling 10/3) 4)
+        (t.is (ceiling -10/3) -3)))
+
+(test "rationalize"
+      (lambda (t)
+        (t.is (rationalize 3/1000 0.00001) 0.003003003003003)
+        (t.is (rationalize 1/10 0.001) 0.1)))
+
+(test "min"
+      (lambda (t)
+        (t.is (to.throw (min)) #t)
+        (t.is -1 (min 1 2 3 -1 10 11 2))))
+
+(test "max"
+      (lambda (t)
+        (t.is (to.throw (max)) #t)
+        (t.is 20 (max 1 2 3 -1 20 10 11 2))))
