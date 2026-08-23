@@ -12474,9 +12474,6 @@ function typecheck(fn, arg, expected, position = null) {
         expected = expected.to_array();
     }
     if (expected instanceof Array) {
-        expected = expected.map(x => x.valueOf());
-    }
-    if (expected instanceof Array) {
         expected = expected.map(x => x.valueOf().toLowerCase());
         if (expected.includes(arg_type)) {
             match = true;
@@ -12587,41 +12584,6 @@ function resolve_promises(arg) {
         }
         return node;
     }
-}
-
-// -------------------------------------------------------------------------
-function evaluate_args(rest, { use_dynamic, ...options }) {
-    var args = [];
-    var node = rest;
-    function next() {
-        return args;
-    }
-    return (function loop() {
-        if (is_pair(node)) {
-            let arg = evaluate(node.car, { use_dynamic, ...options });
-            if (use_dynamic) {
-                // NOTE: why native function need bind to env?
-                arg = unpromise(arg, arg => {
-                    if (is_native_function(arg)) {
-                        return arg.bind(dynamic_env);
-                    }
-                    return arg;
-                });
-            }
-            return unpromise(resolve_promises(arg), function(arg) {
-                args.push(arg);
-                if (node.have_cycles('cdr')) {
-                    throw new Error(`Invalid expression: Can't evaluate cycle`);
-                }
-                node = node.cdr;
-                return loop();
-            });
-        } else if (is_nil(node)) {
-            return next();
-        } else {
-            throw new Error('Syntax Error: improper list found in apply');
-        }
-    })();
 }
 
 // -------------------------------------------------------------------------
