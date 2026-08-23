@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 23 Aug 2026 11:08:51 +0000
+ * build: Sun, 23 Aug 2026 11:49:25 +0000
  */
 
 (function (global, factory) {
@@ -4807,9 +4807,10 @@
   // -------------------------------------------------------------------------
   class IgnoreException extends Error {}
   // -------------------------------------------------------------------------
-  class Unterminated extends LIPSError {}
   class ParseError extends LIPSError {}
+  class Unterminated extends ParseError {}
   class RuntimeError extends LIPSError {}
+  class _TypeError extends RuntimeError {}
   class Continuable extends Error {
     constructor(object) {
       super('Continuable');
@@ -5096,10 +5097,10 @@
           if (token.token === '.' && !is_nil(head)) {
             _this5._skip(token);
             var next = _this5.__lexer__.peek();
-            if (next === '#;' || next === ')') {
+            prev.cdr = yield _this5._read_object();
+            if (next === '#;' && is_undef(prev.cdr) || next === ')') {
               _this5.syntax_error('Syntax Error: no element after dot');
             }
-            prev.cdr = yield _this5._read_object();
             dot = true;
           } else if (dot) {
             _this5.syntax_error('Syntax Error: more than one element after dot');
@@ -14532,7 +14533,7 @@
       var obj_type = typeof obj;
       if (is_null(obj) || obj_type !== 'object' && obj_type !== 'function') {
         var msg = typeErrorMessage('set-object!', type(obj), ['object', 'function']);
-        throw new Error(msg);
+        throw new _TypeError(msg);
       }
       typecheck('set-object!', key, ['string', 'symbol', 'number']);
       obj = unbind(obj);
@@ -15145,7 +15146,7 @@
       } else if (Array.isArray(arg)) {
         return arg.reverse();
       } else {
-        throw new Error(typeErrorMessage('reverse', type(arg), 'array or pair'));
+        throw new _TypeError(typeErrorMessage('reverse', type(arg), 'array or pair'));
       }
     }, "(reverse list)\n\n        Function that reverses the list or array. If value is not a list\n        or array it will error."),
     // ------------------------------------------------------------------
@@ -15166,7 +15167,7 @@
       } else if (obj instanceof Array) {
         return obj[index];
       } else {
-        throw new Error(typeErrorMessage('nth', type(obj), 'array or pair', 2));
+        throw new _TypeError(typeErrorMessage('nth', type(obj), 'array or pair', 2));
       }
     }, "(nth index obj)\n\n        Function that returns the nth element of the list or array.\n        If used with a non-indexable value it will error."),
     // ------------------------------------------------------------------
@@ -16096,7 +16097,7 @@
       expected = expected.valueOf().toLowerCase();
     }
     if (!match && arg_type !== expected) {
-      throw new Error(typeErrorMessage(fn, arg_type, expected, position));
+      throw new _TypeError(typeErrorMessage(fn, arg_type, expected, position));
     }
   }
 
@@ -16117,7 +16118,7 @@
   function typecheck_text_port(fn, arg, type) {
     typecheck(fn, arg, type);
     if (arg.__type__ === binary_port) {
-      throw new Error(typeErrorMessage(fn, 'binary-port', 'textual-port'));
+      throw new _TypeError(typeErrorMessage(fn, 'binary-port', 'textual-port'));
     }
   }
   // -------------------------------------------------------------------------
@@ -16133,7 +16134,7 @@
     var arg_type = type(arg).toLowerCase();
     if (is_function(expected)) {
       if (!expected(arg)) {
-        throw new Error(typeErrorMessage(fn, arg_type, expected, position));
+        throw new _TypeError(typeErrorMessage(fn, arg_type, expected, position));
       }
       return;
     }
@@ -16153,7 +16154,7 @@
       expected = expected.valueOf().toLowerCase();
     }
     if (!match && arg_type !== expected) {
-      throw new Error(typeErrorMessage(fn, arg_type, expected, position));
+      throw new _TypeError(typeErrorMessage(fn, arg_type, expected, position));
     }
   }
 
@@ -18195,10 +18196,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sun, 23 Aug 2026 11:08:51 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sun, 23 Aug 2026 11:49:25 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sun, 23 Aug 2026 11:08:51 +0000').valueOf();
+    var date = LString('Sun, 23 Aug 2026 11:49:25 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -18237,7 +18238,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Sun, 23 Aug 2026 11:08:51 +0000';
+  var date = 'Sun, 23 Aug 2026 11:49:25 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

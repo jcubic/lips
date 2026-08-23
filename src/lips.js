@@ -2194,10 +2194,10 @@ class Parser {
             if (token.token === '.' && !is_nil(head)) {
                 this._skip(token);
                 const next = this.__lexer__.peek();
-                if (next === '#;' || next === ')') {
+                prev.cdr = await this._read_object();
+                if ((next === '#;' && is_undef(prev.cdr))|| next === ')') {
                     this.syntax_error('Syntax Error: no element after dot');
                 }
-                prev.cdr = await this._read_object();
                 dot = true;
             } else if (dot) {
                 this.syntax_error('Syntax Error: more than one element after dot');
