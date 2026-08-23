@@ -12838,10 +12838,6 @@ class Continuation {
 // -------------------------------------------------------------------------
 class State {
     constructor(object, cc, { env, dynamic_env, use_dynamic, error, macro_expand }) {
-        if (is_debug('continuations')) {
-            console.log('[STATE] ' + macro_expand);
-            console.trace();
-        }
         this.env = env;
         this.object = object;
         this.cc = cc;
@@ -12878,14 +12874,6 @@ class State {
         this._stack_set = null;
     }
     cont() {
-        if (is_debug('continuations')) {
-            if (this.cc._state.name == 'top') {
-                console.log('[CONTINUE] => top');
-            } else {
-                console.log('[CONTINUE] => ' + to_string(this.cc.__code__));
-                console.log('              ' + to_string(this.cc.__object__));
-            }
-        }
         // we use uniterate because ignore need to be generator but all other
         // callbacks are normal functions, so yield* will not work
         return uniterate(this.cc.__next__(this));
@@ -12913,14 +12901,7 @@ class State {
             }
         }
         if (!this.ready) {
-            if (is_debug(['eval', 'macro'])) {
-                console.log(`eval: ` + to_string(this.object, true));
-                console.log('scope: ' + JSON.stringify(this.env.names()));
-            }
             yield* evaluate_code(this);
-            if (is_debug(['eval', 'macro'])) {
-                console.log('result: ' + to_string(this.object, true));
-            }
         }
         return this.ready;
     }
