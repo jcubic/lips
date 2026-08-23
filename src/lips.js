@@ -640,7 +640,9 @@ function parse_symbol(arg) {
 // ----------------------------------------------------------------------
 function is_quotable_symbol(str) {
     return !str ||
-        str.match(/(^;|[\s()[\]',"|\\])/) ||
+        is_special(str) ||
+        is_special(str[0]) ||
+        str.match(/(^;|[\s()[\]"|\\])/) ||
         is_numeric(str) ||
         str === '.';
 }

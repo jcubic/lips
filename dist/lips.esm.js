@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 23 Aug 2026 11:49:25 +0000
+ * build: Sun, 23 Aug 2026 17:07:17 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -2930,7 +2930,7 @@ function e(e,n){return n=n||{},new Promise(function(t,r){var s=new XMLHttpReques
 var _excluded = ["token"],
   _excluded2 = ["env"],
   _excluded3 = ["stderr", "stdin", "stdout", "meta", "trace", "command_line", "filename"],
-  _excluded5 = ["env", "dynamic_env", "use_dynamic"];
+  _excluded4 = ["env", "dynamic_env", "use_dynamic"];
 function _classPrivateFieldInitSpec(e, t, a) { _checkPrivateRedeclaration(e, t), t.set(e, a); }
 function _checkPrivateRedeclaration(e, t) { if (t.has(e)) throw new TypeError("Cannot initialize the same private elements twice on an object"); }
 function _classPrivateFieldGet(s, a) { return s.get(_assertClassBrand(s, a)); }
@@ -3542,7 +3542,7 @@ function parse_symbol(arg) {
 }
 // ----------------------------------------------------------------------
 function is_quotable_symbol(str) {
-  return !str || str.match(/(^;|[\s()[\]',"|\\])/) || is_numeric(str) || str === '.';
+  return !str || is_special(str) || is_special(str[0]) || str.match(/(^;|[\s()[\]"|\\])/) || is_numeric(str) || str === '.';
 }
 // ----------------------------------------------------------------------
 function is_numeric(string) {
@@ -16136,9 +16136,6 @@ function typecheck(fn, arg, expected) {
     expected = expected.to_array();
   }
   if (expected instanceof Array) {
-    expected = expected.map(x => x.valueOf());
-  }
-  if (expected instanceof Array) {
     expected = expected.map(x => x.valueOf().toLowerCase());
     if (expected.includes(arg_type)) {
       match = true;
@@ -16300,12 +16297,12 @@ function prepare_fn_args(fn, args) {
 
 // -------------------------------------------------------------------------
 function call_function(fn, args) {
-  var _ref47 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
-    env = _ref47.env,
-    dynamic_env = _ref47.dynamic_env,
-    use_dynamic = _ref47.use_dynamic,
-    _ref47$check_promise = _ref47.check_promise,
-    check_promise = _ref47$check_promise === void 0 ? true : _ref47$check_promise;
+  var _ref46 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
+    env = _ref46.env,
+    dynamic_env = _ref46.dynamic_env,
+    use_dynamic = _ref46.use_dynamic,
+    _ref46$check_promise = _ref46.check_promise,
+    check_promise = _ref46$check_promise === void 0 ? true : _ref46$check_promise;
   if (!fn._context) {
     read_only(fn, '_context', new LambdaContext({}), {
       hidden: true
@@ -16523,16 +16520,12 @@ class Continuation {
 // :: code based on ideas from jsScheme by Alex Yakovlev
 // -------------------------------------------------------------------------
 class State {
-  constructor(object, cc, _ref48) {
-    var env = _ref48.env,
-      dynamic_env = _ref48.dynamic_env,
-      use_dynamic = _ref48.use_dynamic,
-      error = _ref48.error,
-      macro_expand = _ref48.macro_expand;
-    if (is_debug('continuations')) {
-      console.log('[STATE] ' + macro_expand);
-      console.trace();
-    }
+  constructor(object, cc, _ref47) {
+    var env = _ref47.env,
+      dynamic_env = _ref47.dynamic_env,
+      use_dynamic = _ref47.use_dynamic,
+      error = _ref47.error,
+      macro_expand = _ref47.macro_expand;
     this.env = env;
     this.object = object;
     this.cc = cc;
@@ -16569,14 +16562,6 @@ class State {
     this._stack_set = null;
   }
   cont() {
-    if (is_debug('continuations')) {
-      if (this.cc._state.name == 'top') {
-        console.log('[CONTINUE] => top');
-      } else {
-        console.log('[CONTINUE] => ' + to_string(this.cc.__code__));
-        console.log('              ' + to_string(this.cc.__object__));
-      }
-    }
     // we use uniterate because ignore need to be generator but all other
     // callbacks are normal functions, so yield* will not work
     return uniterate(this.cc.__next__(this));
@@ -16604,14 +16589,7 @@ class State {
       }
     }
     if (!this.ready) {
-      if (is_debug(['eval', 'macro'])) {
-        console.log("eval: " + to_string(this.object, true));
-        console.log('scope: ' + JSON.stringify(this.env.names()));
-      }
       yield* evaluate_code(this);
-      if (is_debug(['eval', 'macro'])) {
-        console.log('result: ' + to_string(this.object, true));
-      }
     }
     return this.ready;
   }
@@ -16670,13 +16648,13 @@ function evaluate() {
 // -------------------------------------------------------------------------
 // :: Tail Call Optimized eval
 // -------------------------------------------------------------------------
-function tco_generator(code, _ref49) {
-  var env = _ref49.env,
-    cc = _ref49.cc,
-    dynamic_env = _ref49.dynamic_env,
-    use_dynamic = _ref49.use_dynamic,
-    _ref49$macro_expand = _ref49.macro_expand,
-    macro_expand = _ref49$macro_expand === void 0 ? false : _ref49$macro_expand;
+function tco_generator(code, _ref48) {
+  var env = _ref48.env,
+    cc = _ref48.cc,
+    dynamic_env = _ref48.dynamic_env,
+    use_dynamic = _ref48.use_dynamic,
+    _ref48$macro_expand = _ref48.macro_expand,
+    macro_expand = _ref48$macro_expand === void 0 ? false : _ref48$macro_expand;
   return function* () {
     if (!is_env(dynamic_env)) {
       dynamic_env = env === true ? user_env : env || user_env;
@@ -16837,11 +16815,11 @@ function macro_result_value(result, state) {
 }
 
 // -------------------------------------------------------------------------
-function lambda_scope(self, fn, code, args, _ref50) {
-  var use_dynamic = _ref50.use_dynamic,
-    error = _ref50.error,
-    cc = _ref50.cc,
-    call_dynamic_env = _ref50.dynamic_env;
+function lambda_scope(self, fn, code, args, _ref49) {
+  var use_dynamic = _ref49.use_dynamic,
+    error = _ref49.error,
+    cc = _ref49.cc,
+    call_dynamic_env = _ref49.dynamic_env;
   // lambda got scopes as context in apply
   var dynamic_env;
   if (is_context(this)) {
@@ -17619,7 +17597,7 @@ function exec_collect(collect_callback) {
       var env = options.env,
         dynamic_env = options.dynamic_env,
         use_dynamic = options.use_dynamic,
-        parser_args = _objectWithoutProperties(options, _excluded5);
+        parser_args = _objectWithoutProperties(options, _excluded4);
       if (!is_env(dynamic_env)) {
         dynamic_env = env === true ? user_env : env || user_env;
       }
@@ -17872,9 +17850,9 @@ function Worker(url) {
   this.rpc('init', [url]).catch(error => {
     console.error(error);
   });
-  this.exec = function (code, _ref51) {
-    var _ref51$use_dynamic = _ref51.use_dynamic,
-      use_dynamic = _ref51$use_dynamic === void 0 ? false : _ref51$use_dynamic;
+  this.exec = function (code, _ref50) {
+    var _ref50$use_dynamic = _ref50.use_dynamic,
+      use_dynamic = _ref50$use_dynamic === void 0 ? false : _ref50$use_dynamic;
     return this.rpc('eval', [code, use_dynamic]);
   };
 }
@@ -17883,10 +17861,10 @@ function Worker(url) {
 // :: Serialization
 // -------------------------------------------------------------------------
 var serialization_map = {
-  'pair': _ref52 => {
-    var _ref53 = _slicedToArray(_ref52, 2),
-      car = _ref53[0],
-      cdr = _ref53[1];
+  'pair': _ref51 => {
+    var _ref52 = _slicedToArray(_ref51, 2),
+      car = _ref52[0],
+      cdr = _ref52[1];
     return Pair(car, cdr);
   },
   'number': function number(value) {
@@ -17898,10 +17876,10 @@ var serialization_map = {
     }
     return LNumber(value);
   },
-  'regex': function regex(_ref54) {
-    var _ref55 = _slicedToArray(_ref54, 2),
-      pattern = _ref55[0],
-      flag = _ref55[1];
+  'regex': function regex(_ref53) {
+    var _ref54 = _slicedToArray(_ref53, 2),
+      pattern = _ref54[0],
+      flag = _ref54[1];
     return new RegExp(pattern, flag);
   },
   'nil': function nil() {
@@ -17921,10 +17899,10 @@ var serialization_map = {
 // class mapping to create smaller JSON
 var available_class = Object.keys(serialization_map);
 var class_map = {};
-for (var _ref58 of Object.entries(available_class)) {
-  var _ref57 = _slicedToArray(_ref58, 2);
-  var i = _ref57[0];
-  var cls = _ref57[1];
+for (var _ref57 of Object.entries(available_class)) {
+  var _ref56 = _slicedToArray(_ref57, 2);
+  var i = _ref56[0];
+  var cls = _ref56[1];
   class_map[cls] = +i;
 }
 function mangle_name(name) {
@@ -17991,10 +17969,10 @@ var cbor = function () {
   }
   var encoder = new Encoder();
   var cbor_serialization_map = {};
-  for (var _ref61 of Object.entries(serialization_map)) {
-    var _ref60 = _slicedToArray(_ref61, 2);
-    var name = _ref60[0];
-    var _fn2 = _ref60[1];
+  for (var _ref60 of Object.entries(serialization_map)) {
+    var _ref59 = _slicedToArray(_ref60, 2);
+    var name = _ref59[0];
+    var _fn2 = _ref59[1];
     var Class = types[name];
     cbor_serialization_map[name] = serializer(Class, _fn2);
   }
@@ -18189,10 +18167,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 23 Aug 2026 11:49:25 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 23 Aug 2026 17:07:17 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 23 Aug 2026 11:49:25 +0000').valueOf();
+  var date = LString('Sun, 23 Aug 2026 17:07:17 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18231,7 +18209,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 23 Aug 2026 11:49:25 +0000';
+var date = 'Sun, 23 Aug 2026 17:07:17 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
