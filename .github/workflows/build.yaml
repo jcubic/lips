@@ -59,10 +59,16 @@ jobs:
       - run: make smoke
       - run: make test
       - run: make coverage
-      - name: Coveralls
+      # upload this suite's coverage to Coveralls as one part of a parallel
+      # build; the `coverage` job finalises it once the R7RS run is uploaded too
+      - name: Coveralls (main suite)
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
         uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./coverage/lcov.info
+          flag-name: main
+          parallel: true
 
   r7rs:
     runs-on: ubuntu-latest
@@ -81,6 +87,34 @@ jobs:
       - run: npm ci
       - name: run R7RS spec tests
         run: make test-r7rs
+      # test-r7rs runs under c8, so turn the collected coverage into lcov and
+      # publish it for the `coverage` job to merge with the main run
+      - name: coverage report
+        run: make coverage
+      - name: Coveralls (R7RS suite)
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: ./coverage/lcov.info
+          flag-name: r7rs
+          parallel: true
+
+  coverage:
+    runs-on: ubuntu-latest
+    # tell Coveralls that every parallel coverage upload (main + r7rs) is done so
+    # it merges them into a single report
+    needs: [build, r7rs]
+    # same dedupe as `build`: run on push, and on PRs only from forks
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - name: Coveralls finished
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel-finished: true
+          carryforward: "main,r7rs"
 
   benchmark:
     runs-on: ubuntu-latest
