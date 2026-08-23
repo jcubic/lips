@@ -3942,32 +3942,6 @@ Pair.prototype.reverse = function() {
 };
 
 // ----------------------------------------------------------------------
-Pair.prototype.transform = function(fn) {
-    var visited = [];
-    function recur(pair) {
-        if (is_pair(pair)) {
-            if (pair.replace) {
-                delete pair.replace;
-                return pair;
-            }
-            var car = fn(pair.car);
-            if (is_pair(car)) {
-                car = recur(car);
-                visited.push(car);
-            }
-            var cdr = fn(pair.cdr);
-            if (is_pair(cdr)) {
-                cdr = recur(cdr);
-                visited.push(cdr);
-            }
-            return new Pair(car, cdr);
-        }
-        return pair;
-    }
-    return recur(this);
-};
-
-// ----------------------------------------------------------------------
 Pair.prototype.map = function(fn) {
     if (typeof this.car !== 'undefined') {
         return new Pair(fn(this.car), is_nil(this.cdr) ? nil : this.cdr.map(fn));
@@ -7560,7 +7534,7 @@ LNumber.prototype.op = function(op, n) {
     }
     if (Number.isNaN(this.__value__) && !LNumber.isComplex(n) ||
         !LNumber.isComplex(this) && Number.isNaN(n.__value__)) {
-        return LNumber(NaN);
+        return LNumber.NaN;
     }
     const [a, b] = this.coerce(n);
     if (a._op) {
@@ -8300,26 +8274,6 @@ LRational.prototype.sqrt = function() {
         return num.div(denom);
     }
     return LRational({ num, denom });
-};
-// -------------------------------------------------------------------------
-LRational.prototype.quotient = function() {
-    const num = this.__num__;
-    const denom = this.__denom__;
-    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
-        if (denom.cmp(0) === 0) {
-            throw new Error("quotient: division by zero");
-        }
-        const div = num / denom;
-        if (LNumber.isBigInteger(div)) {
-            return div;
-        }
-        if (div > 0) {
-            return Math.floor(div);
-        } else {
-            return Math.ceil(div);
-        }
-    }
-    throw new Error('quotient: Invalid argument');
 };
 // -------------------------------------------------------------------------
 LRational.prototype.abs = function() {
@@ -9714,7 +9668,7 @@ var internal_env = new Environment({
     'space-unicode-regex': /\s/u
 }, undefined, 'internal');
 // ----------------------------------------------------------------------
-const nan = LNumber(NaN);
+const nan = LNumber.NaN;
 const inf_plus = LNumber(Number.POSITIVE_INFINITY);
 const inf_minus = LNumber(Number.NEGATIVE_INFINITY);
 const inf_nan = [
