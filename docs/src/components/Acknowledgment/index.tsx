@@ -9,7 +9,11 @@ export default function Acknowledgment(): JSX.Element {
           <li>Font used in logo is <a href="https://www.dafont.com/telegrafico.font">Telegrafico</a> by <a href="https://www.deviantart.com/ficod">ficod</a>.</li>
           <li>Cover image for GitHub and blog posts use clipart by <a href="https://openclipart.org/artist/b.gaultier">Baptiste Gaultier</a></li>
           <li>Part of the current parser is inspired by implementation in <a href="https://www.biwascheme.org/">BiwaScheme</a> by Yutaka HARA (yhara).</li>
+          <li><a href="https://lips.js.org/docs/scheme-intro/core#tail-call-optimization">TCO</a> and
+            <a href="https://lips.js.org/docs/scheme-intro/continuations">Continuations</a> implementations inspired by <a href="https://bluishcoder.co.nz/jsscheme/">js-scheme</a> by Alex Yakovlev.</li>
+          <li>Quasiquote is based on Alan Bawden's paper "Quasiquotation in Lisp".</li>
           <li><code>fetch</code> polyfill use <a href="https://github.com/developit/unfetch">unfetch</a> by Jason Miller.</li>
+          <li>R7RS test suite was taken from <a href="https://github.com/ashinn/chibi-scheme/blob/master/tests/r7rs-tests.scm">Chibi Scheme</a>.</li>
           <li>Browser <code>init</code> function use <a href="http://javascript.nwbox.com/ContentLoaded/">ContentLoaded</a>.</li>
           <li>The rationalize algorithm is based on <a href="https://www.gnu.org/software/kawa/index.html">Kawa Scheme</a> by Per M.A. Bothner, Alan Bawden and Marc Feeley.</li>
           <li><code>ucs2decode</code> function taken from <a href="https://github.com/bestiejs/punycode.js">punycode.js</a> by <a href="https://mathiasbynens.be/">Mathias Bynens</a>.</li>
@@ -24,7 +28,8 @@ export default function Acknowledgment(): JSX.Element {
             <ul dir="auto">
               <li><a href="https://stackoverflow.com/a/10372280/387194">fworker</a>,</li>
               <li><a href="https://stackoverflow.com/a/27282907/387194">flatten</a>,</li>
-              <li><a href="https://stackoverflow.com/a/4331218/387194">allPossibleCases</a>.</li>
+              <li><a href="https://stackoverflow.com/a/4331218/387194">allPossibleCases</a>,</li>
+              <li><a href="https://stackoverflow.com/a/48032528/387194">async replace</a>.</li>
             </ul>
           </li>
           <li>Code formatter is roughly based on <a href="http://community.schemewiki.org/?scheme-style">scheme-style</a> and GNU Emacs scheme mode.</li>
@@ -33,7 +38,7 @@ export default function Acknowledgment(): JSX.Element {
           <li>Special thanks:
             <ul>
               <li><a href="https://github.com/lassik">Lassi Kortela</a> for helping with Scheme code.</li>
-              <li><a href="https://github.com/nielswijers">Niels Wijers</a> for handing over the <a href="https://www.npmjs.com/package/lips">lips npm name</a></li>
+              <li><a href="https://github.com/nielswijers">Niels Wijers</a> for handing over the <a href="https://www.npmjs.com/package/lips">lips npm package name</a></li>
             </ul>
           </li>
         </ul>
