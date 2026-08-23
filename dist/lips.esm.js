@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 23 Aug 2026 10:06:50 +0000
+ * build: Sun, 23 Aug 2026 11:08:51 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -4801,6 +4801,7 @@ class LIPSError extends Error {
 class IgnoreException extends Error {}
 // -------------------------------------------------------------------------
 class Unterminated extends LIPSError {}
+class ParseError extends LIPSError {}
 class RuntimeError extends LIPSError {}
 class Continuable extends Error {
   constructor(object) {
@@ -4991,9 +4992,12 @@ class Parser {
           }
           if (token.token === '#;') {
             _this._skip(token);
-            if (_this.__lexer__.peek() === eof) {
-              var e = new Error('Lexer: syntax error eof found after comment');
-              throw _this._augment_exception(e);
+            var next = _this.__lexer__.peek();
+            if (next === eof) {
+              _this.syntax_error('Syntax Error: eof found after comment');
+            }
+            if (next === '.') {
+              _this.syntax_error('Syntax Error: dot is not s-expression');
             }
             yield _this._read_object();
             continue;
@@ -5061,6 +5065,10 @@ class Parser {
   _is_close(token) {
     return [')', ']'].includes(token.token);
   }
+  syntax_error(message) {
+    var e = new ParseError(message);
+    throw this._augment_exception(e);
+  }
   _read_list() {
     var _this5 = this;
     return _asyncToGenerator(function* () {
@@ -5080,11 +5088,14 @@ class Parser {
         }
         if (token.token === '.' && !is_nil(head)) {
           _this5._skip(token);
+          var next = _this5.__lexer__.peek();
+          if (next === '#;' || next === ')') {
+            _this5.syntax_error('Syntax Error: no element after dot');
+          }
           prev.cdr = yield _this5._read_object();
           dot = true;
         } else if (dot) {
-          var e = new Error('Syntax Error: more than one element after dot');
-          throw _this5._augment_exception(e);
+          _this5.syntax_error('Syntax Error: more than one element after dot');
         } else {
           var node = yield _this5._read_object();
           var cur = new Pair(node, _nil);
@@ -17529,9 +17540,28 @@ function next_pair(state) {
         producer = _args3[0],
         consumer = _args3[1];
       typecheck('call-with-values', producer, 'function', 1);
+      var _self = this;
+      var run_consumer = (result, st) => {
+        var vals = result instanceof Values ? result.valueOf() : is_undef(result) ? [] : [result];
+        evaluate_lambda(consumer, vals, st, _self);
+      };
       var maybe = call_function(producer, [], state);
-      var vals = maybe instanceof Values ? maybe.valueOf() : is_undef(maybe) ? [] : [maybe];
-      evaluate_lambda(consumer, vals, state, this);
+      if (is_promise(maybe)) {
+        // the producer body was async. Await it through the trampoline
+        // (state.object = promise; the loop resolves it at the
+        // is_promise(code) branch) so a REJECTION is raised inside the
+        // current dynamic extent - and caught by an enclosing try /
+        // with-exception-handler / guard - instead of escaping as an
+        // unhandled promise rejection. Then run the consumer with the
+        // resolved value(s).
+        state.object = maybe;
+        state.ready = false;
+        state.cc = new Continuation('call-with-values', null, this.__code__, state, function (st) {
+          run_consumer(st.object, st);
+        });
+      } else {
+        run_consumer(maybe, state);
+      }
     } else if (is_parameter(first)) {
       // a dynamic variable created by make-parameter. Look up the
       // effective binding in the dynamic environment (parameterize
@@ -18158,10 +18188,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 23 Aug 2026 10:06:50 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 23 Aug 2026 11:08:51 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 23 Aug 2026 10:06:50 +0000').valueOf();
+  var date = LString('Sun, 23 Aug 2026 11:08:51 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18200,7 +18230,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 23 Aug 2026 10:06:50 +0000';
+var date = 'Sun, 23 Aug 2026 11:08:51 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

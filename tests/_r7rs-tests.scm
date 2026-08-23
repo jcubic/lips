@@ -2205,7 +2205,7 @@
 
 )
 
-(test-begin-only "Read syntax"
+(test-begin "Read syntax"
 
 ;; check reading boolean followed by eof
 (test #t (read (open-input-string "#t")))
@@ -2265,9 +2265,12 @@
         (read (open-input-string str))
         #f)))
 
+;; In LIPS . is also a getter function so it can be first in the list
 ;; (test-read-error "(#;a . b)")
-;; (test-read-error "(a . #;b)")
-;; (test-read-error "(a #;. b)")
+(test-read-error "(a . #;b)")
+(test-read-error "(a #;. b)")
+(test-read-error "(a .)")
+
 ;; (test-read-error "(#;x #;y . z)")
 ;; (test-read-error "(#; #;x #;y . z)")
 ;; (test-read-error "(#; #;x . z)")

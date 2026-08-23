@@ -85,6 +85,7 @@
   * fix parsing strings, symbols, and numbers
   * fix repr of symbols with special characters
   * fix foldcase on unicode characters with more that one codepoints
+  * fix `(a #;. b)` and `(a . #;b)` to throw parse error
 
 ## 1.0.0-beta.22
 ### Breaking

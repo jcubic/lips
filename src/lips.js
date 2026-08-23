@@ -1948,6 +1948,7 @@ class LIPSError extends Error {
 class IgnoreException extends Error { }
 // -------------------------------------------------------------------------
 class Unterminated extends LIPSError { }
+class ParseError extends LIPSError { }
 class RuntimeError extends LIPSError { }
 class PromiseRejection extends RuntimeError { }
 
@@ -2109,9 +2110,12 @@ class Parser {
                 }
                 if (token.token === '#;') {
                     this._skip(token);
-                    if (this.__lexer__.peek() === eof) {
-                        const e = new Error('Lexer: syntax error eof found after comment');
-                        throw this._augment_exception(e);
+                    const next = this.__lexer__.peek();
+                    if (next === eof) {
+                        this.syntax_error('Syntax Error: eof found after comment');
+                    }
+                    if (next === '.') {
+                        this.syntax_error('Syntax Error: dot is not s-expression');
                     }
                     await this._read_object();
                     continue;
@@ -2169,6 +2173,10 @@ class Parser {
     _is_close(token) {
         return [')', ']'].includes(token.token);
     }
+    syntax_error(message) {
+        const e = new ParseError(message);
+        throw this._augment_exception(e);
+    }
     async _read_list() {
         let head = nil, prev = head, dot;
         let first_token = this._state.last_token;
@@ -2184,11 +2192,14 @@ class Parser {
             }
             if (token.token === '.' && !is_nil(head)) {
                 this._skip(token);
+                const next = this.__lexer__.peek();
+                if (next === '#;' || next === ')') {
+                    this.syntax_error('Syntax Error: no element after dot');
+                }
                 prev.cdr = await this._read_object();
                 dot = true;
             } else if (dot) {
-                const e = new Error('Syntax Error: more than one element after dot');
-                throw this._augment_exception(e);
+                this.syntax_error('Syntax Error: more than one element after dot');
             } else {
                 const node = await this._read_object();
                 const cur = new Pair(node, nil);
