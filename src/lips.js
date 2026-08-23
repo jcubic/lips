@@ -146,7 +146,7 @@ function log(x, ...args) {
 // mirrors whether DEBUG is set to a truthy value (updated by Environment.set)
 // so the common (debug-off) case is a single boolean test.
 let _debug_enabled = false;
-/* c8 ignore next */
+/* c8 ignore start */
 function is_debug(n = null) {
     if (!_debug_enabled) {
         return false;
@@ -161,7 +161,7 @@ function is_debug(n = null) {
     }
     return debug === n;
 }
-
+/* c8 ignore end */
 // functions generate regexes to match number rational, integer, complex, complex+rational
 function num_mnemicic_re(mnemonic) {
     return mnemonic ? `(?:#${mnemonic}(?:#[ie])?|#[ie]#${mnemonic})` : '(?:#[ie])?';
@@ -3995,7 +3995,7 @@ var str_mapping = new Map();
 // :: Debug function that can be used with JSON.stringify
 // :: that will show symbols
 // ----------------------------------------------------------------------
-/* c8 ignore next 22 */
+/* c8 ignore start */
 function symbolize(obj) {
     if (obj && typeof obj === 'object') {
         var result = {};
@@ -4018,6 +4018,7 @@ function symbolize(obj) {
     }
     return obj;
 }
+/* c8 ignore stop */
 // ----------------------------------------------------------------------
 function basename(path) {
     return path.split(/[\\/]/).pop();
@@ -4349,7 +4350,7 @@ function mark_cycles(pair) {
 // ----------------------------------------------------------------------
 // Trampoline based recursive pair to string that don't overflow the stack
 // ----------------------------------------------------------------------
-/* c8 ignore next */
+/* c8 ignore start */
 const pair_to_string = (function() {
     const prefix = (pair, nested) => {
         var result = [];
@@ -4408,6 +4409,7 @@ const pair_to_string = (function() {
         }, cont);
     });
 })();
+/* c8 ignore end */
 
 // ----------------------------------------------------------------------
 // Printer for write-simple / write-shared. Unlike toString (used by write) it
