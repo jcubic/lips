@@ -4018,7 +4018,7 @@ function symbolize(obj) {
     }
     return obj;
 }
-/* c8 ignore stop */
+/* c8 ignore end */
 // ----------------------------------------------------------------------
 function basename(path) {
     return path.split(/[\\/]/).pop();
