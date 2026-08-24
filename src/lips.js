@@ -161,7 +161,7 @@ function is_debug(n = null) {
     }
     return debug === n;
 }
-/* c8 ignore end */
+/* c8 ignore stop */
 // functions generate regexes to match number rational, integer, complex, complex+rational
 function num_mnemicic_re(mnemonic) {
     return mnemonic ? `(?:#${mnemonic}(?:#[ie])?|#[ie]#${mnemonic})` : '(?:#[ie])?';
@@ -4018,7 +4018,7 @@ function symbolize(obj) {
     }
     return obj;
 }
-/* c8 ignore end */
+/* c8 ignore stop */
 // ----------------------------------------------------------------------
 function basename(path) {
     return path.split(/[\\/]/).pop();
@@ -4409,7 +4409,7 @@ const pair_to_string = (function() {
         }, cont);
     });
 })();
-/* c8 ignore end */
+/* c8 ignore stop */
 
 // ----------------------------------------------------------------------
 // Printer for write-simple / write-shared. Unlike toString (used by write) it
