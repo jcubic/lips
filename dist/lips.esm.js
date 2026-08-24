@@ -4,7 +4,7 @@
  * | |   \ \     | |  | || . \/ __>  | |
  * | |    > \    | |_ | ||  _/\__ \  | |
  * | |   / ^ \   |___||_||_|  <___/  | |
- *  \_\ /_/ \_\                     /_/ v. DEV
+ *  \_\ /_/ \_\                     /_/ v. 1.0.0-beta.23
  *
  * LIPS is Pretty Simple - Scheme based Powerful LISP in JavaScript
  *
@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Mon, 24 Aug 2026 09:04:32 +0000
+ * build: Mon, 24 Aug 2026 18:21:18 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -3046,7 +3046,7 @@ function is_debug() {
   }
   return debug === n;
 }
-/* c8 ignore end */
+/* c8 ignore stop */
 // functions generate regexes to match number rational, integer, complex, complex+rational
 function num_mnemicic_re(mnemonic) {
   return mnemonic ? "(?:#".concat(mnemonic, "(?:#[ie])?|#[ie]#").concat(mnemonic, ")") : '(?:#[ie])?';
@@ -8082,7 +8082,7 @@ function symbolize(obj) {
   }
   return obj;
 }
-/* c8 ignore end */
+/* c8 ignore stop */
 // ----------------------------------------------------------------------
 function basename(path) {
   return path.split(/[\\/]/).pop();
@@ -8424,7 +8424,7 @@ function mark_cycles(pair) {
     mark_node(node, 'cdr');
   });
 }
-/* c8 ignore end */
+/* c8 ignore stop */
 
 // ----------------------------------------------------------------------
 // Printer for write-simple / write-shared. Unlike toString (used by write) it
@@ -18182,15 +18182,15 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Mon, 24 Aug 2026 09:04:32 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Mon, 24 Aug 2026 18:21:18 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Mon, 24 Aug 2026 09:04:32 +0000').valueOf();
+  var date = LString('Mon, 24 Aug 2026 18:21:18 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
   var _build = [_year, _format(_date.getMonth() + 1), _format(_date.getDate())].join('-');
-  var banner = "\n  __ __                          __\n / / \\ \\       _    _  ___  ___  \\ \\\n| |   \\ \\     | |  | || . \\/ __>  | |\n| |    > \\    | |_ | ||  _/\\__ \\  | |\n| |   / ^ \\   |___||_||_|  <___/  | |\n \\_\\ /_/ \\_\\                     /_/\n\nLIPS Interpreter DEV (".concat(_build, ") <https://lips.js.org>\nCopyright (c) 2018-").concat(_year, " Jakub T. Jankiewicz\n\nType (env) to see environment with functions macros and variables. You can also\nuse (help name) to display help for specific function or macro, (apropos name)\nto display list of matched names in environment and (dir object) to list\nproperties of an object.\n").replace(/^.*\n/, '');
+  var banner = "\n  __ __                          __\n / / \\ \\       _    _  ___  ___  \\ \\\n| |   \\ \\     | |  | || . \\/ __>  | |\n| |    > \\    | |_ | ||  _/\\__ \\  | |\n| |   / ^ \\   |___||_||_|  <___/  | |\n \\_\\ /_/ \\_\\                     /_/\n\nLIPS Interpreter 1.0.0-beta.23 (".concat(_build, ") <https://lips.js.org>\nCopyright (c) 2018-").concat(_year, " Jakub T. Jankiewicz\n\nType (env) to see environment with functions macros and variables. You can also\nuse (help name) to display help for specific function or macro, (apropos name)\nto display list of matched names in environment and (dir object) to list\nproperties of an object.\n").replace(/^.*\n/, '');
   return banner;
 }();
 // -------------------------------------------------------------------------
@@ -18223,8 +18223,8 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
-var version = 'DEV';
-var date = 'Mon, 24 Aug 2026 09:04:32 +0000';
+var version = '1.0.0-beta.23';
+var date = 'Mon, 24 Aug 2026 18:21:18 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
