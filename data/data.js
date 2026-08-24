@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1787563883194,
+  "lastUpdate": 1787567026245,
   "repoUrl": "https://github.com/jcubic/lips",
   "entries": {
     "LIPS interpreter benchmark": [
@@ -4501,6 +4501,72 @@ window.BENCHMARK_DATA = {
             "range": "±0.61%",
             "unit": "ops/sec",
             "extra": "90 samples"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jcubic@jcubic.pl",
+            "name": "Jakub Jankiewicz",
+            "username": "jcubic"
+          },
+          "committer": {
+            "email": "jcubic@jcubic.pl",
+            "name": "Jakub Jankiewicz",
+            "username": "jcubic"
+          },
+          "distinct": true,
+          "id": "f2b86a7d2b5d03d561d32d5a5aea297c008e8f2c",
+          "message": "fix coverage ignore markers",
+          "timestamp": "2026-08-24T12:22:12+02:00",
+          "tree_id": "56f288f8284932dc9e297ed3d4b27ded48b24348",
+          "url": "https://github.com/jcubic/lips/commit/f2b86a7d2b5d03d561d32d5a5aea297c008e8f2c"
+        },
+        "date": 1787567025217,
+        "tool": "benchmarkjs",
+        "benches": [
+          {
+            "name": "array-map: pow",
+            "value": 90449.13,
+            "range": "±1.47%",
+            "unit": "ops/sec",
+            "extra": "93 samples"
+          },
+          {
+            "name": "array-map: mix",
+            "value": 89575.44,
+            "range": "±1.05%",
+            "unit": "ops/sec",
+            "extra": "95 samples"
+          },
+          {
+            "name": "recursion: nested loops",
+            "value": 107.9,
+            "range": "±0.89%",
+            "unit": "ops/sec",
+            "extra": "7 samples"
+          },
+          {
+            "name": "array-map: string",
+            "value": 38453.74,
+            "range": "±0.39%",
+            "unit": "ops/sec",
+            "extra": "95 samples"
+          },
+          {
+            "name": "recursion: fib(18)",
+            "value": 1456.58,
+            "range": "±0.64%",
+            "unit": "ops/sec",
+            "extra": "43 samples"
+          },
+          {
+            "name": "recursion: fib-map",
+            "value": 93885.52,
+            "range": "±0.45%",
+            "unit": "ops/sec",
+            "extra": "96 samples"
           }
         ]
       }
