@@ -512,7 +512,7 @@ special keywords (created with identifiers) can be optional:
 (define-syntax for
   (syntax-rules (==>)
      ((_ (var start end) body ...)
-      (_ (var start ==> end) body ...))
+      (for (var start ==> end) body ...))
      ((_ (var start ==> end) body ...)
       (let loop ((var start))
          (if (<= var end)

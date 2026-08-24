@@ -79,6 +79,32 @@ It also implements:
   [anaphoric syntax-rules macros](/docs/scheme-intro/macros#anaphoric-hygienic-macros).
 * [SRFI-147](https://srfi.schemers.org/srfi-147/) which allows defining a new syntax-rules macros to define syntax-rules macros.
 
+### Mixing Lisp and hygienic macros
+
+The two macro systems have different notions of identifier equality, and that
+surfaces when they are combined. `syntax-rules` is hygienic: a free identifier
+in a template (including an auxiliary keyword such as `else` or `=>`) is renamed
+to a gensym so it cannot be accidentally captured. Lisp macros (`define-macro`)
+are unhygienic: they receive syntax verbatim, so when a hygienic macro expands
+into a Lisp-macro form the Lisp macro sees the *renamed* identifier (for example
+`#:else` instead of `else`).
+
+Because of this a Lisp macro cannot recognize an auxiliary keyword with `eq?` —
+that only compares the surface name. Compare by *denotation* with
+`free-identifier=?` instead, which sees through the renaming (this is exactly
+how `syntax-rules` matches literals, per R7RS 4.3.2):
+
+```scheme
+(free-identifier=? 'else 'else)  ;; ==> #t
+;; and #t as well when one side was hygienically renamed to #:else
+```
+
+This is how the built-in `cond` (a Lisp macro) recognizes `else` and `=>` even
+when they arrive renamed from a surrounding hygienic macro. It is a limitation
+of combining unhygienic Lisp macros with hygienic ones: an unhygienic macro that
+treats certain identifiers as keywords must compare them with
+`free-identifier=?`. Hygienic (`syntax-rules`) macros do this automatically.
+
 ### Gensyms
 With lisp macros you can use [gensyms](/docs/scheme-intro/macros#gensyms), they are special Scheme
 symbols that use JavaScript symbols behind the scene, so they are proven to be unique. Additionally
@@ -1164,15 +1190,15 @@ loading `.xcb` or `.scm` files.
 
 :::info
 
-Directives `#!fold-case` and `#!no-fold-case` work only inside the parser and they are
-treated as comments, so you can't compile the code that have those directives.
+Directives `#!fold-case` and `#!no-fold-case` work only inside the parser, and they are
+treated as comments, so you can't compile the code that has those directives.
 
 :::
 
 ## loading SRFI
 
-In LIPS, you can use `(load)` with path absolute or relative to the directory of the executed LIPS
-file. But you can use special syntax that indicate the root directory of the LIPS Scheme.
+In LIPS, you can use `(load)` with an absolute or relative path to the directory of the executed LIPS
+file. But you can use special syntax that indicates the root directory of the LIPS Scheme.
 
 ```scheme
 (load "@lips/lib/srfi/1.scm")
@@ -1183,3 +1209,17 @@ Library. You can use this syntax in Node based REPL (NPM executable).  The same 
 with the web. But note that the root directory reply on the path of the LIPS Scheme script file. So
 you if you bundle the code with Webpack or Rollup, LIPS may not find the root URL and may not be
 able to load the proper file.
+
+## Reading the R7RS spec and similar documents
+
+While reading the R7RS spec using the LIPS Scheme REPL, you may find this error:
+
+:::danger
+
+You're using an invalid Unicode quote character. Run: `(set-special! "’" quote)` to allow the use of
+this type of quote
+
+:::
+
+Because some documents like R7RS use a different quotation character instead of ASCII `'` they use
+`’` (prime) because of the LaTeX typesetting system.

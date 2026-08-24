@@ -654,3 +654,69 @@
                                      '(1 2 3 4))))
         (t.is sr-result 1)
         (t.is sr-eject #f)))
+
+(test "dynamic-wind: before/after run in order"
+      (lambda (t)
+        (define log '())
+        (define (add x) (set! log (cons x log)))
+        (dynamic-wind
+          (lambda () (add 'before))
+          (lambda () (add 'during) 42)
+          (lambda () (add 'after)))
+        (t.is (reverse log) '(before during after))))
+
+(test "dynamic-wind: after runs when a continuation escapes the body"
+      (lambda (t)
+        (define log '())
+        (define (add x) (set! log (cons x log)))
+        (call/cc
+         (lambda (k)
+           (dynamic-wind
+             (lambda () (add 'in))
+             (lambda () (add 'body) (k #f) (add 'unreached))
+             (lambda () (add 'out)))))
+        (t.is (reverse log) '(in body out))))
+
+(test "dynamic-wind: nested afters run inner-first on escape"
+      (lambda (t)
+        (define log '())
+        (define (add x) (set! log (cons x log)))
+        (call/cc
+         (lambda (k)
+           (dynamic-wind
+             (lambda () (add 'o-in))
+             (lambda ()
+               (dynamic-wind
+                 (lambda () (add 'i-in))
+                 (lambda () (k #f))
+                 (lambda () (add 'i-out))))
+             (lambda () (add 'o-out)))))
+        (t.is (reverse log) '(o-in i-in i-out o-out))))
+
+(test "dynamic-wind: before re-runs when a continuation re-enters the body"
+      (lambda (t)
+        ;; R7RS example (chibi): re-entering via the captured continuation must
+        ;; re-run `before` (connect) and then `after` (disconnect)
+        (t.is (let ((path '())
+                    (c #f))
+                (let ((add (lambda (s) (set! path (cons s path)))))
+                  (dynamic-wind
+                    (lambda () (add 'connect))
+                    (lambda ()
+                      (add (call/cc (lambda (c0) (set! c c0) 'talk1))))
+                    (lambda () (add 'disconnect)))
+                  (if (< (length path) 4)
+                      (c 'talk2)
+                      (reverse path))))
+              '(connect talk1 disconnect connect talk2 disconnect))))
+
+(test "dynamic-wind: after runs on exception then propagates"
+      (lambda (t)
+        (define log '())
+        (define (add x) (set! log (cons x log)))
+        (guard (e (#t (add 'caught)))
+          (dynamic-wind
+            (lambda () (add 'in))
+            (lambda () (raise 'boom))
+            (lambda () (add 'out))))
+        (t.is (reverse log) '(in out caught))))

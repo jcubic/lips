@@ -49,3 +49,16 @@
         ;; a non-macro form is returned unchanged
         (t.is (macroexpand-1 '(+ 1 2))
               '(+ 1 2))))
+
+(test "expand of nested _ #357"
+      (lambda (t)
+
+        (define-syntax symbol
+          (syntax-rules ()
+            ((_ name)
+             (let-syntax ((name (syntax-rules ()
+                                  ((_)
+                                   (list 'name)))))
+               (name)))))
+
+        (t.snapshot (macroexpand '(symbol hello)))))

@@ -10,7 +10,7 @@
 ;; This file contain essential functions and macros for LIPS
 ;;
 ;; This file is part of the LIPS - Scheme based Powerful lisp in JavaScript
-;; Copyright (C) 2019-2024 Jakub T. Jankiewicz <https://jcubic.pl/me>
+;; Copyright (C) 2019-2026 Jakub T. Jankiewicz <https://jcubic.pl/me>
 ;; Released under MIT license
 ;; -----------------------------------------------------------------------------
 (define true #t)
@@ -475,12 +475,10 @@
    using key like syntax. If no values are used it will create a JavaScript
    shorthand objects where keys are used for keys and the values."
   (let ((name (gensym "name"))
-        (r-only (gensym "r-only"))
         (quot (if (null? rest) false (car rest))))
     (if (null? expr)
         `(alist->object ())
-        `(let ((,name ,(Object.fromEntries (new Array)))
-               (,r-only ,(Object.fromEntries (new Array (new Array "writable" false)))))
+        `(let ((,name ,(Object.fromEntries (new Array))))
            ,@(let loop ((lst expr) (result '()))
                (if (null? lst)
                    (reverse result)
@@ -497,22 +495,13 @@
                            (if (or (key? second) no-second)
                                (let ((code `(set-object! ,name ,prop #void)))
                                  (loop (cdr lst) (cons code result)))
-                               (let ((code (if readonly
-                                               (if (and (pair? second) (key? (car second)))
-                                                   `(set-object! ,name
-                                                                 ,prop
-                                                                 ,(%object-expander readonly second quot)
-                                                                 ,r-only)
-                                                   (if quot
-                                                       `(set-object! ,name ,prop ',second ,r-only)
-                                                       `(set-object! ,name ,prop ,second ,r-only)))
-                                               (if (and (pair? second) (key? (car second)))
-                                                   `(set-object! ,name
-                                                                 ,prop
-                                                                 ,(%object-expander readonly second))
-                                                   (if quot
-                                                       `(set-object! ,name ,prop ',second)
-                                                       `(set-object! ,name ,prop ,second))))))
+                               (let ((code (if (and (pair? second) (key? (car second)))
+                                               `(set-object! ,name
+                                                             ,prop
+                                                             ,(%object-expander readonly second))
+                                               (if quot
+                                                   `(set-object! ,name ,prop ',second)
+                                                   `(set-object! ,name ,prop ,second)))))
                                  (loop (cddr lst) (cons code result)))))))))
            ,(if readonly
                 `(Object.preventExtensions ,name))
@@ -718,15 +707,11 @@
    Helper macro used by cond.")
 
 ;; -----------------------------------------------------------------------------
-(define (%else-literal? obj)
-  "(%else-literal? obj)
-
-   Checks if object is symbol else."
-  (and (symbol? obj)
-       (or (eq? obj 'else)
-           (eq? (--> (new lips.LString (obj.literal))
-                     (cmp "else")) 0))))
-
+;; `cond` is a Lisp (define-macro) macro, so it receives syntax verbatim -
+;; including `else`/`=>` that a surrounding hygienic macro renamed to a gensym.
+;; Unhygienic macros can't rely on syntax-rules' automatic literal matching, so
+;; they compare auxiliary keywords by denotation with free-identifier=? (R7RS
+;; 4.3.2 / R6RS free-identifier=?), which sees through the renaming.
 ;; -----------------------------------------------------------------------------
 (define-macro (cond . list)
   "(cond (predicate? . body)
@@ -745,12 +730,13 @@
       (let* ((item (car list))
              (value (gensym))
              (first (car item))
-             (fn (and (not (null? (cdr item))) (eq? (cadr item) '=>)))
+             (fn (and (not (null? (cdr item)))
+                      (free-identifier=? (cadr item) '=>)))
              (expression (if fn
                              (caddr item)
                              (cdr item)))
              (rest (cdr list)))
-        (if (%else-literal? first)
+        (if (free-identifier=? first 'else)
             `(begin
                ,@expression)
             `(let ((,value ,first))
@@ -1215,7 +1201,7 @@
                                     ,(%class-lambda fn)))
                     functions))
           (let ((item (car lst)))
-            (if (eq? (car item) 'constructor)
+            (if (free-identifier=? (car item) 'constructor)
                 (iter functions item (cdr lst))
                 (iter (cons item functions) constructor (cdr lst))))))))
 
@@ -1513,6 +1499,10 @@
 ;; source https://github.com/scheme-requests-for-implementation/srfi-158
 ;; -----------------------------------------------------------------------------
 (define (make-coroutine-generator proc)
+  "(make-coroutine-generator proc)
+
+   Create a Scheme generator. An argument is a procedure that accept one argument,
+   usually yield. When called it suspeds the executing and returns a new value."
   (define void (if #f #f))
   (define return #f)
   (define resume #f)
@@ -1724,15 +1714,15 @@
                       (if (not (null? (car args)))
                           (car args)
                           (iter (cdr args)))))))
-         (indexedDB (any window.indexedDB
-                         window.indexedDB
-                         window.mozIndexedDB
-                         window.webkitIndexedDB)))
+         (indexedDB (any self.indexedDB
+                         self.indexedDB
+                         self.mozIndexedDB
+                         self.webkitIndexedDB)))
     (if (not (null? indexedDB))
         (try
          (begin
            ;; open will fail in about:blank
-           (window.indexedDB.open "IndexedDBExistenceCheck" 3)
+           (self.indexedDB.open "IndexedDBExistenceCheck" 3)
            true)
          (catch (e)
                 false))
@@ -1828,8 +1818,15 @@
 (define response->text (curry response->content false))
 
 ;; -----------------------------------------------------------------------------
+(define (browser?)
+  "(browser?)
+
+  Function checks if code runs in browser. Main thread of worker."
+  (or (eq? self window) (worker?)))
+
+;; -----------------------------------------------------------------------------
 (define http-get
-  (if (eq? self window)
+  (if (browser?)
       (lambda (url binary)
         "(http-get url)
 

@@ -278,8 +278,10 @@ Predicate that tests if value is an array.
 ## assoc
 ```
 (assoc obj alist)
+(assoc obj alist proc)
 
 Returns pair from alist that match given key using equal? check.
+If procedure is providate it's used instead of equal?.
 ```
 
 ## assq
@@ -375,6 +377,13 @@ Checks if all arguments are boolean and if they are the same.
 
 Function that check if the variable is defined in the given environment,
 or interaction-environment if not specified.
+```
+
+## browser?
+```
+(browser?)
+
+Function checks if code runs in browser. Main thread of worker.
 ```
 
 ## buffer->u8vector
@@ -1267,7 +1276,7 @@ Returns the default stdout port.
 ```
 (current-second)
 
-Functionn return exact integer of the seconds since January 1, 1970
+Functionn return inexact integer of the seconds since January 1, 1970
 ```
 
 ## curry
@@ -1512,7 +1521,9 @@ Returns a list where first n elements are removed.
 (dynamic-wind before thunk after)
 
 Accepts 3 procedures/lambdas and executes before, then thunk, and
-always after even if an error occurs in thunk.
+always after even if an error occurs in thunk. before is re-run and after
+is run again when a continuation captured inside thunk is re-entered or
+escapes across the dynamic-wind boundary.
 ```
 
 ## empty?
@@ -1529,6 +1540,14 @@ Function that returns #t if value is nil (an empty list) or undefined.
 
 Function that returns a list of names (functions, macros and variables)
 that are bound in the current environment or one of its parents.
+```
+
+## environment
+```
+(environment)
+
+Function returns full R7RS environment since LIPS doesn't support libraries.
+It's compatibility layer function to run R7RS chibi tests
 ```
 
 ## environment-bound?
@@ -1610,7 +1629,7 @@ Returns the message encapsulated by error-object.
 ```
 (error-object? obj)
 
-Checks if object is of Error object thrown by error function.
+Checks if the object is an error.
 ```
 
 ## escape-regex
@@ -1659,6 +1678,14 @@ Function that converts real number to exact rational number.
 (exact->inexact n)
 
 Convert exact number to inexact.
+```
+
+## exact-integer-sqrt
+```
+(exact-integer-sqrt num)
+
+Returns two values (s r) representing the exact integer square root and the
+remainder of num, where num = s^2 + r. num must be a non-negative integer.
 ```
 
 ## exact-integer?
@@ -1905,6 +1932,17 @@ escape sequences in its inputs:
 
 If there are missing inputs or other escape characters it
 will error.
+```
+
+## free-identifier=?
+```
+(free-identifier=? a b)
+
+Returns #t if the two identifiers refer to the same binding, comparing
+by denotation rather than surface name - so an identifier that a
+hygienic macro renamed to a gensym still equals the identifier it was
+renamed from. Both unbound with the same literal name (e.g. an
+auxiliary keyword like else) counts as the same free identifier.
 ```
 
 ## freeze-list!
@@ -2482,6 +2520,14 @@ Allocate new unsigned 8-bit integer vector (C unsigned char) of length k,
 with optional initial values.
 ```
 
+## make-coroutine-generator
+```
+(make-coroutine-generator proc)
+
+Create a Scheme generator. An argument is a procedure that accept one argument,
+usually yield. When called it suspeds the executing and returns a new value.
+```
+
 ## make-f32vector
 ```
 (make-f32vector k fill)
@@ -2519,9 +2565,10 @@ Create new complex number from polar parameters.
 
 ## make-promise
 ```
-(make-promise fn)
+(make-promise expr)
+(make-promise done expr)
 
-Function that creates a promise from a function.
+Function that creates a promise from a function or expression.
 ```
 
 ## make-rectangular
@@ -2632,8 +2679,10 @@ Returns the maximum of its arguments.
 ## member
 ```
 (member obj list)
+(member obj list proc)
 
 Returns first object in the list that match using equal? function.
+If 3rd argument passed it use it as a comparator.
 ```
 
 ## memq
@@ -3128,6 +3177,11 @@ Convert radians to degrees.
 Throws the object verbatim (no wrapping an a new Error).
 ```
 
+## raise-continuable
+```
+(raise-continuable message)
+```
+
 ## random
 ```
 (random)
@@ -3151,7 +3205,9 @@ the step needs to be negative otherwise it will hang in an infinite loop.
 ```
 (rational? x)
 
-Checks if the value is rational.
+Checks if x is a rational number: a real number that is neither an infinity
+nor a NaN. Every finite real is rational, including a finite inexact number
+such as 3.5 or 1e308 (a float represents a dyadic rational exactly).
 ```
 
 ## rationalize
@@ -3552,10 +3608,10 @@ e.g.:
 ## set-object!
 ```
 (set-object! obj key value)
-(set-object! obj key value props)
+(set-object! obj key value strict)
 
-Function set a property of a JavaScript object. props should be a vector of pairs,
-passed to Object.defineProperty.
+Function set a property of a JavaScript object. When the strict option
+is used the value is not unboxed.
 ```
 
 ## set-repr!
@@ -3676,8 +3732,11 @@ needs to be a character object.
 ## string->list
 ```
 (string->list string)
+(string->list string start)
+(string->list string start end)
 
-Returns a list of characters created from string.
+Function that copies given range of string to list. If no start is specified it use
+start of the string, if no end is specified it convert to the end of the vector.
 ```
 
 ## string->number
@@ -3706,11 +3765,11 @@ The start and end is the range of the input string for the conversion.
 
 ## string->vector
 ```
-(string->list string)
-(string->list string start)
-(string->list string start end)
+(string->vector string)
+(string->vector string start)
+(string->vector string start end)
 
-Function that copies given range of string to list. If no start is specified it use
+Function that copies given range of string to vector. If no start is specified it use
 start of the string, if no end is specified it convert to the end of the string.
 ```
 
@@ -3758,9 +3817,23 @@ Returns true if strings are monotonically non-increasing, ignoring the case.
 
 ## string-copy
 ```
-(string-copy x)
+(string-copy string)
+(string-copy string start)
+(string-copy string start end)
 
-Creates a new string based on given argument.
+Returns new string created from string of characters in given range.
+If no start is given it create string from 0, if no end is given it return
+string to the end.
+```
+
+## string-copy!
+```
+(string-copy! to at from)
+(string-copy! to at from start)
+(string-copy! to at from start end)
+
+Copies the characters of string from between start and end
+to string to, starting at at.
 ```
 
 ## string-downcase
@@ -3773,6 +3846,8 @@ Function convert a string passed as argument to lower case.
 ## string-fill!
 ```
 (string-fill! symbol char)
+(string-fill! symbol char start)
+(string-fill! symbol char start end)
 
 Function that destructively fills the string with given character.
 ```
@@ -4429,7 +4504,8 @@ Creates a loop, it executes cond and body until cond expression is false.
 (with-exception-handler handler thunk)
 
 Procedure call and return value of thunk function, if exception happen
-it call handler procedure.
+it call handler procedure. When raise-continuable is captured it will
+continue execution of the thunk in place when the continuable was rased.
 ```
 
 ## with-input-from-file
@@ -4459,6 +4535,13 @@ After thunk is executed current-input-port is restored and string port
 is closed.
 ```
 
+## worker?
+```
+(worker?)
+
+Function check if the script run in Web Worker
+```
+
 ## write
 ```
 (write obj [port])
@@ -4482,6 +4565,23 @@ Write byte vector into binary output port.
 
 Writes the character char (not an external representation of the character)
 to the given textual output port and returns an unspecified value.
+```
+
+## write-shared
+```
+(write-shared obj)
+(write-shared obj port)
+
+Write object and always displaying datum labels on shared data
+```
+
+## write-simple
+```
+(write-simple obj)
+(write-simple obj port)
+
+Write object without displaying datum labels. It can hang when the argument
+has cycles.
 ```
 
 ## write-string

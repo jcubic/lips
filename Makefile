@@ -1,4 +1,4 @@
-.PHONY: ALL publish test test-file test-update coveralls lint zero coverage codespell benchmark smoke
+.PHONY: ALL publish test test-file test-update coveralls lint zero coverage codespell benchmark smoke srfi install
 
 VERSION=1.0.0-beta.22.1
 VERSION_DASH=`echo -n "${VERSION}" | sed "s/-/%E2%80%93/"`
@@ -65,7 +65,7 @@ dist/std.scm: lib/bootstrap.scm lib/R5RS.scm lib/byte-vectors.scm lib/R7RS.scm l
 	$(CAT) lib/bootstrap.scm lib/R5RS.scm lib/byte-vectors.scm lib/R7RS.scm lib/init.scm > dist/std.scm
 
 dist/std.xcb: dist/std.scm
-	$(LIPS) -tmcq --bootstrap dist/std.scm dist/std.scm
+	$(LIPS) -tjmcq --bootstrap dist/std.scm dist/std.scm
 
 docs/reference.json: dist/std.xcb src/lips.js scripts/reference.js
 	$(NODE) ./scripts/reference.js > docs/reference.json
@@ -104,6 +104,9 @@ publish:
 	$(CD) npm && $(NPM) publish --access=public
 	$(RM) -rf npm
 
+install:
+	$(NPM) install -g .
+
 tests/tests-gen/.stamp: scripts/generate-tests.js $(TEST_SCM)
 	@$(NODE) scripts/generate-tests.js
 	@touch $@
@@ -113,6 +116,12 @@ test: dist/std.xcb tests/tests-gen/.stamp
 
 test-file: dist/std.xcb
 	@$(NPM) run test-file -- -- -f $(FILE)
+
+test-r7rs:
+	@$(NPM) run test-file -- -- -f tests/_r7rs-tests.scm
+
+test-file-update: dist/std.xcb
+	@$(NPM) run test-file-update -- -- -f $(FILE)
 
 test-update: dist/std.scm
 	@$(NPM) run test-update
@@ -151,3 +160,9 @@ codespell:
 
 lint:
 	$(ESLINT) src/lips.js lib/js/bookmark.js bin/lips.js
+
+srfi-js:
+	@git grep -Eo 'SRFI-[0-9]+' README.md | sed -e 's/.*-//' -e 's/.*/&,/' | sort -n | uniq
+
+srfi-scheme:
+	@git grep -Eo 'SRFI-[0-9]+' README.md | sed -e 's/.*-//' | sort -n | uniq | sed -e 's/.*/srfi-&/' | tr $$'\n' ' '

@@ -2,6 +2,16 @@
       (lambda (t)
         (t.is `(x ,@() x) '(x x))))
 
+(test "quasiquote: it should keep #void elements"
+      (lambda (t)
+        ;; #void is JS undefined; append used to drop a one-element (#void) list,
+        ;; so a literal or unquoted #void inside a quasiquote template vanished,
+        ;; turning (if c #void y) into (if c y)
+        (t.is (length `(a ,(if #f #f) c)) 3)
+        (t.is (cadr `(a ,(if #f #f) c)) (if #f #f))
+        (t.is (length `(if ,(car '(c)) #void y)) 4)
+        (t.is (append (list (if #f #f)) '(y)) (list (if #f #f) 'y))))
+
 (test "quasiquote: it should splice nil as body in do macro"
       (lambda (t)
         (define-macro (do vars test . body)
@@ -338,6 +348,18 @@
       (lambda (t)
         (let ((result `((foo ,(- 10 3)) ,@(cdr '(c)) . ,(car '(cons)))))
           (t.is result '((foo 7) . cons)))))
+
+(test "quasiquote: unquoted vector in tail position keeps identity"
+      (lambda (t)
+        ;; a vector is not a list, so an unquoted vector in the dotted-tail
+        ;; position must become the improper tail verbatim, not be spliced
+        ;; (regression: `(a . ,#(2)) used to produce (a 2))
+        (let ((v (vector 2)))
+          (t.is `(a . ,v) (cons 'a v))
+          (t.is (eq? (cdr `(a . ,v)) v) #t))
+        ;; same via append, which quasiquote expands into
+        (t.is (append '(1) (vector 2 3)) (cons 1 (vector 2 3)))
+        (t.is (append '(a) 'x) '(a . x))))
 
 (test "quasiquote: should process list after double unquote-splicing (#362)"
       (lambda (t)

@@ -13,7 +13,7 @@
 ;; https://schemers.org/Documents/Standards/R5RS/HTML/
 ;;
 ;; This file is part of the LIPS - Scheme based Powerful lisp in JavaScript
-;; Copyright (C) 2019-2024 Jakub T. Jankiewicz <https://jcubic.pl/me>
+;; Copyright (C) 2019-2026 Jakub T. Jankiewicz <https://jcubic.pl/me>
 ;; Released under MIT license
 ;;
 ;; (+ 1 (call-with-current-continuation
@@ -181,31 +181,37 @@
 
 ;; -----------------------------------------------------------------------------
 (define make-promise
-  (lambda (proc)
-    "(make-promise fn)
+  (lambda (arg . rest)
+    "(make-promise expr)
+     (make-promise done expr)
 
-     Function that creates a promise from a function."
-    (typecheck "make-promise" proc "function")
-    (let ((result-ready? #f)
-          (result #f))
-      (let ((promise (lambda ()
-                       (if result-ready?
-                           result
-                           (let ((x (proc)))
-                             (if result-ready?
-                                 result
-                                 (begin (set! result-ready? #t)
-                                        (set! result x)
-                                        result)))))))
-        (set-object! promise (Symbol.for "promise") true)
-        (set! promise.toString (lambda ()
-                                 (string-append "#<promise - "
-                                                (if result-ready?
-                                                    (string-append "forced with "
-                                                                   (type result))
-                                                    "not forced")
-                                                ">")))
-        promise))))
+     Function that creates a promise from a function or expression."
+    (let* ((done (if (boolean? arg) arg #f))
+           (expr (if (boolean? arg) (car rest) arg))
+           (proc (if (procedure? expr)
+                     expr
+                     (lambda () expr))))
+      (let ((result-ready? done)
+            (result #f))
+        (let ((promise (lambda ()
+                         (if result-ready?
+                             result
+                             (let ((x (proc)))
+                               (if result-ready?
+                                   result
+                                   (begin (set! result-ready? #t)
+                                          (set! result x)
+                                          result)))))))
+          (set-object! promise (Symbol.for "promise") true)
+          (set! promise.toString (lambda ()
+                                   (string-append "#<promise - "
+                                                  (if result-ready?
+                                                      (string-append
+                                                       "forced with "
+                                                       (type result))
+                                                      "not forced")
+                                                  ">")))
+          promise)))))
 
 ;; -----------------------------------------------------------------------------
 (define-macro (delay expression)
@@ -357,12 +363,12 @@
 (define (rational? x)
   "(rational? x)
 
-  Checks if the value is rational."
-  (and (number? x)
-       (not (eq? x NaN))
-       (not (eq? x Number.NEGATIVE_INFINITY))
-       (not (eq? x Number.POSITIVE_INFINITY))
-       (or (%number-type "rational" x) (integer? x))))
+   Checks if x is a rational number: a real number that is neither an infinity
+   nor a NaN. Every finite real is rational, including a finite inexact number
+   such as 3.5 or 1e308 (a float represents a dyadic rational exactly)."
+  (and (real? x)
+       (not (nan? x))
+       (not (infinite? x))))
 
 ;; -----------------------------------------------------------------------------
 (define (typecheck-args _type label _list)
@@ -377,22 +383,6 @@
 
 ;; -----------------------------------------------------------------------------
 (define numbers? (curry typecheck-args "number"))
-
-;; -----------------------------------------------------------------------------
-(define (max . args)
-  "(max n1 n2 ...)
-
-   Returns the maximum of its arguments."
-  (numbers? "max" args)
-  (apply Math.max args))
-
-;; -----------------------------------------------------------------------------
-(define (min . args)
-  "(min n1 n2 ...)
-
-   Returns the minimum of its arguments."
-  (numbers? "min" args)
-  (apply Math.min args))
 
 ;; -----------------------------------------------------------------------------
 (define (make-rectangular re im)
@@ -450,11 +440,12 @@
    any number (including complex negative and rational).
    If the value is 0 it return NaN."
   (cond ((real? z)
-         (cond ((zero? z) NaN)
-               ((> z 0) (Math.log z))
-               (else
-                (+ (Math.log (abs z))
-                   (* Math.PI +i)))))
+         (exact->inexact
+          (cond ((zero? z) NaN)
+                ((> z 0) (Math.log z))
+                (else
+                 (+ (Math.log (abs z))
+                    (* Math.PI +i))))))
         ((complex? z)
          (let ((arg (Math.atan2 (imag-part z)
                                 (real-part z))))
@@ -495,7 +486,7 @@
                                       (Math.cosh im))
                                :im (* (Math.cos re)
                                       (Math.sinh im)))))
-      (Math.sin n)))
+      (exact->inexact (Math.sin n))))
 
 ;; -----------------------------------------------------------------------------
 (define (cos n)
@@ -510,7 +501,7 @@
                                       (Math.cosh im))
                                :im (- (* (Math.sin re)
                                          (Math.sinh im))))))
-      (Math.cos n)))
+      (exact->inexact (Math.cos n))))
 
 ;; -----------------------------------------------------------------------------
 (define (tan n)
@@ -529,7 +520,7 @@
                                :im (/ (Math.sinh im2)
                                       (+ (Math.cos re2)
                                          (Math.cosh im2))))))
-      (Math.tan n)))
+      (exact->inexact (Math.tan n))))
 
 ;; -----------------------------------------------------------------------------
 (define (atan z . rest)
@@ -539,23 +530,24 @@
    Function calculates arcus tangent of a complex number.
    If two arguments are passed and they are not complex numbers
    it calculate Math.atan2 on those arguments."
-  (if (and (null? rest) (complex? z))
+  (if (null? rest)
       (cond ((nan? z) +nan.0)
             ((infinite? z)
              (let ((atan (/ Math.PI 2)))
                (if (< z 0)
                    (- atan)
                    atan)))
-            (else
+            ((%number-type "complex" z)
              ;; ref: https://youtu.be/d93AarE0lKg
              (let ((iz (* +i z)))
                (* (/ 1 +2i)
                   (log (/ (+ 1 iz)
-                          (- 1 iz)))))))
+                          (- 1 iz))))))
+            (else (Math.atan z)))
       (let ((x z) (y (car rest)))
         (if (and (zero? (imag-part x))
                  (zero? (imag-part y)))
-            (Math.atan2 x y)
+            (exact->inexact (Math.atan2 x y))
             (error "atan: can't call with two complex numbers")))))
 
 ;; -----------------------------------------------------------------------------
@@ -570,7 +562,7 @@
              (factor (Math.exp re)))
          (make-rectangular (* factor (cos im))
                            (* factor (sin im))))
-       (Math.exp n)))
+       (exact->inexact (Math.exp n))))
 
 ;; -----------------------------------------------------------------------------
 (define (modulo a b)
@@ -661,12 +653,16 @@
   (%mem/search car eqv? obj list))
 
 ;; -----------------------------------------------------------------------------
-(define (member obj list)
+(define (member obj list . rest)
   "(member obj list)
+   (member obj list proc)
 
-   Returns first object in the list that match using equal? function."
-  (typecheck "member" list '("nil" "pair"))
-  (%mem/search car equal? obj list))
+   Returns first object in the list that match using equal? function.
+   If 3rd argument passed it use it as a comparator."
+  (typecheck "member" list '("nil" "pair") 2)
+  (let ((compare? (if (null? rest) equal? (car rest))))
+    (typecheck "member" compare? "function" 3)
+    (%mem/search car compare? obj list)))
 
 ;; -----------------------------------------------------------------------------
 (define (%assoc/accessor name)
@@ -678,37 +674,41 @@
     (caar x)))
 
 ;; -----------------------------------------------------------------------------
-(define (%assoc/search op obj alist)
-  "(%assoc/search op obj alist)
+(define (%assoc/search name op obj alist)
+  "(%assoc/search name op obj alist)
 
    Generic function that used in assoc functions with defined comparator
    function."
-  (typecheck "assoc" alist (vector "nil" "pair"))
-  (let ((ret (%mem/search (%assoc/accessor "assoc") op obj alist)))
+  (typecheck name alist (vector "nil" "pair"))
+  (let ((ret (%mem/search (%assoc/accessor name) op obj alist)))
     (if ret
         (car ret)
         ret)))
 
 ;; -----------------------------------------------------------------------------
-(define assoc (%doc
-               "(assoc obj alist)
+(define (assoc obj alist . rest)
+  "(assoc obj alist)
+   (assoc obj alist proc)
 
-                Returns pair from alist that match given key using equal? check."
-               (curry %assoc/search equal?)))
+   Returns pair from alist that match given key using equal? check.
+   If procedure is providate it's used instead of equal?."
+  (let ((compare? (if (null? rest) equal? (car rest))))
+    (typecheck "member" compare? "function" 3)
+    (%assoc/search "assoc" compare? obj alist)))
 
 ;; -----------------------------------------------------------------------------
 (define assq (%doc
               "(assq obj alist)
 
                Returns pair from a list that matches given key using eq? check."
-              (curry %assoc/search eq?)))
+              (curry %assoc/search "assq" eq?)))
 
 ;; -----------------------------------------------------------------------------
 (define assv (%doc
               "(assv obj alist)
 
                Returns pair from alist that match given key using eqv? check."
-              (curry %assoc/search eqv?)))
+              (curry %assoc/search "assv" eqv?)))
 
 ;; -----------------------------------------------------------------------------
 ;; STRING FUNCTIONS
@@ -754,13 +754,21 @@
 ;;   (string-fill! x #\b)
 ;;    x)
 ;; -----------------------------------------------------------------------------
-(define (string-fill! string char)
+(define (string-fill! string char . rest)
   "(string-fill! symbol char)
+   (string-fill! symbol char start)
+   (string-fill! symbol char start end)
 
    Function that destructively fills the string with given character."
   (typecheck "string-fill!" string "string" 1)
   (typecheck "string-fill!" char "character" 2)
-  (string.fill char))
+  (let ((start (if (null? rest) 0 (car rest)))
+        (end (if (or (null? rest) (null? (cdr rest)))
+                 #void
+                 (cadr rest))))
+    (typecheck "string-fill!" start "number" 3)
+    (typecheck "string-fill!" end #("void" "number") 4)
+    (string.fill char start end)))
 
 ;; -----------------------------------------------------------------------------
 (define (identity n)
@@ -830,7 +838,10 @@
    Returns character inside string at given zero-based index."
   (typecheck "string-ref" string "string" 1)
   (typecheck "string-ref" k "number" 2)
-  (lips.LCharacter (string.get k)))
+  (let ((str (string.get k)))
+    (if (eq? str #void)
+        (throw "index out of range")
+        (lips.LCharacter str))))
 
 (define (%string-cmp name string1 string2)
   "(%string-cmp name a b)
@@ -961,7 +972,8 @@
   `(define ,spec
      ,str
      (typecheck ,(symbol->string (car spec)) ,(cadr spec) "character")
-     (not (null? (--> chr (toString) (match ,re))))))
+     (let ((str (chr.valueOf)))
+       (list? (match ,re str)))))
 
 ;; -----------------------------------------------------------------------------
 (%define-chr-re (char-whitespace? chr)
@@ -1245,9 +1257,9 @@
    Return numerator of rational or same number if n is not rational."
   (typecheck "numerator" n "number")
   (cond ((integer? n) n)
-        ((rational? n) n.__num__)
+        ((string=? n.__type__ "rational") n.__num__)
         (else
-         (numerator (inexact->exact n)))))
+         (exact->inexact (numerator (inexact->exact n))))))
 
 ;; -----------------------------------------------------------------------------
 (define (denominator n)
@@ -1255,11 +1267,11 @@
 
    Return denominator of rational or same number if one is not rational."
   (typecheck "denominator" n "number")
-  (cond ((integer? n) n)
-        ((rational? n) n.__denom__)
-        ((exact? n) 1)
+  (cond ((or (zero? n) (integer? n)) 1.0)
+        ((string=? n.__type__ "rational") n.__denom__)
+        ((exact? n) 1.0)
         (else
-         (denominator (inexact->exact n)))))
+         (exact->inexact (denominator (inexact->exact n))))))
 
 ;; -----------------------------------------------------------------------------
 (define (imag-part n)
@@ -1288,7 +1300,7 @@
    Create new complex number from polar parameters."
   (typecheck "make-polar" r "number")
   (typecheck "make-polar" angle "number")
-  (if (or (complex? r) (complex? angle))
+  (if (or (%number-type "complex" r) (%number-type "complex" angle))
       (error "make-polar: argument can't be complex")
       (let ((re (* r (sin angle)))
             (im (* r (cos angle))))

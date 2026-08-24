@@ -1,3 +1,93 @@
+## 1.0.0-beta.23
+### Breaking
+* `syntax-rules` now treats `_` as the R7RS wildcard: it matches any input
+  without binding, is transcribed verbatim as the literal symbol `_` in a
+  template, and the pattern keyword position is ignored.
+* `set-object!` 4th argument is now strict option to prevent unboxing
+* `current-second` now returns an inexact value (as per R7RS spec)
+* `float`, `ceiling`, `round`, `truncate` now return inexact on inexact
+* integers in scientific notation now properly return float (unless marked exact)
+### Feature
+* add `free-identifier=?` [#296](https://github.com/jcubic/lips/issues/296)
+* add SRFI-197 (Pipeline Operators): `chain`, `chain-and`, `chain-when`,
+  `chain-lambda`, `nest`, `nest-reverse`
+* a missing R7RS `exact-integer-sqrt` function
+* add `raise-continuable` function
+* new `guard` macro (based on R7RS spec)
+* add procedure argument to `assoc`
+* add `write-shared` and `write-simple` procedures
+* add missing `string->list` function
+* add R7RS compatible `string-copy` and missing `string-copy!`
+### Bugfix
+* fix `append` dropping a `#void` element (`(append (list #void) '(y))`), which
+  also made quasiquote templates silently drop a literal or unquoted `#void`
+* fix handling of free variables from syntax rule expansion [#546](https://github.com/jcubic/lips/issues/546)
+* fix unquote vector/array in tail position
+* fix define inside syntax-rules [#170](https://github.com/jcubic/lips/issues/170)
+* fix unquote vector/array in tail position
+* fix nested ellipsis with empty identifier
+* fix resolving nested identifiers in syntax-rules
+* fix trailing ellipsis `(x ... last)` in recursive macro
+* fix `syntax-rules` literal matching for a literal that denotes a user-defined identifier
+* fix renaming inside `quote` in a `syntax-rules`
+* fix `denominator` of `0`
+* fix `string-ref` wrong exception when index out of range
+* fix ``call-with-values`` with promises
+* fix using LIPS inside web workers [#555](https://github.com/jcubic/lips/issues/555)
+* fix for Chibi R7RS tests:
+  * fix handling an empty symbol `||`
+  * fix `char-foldcase` and `boolean=?`
+  * fix `call-with-values`, `with-exception-handler`, and `dynamic-wind`
+  * fix `bytevector-copy!` argument semantics and overlapping copies
+  * fix `syntax-rules` ellipsis escape `(... <template>)` to substitute pattern
+    variables in the escaped template
+  * fix `syntax-rules` giving a literal priority over the ellipsis when the
+    ellipsis identifier is also declared as a literal
+  * fix vector literals in a `syntax-rules` template being turned into an
+    improper list
+  * fix `syntax-rules` pattern `(x ... y . rest)` not matching an improper
+    (dotted) list
+  * fix `syntax-rules` pattern `(x ... . rest)` (ellipsis before a dotted rest),
+    which crashed the template transcriber - fixes `define-values` with a dotted
+    tail, e.g. `(define-values (x y . z) (values 1 2 3 4))`
+  * fix `bytevector-copy!`, `utf8->string`, and `vector-copy!`
+  * fix `list-copy` on non list
+  * fix `lcm` and `gcd` when called without arguments and `lcm` when called on inxact value
+  * fix `odd?` and `even?` on negative values
+  * fix `denominator` and `numerator` on reduced rational
+  * fix `round` on rationals (round half to even)
+  * fix `rational?` returning `#f` for finite inexact numbers (e.g. `3.5`,
+    `1e308`)
+  * fix `gcd` with a `0` argument (`(gcd 0 5)`), which also made adding a
+    rational fold from 0 (e.g. `(+ 1/2 1/4)`) throw "Division by zero"
+  * fix complex arithmetic broken when a real is coerced to a complex (`(* 3.14
+    +i)`, `log`/`atanh` of negatives) while keeping `(make-rectangular x 0)` real
+  * fix integer square root of `4` (used by `exact-integer-sqrt`) returning `1`
+  * fix infinite loop when dividing complex numbers with non-finite parts
+    (e.g. `(/ +nan.0+nan.0i +nan.0+nan.0i)`) and when converting a non-finite
+    inexact to exact (`(exact +nan.0)`, `(exact +inf.0)`), which now signal an
+    error instead of hanging
+  * fix `atan` of a single real argument (`(atan 0.5)`, `(atan 2)`, `(atan 1/2)`,
+    `(atan +inf.0)`) throwing "car of nil"
+  * make numeric comparison (`=`, `<`, `>`, `<=`, `>=`) exact instead of
+    coercing to float, fixing wrong/non-transitive results
+    (e.g. `(= 9007199254740992.0 9007199254740993)`) and `(< 1 1/2)`/`(> 1 1/2)`
+  * fix exactness of complex numbers: an imaginary literal (`0.5i`) and a real
+    number now have an exact `0` for the missing part, so `(+ 1/10 0.01i)` =>
+    `1/10+0.01i` and `(- 0.01 +1/10i)` => `0.01-1/10i`; complex division is now
+    inexact whenever any part is inexact, so `(/ 1 1/2+1.0i)` => `0.4-0.8i`
+  * fix ``max`` and ``min`` to return inexact when any of the argument is inexact
+  * fix `expt` on float arguments
+  * make `log`/`sin`/`cos`/`atan` return inexact values
+  * fix Lexer to handle all unicode codepoints
+  * fix `read-bytevector!` return value
+  * support start/end in `write-bytevector`
+  * fix parsing `#true` and `#false`
+  * fix parsing strings, symbols, and numbers
+  * fix repr of symbols with special characters
+  * fix foldcase on unicode characters with more that one codepoints
+  * fix `(a #;. b)` and `(a . #;b)` to throw parse error
+
 ## 1.0.0-beta.22
 ### Breaking
 * syntax extensions now expect a reference to a function or a macro

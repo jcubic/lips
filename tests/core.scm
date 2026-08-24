@@ -201,7 +201,27 @@ This function returns the car (item 1) of the list.")
         (t.is (call-with-values * -) -1)
         (t.is (call-with-values (lambda () (values 4 5))
                 (lambda (a b) b)) 5)
-        (t.is (call-with-values (lambda () (values 4 5)) +) 9)))
+        (t.is (call-with-values (lambda () (values 4 5)) +) 9)
+        ;; an async producer (its body awaits a promise) returns a promise of the
+        ;; Values bundle; call-with-values must wait and still spread it into the
+        ;; consumer - regression: with a native consumer it returned (#<Values>)
+        (t.is (call-with-values (lambda () (Promise.resolve 10) (values 1/2 "hello")) list)
+              (list 1/2 "hello"))
+        (t.is (call-with-values (lambda () (Promise.resolve 10) (values 4 5)) +) 9)))
+
+(test.failing "first-class call-with-values keeps an escaping continuation in the consumer"
+      (lambda (t)
+        ;; KNOWN BUG: used first-class (via apply) call-with-values runs through
+        ;; the native function instead of the operator-position trampoline path,
+        ;; so a lambda consumer that escapes via a continuation runs in a nested
+        ;; trampoline and double-executes: the value is correct (21) but a
+        ;; spurious "Expecting number got void" is thrown afterwards. This is not
+        ;; specific to async producers - a sync producer fails the same way.
+        (t.is (+ 1 (call/cc (lambda (k)
+                              (apply call-with-values
+                                     (list (lambda () (values 4 5))
+                                           (lambda (a b) (k (* a b))))))))
+              21)))
 
 (test "values without wrapping"
       (lambda (t)
@@ -405,6 +425,31 @@ This function returns the car (item 1) of the list.")
                      (then (lambda (x)
                              (* x x))))))))
           (t.is x 36))))
+
+(test "resolve promises in an array returned from a JS method"
+      (lambda (t)
+        (t.is (--> (vector 1 2 3) (map (lambda (x) (Promise.resolve (* x 10)))))
+              #(10 20 30))))
+
+(test "resolve promises next to a list returned from a JS method"
+      (lambda (t)
+        ;; the promise sibling makes resolve_promises walk the array and rebuild
+        ;; the list element through its new-Pair branch
+        (t.is (--> (vector 0 1)
+                   (map (lambda (x) (if (zero? x) (Promise.resolve 10) (list 'a 'b)))))
+              (vector 10 (list 'a 'b)))))
+
+(test "resolve promises next to a cyclic list returned from a JS method"
+      (lambda (t)
+        ;; a cyclic sibling exercises the have-cycles branches of the rebuild
+        ;; (and must terminate rather than loop forever)
+        (define c (list 1 2 3))
+        (set-cdr! (cddr c) c)
+        (let ((r (--> (vector 0 1)
+                      (map (lambda (x) (if (zero? x) (Promise.resolve 10) c))))))
+          (t.is (vector-ref r 0) 10)
+          (t.is (car (vector-ref r 1)) 1)
+          (t.is (list-ref (vector-ref r 1) 3) 1))))
 
 (test "resolving promises in quoted promise realm"
       (lambda (t)
@@ -634,7 +679,7 @@ This function returns the car (item 1) of the list.")
                          (catch (e) e))))
           (t.is (error-object? err) true)
           (t.is (error-object-message err) message)
-          (t.is (error-object-irritants err) (list->vector args)))))
+          (t.is (error-object-irritants err) args))))
 
 (test "should evaluate promise of code"
       (lambda (t)
@@ -1065,6 +1110,40 @@ This function returns the car (item 1) of the list.")
           (t.is (type iterator) "async-iterator")
           (t.is (repr iterator) "#<asyncIterator(Object)>"))))
 
+(test "Pair::simple"
+      (lambda (t)
+        (t.is "((1 2 3) (1 2 3))"
+              (let ((out (open-output-string))
+                    (x (list 1 2 3)))
+                (write-simple (list x x) out)
+                (get-output-string out)))))
+
+(test "Pair:shared"
+      (lambda (t)
+        (t.is (and (member (let ((out (open-output-string))
+                                 (x (list 1 2 3)))
+                             (write-shared (list x x) out)
+                             (get-output-string out))
+                           '("(#0=(1 2 3) #0#)" "(#1=(1 2 3) #1#)"))
+                   #t)
+              #t)))
+
+(test "repr of functions"
+      (lambda (t)
+        (t.is (repr repr) "#<procedure:repr>")
+        (t.is (repr string->list) "#<procedure:string->list>")
+        (t.is (repr (lambda (x) x)) "#<procedure>")
+        (t.is (repr Array.from) "#<procedure(native)>")))
+
+(test "repr of class (js/function)"
+      (lambda (t)
+          (define-class Person Object
+            (constructor (lambda (self name)
+                           (set-object! self '_name name)))
+            (hi (lambda (self)
+                  (display (string-append self._name " says hi"))
+                  (newline))))
+          (t.is (repr Person) "#<class:Person>")))
 
 ;; TODO
 ;; begin*

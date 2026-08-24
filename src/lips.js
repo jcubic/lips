@@ -10,7 +10,7 @@
  *
  * LIPS is Pretty Simple - Scheme based powerful LISP in JavaScript
  *
- * Copyright (c) 2018-2024 Jakub T. Jankiewicz <https://jcubic.pl/me>
+ * Copyright (c) 2018-2026 Jakub T. Jankiewicz <https://jcubic.pl/me>
  * Released under the MIT license
  *
  * Includes:
@@ -146,7 +146,7 @@ function log(x, ...args) {
 // mirrors whether DEBUG is set to a truthy value (updated by Environment.set)
 // so the common (debug-off) case is a single boolean test.
 let _debug_enabled = false;
-/* c8 ignore next */
+/* c8 ignore start */
 function is_debug(n = null) {
     if (!_debug_enabled) {
         return false;
@@ -161,7 +161,7 @@ function is_debug(n = null) {
     }
     return debug === n;
 }
-
+/* c8 ignore stop */
 // functions generate regexes to match number rational, integer, complex, complex+rational
 function num_mnemicic_re(mnemonic) {
     return mnemonic ? `(?:#${mnemonic}(?:#[ie])?|#[ie]#${mnemonic})` : '(?:#[ie])?';
@@ -178,23 +178,24 @@ function gen_integer_re(mnemonic, range) {
     return `${num_mnemicic_re(mnemonic)}[+-]?${range}+`;
 }
 var re_re = /^#\/((?:\\\/|[^/]|\[[^\]]*\/[^\]]*\])+)\/([gimyus]*)$/;
-var float_stre = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]+)(?:[eE][-+]?[0-9]+)?)|[0-9]+\\.)';
+var float_stre = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*)(?:[eE][-+]?[0-9]+)?)|[0-9]+\\.)';
 // TODO: extend to ([+-]1/2|float)([+-]1/2|float)
-var complex_float_stre = `(?:#[ie])?(?:[+-]?(?:[0-9][0-9_]*/[0-9][0-9_]*|nan.0|inf.0|${float_stre}|[+-]?[0-9]+))?(?:${float_stre}|[+-](?:[0-9]+/[0-9]+|[0-9]+|nan.0|inf.0))i`;
-var float_re = new RegExp(`^(#[ie])?${float_stre}$`, 'i');
+var complex_float_stre = `(?:#[ied])?(?:[+-]?(?:[0-9][0-9_]*/[0-9][0-9_]*|nan.0|inf.0|${float_stre}|[+-]?[0-9]+))?(?:${float_stre}|[+-](?:[0-9]+/[0-9]+|[0-9]+|nan.0|inf.0))i`;
+
+var float_re = new RegExp(`^(#[ied])?${float_stre}$`, 'i');
 function make_complex_match_re(mnemonic, range) {
     // complex need special treatment of 10e+1i when it's hex or decimal
     var neg = mnemonic === 'x' ? `(?!\\+|${range})` : `(?!\\.|${range})`;
     var fl = '';
-    if (mnemonic === '') {
-        fl = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]+(?![0-9]))(?:[eE][-+]?[0-9]+)?))';
+    if (['', 'd'].includes(mnemonic)) {
+        fl = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*(?![0-9]))(?:[eE][-+]?[0-9]+)?))';
     }
     return new RegExp(`^((?:(?:${fl}|[-+]?inf.0|[-+]?nan.0|[+-]?${range}+/${range}+(?!${range})|[+-]?${range}+)${neg})?)(${fl}|[-+]?inf.0|[-+]?nan.0|[+-]?${range}+/${range}+|[+-]?${range}+|[+-])i$`, 'i');
 }
 var complex_list_re = (function() {
     var result = {};
     [
-        [10, '', '[0-9]'],
+        [10, 'd', '[0-9]'],
         [16, 'x', '[0-9a-fA-F]'],
         [8, 'o', '[0-7]'],
         [2, 'b', '[01]']
@@ -299,6 +300,7 @@ function make_type_re(fn) {
 const complex_re = make_type_re(gen_complex_re);
 const rational_re = make_type_re(gen_rational_re);
 const int_re = make_type_re(gen_integer_re);
+const big_int_re = /^(([-+]?[0-9]*)(?:\.([0-9]+))?)e([-+]?[0-9]+)/i;
 
 // regexes with full range but without mnemonics for string->number
 const int_bare_re = new RegExp('^(?:' + gen_integer_re('', '[0-9a-f]') + ')$', 'i');
@@ -311,7 +313,11 @@ const pre_num_parse_re = /((?:#[xodbie]){0,2})(.*)/i;
 
 function num_pre_parse(arg) {
     var parts = arg.match(pre_num_parse_re);
-    var options = {};
+    var options = {
+        inexact: undefined,
+        radix: undefined,
+        number: undefined
+    };
     if (parts[1]) {
         var type = parts[1].replace(/#/g, '').toLowerCase().split('');
         if (type.includes('x')) {
@@ -381,7 +387,7 @@ function parse_complex(arg, radix = 10) {
             value = LNumber(1);
         } else if (n === '-') {
             value = LNumber(-1);
-        } else if (n.match(int_bare_re)) {
+        } else if (n.match(int_bare_re) && !n.match(big_int_re)) {
             value = LNumber([n, radix]);
         } else if (n.match(rational_bare_re)) {
             var parts = n.split('/');
@@ -395,13 +401,13 @@ function parse_complex(arg, radix = 10) {
                 return float.toRational();
             }
             return float;
-        } else if (n.match(/nan.0$/)) {
+        } else if (n.match(/nan.0$/i)) {
             return LNumber(NaN);
-        } else if (n.match(/inf.0$/)) {
+        } else if (n.match(/inf.0$/i)) {
             if (n[0] === '-') {
-                return LNumber(Number.NEGATIVE_INFINITY);
+                return inf_minus;
             }
-            return LNumber(Number.POSITIVE_INFINITY);
+            return inf_plus;
         } else {
             throw new Error('Internal Parser Error');
         }
@@ -423,9 +429,10 @@ function parse_complex(arg, radix = 10) {
     im = parse_num(parts[2]);
     if (parts[1]) {
         re = parse_num(parts[1]);
-    } else if (im instanceof LFloat) {
-        re = LFloat(0);
     } else {
+        // an imaginary-only literal (e.g. 0.5i, +1/10i) has an *exact* zero real
+        // part; the imaginary part carries the exactness. Using an inexact 0.0
+        // here would make (+ 1/10 0.01i) => 0.1+0.01i instead of 1/10+0.01i.
         re = LNumber(0);
     }
     if (im.cmp(0) === 0 && im.__type__ === 'bigint') {
@@ -439,7 +446,7 @@ function is_int(value) {
 }
 // ----------------------------------------------------------------------
 function parse_big_int(str) {
-    var num_match = str.match(/^(([-+]?[0-9]*)(?:\.([0-9]+))?)e([-+]?[0-9]+)/i);
+    var num_match = str.match(big_int_re);
     if (num_match) {
         var exponent = parseInt(num_match[4], 10);
         var mantisa;// = parseFloat(num_match[1]);
@@ -481,21 +488,23 @@ function parse_float(arg) {
         if (parse.exact && simple_number) {
             return LNumber(value);
         }
-        // positive big num that eval to int e.g.: 1.2e+20
-        if (is_int(value) &&
-            Number.isSafeInteger(value) &&
-            parse.number.match(/e\+?[0-9]/i)) {
-            return LNumber(value);
-        }
-        // calculate big int and big fraction by hand
-        // it doesn't fit into JS float
-        const { mantisa, exponent } = parse_big_int(parse.number);
-        if (mantisa !== undefined && exponent !== undefined) {
-            const factor = LNumber(10).pow(LNumber(Math.abs(exponent)));
-            if (parse.exact && exponent < 0) {
-                return LRational({ num: mantisa, denom: factor });
-            } else if (exponent > 0 && (parse.exact || !parse.number.match(/\./))) {
-                return LNumber(mantisa).mul(factor);
+        if (parse.exact) {
+            // positive big num that eval to int e.g.: 1.2e+20
+            if (is_int(value) &&
+                Number.isSafeInteger(value) &&
+                parse.number.match(/e\+?[0-9]/i)) {
+                return LNumber(value);
+            }
+            // calculate big int and big fraction by hand
+            // it doesn't fit into JS float
+            const { mantisa, exponent } = parse_big_int(parse.number);
+            if (mantisa !== undefined && exponent !== undefined) {
+                const factor = LNumber(10).pow(LNumber(Math.abs(exponent)));
+                if (parse.exact && exponent < 0) {
+                    return LRational({ num: mantisa, denom: factor });
+                } else if (exponent > 0 && (parse.exact || !parse.number.match(/\./))) {
+                    return LNumber(mantisa).mul(factor);
+                }
             }
         }
     }
@@ -507,27 +516,93 @@ function parse_float(arg) {
 }
 // ----------------------------------------------------------------------
 function parse_string(string) {
-    // handle non JSON escapes and skip unicode escape \u (even partial)
-    string = string.replace(/\\x([0-9a-f]+);/ig, function(_, hex) {
-        return "\\u" + hex.padStart(4, '0');
-    }).replace(/\n/g, '\\n'); // in LIPS strings can be multiline
-    var m = string.match(/(\\*)(\\x[0-9A-F])/i);
-    if (m && m[1].length % 2 === 0) {
-        throw new Error(`Invalid string literal, unclosed ${m[2]}`);
+    const body = string.slice(1, -1);
+    // fast path: a string without any escape (the common case) is its own value
+    // - R7RS keeps every non-escape character verbatim, literal line endings
+    // included - so there is nothing to decode.
+    if (body.indexOf('\\') === -1) {
+        const plain = LString(body);
+        plain.freeze();
+        return plain;
     }
-    try {
-        const str =  LString(JSON.parse(string));
-        str.freeze();
-        return str;
-    } catch (e) {
-        const msg = e.message.replace(/in JSON /, '').replace(/.*Error: /, '');
-        throw new Error(`Parse Error: Invalid string literal: ${msg}`);
+    // single character escapes; \f and \/ are kept for JSON compatibility
+    const simple = {
+        a: '\x07',   // alarm         U+0007
+        b: '\b',     // backspace     U+0008
+        t: '\t',     // tab           U+0009
+        n: '\n',     // linefeed      U+000A
+        r: '\r',     // return        U+000D
+        f: '\f',     // form feed     U+000C
+        '"': '"',    // double quote  U+0022
+        '\\': '\\',  // backslash     U+005C
+        '|': '|',    // vertical line U+007C
+        '/': '/'     // solidus
+    };
+    const invalid = () => {
+        throw new Error(`Parse Error: Invalid string literal: ${string}`);
+    };
+    const is_intraline = ch => ch === ' ' || ch === '\t';
+    const is_line_ending = ch => ch === '\n' || ch === '\r';
+    let result = '';
+    for (let i = 0; i < body.length; ++i) {
+        const ch = body[i];
+        if (ch !== '\\') {
+            // any other character, a literal line ending included, stands for
+            // itself in the string literal
+            result += ch;
+            continue;
+        }
+        const esc = body[++i];
+        if (esc === undefined) {
+            invalid();
+        }
+        if (Object.prototype.hasOwnProperty.call(simple, esc)) {
+            result += simple[esc];
+        } else if (esc === 'x' || esc === 'X') {
+            // \x<hex scalar value>; - note the terminating semicolon
+            let hex = '';
+            while (++i < body.length && body[i] !== ';') {
+                hex += body[i];
+            }
+            if (body[i] !== ';' || !/^[0-9a-fA-F]+$/.test(hex)) {
+                invalid();
+            }
+            result += String.fromCodePoint(parseInt(hex, 16));
+        } else if (esc === 'u') {
+            // \uHHHH - not R7RS but supported by the old JSON based parser
+            const hex = body.substr(i + 1, 4);
+            if (!/^[0-9a-fA-F]{4}$/.test(hex)) {
+                invalid();
+            }
+            result += String.fromCharCode(parseInt(hex, 16));
+            i += 4;
+        } else if (is_intraline(esc) || is_line_ending(esc)) {
+            // line continuation: a backslash, optional intraline whitespace, a
+            // line ending and optional intraline whitespace expand to nothing
+            let j = i;
+            while (j < body.length && is_intraline(body[j])) {
+                ++j;
+            }
+            if (!(j < body.length && is_line_ending(body[j]))) {
+                invalid();
+            }
+            j += (body[j] === '\r' && body[j + 1] === '\n') ? 2 : 1;
+            while (j < body.length && is_intraline(body[j])) {
+                ++j;
+            }
+            i = j - 1;
+        } else {
+            invalid();
+        }
     }
+    const str = LString(result);
+    str.freeze();
+    return str;
 }
 // ----------------------------------------------------------------------
 function parse_symbol(arg) {
-    const debug = arg.match(/^name/);
-    const re = /(^|.)\|/g;
+    //const debug = arg.match(/llo\|/);
+    const re = /(?:^|.)\|/g;
     if (arg.match(re)) {
         // handle escaped bar and escaped slash
         arg = arg.split('|').filter(Boolean).reduce((acc, str) => {
@@ -544,24 +619,49 @@ function parse_symbol(arg) {
                 result = str;
             }
             return acc + result;
-        });
+        }, '');
         const chars = {
             t: '\t',
             r: '\r',
-            n: '\n'
+            n: '\n',
+            '"': '"',
+            '|': '|'
         };
         arg = arg.replace(/\\(x[^;]+);/g, function(_, chr) {
             return String.fromCharCode(parseInt('0' + chr, 16));
-        }).replace(/\\([trn])/g, function(_, chr) {
+        }).replace(/\\([trn"\|])/g, function(_, chr) {
             return chars[chr];
+        }).replace(/\\u([0-9]{4,6})/g, function(_, string) {
+            return String.fromCharCode(parseInt(string, 16));
         });
     }
     return new LSymbol(arg);
 }
 // ----------------------------------------------------------------------
+function is_quotable_symbol(str) {
+    return !str ||
+        is_special(str) ||
+        is_special(str[0]) ||
+        str.match(/(^;|[\s()[\]"|\\])/) ||
+        is_numeric(str) ||
+        str === '.';
+}
+// ----------------------------------------------------------------------
+function is_numeric(string) {
+    if (!string.match(/[0-9a-f]|[+-]i/i)) {
+        return false;
+    }
+    return string.match(int_re) ||
+        string.match(float_re) ||
+        string.match(rational_re) ||
+        string.match(complex_re) ||
+        string.match(/[+-](nan.0|inf.0)/i)
+}
+// ----------------------------------------------------------------------
 function parse_argument(token) {
-    if (constants.hasOwnProperty(token)) {
-        return constants[token];
+    const lower = token.toLowerCase();
+    if (constants.hasOwnProperty(lower)) {
+        return constants[lower];
     }
     let result;
     if (token.match(/^"[\s\S]*"$/)) {
@@ -818,7 +918,8 @@ LSymbol.prototype.toString = function(quote) {
     }
     var str = this.valueOf();
     // those special characters can be normal symbol when printed
-    if (quote && str.match(/(^;|[\s()[\]'])/)) {
+    if (quote && is_quotable_symbol(str)) {
+        str = str.replace(/\|/g, '\\|');
         return `|${str}|`;
     }
     return str;
@@ -1184,7 +1285,7 @@ defined_specials.forEach(([seq, symbol, type]) => {
 */
 class Lexer {
     constructor(input, { whitespace = false, filename = null } = {}) {
-        read_only(this, '__input__', input);
+        read_only(this, '__input__', [...input]);
         read_only(this, '__file__', filename);
         var internals = {};
         // hide internals from introspection
@@ -1255,7 +1356,7 @@ class Lexer {
         }
         var found = this.next_token();
         if (found) {
-            this._token = this.__input__.substring(this._i, this._next);
+            this._token = this.substring(this._i, this._next);
             if (!this.__token__) {
                 // handle case when accessing __token__ from the syntax extension
                 // (e.g. string interpolation) as the first expression in a REPL
@@ -1264,6 +1365,9 @@ class Lexer {
             return this.token(meta);
         }
         return eof;
+    }
+    substring(start, end) {
+        return this.__input__.slice(start, end).join('');
     }
     skip() {
         if (this._next !== null) {
@@ -1279,7 +1383,7 @@ class Lexer {
         for (let i = this._i; i < len; ++i) {
             var char = this.__input__[i];
             if (char === '\n') {
-                const line = this.__input__.substring(this._i, i);
+                const line = this.substring(this._i, i);
                 this._i = i + 1;
                 ++this._line;
                 return line;
@@ -1290,7 +1394,7 @@ class Lexer {
     read_rest() {
         const i = this._i;
         this._i = this.__input__.length;
-        return this.__input__.substring(i);
+        return this.substring(i);
     }
     read_string(num) {
         const len = this.__input__.length;
@@ -1301,7 +1405,7 @@ class Lexer {
             return this.read_rest();
         }
         const end = this._i + num;
-        const result = this.__input__.substring(this._i, end);
+        const result = this.substring(this._i, end);
         const found = result.match(/\n/g);
         if (found) {
             this._line += found.length;
@@ -1351,9 +1455,9 @@ class Lexer {
         return true;
     }
     _recover_token() {
-        const re = /^([^\s()\[\]]*).*(\n[\s\S]+)?/
+        const re = /^([^\s()\[\]]*).*(\n[\s\S]+)?/;
         const offset = this._start.offset;
-        return this.__input__.substring(offset).replace(re, '$1').trim();
+        return this.substring(offset).replace(re, '$1').trim();
     }
     _backtrack(stack) {
         // restore the lexer bookkeeping saved in the most recent choice point
@@ -1662,7 +1766,9 @@ Lexer._rules = [
     [/"/, null, null, null, Lexer.string],
     [/"/, null, null, Lexer.string_escape, Lexer.string],
     [/\\/, null, null, Lexer.string, Lexer.string_escape],
-    [/./, /\\/, null, Lexer.string_escape, Lexer.string],
+    [/\\/, /\\/, /\\/, Lexer.string_escape, Lexer.string],
+    [/\\/, /\\/, /[abtnr"\\|]/, Lexer.string_escape, Lexer.string],
+    [/[^\\]/, /\\/, null, Lexer.string_escape, Lexer.string],
 
     // hash special symbols, lexer don't need to distinguish those
     // we only care if it's not pick up by vectors literals
@@ -1757,7 +1863,7 @@ const directives = [
     '#!fold-case',
     '#!no-fold-case'
 ];
-const hash_literals = ['#t', '#f'];
+const hash_literals = ['#t', '#f', '#true', '#false'];
 // ----------------------------------------------------------------------
 Object.defineProperty(Lexer, 'rules', {
     get() {
@@ -1830,24 +1936,32 @@ function match_or_null(re, char) {
 // -------------------------------------------------------------------------
 // Lips Exception used in error function
 // -------------------------------------------------------------------------
-function LipsError(message, args) {
-    this.name = 'LipsError';
-    this.message = message;
-    this.args = args;
-    this.stack = (new Error()).stack;
+class LIPSError extends Error {
+    constructor(message, args) {
+        super(message);
+        this.name = 'Error';
+        this.args = args;
+    }
 }
-LipsError.prototype = new Error();
-LipsError.prototype.constructor = LipsError;
-
 // -------------------------------------------------------------------------
 // :: Fake exception to handle try catch to break the execution
 // :: of body expression #163
 // -------------------------------------------------------------------------
 class IgnoreException extends Error { }
-class Unterminated extends Error { }
-class RuntimeError extends Error { }
+// -------------------------------------------------------------------------
+class ParseError extends LIPSError { }
+class Unterminated extends ParseError { }
+class RuntimeError extends LIPSError { }
+class TypeError extends RuntimeError { }
 class PromiseRejection extends RuntimeError { }
 
+class Continuable extends Error {
+    constructor(object) {
+        super('Continuable');
+        this.__object__ = object;
+        this.__cc__ = null;
+    }
+}
 // -------------------------------------------------------------------------
 function augment_exception(e, object) {
     if (!is_object(e) || is_native(e)) {
@@ -1875,7 +1989,7 @@ function augment_exception(e, object) {
 // -------------------------------------------------------------------------
 function unify_error_message(e) {
     if (is_augmented(e)) {
-        if (!e.message.match(/at line/)) {
+        if (!e.message?.match(/at line/)) {
             e.message += ` at line ${e.__line__ + 1} and column ${e.__col__}`;
             if (e.__file__) {
                 e.message += ` in ${e.__file__}`;
@@ -1999,9 +2113,12 @@ class Parser {
                 }
                 if (token.token === '#;') {
                     this._skip(token);
-                    if (this.__lexer__.peek() === eof) {
-                        const e = new Error('Lexer: syntax error eof found after comment');
-                        throw this._augment_exception(e);
+                    const next = this.__lexer__.peek();
+                    if (next === eof) {
+                        this.syntax_error('Syntax Error: eof found after comment');
+                    }
+                    if (next === '.') {
+                        this.syntax_error('Syntax Error: dot is not s-expression');
                     }
                     await this._read_object();
                     continue;
@@ -2059,6 +2176,10 @@ class Parser {
     _is_close(token) {
         return [')', ']'].includes(token.token);
     }
+    syntax_error(message) {
+        const e = new ParseError(message);
+        throw this._augment_exception(e);
+    }
     async _read_list() {
         let head = nil, prev = head, dot;
         let first_token = this._state.last_token;
@@ -2074,11 +2195,14 @@ class Parser {
             }
             if (token.token === '.' && !is_nil(head)) {
                 this._skip(token);
+                const next = this.__lexer__.peek();
                 prev.cdr = await this._read_object();
+                if ((next === '#;' && is_undef(prev.cdr))|| next === ')') {
+                    this.syntax_error('Syntax Error: no element after dot');
+                }
                 dot = true;
             } else if (dot) {
-                const e = new Error('Syntax Error: more than one element after dot');
-                throw this._augment_exception(e);
+                this.syntax_error('Syntax Error: more than one element after dot');
             } else {
                 const node = await this._read_object();
                 const cur = new Pair(node, nil);
@@ -3084,37 +3208,38 @@ const fold_case_mapping = {
     "209": 241, "210": 242, "211": 243, "212": 244,
     "213": 245, "214": 246, "216": 248, "217": 249,
     "218": 250, "219": 251, "220": 252, "221": 253,
-    "222": 254, "256": 257, "258": 259, "260": 261,
-    "262": 263, "264": 265, "266": 267, "268": 269,
-    "270": 271, "272": 273, "274": 275, "276": 277,
-    "278": 279, "280": 281, "282": 283, "284": 285,
-    "286": 287, "288": 289, "290": 291, "292": 293,
-    "294": 295, "296": 297, "298": 299, "300": 301,
-    "302": 303, "306": 307, "308": 309, "310": 311,
-    "313": 314, "315": 316, "317": 318, "319": 320,
-    "321": 322, "323": 324, "325": 326, "327": 328,
-    "330": 331, "332": 333, "334": 335, "336": 337,
-    "338": 339, "340": 341, "342": 343, "344": 345,
-    "346": 347, "348": 349, "350": 351, "352": 353,
-    "354": 355, "356": 357, "358": 359, "360": 361,
-    "362": 363, "364": 365, "366": 367, "368": 369,
-    "370": 371, "372": 373, "374": 375, "376": 255,
-    "377": 378, "379": 380, "381": 382, "383": 115,
-    "385": 595, "386": 387, "388": 389, "390": 596,
-    "391": 392, "393": 598, "394": 599, "395": 396,
-    "398": 477, "399": 601, "400": 603, "401": 402,
-    "403": 608, "404": 611, "406": 617, "407": 616,
-    "408": 409, "412": 623, "413": 626, "415": 629,
-    "416": 417, "418": 419, "420": 421, "422": 640,
-    "423": 424, "425": 643, "428": 429, "430": 648,
-    "431": 432, "433": 650, "434": 651, "435": 436,
-    "437": 438, "439": 658, "440": 441, "444": 445,
-    "452": 454, "453": 454, "455": 457, "456": 457,
-    "458": 460, "459": 460, "461": 462, "463": 464,
-    "465": 466, "467": 468, "469": 470, "471": 472,
-    "473": 474, "475": 476, "478": 479, "480": 481,
-    "482": 483, "484": 485, "486": 487, "488": 489,
-    "490": 491, "492": 493, "494": 495, "497": 499,
+    "222": 254, "223": [115, 115], "256": 257, "258": 259,
+    "260": 261, "262": 263, "264": 265, "266": 267,
+    "268": 269, "270": 271, "272": 273, "274": 275,
+    "276": 277, "278": 279, "280": 281, "282": 283,
+    "284": 285, "286": 287, "288": 289, "290": 291,
+    "292": 293, "294": 295, "296": 297, "298": 299,
+    "300": 301, "302": 303, "304": [105, 775], "306": 307,
+    "308": 309, "310": 311, "313": 314, "315": 316,
+    "317": 318, "319": 320, "321": 322, "323": 324,
+    "325": 326, "327": 328, "329": [700, 110], "330": 331,
+    "332": 333, "334": 335, "336": 337, "338": 339,
+    "340": 341, "342": 343, "344": 345, "346": 347,
+    "348": 349, "350": 351, "352": 353, "354": 355,
+    "356": 357, "358": 359, "360": 361, "362": 363,
+    "364": 365, "366": 367, "368": 369, "370": 371,
+    "372": 373, "374": 375, "376": 255, "377": 378,
+    "379": 380, "381": 382, "383": 115, "385": 595,
+    "386": 387, "388": 389, "390": 596, "391": 392,
+    "393": 598, "394": 599, "395": 396, "398": 477,
+    "399": 601, "400": 603, "401": 402, "403": 608,
+    "404": 611, "406": 617, "407": 616, "408": 409,
+    "412": 623, "413": 626, "415": 629, "416": 417,
+    "418": 419, "420": 421, "422": 640, "423": 424,
+    "425": 643, "428": 429, "430": 648, "431": 432,
+    "433": 650, "434": 651, "435": 436, "437": 438,
+    "439": 658, "440": 441, "444": 445, "452": 454,
+    "453": 454, "455": 457, "456": 457, "458": 460,
+    "459": 460, "461": 462, "463": 464, "465": 466,
+    "467": 468, "469": 470, "471": 472, "473": 474,
+    "475": 476, "478": 479, "480": 481, "482": 483,
+    "484": 485, "486": 487, "488": 489, "490": 491,
+    "492": 493, "494": 495, "496": [106, 780], "497": 499,
     "498": 499, "500": 501, "502": 405, "503": 447,
     "504": 505, "506": 507, "508": 509, "510": 511,
     "512": 513, "514": 515, "516": 517, "518": 519,
@@ -3129,141 +3254,163 @@ const fold_case_mapping = {
     "586": 587, "588": 589, "590": 591, "837": 953,
     "880": 881, "882": 883, "886": 887, "895": 1011,
     "902": 940, "904": 941, "905": 942, "906": 943,
-    "908": 972, "910": 973, "911": 974, "913": 945,
-    "914": 946, "915": 947, "916": 948, "917": 949,
-    "918": 950, "919": 951, "920": 952, "921": 953,
-    "922": 954, "923": 955, "924": 956, "925": 957,
-    "926": 958, "927": 959, "928": 960, "929": 961,
-    "931": 963, "932": 964, "933": 965, "934": 966,
-    "935": 967, "936": 968, "937": 969, "938": 970,
-    "939": 971, "962": 963, "975": 983, "976": 946,
-    "977": 952, "981": 966, "982": 960, "984": 985,
-    "986": 987, "988": 989, "990": 991, "992": 993,
-    "994": 995, "996": 997, "998": 999, "1000": 1001,
-    "1002": 1003, "1004": 1005, "1006": 1007, "1008": 954,
-    "1009": 961, "1012": 952, "1013": 949, "1015": 1016,
-    "1017": 1010, "1018": 1019, "1021": 891, "1022": 892,
-    "1023": 893, "1024": 1104, "1025": 1105, "1026": 1106,
-    "1027": 1107, "1028": 1108, "1029": 1109, "1030": 1110,
-    "1031": 1111, "1032": 1112, "1033": 1113, "1034": 1114,
-    "1035": 1115, "1036": 1116, "1037": 1117, "1038": 1118,
-    "1039": 1119, "1040": 1072, "1041": 1073, "1042": 1074,
-    "1043": 1075, "1044": 1076, "1045": 1077, "1046": 1078,
-    "1047": 1079, "1048": 1080, "1049": 1081, "1050": 1082,
-    "1051": 1083, "1052": 1084, "1053": 1085, "1054": 1086,
-    "1055": 1087, "1056": 1088, "1057": 1089, "1058": 1090,
-    "1059": 1091, "1060": 1092, "1061": 1093, "1062": 1094,
-    "1063": 1095, "1064": 1096, "1065": 1097, "1066": 1098,
-    "1067": 1099, "1068": 1100, "1069": 1101, "1070": 1102,
-    "1071": 1103, "1120": 1121, "1122": 1123, "1124": 1125,
-    "1126": 1127, "1128": 1129, "1130": 1131, "1132": 1133,
-    "1134": 1135, "1136": 1137, "1138": 1139, "1140": 1141,
-    "1142": 1143, "1144": 1145, "1146": 1147, "1148": 1149,
-    "1150": 1151, "1152": 1153, "1162": 1163, "1164": 1165,
-    "1166": 1167, "1168": 1169, "1170": 1171, "1172": 1173,
-    "1174": 1175, "1176": 1177, "1178": 1179, "1180": 1181,
-    "1182": 1183, "1184": 1185, "1186": 1187, "1188": 1189,
-    "1190": 1191, "1192": 1193, "1194": 1195, "1196": 1197,
-    "1198": 1199, "1200": 1201, "1202": 1203, "1204": 1205,
-    "1206": 1207, "1208": 1209, "1210": 1211, "1212": 1213,
-    "1214": 1215, "1216": 1231, "1217": 1218, "1219": 1220,
-    "1221": 1222, "1223": 1224, "1225": 1226, "1227": 1228,
-    "1229": 1230, "1232": 1233, "1234": 1235, "1236": 1237,
-    "1238": 1239, "1240": 1241, "1242": 1243, "1244": 1245,
-    "1246": 1247, "1248": 1249, "1250": 1251, "1252": 1253,
-    "1254": 1255, "1256": 1257, "1258": 1259, "1260": 1261,
-    "1262": 1263, "1264": 1265, "1266": 1267, "1268": 1269,
-    "1270": 1271, "1272": 1273, "1274": 1275, "1276": 1277,
-    "1278": 1279, "1280": 1281, "1282": 1283, "1284": 1285,
-    "1286": 1287, "1288": 1289, "1290": 1291, "1292": 1293,
-    "1294": 1295, "1296": 1297, "1298": 1299, "1300": 1301,
-    "1302": 1303, "1304": 1305, "1306": 1307, "1308": 1309,
-    "1310": 1311, "1312": 1313, "1314": 1315, "1316": 1317,
-    "1318": 1319, "1320": 1321, "1322": 1323, "1324": 1325,
-    "1326": 1327, "1329": 1377, "1330": 1378, "1331": 1379,
-    "1332": 1380, "1333": 1381, "1334": 1382, "1335": 1383,
-    "1336": 1384, "1337": 1385, "1338": 1386, "1339": 1387,
-    "1340": 1388, "1341": 1389, "1342": 1390, "1343": 1391,
-    "1344": 1392, "1345": 1393, "1346": 1394, "1347": 1395,
-    "1348": 1396, "1349": 1397, "1350": 1398, "1351": 1399,
-    "1352": 1400, "1353": 1401, "1354": 1402, "1355": 1403,
-    "1356": 1404, "1357": 1405, "1358": 1406, "1359": 1407,
-    "1360": 1408, "1361": 1409, "1362": 1410, "1363": 1411,
-    "1364": 1412, "1365": 1413, "1366": 1414, "4256": 11520,
-    "4257": 11521, "4258": 11522, "4259": 11523, "4260": 11524,
-    "4261": 11525, "4262": 11526, "4263": 11527, "4264": 11528,
-    "4265": 11529, "4266": 11530, "4267": 11531, "4268": 11532,
-    "4269": 11533, "4270": 11534, "4271": 11535, "4272": 11536,
-    "4273": 11537, "4274": 11538, "4275": 11539, "4276": 11540,
-    "4277": 11541, "4278": 11542, "4279": 11543, "4280": 11544,
-    "4281": 11545, "4282": 11546, "4283": 11547, "4284": 11548,
-    "4285": 11549, "4286": 11550, "4287": 11551, "4288": 11552,
-    "4289": 11553, "4290": 11554, "4291": 11555, "4292": 11556,
-    "4293": 11557, "4295": 11559, "4301": 11565, "5112": 5104,
-    "5113": 5105, "5114": 5106, "5115": 5107, "5116": 5108,
-    "5117": 5109, "7296": 1074, "7297": 1076, "7298": 1086,
-    "7299": 1089, "7300": 1090, "7301": 1090, "7302": 1098,
-    "7303": 1123, "7304": 42571, "7312": 4304, "7313": 4305,
-    "7314": 4306, "7315": 4307, "7316": 4308, "7317": 4309,
-    "7318": 4310, "7319": 4311, "7320": 4312, "7321": 4313,
-    "7322": 4314, "7323": 4315, "7324": 4316, "7325": 4317,
-    "7326": 4318, "7327": 4319, "7328": 4320, "7329": 4321,
-    "7330": 4322, "7331": 4323, "7332": 4324, "7333": 4325,
-    "7334": 4326, "7335": 4327, "7336": 4328, "7337": 4329,
-    "7338": 4330, "7339": 4331, "7340": 4332, "7341": 4333,
-    "7342": 4334, "7343": 4335, "7344": 4336, "7345": 4337,
-    "7346": 4338, "7347": 4339, "7348": 4340, "7349": 4341,
-    "7350": 4342, "7351": 4343, "7352": 4344, "7353": 4345,
-    "7354": 4346, "7357": 4349, "7358": 4350, "7359": 4351,
-    "7680": 7681, "7682": 7683, "7684": 7685, "7686": 7687,
-    "7688": 7689, "7690": 7691, "7692": 7693, "7694": 7695,
-    "7696": 7697, "7698": 7699, "7700": 7701, "7702": 7703,
-    "7704": 7705, "7706": 7707, "7708": 7709, "7710": 7711,
-    "7712": 7713, "7714": 7715, "7716": 7717, "7718": 7719,
-    "7720": 7721, "7722": 7723, "7724": 7725, "7726": 7727,
-    "7728": 7729, "7730": 7731, "7732": 7733, "7734": 7735,
-    "7736": 7737, "7738": 7739, "7740": 7741, "7742": 7743,
-    "7744": 7745, "7746": 7747, "7748": 7749, "7750": 7751,
-    "7752": 7753, "7754": 7755, "7756": 7757, "7758": 7759,
-    "7760": 7761, "7762": 7763, "7764": 7765, "7766": 7767,
-    "7768": 7769, "7770": 7771, "7772": 7773, "7774": 7775,
-    "7776": 7777, "7778": 7779, "7780": 7781, "7782": 7783,
-    "7784": 7785, "7786": 7787, "7788": 7789, "7790": 7791,
-    "7792": 7793, "7794": 7795, "7796": 7797, "7798": 7799,
-    "7800": 7801, "7802": 7803, "7804": 7805, "7806": 7807,
-    "7808": 7809, "7810": 7811, "7812": 7813, "7814": 7815,
-    "7816": 7817, "7818": 7819, "7820": 7821, "7822": 7823,
-    "7824": 7825, "7826": 7827, "7828": 7829, "7835": 7777,
-    "7840": 7841, "7842": 7843, "7844": 7845, "7846": 7847,
-    "7848": 7849, "7850": 7851, "7852": 7853, "7854": 7855,
-    "7856": 7857, "7858": 7859, "7860": 7861, "7862": 7863,
-    "7864": 7865, "7866": 7867, "7868": 7869, "7870": 7871,
-    "7872": 7873, "7874": 7875, "7876": 7877, "7878": 7879,
-    "7880": 7881, "7882": 7883, "7884": 7885, "7886": 7887,
-    "7888": 7889, "7890": 7891, "7892": 7893, "7894": 7895,
-    "7896": 7897, "7898": 7899, "7900": 7901, "7902": 7903,
-    "7904": 7905, "7906": 7907, "7908": 7909, "7910": 7911,
-    "7912": 7913, "7914": 7915, "7916": 7917, "7918": 7919,
-    "7920": 7921, "7922": 7923, "7924": 7925, "7926": 7927,
-    "7928": 7929, "7930": 7931, "7932": 7933, "7934": 7935,
-    "7944": 7936, "7945": 7937, "7946": 7938, "7947": 7939,
-    "7948": 7940, "7949": 7941, "7950": 7942, "7951": 7943,
-    "7960": 7952, "7961": 7953, "7962": 7954, "7963": 7955,
-    "7964": 7956, "7965": 7957, "7976": 7968, "7977": 7969,
-    "7978": 7970, "7979": 7971, "7980": 7972, "7981": 7973,
-    "7982": 7974, "7983": 7975, "7992": 7984, "7993": 7985,
-    "7994": 7986, "7995": 7987, "7996": 7988, "7997": 7989,
-    "7998": 7990, "7999": 7991, "8008": 8000, "8009": 8001,
-    "8010": 8002, "8011": 8003, "8012": 8004, "8013": 8005,
-    "8025": 8017, "8027": 8019, "8029": 8021, "8031": 8023,
-    "8040": 8032, "8041": 8033, "8042": 8034, "8043": 8035,
-    "8044": 8036, "8045": 8037, "8046": 8038, "8047": 8039,
-    "8120": 8112, "8121": 8113, "8122": 8048, "8123": 8049,
-    "8126": 953, "8136": 8050, "8137": 8051, "8138": 8052,
-    "8139": 8053, "8152": 8144, "8153": 8145, "8154": 8054,
-    "8155": 8055, "8168": 8160, "8169": 8161, "8170": 8058,
-    "8171": 8059, "8172": 8165, "8184": 8056, "8185": 8057,
-    "8186": 8060, "8187": 8061, "8486": 969, "8490": 107,
+    "908": 972, "910": 973, "911": 974, "912": [953, 776, 769],
+    "913": 945, "914": 946, "915": 947, "916": 948,
+    "917": 949, "918": 950, "919": 951, "920": 952,
+    "921": 953, "922": 954, "923": 955, "924": 956,
+    "925": 957, "926": 958, "927": 959, "928": 960,
+    "929": 961, "931": 963, "932": 964, "933": 965,
+    "934": 966, "935": 967, "936": 968, "937": 969,
+    "938": 970, "939": 971, "944": [965, 776, 769], "962": 963,
+    "975": 983, "976": 946, "977": 952, "981": 966,
+    "982": 960, "984": 985, "986": 987, "988": 989,
+    "990": 991, "992": 993, "994": 995, "996": 997,
+    "998": 999, "1000": 1001, "1002": 1003, "1004": 1005,
+    "1006": 1007, "1008": 954, "1009": 961, "1012": 952,
+    "1013": 949, "1015": 1016, "1017": 1010, "1018": 1019,
+    "1021": 891, "1022": 892, "1023": 893, "1024": 1104,
+    "1025": 1105, "1026": 1106, "1027": 1107, "1028": 1108,
+    "1029": 1109, "1030": 1110, "1031": 1111, "1032": 1112,
+    "1033": 1113, "1034": 1114, "1035": 1115, "1036": 1116,
+    "1037": 1117, "1038": 1118, "1039": 1119, "1040": 1072,
+    "1041": 1073, "1042": 1074, "1043": 1075, "1044": 1076,
+    "1045": 1077, "1046": 1078, "1047": 1079, "1048": 1080,
+    "1049": 1081, "1050": 1082, "1051": 1083, "1052": 1084,
+    "1053": 1085, "1054": 1086, "1055": 1087, "1056": 1088,
+    "1057": 1089, "1058": 1090, "1059": 1091, "1060": 1092,
+    "1061": 1093, "1062": 1094, "1063": 1095, "1064": 1096,
+    "1065": 1097, "1066": 1098, "1067": 1099, "1068": 1100,
+    "1069": 1101, "1070": 1102, "1071": 1103, "1120": 1121,
+    "1122": 1123, "1124": 1125, "1126": 1127, "1128": 1129,
+    "1130": 1131, "1132": 1133, "1134": 1135, "1136": 1137,
+    "1138": 1139, "1140": 1141, "1142": 1143, "1144": 1145,
+    "1146": 1147, "1148": 1149, "1150": 1151, "1152": 1153,
+    "1162": 1163, "1164": 1165, "1166": 1167, "1168": 1169,
+    "1170": 1171, "1172": 1173, "1174": 1175, "1176": 1177,
+    "1178": 1179, "1180": 1181, "1182": 1183, "1184": 1185,
+    "1186": 1187, "1188": 1189, "1190": 1191, "1192": 1193,
+    "1194": 1195, "1196": 1197, "1198": 1199, "1200": 1201,
+    "1202": 1203, "1204": 1205, "1206": 1207, "1208": 1209,
+    "1210": 1211, "1212": 1213, "1214": 1215, "1216": 1231,
+    "1217": 1218, "1219": 1220, "1221": 1222, "1223": 1224,
+    "1225": 1226, "1227": 1228, "1229": 1230, "1232": 1233,
+    "1234": 1235, "1236": 1237, "1238": 1239, "1240": 1241,
+    "1242": 1243, "1244": 1245, "1246": 1247, "1248": 1249,
+    "1250": 1251, "1252": 1253, "1254": 1255, "1256": 1257,
+    "1258": 1259, "1260": 1261, "1262": 1263, "1264": 1265,
+    "1266": 1267, "1268": 1269, "1270": 1271, "1272": 1273,
+    "1274": 1275, "1276": 1277, "1278": 1279, "1280": 1281,
+    "1282": 1283, "1284": 1285, "1286": 1287, "1288": 1289,
+    "1290": 1291, "1292": 1293, "1294": 1295, "1296": 1297,
+    "1298": 1299, "1300": 1301, "1302": 1303, "1304": 1305,
+    "1306": 1307, "1308": 1309, "1310": 1311, "1312": 1313,
+    "1314": 1315, "1316": 1317, "1318": 1319, "1320": 1321,
+    "1322": 1323, "1324": 1325, "1326": 1327, "1329": 1377,
+    "1330": 1378, "1331": 1379, "1332": 1380, "1333": 1381,
+    "1334": 1382, "1335": 1383, "1336": 1384, "1337": 1385,
+    "1338": 1386, "1339": 1387, "1340": 1388, "1341": 1389,
+    "1342": 1390, "1343": 1391, "1344": 1392, "1345": 1393,
+    "1346": 1394, "1347": 1395, "1348": 1396, "1349": 1397,
+    "1350": 1398, "1351": 1399, "1352": 1400, "1353": 1401,
+    "1354": 1402, "1355": 1403, "1356": 1404, "1357": 1405,
+    "1358": 1406, "1359": 1407, "1360": 1408, "1361": 1409,
+    "1362": 1410, "1363": 1411, "1364": 1412, "1365": 1413,
+    "1366": 1414, "1415": [1381, 1410], "4256": 11520, "4257": 11521,
+    "4258": 11522, "4259": 11523, "4260": 11524, "4261": 11525,
+    "4262": 11526, "4263": 11527, "4264": 11528, "4265": 11529,
+    "4266": 11530, "4267": 11531, "4268": 11532, "4269": 11533,
+    "4270": 11534, "4271": 11535, "4272": 11536, "4273": 11537,
+    "4274": 11538, "4275": 11539, "4276": 11540, "4277": 11541,
+    "4278": 11542, "4279": 11543, "4280": 11544, "4281": 11545,
+    "4282": 11546, "4283": 11547, "4284": 11548, "4285": 11549,
+    "4286": 11550, "4287": 11551, "4288": 11552, "4289": 11553,
+    "4290": 11554, "4291": 11555, "4292": 11556, "4293": 11557,
+    "4295": 11559, "4301": 11565, "5112": 5104, "5113": 5105,
+    "5114": 5106, "5115": 5107, "5116": 5108, "5117": 5109,
+    "7296": 1074, "7297": 1076, "7298": 1086, "7299": 1089,
+    "7300": 1090, "7301": 1090, "7302": 1098, "7303": 1123,
+    "7304": 42571, "7312": 4304, "7313": 4305, "7314": 4306,
+    "7315": 4307, "7316": 4308, "7317": 4309, "7318": 4310,
+    "7319": 4311, "7320": 4312, "7321": 4313, "7322": 4314,
+    "7323": 4315, "7324": 4316, "7325": 4317, "7326": 4318,
+    "7327": 4319, "7328": 4320, "7329": 4321, "7330": 4322,
+    "7331": 4323, "7332": 4324, "7333": 4325, "7334": 4326,
+    "7335": 4327, "7336": 4328, "7337": 4329, "7338": 4330,
+    "7339": 4331, "7340": 4332, "7341": 4333, "7342": 4334,
+    "7343": 4335, "7344": 4336, "7345": 4337, "7346": 4338,
+    "7347": 4339, "7348": 4340, "7349": 4341, "7350": 4342,
+    "7351": 4343, "7352": 4344, "7353": 4345, "7354": 4346,
+    "7357": 4349, "7358": 4350, "7359": 4351, "7680": 7681,
+    "7682": 7683, "7684": 7685, "7686": 7687, "7688": 7689,
+    "7690": 7691, "7692": 7693, "7694": 7695, "7696": 7697,
+    "7698": 7699, "7700": 7701, "7702": 7703, "7704": 7705,
+    "7706": 7707, "7708": 7709, "7710": 7711, "7712": 7713,
+    "7714": 7715, "7716": 7717, "7718": 7719, "7720": 7721,
+    "7722": 7723, "7724": 7725, "7726": 7727, "7728": 7729,
+    "7730": 7731, "7732": 7733, "7734": 7735, "7736": 7737,
+    "7738": 7739, "7740": 7741, "7742": 7743, "7744": 7745,
+    "7746": 7747, "7748": 7749, "7750": 7751, "7752": 7753,
+    "7754": 7755, "7756": 7757, "7758": 7759, "7760": 7761,
+    "7762": 7763, "7764": 7765, "7766": 7767, "7768": 7769,
+    "7770": 7771, "7772": 7773, "7774": 7775, "7776": 7777,
+    "7778": 7779, "7780": 7781, "7782": 7783, "7784": 7785,
+    "7786": 7787, "7788": 7789, "7790": 7791, "7792": 7793,
+    "7794": 7795, "7796": 7797, "7798": 7799, "7800": 7801,
+    "7802": 7803, "7804": 7805, "7806": 7807, "7808": 7809,
+    "7810": 7811, "7812": 7813, "7814": 7815, "7816": 7817,
+    "7818": 7819, "7820": 7821, "7822": 7823, "7824": 7825,
+    "7826": 7827, "7828": 7829, "7830": [104, 817], "7831": [116, 776],
+    "7832": [119, 778], "7833": [121, 778], "7834": [97, 702], "7835": 7777,
+    "7838": [115, 115], "7840": 7841, "7842": 7843, "7844": 7845,
+    "7846": 7847, "7848": 7849, "7850": 7851, "7852": 7853,
+    "7854": 7855, "7856": 7857, "7858": 7859, "7860": 7861,
+    "7862": 7863, "7864": 7865, "7866": 7867, "7868": 7869,
+    "7870": 7871, "7872": 7873, "7874": 7875, "7876": 7877,
+    "7878": 7879, "7880": 7881, "7882": 7883, "7884": 7885,
+    "7886": 7887, "7888": 7889, "7890": 7891, "7892": 7893,
+    "7894": 7895, "7896": 7897, "7898": 7899, "7900": 7901,
+    "7902": 7903, "7904": 7905, "7906": 7907, "7908": 7909,
+    "7910": 7911, "7912": 7913, "7914": 7915, "7916": 7917,
+    "7918": 7919, "7920": 7921, "7922": 7923, "7924": 7925,
+    "7926": 7927, "7928": 7929, "7930": 7931, "7932": 7933,
+    "7934": 7935, "7944": 7936, "7945": 7937, "7946": 7938,
+    "7947": 7939, "7948": 7940, "7949": 7941, "7950": 7942,
+    "7951": 7943, "7960": 7952, "7961": 7953, "7962": 7954,
+    "7963": 7955, "7964": 7956, "7965": 7957, "7976": 7968,
+    "7977": 7969, "7978": 7970, "7979": 7971, "7980": 7972,
+    "7981": 7973, "7982": 7974, "7983": 7975, "7992": 7984,
+    "7993": 7985, "7994": 7986, "7995": 7987, "7996": 7988,
+    "7997": 7989, "7998": 7990, "7999": 7991, "8008": 8000,
+    "8009": 8001, "8010": 8002, "8011": 8003, "8012": 8004,
+    "8013": 8005, "8016": [965, 787], "8018": [965, 787, 768], "8020": [965, 787, 769],
+    "8022": [965, 787, 834], "8025": 8017, "8027": 8019, "8029": 8021,
+    "8031": 8023, "8040": 8032, "8041": 8033, "8042": 8034,
+    "8043": 8035, "8044": 8036, "8045": 8037, "8046": 8038,
+    "8047": 8039, "8064": [7936, 953], "8065": [7937, 953], "8066": [7938, 953],
+    "8067": [7939, 953], "8068": [7940, 953], "8069": [7941, 953], "8070": [7942, 953],
+    "8071": [7943, 953], "8072": [7936, 953], "8073": [7937, 953], "8074": [7938, 953],
+    "8075": [7939, 953], "8076": [7940, 953], "8077": [7941, 953], "8078": [7942, 953],
+    "8079": [7943, 953], "8080": [7968, 953], "8081": [7969, 953], "8082": [7970, 953],
+    "8083": [7971, 953], "8084": [7972, 953], "8085": [7973, 953], "8086": [7974, 953],
+    "8087": [7975, 953], "8088": [7968, 953], "8089": [7969, 953], "8090": [7970, 953],
+    "8091": [7971, 953], "8092": [7972, 953], "8093": [7973, 953], "8094": [7974, 953],
+    "8095": [7975, 953], "8096": [8032, 953], "8097": [8033, 953], "8098": [8034, 953],
+    "8099": [8035, 953], "8100": [8036, 953], "8101": [8037, 953], "8102": [8038, 953],
+    "8103": [8039, 953], "8104": [8032, 953], "8105": [8033, 953], "8106": [8034, 953],
+    "8107": [8035, 953], "8108": [8036, 953], "8109": [8037, 953], "8110": [8038, 953],
+    "8111": [8039, 953], "8114": [8048, 953], "8115": [945, 953], "8116": [940, 953],
+    "8118": [945, 834], "8119": [945, 834, 953], "8120": 8112, "8121": 8113,
+    "8122": 8048, "8123": 8049, "8124": [945, 953], "8126": 953,
+    "8130": [8052, 953], "8131": [951, 953], "8132": [942, 953], "8134": [951, 834],
+    "8135": [951, 834, 953], "8136": 8050, "8137": 8051, "8138": 8052,
+    "8139": 8053, "8140": [951, 953], "8146": [953, 776, 768], "8147": [953, 776, 769],
+    "8150": [953, 834], "8151": [953, 776, 834], "8152": 8144, "8153": 8145,
+    "8154": 8054, "8155": 8055, "8162": [965, 776, 768], "8163": [965, 776, 769],
+    "8164": [961, 787], "8166": [965, 834], "8167": [965, 776, 834], "8168": 8160,
+    "8169": 8161, "8170": 8058, "8171": 8059, "8172": 8165,
+    "8178": [8060, 953], "8179": [969, 953], "8180": [974, 953], "8182": [969, 834],
+    "8183": [969, 834, 953], "8184": 8056, "8185": 8057, "8186": 8060,
+    "8187": 8061, "8188": [969, 953], "8486": 969, "8490": 107,
     "8491": 229, "8498": 8526, "8544": 8560, "8545": 8561,
     "8546": 8562, "8547": 8563, "8548": 8564, "8549": 8565,
     "8550": 8566, "8551": 8567, "8552": 8568, "8553": 8569,
@@ -3355,6 +3502,9 @@ const fold_case_mapping = {
     "43956": 5092, "43957": 5093, "43958": 5094, "43959": 5095,
     "43960": 5096, "43961": 5097, "43962": 5098, "43963": 5099,
     "43964": 5100, "43965": 5101, "43966": 5102, "43967": 5103,
+    "64256": [102, 102], "64257": [102, 105], "64258": [102, 108], "64259": [102, 102, 105],
+    "64260": [102, 102, 108], "64261": [115, 116], "64262": [115, 116], "64275": [1396, 1398],
+    "64276": [1396, 1381], "64277": [1396, 1387], "64278": [1406, 1398], "64279": [1396, 1389],
     "65313": 65345, "65314": 65346, "65315": 65347, "65316": 65348,
     "65317": 65349, "65318": 65350, "65319": 65351, "65320": 65352,
     "65321": 65353, "65322": 65354, "65323": 65355, "65324": 65356,
@@ -3434,10 +3584,15 @@ function foldcase_string(string) {
     return Array.from(string).map(str => {
         const ord = str.codePointAt(0);
         const output = fold_case_mapping[ord];
-        if (output) {
-            return String.fromCodePoint(output);
+        if (output === undefined) {
+            return str;
         }
-        return str;
+        // full case folding can map one code point to several (e.g. ß => "ss",
+        // İ => "i" + U+0307), stored as an array in fold_case_mapping
+        if (Array.isArray(output)) {
+            return output.map(cp => String.fromCodePoint(cp)).join('');
+        }
+        return String.fromCodePoint(output);
     }).join('');
 }
 // ----------------------------------------------------------------------
@@ -3787,32 +3942,6 @@ Pair.prototype.reverse = function() {
 };
 
 // ----------------------------------------------------------------------
-Pair.prototype.transform = function(fn) {
-    var visited = [];
-    function recur(pair) {
-        if (is_pair(pair)) {
-            if (pair.replace) {
-                delete pair.replace;
-                return pair;
-            }
-            var car = fn(pair.car);
-            if (is_pair(car)) {
-                car = recur(car);
-                visited.push(car);
-            }
-            var cdr = fn(pair.cdr);
-            if (is_pair(cdr)) {
-                cdr = recur(cdr);
-                visited.push(cdr);
-            }
-            return new Pair(car, cdr);
-        }
-        return pair;
-    }
-    return recur(this);
-};
-
-// ----------------------------------------------------------------------
 Pair.prototype.map = function(fn) {
     if (typeof this.car !== 'undefined') {
         return new Pair(fn(this.car), is_nil(this.cdr) ? nil : this.cdr.map(fn));
@@ -3866,7 +3995,7 @@ var str_mapping = new Map();
 // :: Debug function that can be used with JSON.stringify
 // :: that will show symbols
 // ----------------------------------------------------------------------
-/* c8 ignore next 22 */
+/* c8 ignore start */
 function symbolize(obj) {
     if (obj && typeof obj === 'object') {
         var result = {};
@@ -3889,6 +4018,7 @@ function symbolize(obj) {
     }
     return obj;
 }
+/* c8 ignore stop */
 // ----------------------------------------------------------------------
 function basename(path) {
     return path.split(/[\\/]/).pop();
@@ -3936,6 +4066,7 @@ function function_to_string(fn) {
 }
 // ----------------------------------------------------------------------
 // Instances extracted to make cyclomatic complexity of toString smaller
+// ----------------------------------------------------------------------
 const instances = new Map();
 // ----------------------------------------------------------------------
 [
@@ -4219,7 +4350,7 @@ function mark_cycles(pair) {
 // ----------------------------------------------------------------------
 // Trampoline based recursive pair to string that don't overflow the stack
 // ----------------------------------------------------------------------
-/* c8 ignore next */
+/* c8 ignore start */
 const pair_to_string = (function() {
     const prefix = (pair, nested) => {
         var result = [];
@@ -4278,9 +4409,121 @@ const pair_to_string = (function() {
         }, cont);
     });
 })();
+/* c8 ignore stop */
 
 // ----------------------------------------------------------------------
-Pair.prototype.toString = function(quote, { nested = false } = {}) {
+// Printer for write-simple / write-shared. Unlike toString (used by write) it
+// does NOT rely on the __ref__/__cycles__ marks set by mark_cycles. When
+// `labels` is null no datum labels are emitted at all (write-simple - which, by
+// R7RS, does not terminate on cyclic structure). When `labels` is a
+// Map(pair -> number) every shared pair is printed with a `#n=` label on its
+// first occurrence and `#n#` on every later one (write-shared).
+// ----------------------------------------------------------------------
+function print_pair(pair, quote, labels, ...extra_params) {
+    const seen = labels ? new Set() : null;
+    function value(x) {
+        return is_pair(x) ? list(x) : to_string(x, quote, true, ...extra_params);
+    }
+    function list(head) {
+        if (labels && labels.has(head)) {
+            if (seen.has(head)) {
+                return '#' + labels.get(head) + '#';
+            }
+            seen.add(head);
+            return '#' + labels.get(head) + '=' + body(head);
+        }
+        return body(head);
+    }
+    function body(head) {
+        // the cdr spine is walked iteratively so long lists don't overflow the
+        // stack; only the car direction recurses.
+        var out = '(';
+        var node = head;
+        var first = true;
+        while (true) {
+            out += (first ? '' : ' ') + value(node.car);
+            first = false;
+            const cdr = node.cdr;
+            if (is_nil(cdr)) {
+                break;
+            }
+            if (!is_pair(cdr)) {
+                out += ' . ' + value(cdr);
+                break;
+            }
+            if (labels && labels.has(cdr)) {
+                // a shared/cyclic tail is emitted in dotted form so its label is
+                // visible, e.g. (a . #1=(b c)) or (a . #0#) for a cycle
+                out += ' . ' + list(cdr);
+                break;
+            }
+            node = cdr;
+        }
+        return out + ')';
+    }
+    return list(pair);
+}
+// ----------------------------------------------------------------------
+// Find every pair that occurs more than once (shared structure, cycles
+// included) and number the labels in the order the printer first reaches them
+// (a node before its car, car before cdr).
+// ----------------------------------------------------------------------
+function shared_labels(root) {
+    const seen = new Set();
+    const shared = new Set();
+    (function detect(node) {
+        while (is_pair(node)) {
+            if (seen.has(node)) {
+                shared.add(node);
+                return;
+            }
+            seen.add(node);
+            detect(node.car);
+            node = node.cdr;
+        }
+    })(root);
+    if (shared.size === 0) {
+        return null;
+    }
+    const labels = new Map();
+    const visited = new Set();
+    var counter = 0;
+    (function assign(node) {
+        while (is_pair(node)) {
+            if (shared.has(node) && !labels.has(node)) {
+                labels.set(node, counter++);
+            }
+            if (visited.has(node)) {
+                return;
+            }
+            visited.add(node);
+            assign(node.car);
+            node = node.cdr;
+        }
+    })(root);
+    return labels;
+}
+// ----------------------------------------------------------------------
+// write-simple: no datum labels, shared structure is expanded (and a cyclic
+// structure makes this loop forever, as allowed by R7RS).
+// ----------------------------------------------------------------------
+Pair.prototype.simple = function(quote, ...extra_params) {
+    return print_pair(this, quote, null, ...extra_params);
+};
+// ----------------------------------------------------------------------
+// write-shared: label every shared pair with datum labels (#n=/#n#).
+// ----------------------------------------------------------------------
+Pair.prototype.shared = function(quote, ...extra_params) {
+    return print_pair(this, quote, shared_labels(this), ...extra_params);
+};
+// ----------------------------------------------------------------------
+Pair.prototype.toString = function(quote, { nested = false, shared = false, simple = false } = {}) {
+    if (shared) {
+        return this.shared(quote, { shared, simple });
+    }
+    if (simple) {
+        return this.simple(quote, { shared, simple });
+    }
     var arr = [];
     if (this[__ref__]) {
         arr.push(this[__ref__] + '(');
@@ -4332,7 +4575,9 @@ Pair.prototype.append = function(arg) {
         return this.append(Pair.from_array(arg));
     }
     var p = this;
-    if (p.car === undefined) {
+    // A freshly-created placeholder pair `new Pair()` has BOTH car and cdr
+    // undefined;
+    if (p.car === undefined && p.cdr === undefined) {
         if (is_pair(arg)) {
             this.car = arg.car;
             this.cdr = arg.cdr;
@@ -4771,13 +5016,43 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
             return same_atom(pattern, code);
         }
         if (pattern instanceof LSymbol) {
-            const literal = pattern.literal(); // TODO: literal() may be SLOW
-            if (symbols.includes(literal)) {
-                if (!LSymbol.is(code, literal) && !LSymbol.is(pattern, code)) {
+            // A pattern symbol is a LITERAL when it IS one of the declared
+            // literals by IDENTITY (`symbols` holds their valueOf), not merely
+            // by name. This is LIPS's "mark": a nested macro renames its free
+            // identifiers to distinct gensyms, so a pattern variable that
+            // happens to share a literal's NAME is not mistaken for the literal
+            // - their identities (gensym vs plain) differ.
+            if (symbols.includes(pattern.valueOf())) {
+                // R7RS 4.3.2: the input matches the literal when it denotes the
+                // same identifier - compared by LITERAL name, so an auxiliary
+                // keyword like `else` that another macro renamed to a gensym
+                // still matches (renaming leaves the literal name unchanged).
+                const literal = pattern.literal(); // TODO: literal() may be SLOW
+                const code_literal = code instanceof LSymbol ? code.literal() : code;
+                if (!LSymbol.is(code, literal) && code_literal !== literal &&
+                    !LSymbol.is(pattern, code)) {
                     return false;
                 }
-                const ref = expansion.ref(literal);
-                return !ref || ref === define || ref === global_env;
+                // R7RS 4.3.2: the input matches the literal iff both denote the
+                // SAME binding, or both are unbound. Resolve the pattern literal
+                // in the macro's DEFINITION env and the input in the USE env
+                // (following hygienic Reference aliases). This is the general
+                // rule that subsumes the old "unbound / global / def-env"
+                // heuristic: an auxiliary keyword like `else` is unbound in both
+                // (match); a literal that is a user-defined identifier - even a
+                // macro bound in an interaction env, or one renamed to a gensym
+                // by a nesting macro - still matches when the input refers to
+                // the same binding; and a literal shadowed by a local binding at
+                // the use site (input rebound elsewhere) fails.
+                const pat_den = define ? define.resolve(pattern.valueOf()) : null;
+                const code_den = expansion ? expansion.resolve(code.valueOf()) : null;
+                if (!pat_den && !code_den) {
+                    return true;
+                }
+                if (!pat_den || !code_den) {
+                    return false;
+                }
+                return pat_den.env === code_den.env && pat_den.name === code_den.name;
             }
         }
         if (Array.isArray(pattern) && Array.isArray(code)) {
@@ -4854,23 +5129,75 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
                     if (!is_pair(code)) {
                         return false;
                     }
+                    // Split off the trailing fixed items without mutating the
+                    // input: `code` may share pair structure with bindings from
+                    // an earlier expansion (e.g. a list built by (acc ... a)
+                    // and re-matched by (x ... last) in a recursive macro), and
+                    // severing it in place corrupts that shared structure.
+                    code = code.clone();
                     let code_len = code.length();
-                    let list = code;
-                    const trailing = improper_list ? 1 : 1;
-                    while (code_len - trailing > list_len) {
-                        list = list.cdr;
-                        code_len--;
+                    // The ellipsis head matches the leading items; the last
+                    // `list_len` items match the fixed trailing pattern.
+                    const head_len = code_len - list_len;
+                    let rest;
+                    if (head_len <= 0) {
+                        // the ellipsis matches zero items - every input item
+                        // belongs to the trailing pattern. The loop below can
+                        // never leave an empty head (it keeps at least the
+                        // first pair), so handle it explicitly, otherwise a
+                        // single trailing item (e.g. (x ... y) over (a)) is
+                        // wrongly assigned to the ellipsis.
+                        rest = code;
+                        code = nil;
+                    } else {
+                        let list = code;
+                        const trailing = improper_list ? 1 : 1;
+                        while (code_len - trailing > list_len) {
+                            list = list.cdr;
+                            code_len--;
+                        }
+                        rest = list.cdr;
+                        list.cdr = nil;
                     }
-                    const rest = list.cdr;
-                    list.cdr = nil;
                     const new_sate = { ...state, trailing: improper_list };
                     if (!traverse(pattern.cdr.cdr, rest, new_sate)) {
                         return false;
                     }
+                } else if (pattern.cdr.cdr instanceof LSymbol) {
+                    // (x ... . rest): an ellipsis directly followed by a dotted
+                    // rest. Bind `rest` to the input's tail (nil for a proper
+                    // list, the improper cdr otherwise), then match `x ...`
+                    // against the proper part with a plain ellipsis pattern -
+                    // reusing the normal machinery so the binding of `x` has the
+                    // shape the template transcriber expects. (The old improper
+                    // paths below built an inconsistent binding that broke a
+                    // nested/multi-element template, e.g. define-values'
+                    // `(var0 var1 ... . warn)`.)
+                    let tail, proper;
+                    if (is_pair(code)) {
+                        proper = code.clone();
+                        const last = proper.last_pair();
+                        tail = last.cdr;
+                        last.cdr = nil;
+                    } else {
+                        proper = nil;
+                        tail = code;
+                    }
+                    if (!is_wildcard(pattern.cdr.cdr)) {
+                        bindings.symbols[pattern.cdr.cdr.valueOf()] = tail;
+                    }
+                    const ell = new Pair(pattern.car,
+                                         new Pair(pattern.cdr.car, nil));
+                    return traverse(ell, proper, { ...state, trailing: false });
                 }
             }
             if (pattern.car instanceof LSymbol) {
                 let name = pattern.car.__name__;
+                // R7RS: `(_ ...)` matches any number of inputs and binds
+                // nothing (unless `_` is a declared literal).
+                if (is_wildcard(pattern.car) && !symbols.includes(name)) {
+                    return true;
+                }
                 if (bindings['...'].symbols[name] &&
                     !pattern_names.includes(name) && !ellipsis) {
                     throw new Error('syntax: named ellipsis can only appear onces');
@@ -4880,7 +5207,26 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
                     log('>> 2');
                     if (ellipsis) {
                         log('NIL');
-                        bindings['...'].symbols[name] = nil;
+                        // Empty match for THIS ellipsis group. Append an empty
+                        // (()) entry (i.e. `new Pair(code, nil)` with code=nil)
+                        // so the per-group structure is preserved across the
+                        // outer ellipsis, mirroring the non-empty branch below.
+                        // Overwriting with a single nil collapses the groups:
+                        // ((g0 g ...) ...) over (1)(2) must give g = (() ()),
+                        // not () - otherwise later groups vanish and the inner
+                        // ellipsis leaks (#546 follow-up).
+                        const entry = new Pair(nil, nil);
+                        if (bindings['...'].symbols[name]) {
+                            let node = bindings['...'].symbols[name];
+                            if (is_nil(node)) {
+                                node = new Pair(nil, entry);
+                            } else {
+                                node = node.append(entry);
+                            }
+                            bindings['...'].symbols[name] = node;
+                        } else {
+                            bindings['...'].symbols[name] = entry;
+                        }
                     } else {
                         log('NULL');
                         bindings['...'].symbols[name] = null;
@@ -5006,6 +5352,12 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
             if (symbols.includes(name)) {
                 return true;
             }
+            // R7RS 4.3.2: the wildcard `_` matches any input and creates no
+            // binding. (A `_` declared as a literal is handled above, so this
+            // only fires for the auxiliary underscore.)
+            if (is_wildcard(pattern)) {
+                return true;
+            }
             if (ellipsis) {
                 log(bindings['...'].symbols[name]);
                 bindings['...'].symbols[name] ??= [];
@@ -5026,16 +5378,23 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
                 pattern.cdr instanceof LSymbol;
             if (trailing && rest_pattern) {
                 log('>> 13 (a)');
-                // handle (x ... y . z)
-                if (!is_nil(code.cdr)) {
-                    return false;
-                }
+                // handle (x ... y . z): the ellipsis split leaves the final
+                // fixed element in code.car (bound to `y`) and the dotted tail
+                // in code.cdr (bound to `z`). For a PROPER input code.cdr is
+                // nil, so `z` binds to nil; for an IMPROPER input it is the
+                // dotted tail. (Previously this rejected any non-nil cdr and
+                // always bound `z` to nil, so `(x ... y . z)` never matched an
+                // improper list.)
                 const car = pattern.car.valueOf();
                 const cdr = pattern.cdr.valueOf();
-                bindings.symbols[car] = code.car;
-                bindings.symbols[cdr] = nil;
+                // `_` is a wildcard - match but do not bind (see R7RS 4.3.2)
+                if (!is_wildcard(pattern.car)) {
+                    bindings.symbols[car] = code.car;
+                }
+                if (!is_wildcard(pattern.cdr)) {
+                    bindings.symbols[cdr] = code.cdr;
+                }
                 return true;
-                //return is_pair(code.cdr) && code.cdr.length() > 1;
             }
             if (is_nil(code.cdr)) {
                 log('>> 13 (b)');
@@ -5050,11 +5409,11 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
                     }
                     log('>> 14');
                     let name = pattern.cdr.valueOf();
-                    if (!(name in bindings.symbols)) {
+                    if (!is_wildcard(pattern.cdr) && !(name in bindings.symbols)) {
                         bindings.symbols[name] = nil;
                     }
                     name = pattern.car.valueOf();
-                    if (!(name in bindings.symbols)) {
+                    if (!is_wildcard(pattern.car) && !(name in bindings.symbols)) {
                         bindings.symbols[name] = code.car;
                     }
                     return true;
@@ -5117,9 +5476,41 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
         }
     }
 
+    // R7RS 4.3.2: the keyword that begins the pattern is not involved in the
+    // matching - it is neither a pattern variable nor a literal. Match the
+    // argument lists (the pattern/code tails), ignoring the keyword position,
+    // so a `_` (or any name) there never has to match or bind the invoked
+    // keyword. This is also what lets SRFI-197's placeholder trick work: when
+    // `placeholder` is substituted with `_` into a nested macro's literals,
+    // the rules' own leading `_` keyword must still be ignored, not matched as
+    // that literal.
+    if (is_pair(pattern) && is_pair(code)) {
+        // R7RS 4.3.2: the keyword that begins the pattern is not involved in
+        // the matching - it is neither a pattern variable nor a literal. So we
+        // must NOT compare it (comparing fails when the keyword happens to be a
+        // declared literal, e.g. `_` becomes a literal in SRFI-197's %chain via
+        // the placeholder trick). We still bind the keyword NAME to the invoked
+        // keyword so templates that reference it by name keep resolving (the
+        // historical `or`/self-recursion behaviour) - except the wildcard `_`,
+        // which never binds.
+        if (pattern.car instanceof LSymbol && !is_wildcard(pattern.car) &&
+            !symbols.includes(pattern.car.__name__)) {
+            bindings.symbols[pattern.car.__name__] = code.car;
+        }
+        if (traverse(pattern.cdr, code.cdr)) {
+            return bindings;
+        }
+        return;
+    }
     if (traverse(pattern, code)) {
         return bindings;
     }
+}
+// ----------------------------------------------------------------------
+// R7RS 4.3.2: the wildcard `_` operator
+// ----------------------------------------------------------------------
+function is_wildcard(symbol) {
+    return symbol.literal() === '_';
 }
 // ----------------------------------------------------------------------
 // :: This function is called after syntax-rules macro is evaluated
@@ -5127,15 +5518,20 @@ function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
 // :: to original symbols
 // ----------------------------------------------------------------------
 function clear_gensyms(node, gensyms) {
+    if (!gensyms.length) {
+        return node;
+    }
     function traverse(node) {
         if (is_pair(node)) {
-            if (!gensyms.length) {
-                return node;
-            }
             const car = traverse(node.car);
             const cdr = traverse(node.cdr);
-            // TODO: check if it's safe to modify the list
-            //       some funky modify of code can happen in macro
+            // Only rebuild the pair when a gensym was actually replaced
+            // inside it. Rebuilding unconditionally deep-copies every list a
+            // macro returns, which breaks identity - e.g. a macro that yields
+            // a free variable's value would return a copy, so `eq?` fails.
+            if (car === node.car && cdr === node.cdr) {
+                return node;
+            }
             return new Pair(car, cdr);
         } else if (node instanceof LSymbol) {
             var replacement = gensyms.find((gensym) => {
@@ -5152,6 +5548,88 @@ function clear_gensyms(node, gensyms) {
     return traverse(node);
 }
 // ----------------------------------------------------------------------
+// :: A binding is stable (safe to alias with a Reference) when its owning
+// :: environment is a strict ancestor of the transient expansion `scope` -
+// :: it existed before the expansion and is not rebound while it runs.
+// :: Aliasing into `scope` itself (or another expansion's scope) risks a
+// :: Reference cycle, so those are snapshotted by value instead.
+// -------------------------------------------------------------------------
+function is_stable_target(scope, target_env) {
+    var env = scope.__parent__;
+    while (env) {
+        if (env === target_env) {
+            return true;
+        }
+        env = env.__parent__;
+    }
+    return false;
+}
+// -------------------------------------------------------------------------
+function get_identifiers(node) {
+    let symbols = [];
+    while (!is_nil(node)) {
+        const x = node.car;
+        // a pattern variable substituted into a nested literals list can be a
+        // non-identifier (e.g. a number) - it cannot be a literal, skip it
+        if (x instanceof LSymbol) {
+            symbols.push(x.valueOf());
+        }
+        node = node.cdr;
+    }
+    return symbols;
+}
+// -------------------------------------------------------------------------
+// #172: capture the macros the templates reference AT DEFINITION time.
+// Referential transparency means a free identifier in a template
+// denotes the binding visible where the macro was defined; if that
+// binding is a syntactic keyword (macro), a later set!/redefinition of
+// the same name must not change what this macro expands to. Variables
+// stay live (they are locations - set! is visible), so only macros are
+// snapshotted. Over-collecting from patterns/literals is harmless: a
+// pattern variable is substituted before rename, so its capture (if
+// any) is never consulted.
+// -------------------------------------------------------------------------
+function collect_macros(node, env, captured_macros = Object.create(null)) {
+    if (node instanceof LSymbol) {
+        const name = node.valueOf();
+        // only plain identifiers can name a macro; a dotted symbol
+        // (lips.foo.bar) is a JS property access whose lookup can throw
+        if (typeof name === 'string' && !name.includes('.') &&
+            !(name in captured_macros)) {
+            let value;
+            try {
+                value = env.get(name, { throwError: false });
+            } catch (e) {
+                value = undefined;
+            }
+            if (is_macro(value)) {
+                captured_macros[name] = value;
+            }
+        }
+    } else if (is_pair(node)) {
+        collect_macros(node.car, env, captured_macros);
+        collect_macros(node.cdr, env, captured_macros);
+    } else if (Array.isArray(node)) {
+        node.forEach(node => collect_macros(node, env, captured_macros));
+    }
+    return captured_macros;
+}
+// -------------------------------------------------------------------------
+function validate_identifiers(node, { lenient = false } = {}) {
+    while (!is_nil(node)) {
+        const x = node.car;
+        // a nested literals list may receive a non-identifier by substituting a
+        // pattern variable; those are ignored (see get_identifiers) so
+        // validation is skipped for a transcribed macro. A directly-written
+        // literals list is still validated to catch author mistakes.
+        if (!lenient && !(x instanceof LSymbol)) {
+            throw new Error('syntax-rules: wrong identifier');
+        }
+        node = node.cdr;
+    }
+}
+
+// -------------------------------------------------------------------------
 function transform_syntax(options = {}) {
     const {
         bindings,
@@ -5159,6 +5637,7 @@ function transform_syntax(options = {}) {
         scope,
         symbols,
         names,
+        captured = null,
         ellipsis: ellipsis_symbol } = options;
     const gensyms = {};
     function valid_symbol(symbol) {
@@ -5175,6 +5654,20 @@ function transform_syntax(options = {}) {
         const name = symbol.valueOf();
         if (name === ellipsis_symbol) {
             throw new Error('syntax: internal error, ellipis not transformed');
+        }
+        // R7RS: `_` and `...` are auxiliary syntax, not pattern variables -
+        // transcribe them verbatim (never rename to a gensym, never substitute
+        // a match), unless declared a literal (handled below). `...` only
+        // reaches here under a CUSTOM ellipsis (the default `...` is caught by
+        // the ellipsis_symbol check above); keeping it literal is what lets a
+        // macro pass `_`/`...` through as data across a hygiene boundary, e.g.
+        // SRFI-197's placeholder trick where the inserted `_ ...` must stay
+        // free-identifier=? to the `_`/`...` a caller writes.
+        if (is_wildcard(symbol) && !symbols.includes(name)) {
+            return LSymbol('_');
+        }
+        if (name === '...' && !symbols.includes(name)) {
+            return LSymbol('...');
         }
         // symbols are gensyms from nested syntax-rules
         var n_type = typeof name;
@@ -5209,9 +5702,37 @@ function transform_syntax(options = {}) {
                 return gensyms[name];
             }
             const gensym_name = gensym(name);
-            if (ref) {
-                const value = scope.get(name);
-                scope.set(gensym_name, value);
+            // #172: this identifier denoted a MACRO where the syntax was
+            // defined. Normal live resolution already handles let/letrec-syntax
+            // (the def-env chain gives the right binding, incl. recursion), so
+            // only fall back to the captured macro when the name NO LONGER
+            // denotes a macro - i.e. it was set!-overwritten with a value.
+            // Referential transparency then keeps the template expanding via
+            // the original macro instead of erroring on the new value.
+            const restore = captured && (name in captured) &&
+                !is_macro(scope.get(name, { throwError: false }));
+            if (restore) {
+                scope.set(gensym_name, captured[name]);
+            } else if (ref) {
+                // A free identifier that resolves to a STABLE, REAL binding is
+                // aliased with a Reference: reads and set! then both reach the
+                // original cell (fixes set! on free vars, e.g. amb's
+                // *amb-stack*). "Stable" = the target env existed before this
+                // expansion (a strict ancestor of `scope`); "real" = the
+                // target name is not itself a gensym. Aliasing into a
+                // transient nested-macro scope (or to another gensym) points
+                // at a slot that gets rebound during expansion and can form a
+                // cross-expansion Reference cycle, so snapshot those by value.
+                const target = ref.resolve(name);
+                if (target && !is_gensym(target.name) &&
+                        is_stable_target(scope, target.env)) {
+                    scope.set(gensym_name, new Reference(target.name, target.env));
+                } else {
+                    const value = scope.get(name, { throwError: false });
+                    if (typeof value !== 'undefined') {
+                        scope.set(gensym_name, value);
+                    }
+                }
             } else {
                 const value = scope.get(name, { throwError: false });
                 // value is not in scope, but it's JavaScript object
@@ -5372,7 +5893,7 @@ function transform_syntax(options = {}) {
         return Object.keys(object).concat(Object.getOwnPropertySymbols(object));
     }
 
-    function traverse(expr, { disabled } = {}) {
+    function traverse(expr, { disabled, quoted, in_syntax } = {}) {
         log('traverse>> ', expr);
         const is_array = Array.isArray(expr);
         if (is_array && expr.length === 0) {
@@ -5390,12 +5911,39 @@ function transform_syntax(options = {}) {
                 rest_second = expr.cdr.cdr;
             }
             log({ first, second, rest_second });
-            // escape ellispsis from R7RS e.g. (... ...)
-            if (!disabled && is_pair(first) &&
-                LSymbol.is(first.car, ellipsis_symbol)) {
+            // Inside `(quote <datum>)` the datum is literal data: transcribe it
+            // in "quoted" mode so pattern variables are still substituted but
+            // free identifiers are emitted verbatim (never hygiene-renamed).
+            // R7RS quoted identifiers are plain symbols regardless of the
+            // macro's scope; renaming them to gensyms only works out when
+            // clear_gensyms fixes up the macro's RETURN value, so data reaching
+            // the program by a side effect (set!/define) would otherwise keep a
+            // `#:name` gensym. The quote keyword itself is still transcribed
+            // normally so it resolves hygienically.
+            // Not while transcribing a NESTED syntax-rules definition
+            // (in_syntax): there a quoted identifier may be the inner macro's
+            // pattern variable/ellipsis (e.g. case-lambda's `'(p :::)`), so it
+            // must stay renamed consistently with the inner patterns - the
+            // inner macro applies its own quote handling when it expands.
+            if (!quoted && !disabled && !in_syntax && first instanceof LSymbol &&
+                first.literal() === 'quote' &&
+                !(first.valueOf() in bindings.symbols) && is_pair(expr.cdr)) {
                 return new Pair(
-                    first.cdr.car,
-                    traverse(expr.cdr)
+                    traverse(first, { disabled }),
+                    traverse(expr.cdr, { disabled, quoted: true })
+                );
+            }
+            // ellipsis escape from R7RS: `(<ellipsis> <template>)` produces
+            // <template> with ellipses NOT treated specially. The template is
+            // still transcribed (pattern variables substituted, free
+            // identifiers renamed) - only `...` itself is left literal - so it
+            // is traversed with `disabled: true`, not emitted verbatim.
+            if (!disabled && is_pair(first) &&
+                LSymbol.is(first.car, ellipsis_symbol) &&
+                is_pair(first.cdr)) {
+                return new Pair(
+                    traverse(first.cdr.car, { disabled: true, quoted, in_syntax }),
+                    traverse(expr.cdr, { disabled, quoted, in_syntax })
                 );
             }
             if (second && LSymbol.is(second, ellipsis_symbol) && !disabled) {
@@ -5406,7 +5954,7 @@ function transform_syntax(options = {}) {
                 const values = Object.values(symbols);
                 if (values.length && values.every(x => x === null)) {
                     log('>>> 1 (a)');
-                    return traverse(rest_second, { disabled });
+                    return traverse(rest_second, { disabled, quoted, in_syntax });
                 }
                 var keys = get_names(symbols);
                 // case of list as first argument ((x . y) ...) or (x ... ...)
@@ -5424,7 +5972,7 @@ function transform_syntax(options = {}) {
                     // nesting here?
                     if (is_nil(bindings['...'].lists[0])) {
                         if (!is_spread) {
-                            return traverse(rest_second, { disabled });
+                            return traverse(rest_second, { disabled, quoted, in_syntax });
                         }
                         log(rest_second);
                         return nil;
@@ -5501,14 +6049,14 @@ function transform_syntax(options = {}) {
                         if (is_array) {
                             if (rest_second) {
                                 log({ rest_second, expr });
-                                const rest = traverse(rest_second, { disabled });
+                                const rest = traverse(rest_second, { disabled, quoted, in_syntax });
                                 return result.concat(rest);
                             }
                             return result;
                         }
                         if (!is_nil(expr.cdr.cdr) &&
                             !LSymbol.is(expr.cdr.cdr.car, ellipsis_symbol)) {
-                            const rest = traverse(expr.cdr.cdr, { disabled });
+                            const rest = traverse(expr.cdr.cdr, { disabled, quoted, in_syntax });
                             return result.append(rest);
                         }
                         return result;
@@ -5582,7 +6130,7 @@ function transform_syntax(options = {}) {
                     if (is_pair(expr.cdr)) {
                         if (is_pair(expr.cdr.cdr) ||
                             expr.cdr.cdr instanceof LSymbol) {
-                            const node = traverse(expr.cdr.cdr, { disabled });
+                            const node = traverse(expr.cdr.cdr, { disabled, quoted, in_syntax });
                             log({node});
                             if (is_null) {
                                 return node;
@@ -5600,32 +6148,49 @@ function transform_syntax(options = {}) {
                     return result;
                 }
             }
-            const head = traverse(first, { disabled });
+            if (is_array) {
+                // A vector literal with no `x ...` repetition at THIS position
+                // (those are handled by the ellipsis branches above). Transcribe
+                // the first element and recurse on the rest of the vector - so a
+                // later ellipsis, e.g. #(a b ...), still expands - then rebuild a
+                // vector. The Pair reconstruction below is list-only and would
+                // otherwise turn #(a) into the improper list (a . #void).
+                const head = traverse(first, { disabled, quoted, in_syntax });
+                const tail = traverse(expr.slice(1), { disabled, quoted, in_syntax });
+                return [head].concat(tail);
+            }
+            const head = traverse(first, { disabled, quoted, in_syntax });
             let rest;
             let is_syntax;
-            if ((first instanceof LSymbol)) {
+            if (!quoted && (first instanceof LSymbol)) {
                 const value = scope.get(first, { throwError: false });
                 is_syntax = value instanceof Macro &&
                     value.__name__ === 'syntax-rules';
             }
             if (is_syntax) {
+                // transcribe the literals list like the rules (same rename
+                // cache) so a literal that is an enclosing macro's pattern
+                // variable is substituted, and free-identifier literals (e.g.
+                // `else`) get the same gensym in the literals list and in the
+                // patterns - the matcher then recognizes them by identity.
                 if (expr.cdr.car instanceof LSymbol) {
+                    // custom ellipsis: (syntax-rules ellipsis (literals) ...)
                     rest = new Pair(
-                        traverse(expr.cdr.car, { disabled }),
+                        traverse(expr.cdr.car, { disabled, in_syntax: true }),
                         new Pair(
-                            expr.cdr.cdr.car,
-                            traverse(expr.cdr.cdr.cdr, { disabled })
+                            traverse(expr.cdr.cdr.car, { disabled, in_syntax: true }),
+                            traverse(expr.cdr.cdr.cdr, { disabled, in_syntax: true })
                         )
                     );
                 } else {
                     rest = new Pair(
-                        expr.cdr.car,
-                        traverse(expr.cdr.cdr, { disabled })
+                        traverse(expr.cdr.car, { disabled, in_syntax: true }),
+                        traverse(expr.cdr.cdr, { disabled, in_syntax: true })
                     );
                 }
                 log('REST >>>> ', rest);
             } else {
-                rest = traverse(expr.cdr, { disabled });
+                rest = traverse(expr.cdr, { disabled, quoted, in_syntax });
             }
             log({
                 a: true,
@@ -5649,6 +6214,16 @@ function transform_syntax(options = {}) {
                 const msg = `missing ellipsis symbol next to name \`${name}'`;
                 throw new Error(`syntax-rules: ${msg}`);
             }
+            if (quoted) {
+                // literal datum inside quote: substitute pattern variables, but
+                // emit any other identifier as its plain symbol - never rename
+                // it to a hygiene gensym (see the quote handling above).
+                const pname = expr.valueOf();
+                if (pname in bindings.symbols) {
+                    return bindings.symbols[pname];
+                }
+                return LSymbol(expr.literal());
+            }
             const value = transform(expr);
             if (typeof value !== 'undefined') {
                 return value;
@@ -5658,6 +6233,7 @@ function transform_syntax(options = {}) {
     }
     return traverse(expr, {});
 }
+
 // ----------------------------------------------------------------------
 // :: Check for nullish values
 // ----------------------------------------------------------------------
@@ -6322,6 +6898,7 @@ function LString(string) {
         this.__string__ = string.valueOf();
     }
 }
+// -------------------------------------------------------------------------
 {
     const ignore = ['length', 'constructor'];
     const _keys = Object.getOwnPropertyNames(String.prototype).filter(name => {
@@ -6334,31 +6911,38 @@ function LString(string) {
         LString.prototype[key] = wrap(String.prototype[key]);
     }
 }
+// -------------------------------------------------------------------------
 LString.prototype[Symbol.iterator] = function*() {
     const chars = Array.from(this.__string__);
     for (const char of chars) {
         yield LCharacter(char);
     }
 };
+// -------------------------------------------------------------------------
 LString.prototype.serialize = function() {
     return this.valueOf();
 };
+// -------------------------------------------------------------------------
 LString.is = function(string, value) {
     return string instanceof LString &&
         string.__string__ === value;
 };
+// -------------------------------------------------------------------------
 LString.isString = function(x) {
     return x instanceof LString || typeof x === 'string';
 };
+// -------------------------------------------------------------------------
 LString.prototype.freeze = function() {
     const string = this.__string__;
     delete this.__string__;
     read_only(this, '__string__', string);
 };
+// -------------------------------------------------------------------------
 LString.prototype.get = function(n) {
     typecheck('LString::get', n, 'number');
     return Array.from(this.__string__)[n.valueOf()];
 };
+// -------------------------------------------------------------------------
 LString.prototype.cmp = function(string) {
     typecheck('LString::cmp', string, 'string');
     var a = this.valueOf();
@@ -6371,12 +6955,15 @@ LString.prototype.cmp = function(string) {
         return 1;
     }
 };
+// -------------------------------------------------------------------------
 LString.prototype.lower = function() {
     return LString(this.__string__.toLowerCase());
 };
+// -------------------------------------------------------------------------
 LString.prototype.upper = function() {
     return LString(this.__string__.toUpperCase());
 };
+// -------------------------------------------------------------------------
 LString.prototype.set = function(n, char) {
     typecheck('LString::set', n, 'number');
     typecheck('LString::set', char, ['string', 'character']);
@@ -6394,21 +6981,54 @@ LString.prototype.set = function(n, char) {
     }
     this.__string__ = string.join('');
 };
+// -------------------------------------------------------------------------
 Object.defineProperty(LString.prototype, 'length', {
     get: function() {
         return this.__string__.length;
     }
 });
+// -------------------------------------------------------------------------
 LString.prototype.clone = function() {
     return LString(this.valueOf());
 };
-LString.prototype.fill = function(char) {
+// -------------------------------------------------------------------------
+LString.prototype.fill = function(char, start, end) {
     typecheck('LString::fill', char, ['string', 'character']);
     if (char instanceof LCharacter) {
         char = char.valueOf();
     }
-    var len = this.__string__.length;
-    this.__string__ = char.repeat(len);
+    const arr = [...this.__string__];
+    const len = arr.length;
+    start ??= 0;
+    end ??= len;
+    const result = [];
+    for (let i = 0; i < len; ++i) {
+        if (i >= start && i < end) {
+            result.push(char);
+        } else {
+            result.push(arr[i]);
+        }
+    }
+    this.__string__ = result.join('');
+};
+
+// -------------------------------------------------------------------------
+LString.prototype.copy = function(string, at, start, end) {
+    const from = [...string.__string__];
+    const to = [...this.__string__];
+    const len = from.length;
+    start ??= 0;
+    end ??= len;
+    const result = [];
+    const copy = from.slice(start, end);
+    for (let i = 0; i < len; ++i) {
+        if (i >= at && i < copy.length + at) {
+            result.push(copy[i - at]);
+        } else {
+            result.push(to[i]);
+        }
+    }
+    this.__string__ = result.join('');
 };
 // -------------------------------------------------------------------------
 // :: Number wrapper that handle BigNumbers
@@ -6512,11 +7132,12 @@ function LNumber(n, force = false) {
     }
 }
 
+// -------------------------------------------------------------------------
 LNumber._registry = new FinalizationRegistry(value => {
-  LNumber._cache.delete(value);
+    LNumber._cache.delete(value);
 });
 LNumber._cache = new Map();
-
+// -------------------------------------------------------------------------
 LNumber.get = function (value) {
     if (LNumber._cache.has(value)) {
         const ref = LNumber._cache.get(value);
@@ -6532,7 +7153,7 @@ LNumber.get = function (value) {
     LNumber._registry.register(obj, value);
     return obj;
 };
-
+// -------------------------------------------------------------------------
 LNumber.prototype.dec = function(n) {
     this.constant(this.__value__ - n.__value__, this.__type__);
 };
@@ -6566,6 +7187,10 @@ LNumber.types = {
     }
 };
 // -------------------------------------------------------------------------
+LNumber.prototype.exact_sqrt = function() {
+    return LNumber(Math.floor(Math.sqrt(this.__value__)));
+};
+// -------------------------------------------------------------------------
 LNumber.prototype.serialize = function() {
     return this.__value__;
 };
@@ -6578,10 +7203,24 @@ LNumber.prototype.gcd = function(b) {
     // ref: https://rosettacode.org/wiki/Greatest_common_divisor#JavaScript
     var a = this.abs();
     b = b.abs();
+    // gcd(NaN, ...) is undefined; guarding here turns what would otherwise be an
+    // infinite loop below (NaN.rem(NaN) is NaN, whose cmp(0) is never 0) into an
+    // immediate error. The finite-input paths that build rationals guard NaN
+    // earlier (see LComplex.factor / approxRatio); this is a backstop.
+    if (a.isNaN() || b.isNaN()) {
+        throw new Error('gcd: not defined for NaN');
+    }
     if (b.cmp(a) === 1) {
         var temp = a;
         a = b;
         b = temp;
+    }
+    // gcd(a, 0) == a. After the swap `a` holds the larger magnitude, so a zero
+    // `b` here means one operand was 0; without this guard the loop's first
+    // `a.rem(b)` divides by zero. Hit e.g. when the integer 0 is coerced to the
+    // rational 0/1 while evaluating `(+ 1/2 1/4)` (which folds starting from 0).
+    if (b.cmp(0) === 0) {
+        return a;
     }
     while (true) {
         a = a.rem(b);
@@ -6684,7 +7323,7 @@ LNumber.prototype.isBigNumber = function() {
 ['floor', 'ceil', 'round'].forEach(fn => {
     LNumber.prototype[fn] = function() {
         if (this.float || LNumber.isFloat(this.__value__)) {
-            return LNumber(Math[fn](this.__value__));
+            return LFloat(Math[fn](this.__value__));
         }
         return LNumber(Math[fn](this.valueOf()));
     };
@@ -6697,6 +7336,7 @@ LNumber.prototype.valueOf = function() {
         return this.__value__.toNumber();
     }
 };
+
 // -------------------------------------------------------------------------
 // Type coercion matrix
 // -------------------------------------------------------------------------
@@ -6720,7 +7360,10 @@ const matrix = (function() {
             integer: (a, b) => [a, b && LFloat(b.valueOf(), true)],
             float: i,
             rational: (a, b) => [a, b && LFloat(b.valueOf(), true)],
-            complex: (a, b) => [{ re: a, im: LFloat(0, true) }, b]
+            // a real number has an *exact* zero imaginary part, so subtracting an
+            // exact imaginary keeps it exact, e.g.
+            // (- 0.01 +1/10i) => 0.01-1/10i (not 0.01-0.1i).
+            complex: (a, b) => [{ re: a, im: LNumber(0) }, b]
         },
         complex: {
             bigint: complex('bigint'),
@@ -6818,6 +7461,7 @@ LNumber.getType = function(n) {
         return 'bigint';
     }
 };
+
 // -------------------------------------------------------------------------
 LNumber.prototype.isFloat = function() {
     return !!(LNumber.isFloat(this.__value__) || this.float);
@@ -6892,7 +7536,7 @@ LNumber.prototype.op = function(op, n) {
     }
     if (Number.isNaN(this.__value__) && !LNumber.isComplex(n) ||
         !LNumber.isComplex(this) && Number.isNaN(n.__value__)) {
-        return LNumber(NaN);
+        return LNumber.NaN;
     }
     const [a, b] = this.coerce(n);
     if (a._op) {
@@ -6953,12 +7597,12 @@ LNumber.prototype.abs = function() {
 LNumber.prototype.isOdd = function() {
     if (LNumber.isNative(this.__value__)) {
         if (this.isBigNumber()) {
-            return this.__value__ % BigInt(2) === BigInt(1);
+            return abs(this.__value__) % BigInt(2) === BigInt(1);
         }
         if (this.__type__ === 'float') {
             throw new Error('Invalid number float');
         }
-        return this.__value__ % 2 === 1;
+        return Math.abs(this.__value__) % 2 === 1;
     } else if (LNumber.isBN(this.__value__)) {
         return this.__value__.isOdd();
     }
@@ -6969,8 +7613,52 @@ LNumber.prototype.isEven = function() {
     return !this.isOdd();
 };
 // -------------------------------------------------------------------------
-LNumber.prototype.cmp = function(n) {
-    const [a, b] = this.coerce(n);
+// Numeric comparison must be EXACT. The normal arithmetic coercion widens an
+// exact number to float, which silently loses precision and makes =,<,>
+// incorrect and non-transitive (R7RS 6.2.6) -- e.g.
+// (= 9007199254740992.0 9007199254740993) would be #t and (< 1 1/2)/(> 1 1/2)
+// would both be #f. Instead every finite real is converted to an exact rational
+// (BigInt numerator/denominator) and compared by cross multiplication; a float
+// is lifted to its exact dyadic value rather than the exact side being rounded.
+// -------------------------------------------------------------------------
+function float_to_ratio(x) {
+    // x: a finite JS double -> [BigInt numerator, BigInt denominator > 0] that
+    // is exactly equal to x (every double is a dyadic rational).
+    if (Number.isInteger(x)) {
+        return [BigInt(x), 1n];
+    }
+    let num = x;
+    let denom = 1n;
+    // |x| < 2^52 here (larger doubles are integers), so num stays a safe integer.
+    while (!Number.isInteger(num)) {
+        num *= 2;
+        denom *= 2n;
+    }
+    return [BigInt(num), denom];
+}
+// -------------------------------------------------------------------------
+function lnumber_to_ratio(x) {
+    // x: an LNumber holding a finite real -> [BigInt num, BigInt denom > 0].
+    if (x instanceof LFloat) {
+        return float_to_ratio(x.__value__);
+    }
+    if (x instanceof LRational) {
+        let num = BigInt(x.__num__.__value__);
+        let denom = BigInt(x.__denom__.__value__);
+        if (denom < 0n) {
+            num = -num;
+            denom = -denom;
+        }
+        return [num, denom];
+    }
+    // integer / bigint
+    return [BigInt(x.__value__), 1n];
+}
+
+// -------------------------------------------------------------------------
+// comparison function where arguments are the same type
+// -------------------------------------------------------------------------
+function same_cmp(a, b) {
     function cmp(a, b) {
         if (Number.isNaN(a.__value__) || Number.isNaN(b.__value__)) {
             return NaN;
@@ -6992,6 +7680,60 @@ LNumber.prototype.cmp = function(n) {
     } else if (a instanceof LFloat) {
         return cmp(a, b);
     }
+}
+
+// -------------------------------------------------------------------------
+LNumber.prototype.legacy_cmp = function(n) {
+    const [a, b] = this.coerce(n);
+    return same_cmp(a, b);
+};
+
+// -------------------------------------------------------------------------
+LNumber.prototype.cmp = function(n) {
+    if (!(n instanceof LNumber)) {
+        n = LNumber(n);
+    }
+    const a_type = this.__type__;
+    const b_type = n.__type__;
+    // Fast paths for the two hottest same-representation cases.
+    if (a_type === 'float' && b_type === 'float') {
+        const av = this.__value__, bv = n.__value__;
+        if (Number.isNaN(av) || Number.isNaN(bv)) {
+            return NaN;
+        }
+        return av < bv ? -1 : (av > bv ? 1 : 0);
+    }
+    if (a_type === 'bigint' && b_type === 'bigint' &&
+        typeof this.__value__ === 'bigint' && typeof n.__value__ === 'bigint') {
+        const av = this.__value__, bv = n.__value__;
+        return av < bv ? -1 : (av > bv ? 1 : 0);
+    }
+    // Complex, BN big numbers, or environments without BigInt keep the legacy
+    // coercion-based comparison (unchanged behavior).
+    if (a_type === 'complex' || b_type === 'complex' ||
+        typeof BigInt === 'undefined' ||
+        LNumber.isBN(this.__value__) || LNumber.isBN(n.__value__)) {
+        return this.legacy_cmp(n);
+    }
+    // Only floats can be non-finite; handle NaN and +-inf before going exact.
+    const a_nan = a_type === 'float' && Number.isNaN(this.__value__);
+    const b_nan = b_type === 'float' && Number.isNaN(n.__value__);
+    if (a_nan || b_nan) {
+        return NaN;
+    }
+    const a_inf = a_type === 'float' && !Number.isFinite(this.__value__);
+    const b_inf = b_type === 'float' && !Number.isFinite(n.__value__);
+    if (a_inf || b_inf) {
+        const as = a_inf ? Math.sign(this.__value__) : 0;
+        const bs = b_inf ? Math.sign(n.__value__) : 0;
+        return as < bs ? -1 : (as > bs ? 1 : 0);
+    }
+    // Exact comparison of two finite reals via cross multiplication.
+    const [an, ad] = lnumber_to_ratio(this);
+    const [bn, bd] = lnumber_to_ratio(n);
+    const lhs = an * bd;
+    const rhs = bn * ad;
+    return lhs < rhs ? -1 : (lhs > rhs ? 1 : 0);
 };
 // -------------------------------------------------------------------------
 // :: COMPLEX TYPE
@@ -7015,17 +7757,21 @@ object but got ${toString(n)}`;
     }
     var im = n.im instanceof LNumber ? n.im : LNumber(n.im);
     var re = n.re instanceof LNumber ? n.re : LNumber(n.re);
-    this.constant(im, re);
+    // A complex with a zero imaginary part is a real (R7RS), so collapse it to
+    // `re` - but ONLY for user-facing construction. During internal coercion
+    // (`force`) a real is lifted to a complex `{re, im: 0}` on purpose;
+    // collapsing it there hands arithmetic a real where it expects a complex,
+    // which corrupts complex `+`/`*` (and log/atanh through them).
+    if (!force && im.cmp(0) === 0) {
+        return re;
+    }
+    this.__im__ = im;
+    this.__re__ = re;
+    this.__type__ = 'complex';
 }
 // -------------------------------------------------------------------------
 LComplex.prototype = Object.create(LNumber.prototype);
 LComplex.prototype.constructor = LComplex;
-// -------------------------------------------------------------------------
-LComplex.prototype.constant = function(im, re) {
-    this.__im__ = im;
-    this.__re__ = re;
-    this.__type__ = 'complex';
-};
 // -------------------------------------------------------------------------
 LComplex.prototype.abs = function() {
     return LNumber(this.modulus());
@@ -7097,24 +7843,21 @@ LComplex.prototype.add = function(n) {
 // :: factor is used in / and modulus
 // -------------------------------------------------------------------------
 LComplex.prototype.factor = function() {
-    // fix rounding when calculating (/ 1.0 1/10+1/10i)
-    if (this.__im__ instanceof LFloat || this.__im__ instanceof LFloat) {
-        let { __re__: re, __im__: im } = this;
-        let x, y;
-        if (re instanceof LFloat) {
-            x = re.toRational().mul(re.toRational());
-        } else {
-            x = re.mul(re);
-        }
-        if (im instanceof LFloat) {
-            y = im.toRational().mul(im.toRational());
-        } else {
-            y = im.mul(im);
-        }
+    const { __re__: re, __im__: im } = this;
+    const re_float = re instanceof LFloat;
+    const im_float = im instanceof LFloat;
+    // fix rounding when calculating (/ 1.0 1/10+1/10i) by working with the
+    // rational value of finite floats. A non-finite float (NaN/±inf) has no
+    // rational value; toRational() would build a NaN/NaN LRational whose gcd
+    // reduction loops forever -- e.g. (/ +nan.0+nan.0i +nan.0+nan.0i) used to
+    // hang here. For those, fall back to plain float arithmetic (yields NaN).
+    const finite = x => !(x instanceof LFloat) || Number.isFinite(x.valueOf());
+    if ((re_float || im_float) && finite(re) && finite(im)) {
+        const x = re_float ? re.toRational().mul(re.toRational()) : re.mul(re);
+        const y = im_float ? im.toRational().mul(im.toRational()) : im.mul(im);
         return x.add(y);
-    } else {
-        return this.__re__.mul(this.__re__).add(this.__im__.mul(this.__im__));
     }
+    return re.mul(re).add(im.mul(im));
 };
 // -------------------------------------------------------------------------
 LComplex.prototype.modulus = function() {
@@ -7157,20 +7900,29 @@ LComplex.prototype.div = function(n) {
     } else if (!LNumber.isComplex(n)) {
         throw new Error('[LComplex::div] Invalid value');
     }
+    // dividing two complex numbers mixes the real/imaginary parts (via the
+    // conjugate), so the result is exact only when *every* component of both
+    // operands is exact; otherwise exactness is contagious and the whole result
+    // is inexact, e.g. (/ 1 1/2+1.0i) => 0.4-0.8i (not the exact 2/5-0.8i).
+    // factor() deliberately works with exact rationals for precision, so we
+    // force the result back to inexact here when any input was inexact.
+    const has_float = z => z.__re__ instanceof LFloat || z.__im__ instanceof LFloat;
+    const inexact = has_float(this) || has_float(n);
+    const to_inexact = x => inexact ? LFloat(x.valueOf(), true) : x;
     if (this.cmp(n) === 0) {
         const [ a, b ] = this.coerce(n);
         const ret = a.__im__.div(b.__im__);
-        return ret.coerce(b.__re__)[0];
+        return to_inexact(ret.coerce(b.__re__)[0]);
     }
     const [ a, b ] = this.coerce(n);
     const denom = b.factor();
     const conj = b.conjugate();
     const num = a.mul(conj);
     if (!LNumber.isComplex(num)) {
-        return num.div(denom);
+        return to_inexact(num.div(denom));
     }
-    const re = num.__re__.op('/', denom);
-    const im = num.__im__.op('/', denom);
+    const re = to_inexact(num.__re__.op('/', denom));
+    const im = to_inexact(num.__im__.op('/', denom));
     return LComplex({ re, im });
 };
 // -------------------------------------------------------------------------
@@ -7354,6 +8106,7 @@ LFloat.prototype._op = function(op, n) {
 };
 // -------------------------------------------------------------------------
 // same approximation as in guile scheme
+// -------------------------------------------------------------------------
 LFloat.prototype.toRational = function(n = null) {
     if (n === null) {
         return toRational(this.__value__.valueOf());
@@ -7378,11 +8131,20 @@ LFloat.prototype.abs = function() {
     return LFloat(value);
 };
 // -------------------------------------------------------------------------
+LFloat.prototype.serialize = LFloat.prototype.toString;
+// -------------------------------------------------------------------------
 // ref: https://rosettacode.org/wiki/Convert_decimal_number_to_rational
 // -------------------------------------------------------------------------
 var toRational = approxRatio(1e-10);
 function approxRatio(eps) {
     return function(n) {
+        // NaN/±inf have no exact rational value; without this guard the code
+        // below builds a NaN/NaN (or infinite) LRational whose gcd reduction
+        // either loops forever or overflows the stack -- e.g. (exact +nan.0)
+        // and (exact +inf.0).
+        if (!Number.isFinite(n)) {
+            throw new Error(`Cannot convert ${n} to exact (no rational representation)`);
+        }
         const gcde = (e, x, y) => {
                 const _gcd = (a, b) => (b < e ? a : _gcd(b, a % b));
                 if (Number.isNaN(x) || Number.isNaN(y)) {
@@ -7457,17 +8219,24 @@ function LRational(n, force = false) {
             return LNumber(num.div(denom));
         }
     }
-    this.constant(num, denom);
+    const gcd = num.gcd(denom);
+    if (gcd.cmp(1) !== 0) {
+        num = num.div(gcd);
+        if (num instanceof LRational) {
+            num = LNumber(num.valueOf(true));
+        }
+        denom = denom.div(gcd);
+        if (denom instanceof LRational) {
+            denom = LNumber(denom.valueOf(true));
+        }
+    }
+    this.__num__ = num;
+    this.__denom__ = denom;
+    this.__type__ = 'rational';
 }
 // -------------------------------------------------------------------------
 LRational.prototype = Object.create(LNumber.prototype);
 LRational.prototype.constructor = LRational;
-// -------------------------------------------------------------------------
-LRational.prototype.constant = function(num, denom) {
-    this.__num__ = num;
-    this.__denom__ = denom;
-    this.__type__ = 'rational';
-};
 // -------------------------------------------------------------------------
 LRational.prototype.serialize = function() {
     return {
@@ -7509,26 +8278,6 @@ LRational.prototype.sqrt = function() {
     return LRational({ num, denom });
 };
 // -------------------------------------------------------------------------
-LRational.prototype.quotient = function() {
-    const num = this.__num__;
-    const denom = this.__denom__;
-    if (LNumber.isNative(num) && LNumber.isNative(denom)) {
-        if (denom.cmp(0) === 0) {
-            throw new Error("quotient: division by zero");
-        }
-        const div = num / denom;
-        if (LNumber.isBigInteger(div)) {
-            return div;
-        }
-        if (div > 0) {
-            return Math.floor(div);
-        } else {
-            return Math.ceil(div);
-        }
-    }
-    throw new Error('quotient: Invalid argument');
-};
-// -------------------------------------------------------------------------
 LRational.prototype.abs = function() {
     var num = this.__num__;
     var denom = this.__denom__;
@@ -7541,35 +8290,16 @@ LRational.prototype.abs = function() {
     return LRational({ num, denom });
 };
 // -------------------------------------------------------------------------
-LRational.prototype.cmp = function(n) {
-    return LNumber(this.valueOf(), true).cmp(n);
-};
-// -------------------------------------------------------------------------
 LRational.prototype.toString = function() {
-    var gcd = this.__num__.gcd(this.__denom__);
-    var num, denom;
-    if (gcd.cmp(1) !== 0) {
-        num = this.__num__.div(gcd);
-        if (num instanceof LRational) {
-            num = LNumber(num.valueOf(true));
-        }
-        denom = this.__denom__.div(gcd);
-        if (denom instanceof LRational) {
-            denom = LNumber(denom.valueOf(true));
-        }
-    } else {
-        num = this.__num__;
-        denom = this.__denom__;
-    }
     const minus = this.cmp(0) < 0;
     if (minus) {
-        if (num.abs().cmp(denom.abs()) === 0) {
-            return num.toString();
+        if (this.__num__.abs().cmp(this.__denom__.abs()) === 0) {
+            return this.__num__.toString();
         }
-    } else if (num.cmp(denom) === 0) {
-        return num.toString();
+    } else if (this.__num__.cmp(this.__denom__) === 0) {
+        return this.__num__.toString();
     }
-    return num.toString() + '/' + denom.toString();
+    return this.__num__.toString() + '/' + this.__denom__.toString();
 };
 // -------------------------------------------------------------------------
 LRational.prototype.valueOf = function(exact) {
@@ -7615,8 +8345,33 @@ LRational.prototype.round = function() {
     const num = this.__num__.__value__;
     const denom = this.__denom__.__value__;
     if (LNumber.isNative(num) && LNumber.isNative(denom)) {
-        const { quotient } = this._rem_quot();
-        return LNumber(quotient);
+        // R7RS: round to the nearest integer, ties to even. Work with a
+        // positive denominator and a FLOOR remainder r in [0, denom), then
+        // round up when 2r > denom, or - on an exact tie (2r == denom) - when
+        // the floor is odd.
+        const big = typeof num === 'bigint' || typeof denom === 'bigint';
+        if (big) {
+            let n = BigInt(num), d = BigInt(denom);
+            if (d < 0n) { n = -n; d = -d; }
+            let q = n / d;
+            let r = n - q * d;
+            if (r < 0n) { q -= 1n; r += d; }
+            const twice = r * 2n;
+            if (twice > d || (twice === d && (q % 2n !== 0n))) {
+                q += 1n;
+            }
+            return LNumber(q);
+        }
+        let n = num, d = denom;
+        if (d < 0) { n = -n; d = -d; }
+        let q = Math.trunc(n / d);
+        let r = n - q * d;
+        if (r < 0) { q -= 1; r += d; }
+        const twice = r * 2;
+        if (twice > d || (twice === d && (q % 2 !== 0))) {
+            q += 1;
+        }
+        return LNumber(q);
     }
     return LNumber(Math.round(this.valueOf()));
 };
@@ -7774,18 +8529,43 @@ LBigInteger.prototype._op = function(op, n) {
     return LBigInteger(ret);
 };
 // -------------------------------------------------------------------------
+LBigInteger.sqrt = function(n) {
+    // integer square root (floor), Newton's method. The classic monotone
+    // descent starting from x = n: it strictly decreases while y < x and stops
+    // at floor(sqrt n). The previous variant seeded x0 = 1 and used an
+    // oscillation guard `x0 !== x1 - 1`; for n = 4 that fired on the very first
+    // step (x0 = 1, x1 = 2) and returned 1 instead of 2.
+    if (n < 2n) {
+        return n;
+    }
+    let x = n;
+    let y = (x + 1n) >> 1n;
+    while (y < x) {
+        x = y;
+        y = (x + n / x) >> 1n;
+    }
+    return x;
+};
+// -------------------------------------------------------------------------
+LBigInteger.prototype.exact_sqrt = function() {
+    let value = this.__value__;
+    if (LNumber.isNative(value)) {
+        return LBigInteger(LBigInteger.sqrt(this.__value__));
+    }
+};
+// -------------------------------------------------------------------------
 LBigInteger.prototype.sqrt = function() {
     var value;
     var minus = this.cmp(0) < 0;
     if (LNumber.isNative(this.__value__)) {
-        value = LNumber(Math.sqrt(minus ? -this.valueOf() : this.valueOf()));
+        value = Math.sqrt(minus ? -this.valueOf() : this.valueOf());
     } else if (LNumber.isBN(this.__value__)) {
         value = minus ? this.__value__.neg().sqrt() : this.__value__.sqrt();
     }
     if (minus) {
         return LComplex({ re: 0, im: value });
     }
-    return value;
+    return LNumber(value);
 };
 // -------------------------------------------------------------------------
 LNumber.NaN = LNumber(NaN);
@@ -8024,11 +8804,11 @@ function InputStringPort(string, env = global_env) {
     read_only(this, '__type__', text_port);
     this._make_defaults();
 }
+InputStringPort.prototype = Object.create(InputPort.prototype);
+InputStringPort.prototype.constructor = InputStringPort;
 InputStringPort.prototype.char_ready = function() {
     return true;
 };
-InputStringPort.prototype = Object.create(InputPort.prototype);
-InputStringPort.prototype.constructor = InputStringPort;
 InputStringPort.prototype.toString = function() {
     return `#<input-port (string)>`;
 };
@@ -8169,9 +8949,9 @@ OutputByteVectorPort.prototype.write_u8 = function(byte) {
     typecheck('OutputByteVectorPort::write_u8', byte, 'number');
     this.write(byte);
 };
-OutputByteVectorPort.prototype.write_u8_vector = function(vector) {
+OutputByteVectorPort.prototype.write_u8_vector = function(vector, start, end) {
     typecheck('OutputByteVectorPort::write_u8_vector', vector, 'uint8array');
-    this.write(vector);
+    this.write(vector.slice(start, end));
 };
 OutputByteVectorPort.prototype.toString = function() {
     return '#<output-port (bytevector)>';
@@ -8322,7 +9102,7 @@ Interpreter.prototype.exec = function(arg, options = {}) {
         filename = null,
         env
     } = options;
-    typecheck('Interpreter::exec', arg, ['string', 'array'], 1);
+    typecheck('Interpreter::exec', arg, ['string', 'pair', 'array'], 1);
     typecheck('Interpreter::exec', use_dynamic, 'boolean', 2);
     // simple solution to overwrite this variable in each interpreter
     // before evaluation of user code. It's set on global_env (not this.__env__)
@@ -8336,7 +9116,7 @@ Interpreter.prototype.exec = function(arg, options = {}) {
     if (!dynamic_env) {
         dynamic_env = env;
     }
-    if (Array.isArray(arg)) {
+    if (Array.isArray(arg) || is_pair(arg)) {
         return exec(arg, { env, dynamic_env, use_dynamic, filename });
     } else {
         this.__parser__.prepare(arg, { filename });
@@ -8468,7 +9248,12 @@ Environment.prototype.new_frame = function(fn, args) {
 // -------------------------------------------------------------------------
 Environment.prototype._lookup = function(name) {
     if (this.__env__.hasOwnProperty(name)) {
-        return Value(this.__env__[name], 'get');
+        const value = this.__env__[name];
+        if (value instanceof Reference) {
+            // follow the alias to the original binding (already a Value wrapper)
+            return value.lookup();
+        }
+        return Value(value, 'get');
     }
     if (this.__parent__) {
         return this.__parent__._lookup(name);
@@ -8640,6 +9425,10 @@ Environment.prototype.constant = function(name, value) {
 };
 // -------------------------------------------------------------------------
 Environment.prototype.has = function(name) {
+    return Value.of('get', this._lookup(name));
+};
+// -------------------------------------------------------------------------
+Environment.prototype.has_own = function(name) {
     return this.__env__.hasOwnProperty(name);
 };
 // -------------------------------------------------------------------------
@@ -8649,11 +9438,38 @@ Environment.prototype.ref = function(name) {
         if (!env) {
             break;
         }
-        if (env.has(name)) {
+        if (env.has_own(name)) {
             return env;
         }
         env = env.__parent__;
     }
+};
+// -------------------------------------------------------------------------
+// Resolve NAME to the {env, name} of the binding it ultimately denotes,
+// following hygienic Reference aliases (and chains of them). Returns null
+// when NAME is unbound. Used by set! so assignment reaches the original
+// cell, and its result reads back consistently with `get`.
+Environment.prototype.resolve = function(name, seen) {
+    seen = seen || new Set();
+    var env = this;
+    while (env) {
+        if (env.has_own(name)) {
+            const value = env.__env__[name];
+            if (value instanceof Reference) {
+                // a Reference that loops back on itself points into a
+                // transient nested-macro scope - report it as unresolvable
+                // so the caller snapshots the value instead of aliasing.
+                if (seen.has(value)) {
+                    return null;
+                }
+                seen.add(value);
+                return value._env.resolve(value._name, seen);
+            }
+            return { env, name };
+        }
+        env = env.__parent__;
+    }
+    return null;
 };
 // -------------------------------------------------------------------------
 Environment.prototype.parents = function() {
@@ -8665,6 +9481,32 @@ Environment.prototype.parents = function() {
     }
     return result;
 };
+// -------------------------------------------------------------------------
+// ----------------------------------------------------------------------
+// :: A hygienic alias: a gensym introduced by syntax-rules for a free
+// :: identifier binds to a Reference that points at the ORIGINAL binding
+// :: (name + owning environment). Reads (via _lookup) and writes (via
+// :: next_set/resolve) both follow it, so `set!` mutates the original cell
+// :: instead of a throwaway copy. References chain (nested syntax-rules).
+// ----------------------------------------------------------------------
+class Reference {
+    constructor(name, env) {
+        this._name = name;
+        this._env = env;
+    }
+    // owning environment of the target binding (follows nested references)
+    ref() {
+        return this._env.ref(this._name);
+    }
+    // the target's Value wrapper (recurses through nested references)
+    lookup() {
+        return this._env._lookup(this._name);
+    }
+    // {env, name} of the ultimate target (follows nested references)
+    resolve() {
+        return this._env.resolve(this._name);
+    }
+}
 // -------------------------------------------------------------------------
 // :: Quote function used to pause evaluation from Macro
 // -------------------------------------------------------------------------
@@ -8828,18 +9670,28 @@ var internal_env = new Environment({
     'space-unicode-regex': /\s/u
 }, undefined, 'internal');
 // ----------------------------------------------------------------------
-const nan = LNumber(NaN);
+const nan = LNumber.NaN;
+const inf_plus = LNumber(Number.POSITIVE_INFINITY);
+const inf_minus = LNumber(Number.NEGATIVE_INFINITY);
+const inf_nan = [
+    ['+inf.0', inf_plus],
+    ['-inf.0', inf_minus],
+    ['+nan.0', nan],
+    ['-nan.0', nan]
+];
+
 const constants = {
     '#t': true,
     '#f': false,
     '#true': true,
     '#false': false,
-    '+inf.0': LNumber(Number.POSITIVE_INFINITY),
-    '-inf.0': LNumber(Number.NEGATIVE_INFINITY),
-    '+nan.0': nan,
-    '-nan.0': nan,
+    ...Object.fromEntries(inf_nan),
+    ...Object.fromEntries(inf_nan.map(([token, value]) => {
+        return ['#i' + token, value];
+    })),
     ...parsable_contants
 };
+
 // -------------------------------------------------------------------------
 var global_env = new Environment({
     eof,
@@ -8924,7 +9776,7 @@ var global_env = new Environment({
         This function converts each input into a string and prints
         the result to the standard output (by default it's the
         console but it can be defined in user code). This function
-        calls \`(newline)\` after printing each input.`), 
+        calls \`(newline)\` after printing each input.`),
     // ------------------------------------------------------------------
     'stack-trace': doc(function(cc) {
         typecheck('stack-trace', cc, 'continuation');
@@ -9129,6 +9981,48 @@ var global_env = new Environment({
          Generates a unique symbol that is not bound anywhere,
          to use with macros as meta name.`),
     // ------------------------------------------------------------------
+    'free-identifier=?': doc('free-identifier=?', function(a, b) {
+        // R7RS/R6RS: two identifiers are free-identifier=? when they refer to
+        // the SAME binding - compared by denotation, so an identifier that
+        // hygiene renamed to a gensym still equals the identifier it came
+        // from. Different literal names are never equal; with the same literal
+        // name they are equal when both are unbound (the same free/auxiliary
+        // identifier, e.g. `else`) or both resolve to the same binding. This
+        // lets an unhygienic (define-macro) macro recognize auxiliary keywords
+        // that a surrounding hygienic macro renamed.
+        if (!(a instanceof LSymbol) || !(b instanceof LSymbol)) {
+            return false;
+        }
+        if (a.literal() !== b.literal()) {
+            return false;
+        }
+        const env = this instanceof Environment ? this : global_env;
+        const target = id => {
+            // resolve through hygienic References; a bare gensym with no
+            // binding falls back to its literal name
+            let t = env.resolve(id.valueOf());
+            if (!t && id.is_gensym()) {
+                t = env.resolve(id.literal());
+            }
+            return t;
+        };
+        const ta = target(a);
+        const tb = target(b);
+        if (!ta && !tb) {
+            return true;
+        }
+        if (ta && tb) {
+            return ta.env === tb.env && ta.name === tb.name;
+        }
+        return false;
+    }, `(free-identifier=? a b)
+
+        Returns #t if the two identifiers refer to the same binding, comparing
+        by denotation rather than surface name - so an identifier that a
+        hygienic macro renamed to a gensym still equals the identifier it was
+        renamed from. Both unbound with the same literal name (e.g. an
+        auxiliary keyword like else) counts as the same free identifier.`),
+    // ------------------------------------------------------------------
     load: doc('load', function load(file, env) {
         typecheck('load', file, 'string');
         var g_env = this;
@@ -9257,6 +10151,17 @@ var global_env = new Environment({
             if (!file.startsWith('/')) {
                 file = module_path + '/' + file.replace(/^\.?\/?/, '');
             }
+        }
+        // worker requires a full URL
+        if (is_worker() && !file.match(/^https?/)) {
+            const loc = get_internal_env(g_env).get('location', { throwError: false });
+            let prefix;
+            if (file.startsWith('/')) {
+                prefix = loc.origin;
+            } else {
+                prefix = loc.href.replace(/\/[^\/]+$/, '/');
+            }
+            file = prefix + file;
         }
         return fetch(file).then(code => {
             global_env.set(PATH, file.replace(/\/[^/]*$/, ''));
@@ -9476,6 +10381,11 @@ var global_env = new Environment({
         // restores the exact set that was in effect here - escaping a `try`
         // drops its handler, re-entering one re-arms it.
         cc._state.handlers = state.handlers.slice();
+        // snapshot the active dynamic-wind winder stack (a Scheme list). When
+        // this continuation is invoked, the guards for extents left/entered
+        // between now and then are run (see the is_continuation branch in
+        // next_pair). *winders* only exists once R7RS.scm has loaded.
+        cc._state.winders = global_env.get('*winders*', { throwError: false });
         state.cc = new Continuation('call/cc', null, source, state, function(state) {
             state.env = this.__env__;
             state.cc = this.__continuation__;
@@ -9640,34 +10550,35 @@ var global_env = new Environment({
          with name being first element of the list. This form expands to
          \`(define function-name (lambda args body))\``),
     // ------------------------------------------------------------------
-    'set-object!': doc('set-object!', function(obj, key, value, options = null) {
+    'set-object!': doc('set-object!', function(obj, key, value, strict = false) {
         var obj_type = typeof obj;
         if (is_null(obj) || (obj_type !== 'object' && obj_type !== 'function')) {
             var msg = typeErrorMessage('set-object!', type(obj), ['object', 'function']);
-            throw new Error(msg);
+            throw new TypeError(msg);
         }
         typecheck('set-object!', key, ['string', 'symbol', 'number']);
         obj = unbind(obj);
         key = key.valueOf();
         if (arguments.length === 2) {
             delete obj[key];
-        } else if (is_prototype(obj) && is_function(value)) {
+            return;
+        }
+        if (!Object.isExtensible(obj) && !is_undef(obj[key])) {
+            throw new Error("Can't change read only property");
+        }
+        if (is_prototype(obj) && is_function(value)) {
             obj[key] = unbind(value);
             obj[key][__prototype__] = true;
-        } else if (is_function(value) || is_native(value) || is_nil(value)) {
+        } else if (is_function(value) || is_native(value) || is_nil(value) || strict) {
             obj[key] = value;
         } else {
             obj[key] = value && !is_prototype(value) ? value.valueOf() : value;
         }
-        if (options) {
-            const value = obj[key];
-            Object.defineProperty(obj, key, { ...options, value });
-        }
     }, `(set-object! obj key value)
-        (set-object! obj key value props)
+        (set-object! obj key value strict)
 
-        Function set a property of a JavaScript object. props should be a vector of pairs,
-        passed to Object.defineProperty.`),
+        Function set a property of a JavaScript object. When the strict option
+        is used the value is not unboxed.`),
     // ------------------------------------------------------------------
     'null-environment': doc('null-environment', function() {
         return global_env.inherit('null');
@@ -9685,11 +10596,19 @@ var global_env = new Environment({
     'call-with-values': doc('call-with-values', function(producer, consumer) {
         typecheck('call-with-values', producer, 'function', 1);
         typecheck('call-with-values', consumer, 'function', 2);
-        var maybe = producer.apply(this);
-        if (maybe instanceof Values) {
-            return consumer.apply(this, maybe.valueOf());
-        }
-        return consumer.call(this, maybe);
+        const self = this;
+        // the producer may be async (its body awaited a promise), so its result
+        // can be a promise of the Values bundle - wait for it before deciding
+        // whether to spread. Otherwise the promise would reach the consumer as a
+        // single argument, e.g.
+        // (call-with-values (lambda () (Promise.resolve 1) (values 1 2)) list)
+        // returned (#<Values>) instead of (1 2).
+        return unpromise(producer.apply(this), function(maybe) {
+            if (maybe instanceof Values) {
+                return consumer.apply(self, maybe.valueOf());
+            }
+            return consumer.call(self, maybe);
+        });
     }, `(call-with-values producer consumer)
 
         Calls the producer procedure with no arguments, then calls the
@@ -9882,31 +10801,18 @@ var global_env = new Environment({
     'syntax-rules': new Macro('syntax-rules', function(source, options) {
         var { use_dynamic, error } = options;
         const macro = source.cdr;
-        // TODO: find identifiers and freeze the scope when defined #172
         var env = this;
-        function get_identifiers(node) {
-            let symbols = [];
-            while (!is_nil(node)) {
-                const x = node.car;
-                symbols.push(x.valueOf());
-                node = node.cdr;
-            }
-            return symbols;
-        }
-        function validate_identifiers(node) {
-            while (!is_nil(node)) {
-                const x = node.car;
-                if (!(x instanceof LSymbol)) {
-                    throw new Error('syntax-rules: wrong identifier');
-                }
-                node = node.cdr;
-            }
-        }
+        // a macro produced by another macro's expansion (source position is a
+        // gensym) may carry non-identifier literals substituted from pattern
+        // variables - validate leniently there, strictly when written by
+        // hand
+        const lenient = source.car instanceof LSymbol && source.car.is_gensym();
         if (macro.car instanceof LSymbol) {
-            validate_identifiers(macro.cdr.car);
+            validate_identifiers(macro.cdr.car, { lenient });
         } else {
-            validate_identifiers(macro.car);
+            validate_identifiers(macro.car, { lenient });
         }
+        const captured_macros = collect_macros(macro, env);
         const syntax = new Syntax(function(code, { macro_expand }) {
             log('>> SYNTAX');
             log(code);
@@ -9934,6 +10840,18 @@ var global_env = new Environment({
                 symbols = get_identifiers(macro.car);
                 rules = macro.cdr;
             }
+            // R7RS 4.3.2: a literal takes priority over the ellipsis. If the
+            // ellipsis identifier is ALSO declared as a literal it loses its
+            // special meaning and is matched/transcribed as an ordinary literal
+            // (e.g. `(syntax-rules ... (...) ((_ x) '(x ...)))` yields
+            // `(x ...)`, not a repetition). Disable it with a sentinel that no
+            // identifier can equal - LSymbol.is only matches strings/symbols by
+            // name, an LSymbol, or a RegExp, never a bare JS Symbol.
+            const ellipsis_name = ellipsis instanceof LSymbol
+                ? ellipsis.valueOf() : ellipsis;
+            if (symbols.includes(ellipsis_name)) {
+                ellipsis = Symbol.for('lips-disabled-ellipsis');
+            }
             try {
                 while (!is_nil(rules)) {
                     var rule = rules.car.car;
@@ -9959,7 +10877,8 @@ var global_env = new Environment({
                             scope,
                             lex_scope: var_scope,
                             names,
-                            ellipsis
+                            ellipsis,
+                            captured: captured_macros
                         });
                         log('OUPUT>>> ', new_expr);
                         // TODO: if expression is undefined throw an error
@@ -10231,16 +11150,12 @@ var global_env = new Environment({
         return Macro.defmacro('quasiquote', function(source, state) {
             const arg = source.cdr;
             let result;
-            log('>> QUASIQUOTE');
-            log(arg.car);
             if (plain_quasiquote(arg.car)) {
                 // fully literal quasiquote behaves like quote (shared constant)
                 result = quote(arg.car);
             } else {
                 result = qq_expand(arg.car, 1);
             }
-            log('<< QUASIQUOTE OUTPUT');
-            log(result);
             // returning something other than `state` makes evaluate_code set
             // it as the object to evaluate next, so the generated builder code
             // runs through the normal evaluate loop.
@@ -10297,6 +11212,18 @@ var global_env = new Environment({
             if (is_null(item)) {
                 return acc;
             }
+            // R7RS: the last argument becomes the tail verbatim. A vector is
+            // not a list, so it must not be spliced - attach it as the
+            // improper tail (Pair::append would otherwise convert the array
+            // into a list, e.g. `(a . ,#(2)) => (a 2) instead of (a . #(2))).
+            if (i === last && item instanceof Array) {
+                let p = acc;
+                while (is_pair(p) && !is_nil(p.cdr)) {
+                    p = p.cdr;
+                }
+                p.cdr = item;
+                return acc;
+            }
             return acc.append(item);
         }, nil);
     }, `(append! arg1 ...)
@@ -10321,7 +11248,7 @@ var global_env = new Environment({
         } else if (Array.isArray(arg)) {
             return arg.reverse();
         } else {
-            throw new Error(typeErrorMessage('reverse', type(arg), 'array or pair'));
+            throw new TypeError(typeErrorMessage('reverse', type(arg), 'array or pair'));
         }
     }, `(reverse list)
 
@@ -10345,7 +11272,7 @@ var global_env = new Environment({
         } else if (obj instanceof Array) {
             return obj[index];
         } else {
-            throw new Error(typeErrorMessage('nth', type(obj), 'array or pair', 2));
+            throw new TypeError(typeErrorMessage('nth', type(obj), 'array or pair', 2));
         }
     }, `(nth index obj)
 
@@ -10431,8 +11358,8 @@ var global_env = new Environment({
 
         Function that returns the first found index of the pattern inside a string.`),
     // ------------------------------------------------------------------
-    repr: doc('repr', function repr(obj, quote) {
-        return to_string(obj, quote);
+    repr: doc('repr', function repr(obj, quote, ...args) {
+        return to_string(obj, quote, ...args);
     }, `(repr obj)
 
         Function that returns a LIPS code representation of the object as a string.`),
@@ -10560,8 +11487,15 @@ var global_env = new Environment({
 
         Checks if object is an instance, created with a new operator`),
     // ------------------------------------------------------------------
+    'worker?': doc(
+        'worker?',
+        is_worker,
+        `(worker?)
+
+         Function check if the script run in Web Worker`),
+    // ------------------------------------------------------------------
     'instanceof': doc('instanceof', function(type, obj) {
-        return obj instanceof unbind(type);
+        return typeof obj === 'object' && obj instanceof unbind(type);
     }, `(instanceof type obj)
 
         Predicate that tests if the obj is an instance of type.`),
@@ -10816,6 +11750,10 @@ var global_env = new Environment({
          it's executed when an error is thrown. If finally is provided it's always
          executed at the end.`),
     // ------------------------------------------------------------------
+    'raise-continuable': doc('raise-continuable', function(object) {
+        throw new Continuable(object);
+    }, `(raise-continuable message)`),
+    // ------------------------------------------------------------------
     'raise': doc('raise', function(obj) {
         throw obj;
     }, `(raise obj)
@@ -10910,7 +11848,10 @@ var global_env = new Environment({
     // Numbers
     // ------------------------------------------------------------------
     gcd: doc('gcd', function gcd(...args) {
-        typecheck_args('lcm', args, 'number');
+        typecheck_args('gcd', args, 'number');
+        if (!args.length) {
+            return LNumber(0);
+        }
         return args.reduce(function(result, item) {
             return result.gcd(item);
         });
@@ -10918,16 +11859,27 @@ var global_env = new Environment({
 
         Function that returns the greatest common divisor of the arguments.`),
     // ------------------------------------------------------------------
+    // ref: https://rosettacode.org/wiki/Least_common_multiple#JavaScript
+    // ------------------------------------------------------------------
     lcm: doc('lcm', function lcm(...args) {
         typecheck_args('lcm', args, 'number');
-        // ref: https://rosettacode.org/wiki/Least_common_multiple#JavaScript
+        if (!args.length) {
+            return LNumber(1);
+        }
+        let inexact = LNumber.isFloat(args[0]);
         var n = args.length, a = abs(args[0]);
         for (var i = 1; i < n; i++) {
+            if (LNumber.isFloat(args[i])) {
+                inexact = true;
+            }
             var b = abs(args[i]), c = a;
             while (a && b) {
                 a > b ? a %= b : b %= a;
             }
             a = abs(c * args[i]) / (a + b);
+        }
+        if (inexact) {
+            return LFloat(a);
         }
         return LNumber(a);
     }, `(lcm n1 n2 ...)
@@ -11005,11 +11957,16 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     truncate: doc('truncate', function(n) {
         typecheck('truncate', n, 'number');
-        if (LNumber.isFloat(n) || LNumber.isRational(n)) {
+        const is_float = LNumber.isFloat(n);
+        if (is_float || LNumber.isRational(n)) {
             if (n instanceof LNumber) {
                 n = n.valueOf();
             }
-            return LNumber(truncate(n));
+            const result = truncate(n);
+            if (is_float) {
+                return LFloat(result);
+            }
+            return LNumber(result);
         }
         return n;
     }, `(truncate n)
@@ -11085,7 +12042,11 @@ var global_env = new Environment({
             return LComplex({ re, im });
         }
         [a, b] = a.coerce(b);
-        return a.pow(b);
+        const result = a.pow(b);
+        if (LNumber.isFloat(a) || LNumber.isFloat(b)) {
+            return LFloat(result);
+        }
+        return result;
     }), `(** a b)
 
          Function that calculates number a to to the power of b.`),
@@ -11199,7 +12160,31 @@ var global_env = new Environment({
         is_false,
         `(not object)
 
-         Function that returns the Boolean negation of its argument.`)
+         Function that returns the Boolean negation of its argument.`),
+    // ------------------------------------------------------------------
+    min: doc('min', function(...args) {
+        if (args.length === 0) {
+            throw new RuntimeError('min require at list 1 argument');
+        }
+        return args.reduce(binary_math_op(function(a, b) {
+            ([a, b] = a.coerce(b));
+            return same_cmp(a, b) === -1 ? a : b;
+        }));
+    }, `(min n1 n2 ...)
+
+        Returns the minimum of its arguments.`),
+    // ------------------------------------------------------------------
+    max: doc('max', function(...args) {
+        if (args.length === 0) {
+            throw new RuntimeError('max require at list 1 argument');
+        }
+        return args.reduce(binary_math_op(function(a, b) {
+            ([a, b] = a.coerce(b));
+            return same_cmp(a, b) === 1 ? a : b;
+        }));
+    }, `(max n1 n2 ...)
+
+        Returns the maximum of its arguments.`)
 }, undefined, 'global');
 var user_env = global_env.inherit('user-env');
 // -------------------------------------------------------------------------
@@ -11424,7 +12409,7 @@ function typecheck_number(fn, arg, expected, position = null) {
         expected = expected.valueOf().toLowerCase();
     }
     if (!match && arg_type !== expected) {
-        throw new Error(typeErrorMessage(fn, arg_type, expected, position));
+        throw new TypeError(typeErrorMessage(fn, arg_type, expected, position));
     }
 }
 
@@ -11445,7 +12430,7 @@ function typecheck_args(fn, args, expected) {
 function typecheck_text_port(fn, arg, type) {
     typecheck(fn, arg, type);
     if (arg.__type__ === binary_port) {
-        throw new Error(typeErrorMessage(
+        throw new TypeError(typeErrorMessage(
             fn,
             'binary-port',
             'textual-port'
@@ -11464,16 +12449,13 @@ function typecheck(fn, arg, expected, position = null) {
     const arg_type = type(arg).toLowerCase();
     if (is_function(expected)) {
         if (!expected(arg)) {
-            throw new Error(typeErrorMessage(fn, arg_type, expected, position));
+            throw new TypeError(typeErrorMessage(fn, arg_type, expected, position));
         }
         return;
     }
     var match = false;
     if (is_pair(expected)) {
         expected = expected.to_array();
-    }
-    if (expected instanceof Array) {
-        expected = expected.map(x => x.valueOf());
     }
     if (expected instanceof Array) {
         expected = expected.map(x => x.valueOf().toLowerCase());
@@ -11484,7 +12466,7 @@ function typecheck(fn, arg, expected, position = null) {
         expected = expected.valueOf().toLowerCase();
     }
     if (!match && arg_type !== expected) {
-        throw new Error(typeErrorMessage(fn, arg_type, expected, position));
+        throw new TypeError(typeErrorMessage(fn, arg_type, expected, position));
     }
 }
 
@@ -11520,6 +12502,9 @@ function type(obj) {
             return 'instance';
         }
         if (obj.constructor) {
+            if (obj instanceof Error) {
+                return 'error';
+            }
             if (obj.constructor.__class__) {
                 return obj.constructor.__class__;
             }
@@ -11583,41 +12568,6 @@ function resolve_promises(arg) {
         }
         return node;
     }
-}
-
-// -------------------------------------------------------------------------
-function evaluate_args(rest, { use_dynamic, ...options }) {
-    var args = [];
-    var node = rest;
-    function next() {
-        return args;
-    }
-    return (function loop() {
-        if (is_pair(node)) {
-            let arg = evaluate(node.car, { use_dynamic, ...options });
-            if (use_dynamic) {
-                // NOTE: why native function need bind to env?
-                arg = unpromise(arg, arg => {
-                    if (is_native_function(arg)) {
-                        return arg.bind(dynamic_env);
-                    }
-                    return arg;
-                });
-            }
-            return unpromise(resolve_promises(arg), function(arg) {
-                args.push(arg);
-                if (node.have_cycles('cdr')) {
-                    throw new Error(`Invalid expression: Can't evaluate cycle`);
-                }
-                node = node.cdr;
-                return loop();
-            });
-        } else if (is_nil(node)) {
-            return next();
-        } else {
-            throw new Error('Syntax Error: improper list found in apply');
-        }
-    })();
 }
 
 // -------------------------------------------------------------------------
@@ -11872,10 +12822,6 @@ class Continuation {
 // -------------------------------------------------------------------------
 class State {
     constructor(object, cc, { env, dynamic_env, use_dynamic, error, macro_expand }) {
-        if (is_debug('continuations')) {
-            console.log('[STATE] ' + macro_expand);
-            console.trace();
-        }
         this.env = env;
         this.object = object;
         this.cc = cc;
@@ -11912,14 +12858,6 @@ class State {
         this._stack_set = null;
     }
     cont() {
-        if (is_debug('continuations')) {
-            if (this.cc._state.name == 'top') {
-                console.log('[CONTINUE] => top');
-            } else {
-                console.log('[CONTINUE] => ' + to_string(this.cc.__code__));
-                console.log('              ' + to_string(this.cc.__object__));
-            }
-        }
         // we use uniterate because ignore need to be generator but all other
         // callbacks are normal functions, so yield* will not work
         return uniterate(this.cc.__next__(this));
@@ -11947,14 +12885,7 @@ class State {
             }
         }
         if (!this.ready) {
-            if (is_debug(['eval', 'macro'])) {
-                console.log(`eval: ` + to_string(this.object, true));
-                console.log('scope: ' + JSON.stringify(this.env.names()));
-            }
             yield* evaluate_code(this);
-            if (is_debug(['eval', 'macro'])) {
-                console.log('result: ' + to_string(this.object, true));
-            }
         }
         return this.ready;
     }
@@ -12050,6 +12981,9 @@ const __continue__ = Symbol.for('__continue__');
 function tco_error_handler(e, state, code) {
     if (e instanceof State) {
         return e.object;
+    }
+    if (e instanceof Continuable) {
+        e.__cc__ = state.cc;
     }
     if (e instanceof IgnoreException) {
         return;
@@ -12253,6 +13187,7 @@ const __quote__ = global_env.get('quote');
 const __set__ = global_env.get('set!');
 const __define__ = global_env.get('define');
 const __apply__ = global_env.get('apply');
+const __call_with_values__ = global_env.get('call-with-values');
 
 const iternal_macros = [
     __if__,
@@ -12681,8 +13616,11 @@ function next_set(state) {
     state.cc = this.__continuation__;
     const symbol = this.__object__.valueOf();
     const value = state.object;
-    const ref = env.ref(symbol);
-    if (!ref) {
+    // resolve through hygienic Reference aliases so that assigning a renamed
+    // free identifier mutates the ORIGINAL binding (name + env), not the
+    // gensym's throwaway slot
+    const resolved = env.resolve(symbol);
+    if (!resolved) {
         // case (set! fn.toString (lambda () "xxx"))
         const parts = symbol.split('.');
         if (parts.length > 1) {
@@ -12699,7 +13637,7 @@ function next_set(state) {
         }
         throw new Error('Unbound variable `' + symbol + '\'');
     }
-    ref.set(symbol, value);
+    resolved.env.set(resolved.name, value);
     delete state.object;
     state.ready = true;
 }
@@ -12711,20 +13649,50 @@ function next_define(state) {
         env = env.__parent__;
     }
     const value = state.object;
+    let target = this.__object__;
+    // R7RS: a macro-introduced identifier used as a TOP-LEVEL definition binds
+    // its plain (un-renamed) name, so the definition is visible to code written
+    // at the use site - matching Chicken/Guile/most R7RS Schemes. Internal
+    // (lexical body) definitions stay hygienically renamed and private. The
+    // gensym is kept as a Reference alias to the freshly bound cell so that
+    // references to it elsewhere in the same expansion still resolve (and so
+    // several expansions of the same macro share the plain binding).
+    let alias = null;
+    if (target instanceof LSymbol && target.is_gensym() &&
+        is_toplevel_env(env)) {
+        alias = target;
+        target = LSymbol(target.literal());
+    }
     if (this._state.new_expr &&
         ((is_function(value) && is_lambda(value)) ||
          (value instanceof Syntax) || is_parameter(value))) {
-        let fn_name = this.__object__.valueOf();
+        let fn_name = target.valueOf();
         if (fn_name instanceof LString) {
             fn_name = fn_name.valueOf();
         }
         value.__name__ = fn_name;
     }
-    env.set(this.__object__, value, this._state.doc, true);
+    env.set(target, value, this._state.doc, true);
+    if (alias) {
+        env.set(alias, new Reference(target.valueOf(), env));
+    }
     state.env = env;
     state.cc = this.__continuation__;
     delete state.object;
     state.ready = true;
+}
+// -------------------------------------------------------------------------
+// A top-level environment is the global/stdlib env, the user env, or the
+// current interaction environment - definitions there are program/REPL
+// top-level, as opposed to a lexical body scope (let/lambda/...).
+function is_toplevel_env(env) {
+    if (env === global_env || env === user_env) {
+        return true;
+    }
+    const interaction = global_env.get('**interaction-environment**', {
+        throwError: false
+    });
+    return env === interaction;
 }
 
 // -------------------------------------------------------------------------
@@ -12780,9 +13748,21 @@ function next_pair(state) {
         if (is_lambda(first)) {
             evaluate_lambda(first, args, state, this);
         } else if (is_continuation(first)) {
+            const clone = first.clone(false);
+            // run dynamic-wind guards for the extents being left/entered between
+            // here and the continuation's capture point, BEFORE jumping. The
+            // winder stack (a Scheme list) was snapshotted at capture in call/cc;
+            // %do-wind runs the relevant after/before thunks and resets
+            // *winders*. Skip when unchanged (the common case, incl. no winds).
+            const save = clone._state.winders;
+            if (save !== undefined) {
+                const current = global_env.get('*winders*', { throwError: false });
+                if (save !== current) {
+                    call_function(global_env.get('%do-wind'), [save], state);
+                }
+            }
             state.ready = true;
             state.object = args[0];
-            const clone = first.clone(false);
             // restore the try handlers captured when this continuation was
             // created, so escaping/re-entering a `try` updates the active set.
             if (clone._state.handlers) {
@@ -12796,6 +13776,40 @@ function next_pair(state) {
             typecheck('apply', last, ['pair', 'nil'], args.length + 2);
             last = global_env.get('list->array').call(global_env, last);
             evaluate_lambda(fn, args.concat(last), state, this);
+        } else if (first === __call_with_values__ && is_lambda(args[1])) {
+            // Run the CONSUMER in this (the main) trampoline, so a continuation
+            // captured outside and invoked by the consumer escapes correctly.
+            // Calling it through the JS wrapper (consumer.apply) would run a
+            // NESTED trampoline: the escape then re-runs the outer context
+            // inside it AND lets this native frame return, double-executing -
+            // which breaks call/cc, e.g. R7RS `guard`'s no-exception path. The
+            // producer is a normal call that returns its value(s).
+            const [producer, consumer] = args;
+            typecheck('call-with-values', producer, 'function', 1);
+            const self = this;
+            const run_consumer = (result, st) => {
+                const vals = result instanceof Values ? result.valueOf()
+                    : (is_undef(result) ? [] : [result]);
+                evaluate_lambda(consumer, vals, st, self);
+            };
+            const maybe = call_function(producer, [], state);
+            if (is_promise(maybe)) {
+                // the producer body was async. Await it through the trampoline
+                // (state.object = promise; the loop resolves it at the
+                // is_promise(code) branch) so a REJECTION is raised inside the
+                // current dynamic extent - and caught by an enclosing try /
+                // with-exception-handler / guard - instead of escaping as an
+                // unhandled promise rejection. Then run the consumer with the
+                // resolved value(s).
+                state.object = maybe;
+                state.ready = false;
+                state.cc = new Continuation('call-with-values', null, this.__code__,
+                                            state, function(st) {
+                    run_consumer(st.object, st);
+                });
+            } else {
+                run_consumer(maybe, state);
+            }
         } else if (is_parameter(first)) {
             // a dynamic variable created by make-parameter. Look up the
             // effective binding in the dynamic environment (parameterize
@@ -12825,7 +13839,7 @@ function next_pair(state) {
             }
             state.ready = !is_promise(state.object);
         } else {
-            throw new Error(`${type(first)} ${env.get('repr')(first)} is not callable while evaluating ` +
+            throw new Error(`${type(first)} ${to_string(first)} is not callable while evaluating ` +
                             to_string(this.__code__));
         }
     } else {
@@ -12939,8 +13953,17 @@ function is_dev() {
 }
 
 // -------------------------------------------------------------------------
+function is_worker() {
+  try {
+    return self instanceof WorkerGlobalScope;
+  } catch (e) {
+    return false;
+  }
+}
+
+// -------------------------------------------------------------------------
 function get_current_script() {
-    if (is_node()) {
+    if (is_node() || is_worker()) {
         return;
     }
     let script;
@@ -12977,8 +14000,9 @@ function bootstrap(url = '') {
     return load.call(user_env, url, global_env);
 }
 // -------------------------------------------------------------------------
-function Worker(url) {
+function Worker(url, options = {}) {
     this.url = url;
+    const worker_id = (Date.now() + Math.random()).toString(36);
     const worker = this.worker = fworker(function() {
         var interpreter;
         var init;
@@ -13002,9 +14026,12 @@ function Worker(url) {
                 }
                 init.then(function() {
                     // we can use ES6 inside function that's converted to blob
+                    const options = data.params[1] || {};
                     var code = data.params[0];
-                    var use_dynamic = data.params[1];
-                    interpreter.exec(code, { use_dynamic }).then(function(result) {
+                    if (options.json) {
+                        code = lips.unserialize(code);
+                    }
+                    interpreter.exec(code, options).then(function(result) {
                         result = result.map(function(value) {
                             return value && value.valueOf();
                         });
@@ -13014,28 +14041,33 @@ function Worker(url) {
                     });
                 });
             } else if (data.method === 'init') {
-                var url = data.params[0];
+                const url = data.params[0];
+                const options = data.params[1] || {};
                 if (typeof url !== 'string') {
                     send_error('Worker RPC: url is not a string');
                 } else {
-                    importScripts(`${url}/dist/lips.min.js`);
-                    interpreter = new lips.Interpreter('worker');
-                    init = bootstrap(url);
+                    importScripts(`${url}/dist/lips.js`);
+                    interpreter = new lips.Interpreter('worker', options);
+                    interpreter.internal.set('location', options.location);
+                    init = lips.bootstrap(`${url}/dist/std.xcb`);
                     init.then(() => {
                         send_result(true);
+                    }).catch(err => {
+                        console.error(err.message);
+                        console.error(err.__stack__.join('\n'));
                     });
                 }
             }
         });
     });
     this.rpc = (function() {
-        var id = 0;
+        let counter = 0;
         return function rpc(method, params) {
-            var _id = ++id;
+            var id = `${worker_id}__${++counter}`;
             return new Promise(function(resolve, reject) {
                 worker.addEventListener('message', function handler(response) {
                     var data = response.data;
-                    if (data && data.type === 'RPC' && data.id === _id) {
+                    if (data && data.type === 'RPC' && data.id === id) {
                         if (data.error) {
                             reject(data.error);
                         } else {
@@ -13047,17 +14079,22 @@ function Worker(url) {
                 worker.postMessage({
                     type: 'RPC',
                     method: method,
-                    id: _id,
+                    id,
                     params: params
                 });
             });
         };
     })();
-    this.rpc('init', [url]).catch((error) => {
+    const { href, origin } = location;
+    this.rpc('init', [url, {...options, location: { href, origin } }]).catch((error) => {
         console.error(error);
     });
-    this.exec = function(code, { use_dynamic = false }) {
-        return this.rpc('eval', [code, use_dynamic]);
+    this.exec = function(code, { use_dynamic = false } = {}) {
+        const is_code = is_pair(code);
+        if (is_code) {
+            code = serialize(code);
+        }
+        return this.rpc('eval', [code, { use_dynamic, json: is_code }]);
     };
 }
 
@@ -13068,6 +14105,9 @@ var serialization_map = {
     'pair': ([car, cdr]) => Pair(car, cdr),
     'number': function(value) {
         if (LString.isString(value)) {
+            if (value.match(float_re)) {
+                return LFloat(parse_float(value));
+            }
             return LNumber([value, 10]);
         }
         return LNumber(value);
@@ -13404,7 +14444,7 @@ read_only(OutputStringPort, '__class__', 'output-string-port');
 read_only(InputStringPort, '__class__', 'input-string-port');
 read_only(InputFilePort, '__class__', 'input-file-port');
 read_only(OutputFilePort, '__class__', 'output-file-port');
-read_only(LipsError, '__class__', 'lips-error');
+read_only(LIPSError, '__class__', 'lips-error');
 [LNumber, LComplex, LRational, LFloat, LBigInteger].forEach(cls => {
     read_only(cls, '__class__', 'number');
 });
@@ -13458,7 +14498,7 @@ export {
     Pair,
     Values,
     QuotedPromise,
-    LipsError as Error,
+    LIPSError as Error,
     is_directive as _is_directive,
 
     quote,
@@ -13532,7 +14572,7 @@ const lips = {
     Pair,
     Values,
     QuotedPromise,
-    Error: LipsError,
+    Error: LIPSError,
 
     quote,
 

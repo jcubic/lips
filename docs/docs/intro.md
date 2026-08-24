@@ -238,7 +238,7 @@ $ lips -d
  \_\ /_/ \_\                     /_/   dynamic scope
 
 LIPS Interpreter {{VER}} (2024-08-29) <https://lips.js.org>
-Copyright (c) 2018-2024 Jakub T. Jankiewicz
+Copyright (c) 2018-2026 Jakub T. Jankiewicz
 
 Type (env) to see environment with functions macros and variables. You can also
 use (help name) to display help for specific function or macro, (apropos name)

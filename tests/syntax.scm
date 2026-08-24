@@ -1,3 +1,38 @@
+
+;; A template identifier defined at TOP LEVEL by a macro is visible
+;; under its plain name at the use site - the Chicken/Guile/most-R7RS
+;; behaviour.
+(define-syntax syntax-def
+  (syntax-rules ()
+    ((_ v)
+     (define syntax/foo v))))
+
+(syntax-def 77)
+
+;; several expansions share the plain top-level binding (=> (1 2 3))
+(define-syntax make-counter
+  (syntax-rules ()
+    ((_ name)
+     (begin
+       (define syntax/counter 0)
+       (define (name)
+         (set! syntax/counter (+ syntax/counter 1))
+         syntax/counter)))))
+
+(make-counter syntax/tick)
+(make-counter syntax/tock)
+(define syntax/counter-result (list (syntax/tick) (syntax/tick) (syntax/tock)))
+
+;; a macro that both defines and uses the identifier internally
+(define-syntax create-defuse
+  (syntax-rules ()
+    ((_ v)
+     (begin
+       (define syntax/defuse v)
+       syntax/defuse))))
+
+(create-defuse 42)
+
 (test "hygiene"
       (lambda (t)
         (define result (let ((f (lambda (x) (+ x 1))))
@@ -243,7 +278,29 @@
     (t.is (foo ()) '(foo ()))
     (t.is (foo (x)) '(foo (x)))
     (t.is (foo (x y)) '(foo (x y)))
-    (t.is (foo (a b) (c d)) '(foo (a b) (c d)))))
+    (t.is (foo (a b) (c d)) '(foo (a b) (c d)))
+    ;; multiple groups where the inner ellipsis matches nothing must keep
+    ;; the per-group structure, not collapse (regression: crashed with
+    ;; "ellipis not transformed")
+    (t.is (foo () ()) '(foo () ()))
+    (t.is (foo (a) (b)) '(foo (a) (b)))))
+
+(test "nested ellipsis with empty inner group (conde shape)"
+  (lambda (t)
+    ;; a leading fixed pattern var followed by an inner ellipsis, inside an
+    ;; outer ellipsis - the shape miniKanren's `conde` expands to. When a
+    ;; group's inner ellipsis is empty it used to drop later groups and leak
+    ;; the ellipsis (#546 follow-up).
+    (define-syntax test
+      (syntax-rules ()
+        ((_ (g0 g ...) ...) (list (list g0 g ...) ...))))
+
+    (t.is (test (1)) '((1)))
+    (t.is (test (1) (2)) '((1) (2)))
+    (t.is (test (1) (2) (3)) '((1) (2) (3)))
+    (t.is (test (1 2) (3)) '((1 2) (3)))
+    (t.is (test (1) (2 3)) '((1) (2 3)))
+    (t.is (test (1 2) (3 4)) '((1 2) (3 4)))))
 
 (test "cons 1st and 2nd in lists"
   (lambda (t)
@@ -641,7 +698,7 @@
         (define-syntax L
           (syntax-rules ()
             ((_) '())
-            ((_ a b ...) (cons a (_ b ...)))))
+            ((_ a b ...) (cons a (L b ...)))))
 
         (t.is (L 1 2 3) '(1 2 3))))
 
@@ -737,6 +794,53 @@
 
         (t.is (foo 1 ++ 2) '(1 1 1 2))))
 
+(test "auxiliary literal matches when renamed by another macro"
+      (lambda (t)
+        ;; R7RS 4.3.2: an input identifier matches a pattern literal by
+        ;; denotation, not surface name. When `bar` expands to (foo a else b),
+        ;; hygiene renames `else` (an unbound auxiliary keyword) to a gensym;
+        ;; it must still match foo's `else` literal.
+        (define-syntax foo
+          (syntax-rules (else)
+            ((_ x else y) (if x x y))))
+
+        (define-syntax bar
+          (syntax-rules ()
+            ((_ a b) (foo a else b))))
+
+        (t.is (foo #f else 20) 20)
+        (t.is (foo 5 else 20) 5)
+        (t.is (bar #f 30) 30)
+        (t.is (bar 7 30) 7)
+
+        ;; also via cond's else/=> reached through a macro expansion - cond is
+        ;; a define-macro that recognizes the renamed keywords with
+        ;; free-identifier=?
+        (define-syntax classify
+          (syntax-rules ()
+            ((_ a) (cond ((zero? a) 'zero) (else 'other)))))
+        (t.is (classify 0) 'zero)
+        (t.is (classify 10) 'other)
+
+        (define-syntax double-if
+          (syntax-rules ()
+            ((_ a) (cond (a => (lambda (x) (* x 2))) (else 'no)))))
+        (t.is (double-if 21) 42)
+        (t.is (double-if #f) 'no)))
+
+(test "free-identifier=?"
+      (lambda (t)
+        ;; identifiers compare by denotation, seeing through hygienic renaming
+        (t.is (free-identifier=? 'else 'else) #t)
+        (t.is (free-identifier=? 'else 'other) #f)
+        (t.is (free-identifier=? 'car 'car) #t)   ; same global binding
+        (t.is (free-identifier=? 5 'else) #f)     ; non-identifiers
+
+        ;; a keyword renamed by a hygienic macro still equals the original
+        (define-macro (renamed-else=? x) (free-identifier=? x 'else))
+        (define-syntax via (syntax-rules () ((_) (renamed-else=? else))))
+        (t.is (via) #t)))
+
 (test "scope with rewriting"
       (lambda (t)
         ;; ref: https://www.cs.utah.edu/plt/scope-sets/
@@ -770,6 +874,16 @@
         (def foo 10)
         (def-2 bar 20)
         (t.is (+ foo bar) 30)))
+
+(test "top-level macro-introduced define binds the plain name (R7RS)"
+      (lambda (t)
+        (t.is syntax/foo 77)
+        (t.is syntax/counter-result '(1 2 3))
+        (t.is syntax/defuse 42)
+
+        ;; but an INTERNAL (lexical body) macro-define stays hygienic/private
+        (define-syntax def-priv (syntax-rules () ((_ y) (define priv y))))
+        (t.is (to.throw (let () (def-priv 10) priv)) #t)))
 
 (test.failing "free variables"
       (lambda (t)
@@ -887,6 +1001,54 @@
                (foo 1 2 3)))))
 
         (t.is (foo) '((1) (2) (3)))))
+
+(test "should set! a free identifier's original binding (hygiene)"
+      (lambda (t)
+
+        ;; set! on a free (template) identifier must mutate the ORIGINAL
+        ;; binding it refers to, not a hygienic throwaway copy
+        (define *g* 0)
+        (define-syntax setg
+          (syntax-rules ()
+            ((_) (set! *g* 5))))
+        (setg)
+        (t.is *g* 5)
+
+        ;; referential transparency: the free `*g*` refers to the binding
+        ;; visible where the macro was defined (the global), not a same-named
+        ;; local at the use site
+        (define *h* 0)
+        (define-syntax seth
+          (syntax-rules ()
+            ((_) (set! *h* 5))))
+        (let ((*h* 99))
+          (seth)
+          (t.is *h* 99))
+        (t.is *h* 5)
+
+        ;; set! on a macro argument mutates the caller's variable
+        (define n 1)
+        (define-syntax inc!
+          (syntax-rules ()
+            ((_ v) (set! v (+ v 1)))))
+        (inc! n)
+        (t.is n 2)))
+
+(test "should preserve identity of a value returned from a macro"
+      (lambda (t)
+
+        ;; a macro that returns a free variable must return the SAME object,
+        ;; not a copy - clear_gensyms must not deep-copy the result value
+        (define *d* (list 'done))
+        (define-syntax getd
+          (syntax-rules ()
+            ((_) *d*)))
+        (t.is (eq? (getd) *d*) #t)
+        (t.is (eq? (getd) (getd)) #t)
+
+        ;; mutating the original is visible through the macro result
+        (set-car! *d* 'changed)
+        (t.is (car (getd)) 'changed)))
 
 (test "should ignore ellipsis in middle for 2 elements"
       (lambda (t)
@@ -1008,8 +1170,13 @@
         (t.is (alist "foo" 1 "bar" 2 "baz" 3)
               '(("foo" . 1) ("bar" . 2) ("baz" . 3)))))
 
-(test.failing "nested _"
+(test "nested _"
        (lambda (t)
+         ;; %foo is defined inside foo, so its literals `foo`/`bar` are renamed
+         ;; to gensyms by foo's expansion. A use-site `foo` (also renamed to the
+         ;; same gensym) must still match the literal - the input and the literal
+         ;; denote the same binding (the `foo` macro), even though it lives in an
+         ;; interaction env rather than the base global env.
          (define-syntax foo
            (syntax-rules ()
              ((_)
@@ -1028,7 +1195,12 @@
 
          (t.is (foo) '("foo" (10) bar "bar"))))
 
-(test.failing "nesting, renaming and scope"
+;; Like "nested _", but the matched literal `foo` also appears in the
+;; template's QUOTED output and the result is delivered by a side effect
+;; (set!). Identifiers inside quote are literal data and must not be
+;; hygiene-renamed, otherwise the gensym `#:foo` would leak into `result`
+;; (clear_gensyms only fixes up a macro's return value, not set! data).
+(test "nesting, renaming and scope"
        (lambda (t)
          (let ((result 10))
            (define-syntax foo
@@ -1070,6 +1242,24 @@
                (%foo (bar) 10)))))
 
         (t.is (foo 10) '("foo" 10))))
+
+(test "nested syntax-rules literal from outer pattern variable"
+      (lambda (t)
+        ;; a nested macro's literal that is the outer macro's pattern variable
+        ;; is substituted into the literals list, and matched by IDENTITY - so a
+        ;; like-named pattern variable is not mistaken for it
+        (define-syntax outer
+          (syntax-rules ()
+            ((_ ph body)
+             (let ()
+               (define-syntax inner
+                 (syntax-rules (ph)
+                   ((_ ph) 'is-ph)
+                   ((_ x) 'not-ph)))
+               (inner body)))))
+
+        (t.is (outer PH PH) 'is-ph)
+        (t.is (outer PH other) 'not-ph)))
 
 (test "should throw error on missing ellipsis symbol"
       (lambda (t)
@@ -1132,9 +1322,24 @@
                 (foo foo))
               #t)))
 
-(test.failing "let-syntax and set! of definition"
+(test "set! overwrites a macro binding (dynamic)"
+      (lambda (t)
+        ;; LIPS is dynamic: set! on a syntactic keyword overwrites the binding
+        ;; with the value (like Gauche; Guile errors instead). The name is then
+        ;; an ordinary variable, so using it in operator position is an error.
+        (define-syntax h
+          (syntax-rules ()
+            ((h 2) -3)))
+        (set! h 42)
+        (t.is h 42)
+        (t.is (to.throw (h 2)) #t)))
+
+(test "let-syntax and set! of definition"
       (lambda (t)
         ;; https://github.com/jcubic/lips/issues/172
+        ;; Referential transparency: f's `g` denotes the macro g as it was at
+        ;; f's DEFINITION, captured then - so (f 1) -> (g 2) still expands to -3
+        ;; even though a later set! overwrote g with a function.
         (define-syntax g
           (syntax-rules ()
             ((g 2) -3)))
@@ -1143,7 +1348,10 @@
                           ((f 1) (g 2)))))
                 (set! g (lambda (x) -1000))
                 (f 1))
-              -3)))
+              -3)
+
+        ;; the overwrite is still visible directly: g now denotes the function
+        (t.is (g 42) -1000)))
 
 (test "syntax-rules -> syntax-rules"
       (lambda (t)
@@ -1165,7 +1373,7 @@
                 (list x y))
               '(1 2))))
 
-(test.failing "syntax-parameterize SRFI 139"
+(test.failing "syntax-parameterize (SRFI-139)"
       (lambda (t)
 
          (define-syntax-parameter it
@@ -1590,7 +1798,7 @@
         (t.is (alist foo 10 bar 20 baz 30)
               '((foo . 10) (bar . 20) (baz . 30)))))
 
-(test "nested syntax rules (SRFI-239 case)"
+(test "nested syntax rules (SRFI-239)"
       (lambda (t)
         (define-syntax foo
           (syntax-rules ()
@@ -1650,3 +1858,184 @@
 
         (t.is (f 10 20 30 'a 'b)
               #((10 b ()) (20 b ()) (30 b ()) (a b ())))))
+
+(test "global set! var hygiene"
+      (lambda (t)
+        (define *g* 0)
+
+        (define-syntax setg
+          (syntax-rules ()
+            ((_) (set! *g* 5))))
+
+        (setg)
+
+        (t.is *g* 5)))
+
+(test "Identifiers in syntax-rules can't be shadowed by local variables #291"
+      (lambda (t)
+        (t.is (to.throw (eval '(begin
+                                 (define-syntax if+
+                                   (syntax-rules (then else)
+                                     ((_ test then expr1 else expr2) (if test expr1 expr2))))
+
+                                 (let ((else #f) (x 10))
+                                   (if+ (even? x) then (/ x 2) else (/ (+ x 1) 2))))
+                              (--> (interaction-environment) (inherit 'test-291a))))
+              #t)
+
+        (t.is (eval '(begin
+                       (define-syntax if+
+                         (syntax-rules (then else)
+                           ((_ test then expr1 else expr2) (if test expr1 expr2))))
+
+                       (define else #f)
+                       (let ((el_se #f) (x 10))
+                         (if+ (even? x) then (/ x 2) else (/ (+ x 1) 2))))
+                    (--> (interaction-environment) (inherit 'test-291b)))
+              5)))
+
+;; R7RS 4.3.2: the underscore `_` is a wildcard - it matches any input and
+;; creates no binding.
+(test "underscore is a non-binding wildcard"
+      (lambda (t)
+        (define-syntax second
+          (syntax-rules ()
+            ((_ _ x _) x)))
+        ;; the two _ positions match but do not capture anything
+        (t.is (second 1 2 3) 2)))
+
+;; R7RS 4.3.2: `_` in a template is the literal symbol `_`, not a pattern
+;; variable - it is transcribed verbatim and never renamed for hygiene.
+(test "underscore in template is the literal symbol"
+      (lambda (t)
+        (define-syntax quote-underscore
+          (syntax-rules ()
+            ((_ x) (list (quote _) x))))
+        (t.is (quote-underscore 5) '(_ 5))))
+
+;; The keyword position of a pattern is never matched as a literal, even when
+;; `_` is declared a literal identifier (this is what SRFI-197 relies on).
+(test "underscore literal does not break the keyword position"
+      (lambda (t)
+        (define-syntax pick
+          (syntax-rules (_)
+            ;; keyword is `pick`; `_` is a literal used inside the pattern
+            ((pick (a _ b)) (list 'has-underscore a b))
+            ((pick (a b)) (list 'plain a b))))
+        (t.is (pick (1 _ 2)) '(has-underscore 1 2))
+        (t.is (pick (1 2)) '(plain 1 2))))
+
+;; A trailing ellipsis that matches zero items must still assign the single
+;; remaining element to the fixed trailing pattern - regression for a list
+;; built by an accumulating recursive macro and re-matched with (x ... last).
+(test "trailing ellipsis with empty head over a built list"
+      (lambda (t)
+        (define-syntax acc
+          (syntax-rules ()
+            ((_ () (step ... last-step))
+             (list 'steps (list step ...) 'last last-step))
+            ((_ (a . rest) (out ...))
+             (acc rest (out ... a)))))
+        (t.is (acc (10 20 30) (5)) '(steps (5 10 20) last 30))
+        ;; the empty-head case: (x ... y) over a single-element built list
+        (t.is (acc () (99)) '(steps () last 99))))
+
+;; Identifiers inside `quote` are literal data, not code, so a macro must
+;; transcribe them verbatim rather than hygiene-rename them. When quoted data
+;; reaches the program through a side effect (set!/define) there is no return
+;; value for the gensym fixup to run on, so renaming would leak `#:name`.
+(test "quoted data in a macro template is not hygiene-renamed"
+      (lambda (t)
+        (let ((x 0))
+          (define-syntax set-list
+            (syntax-rules ()
+              ((_) (set! x '(a b c)))))
+          (set-list)
+          (t.is x '(a b c)))
+        ;; pattern variables inside quote are still substituted
+        (define-syntax wrap
+          (syntax-rules ()
+            ((_ y) '(before y after))))
+        (t.is (wrap middle) '(before middle after))))
+
+;; R7RS 4.3.2 ellipsis escape: (<ellipsis> <template>) transcribes <template>
+;; with `...` treated literally, but pattern variables are still substituted.
+(test "ellipsis escape substitutes pattern variables"
+      (lambda (t)
+        (define-syntax elli-esc
+          (syntax-rules ()
+            ((_) '(... ...))
+            ((_ x) '(... (x ...)))
+            ((_ x y) '(... (... x y)))))
+        (t.is (elli-esc) '...)
+        (t.is (elli-esc 100) '(100 ...))
+        (t.is (elli-esc 100 200) '(... 100 200))))
+
+;; R7RS 4.3.2: a literal takes priority over the ellipsis. When the ellipsis
+;; identifier is also declared as a literal it loses its special meaning and is
+;; matched/transcribed as an ordinary literal.
+(test "literal takes priority over the ellipsis"
+      (lambda (t)
+        (define-syntax elli-lit
+          (syntax-rules ... (...)
+            ((_ x) '(x ...))))
+        (t.is (elli-lit 100) '(100 ...))
+        ;; and `...` matches as a literal in the pattern
+        (define-syntax elli-lit-pat
+          (syntax-rules ... (...)
+            ((_ ...) 'literal-ellipsis)
+            ((_ x) 'variable)))
+        (t.is (elli-lit-pat ...) 'literal-ellipsis)
+        (t.is (elli-lit-pat 5) 'variable)))
+
+;; A vector literal in a syntax-rules template must be transcribed back into a
+;; vector (pattern variables substituted), not collapsed into an improper list.
+(test "vector literal in a macro template"
+      (lambda (t)
+        (let-syntax ((vector-lit
+                      (syntax-rules ()
+                        ((vector-lit) '#(b)))))
+          (t.is (vector-lit) '#(b)))
+        (define-syntax vec
+          (syntax-rules ()
+            ((_ x) '#(x 2 3))            ;; pattern var inside quoted vector
+            ((_ x y ...) #(x y ...))))   ;; non-quoted, leading fixed + ellipsis
+        (t.is (vec 1) '#(1 2 3))
+        (t.is (vec 0 1 2 3) '#(0 1 2 3))))
+
+;; An ellipsis followed by fixed items and a dotted rest, `(x ... y . rest)`,
+;; must match an improper (dotted) input - binding `rest` to the tail.
+(test "ellipsis with fixed suffix and dotted rest matches improper list"
+      (lambda (t)
+        (define-syntax split
+          (syntax-rules ()
+            ((_ (x ... y . rest)) (list '(x ...) 'y 'rest))
+            ((_ . e) 'error)))
+        (t.is (split (1 2 3 4)) '((1 2 3) 4 ()))
+        (t.is (split (1 2 3 4 . 9)) '((1 2 3) 4 9))
+        (define-syntax part-2x
+          (syntax-rules ()
+            ((_ (a b (m n) ... x y . rest))
+             (vector (list a b) (list m ...) (list n ...) (list x y)
+                     (cons "rest:" 'rest)))
+            ((_ . rest) 'error)))
+        (t.is (part-2x (10 20 (31 32) (41 42) (51 52) 63 77))
+              '#((10 20) (31 41 51) (32 42 52) (63 77) ("rest:")))
+        (t.is (part-2x (10 20 (31 32) (41 42) (51 52) 63 77 . "tail"))
+              '#((10 20) (31 41 51) (32 42 52) (63 77) ("rest:" . "tail")))))
+
+;; An ellipsis directly followed by a dotted rest, `(x ... . rest)`, must match
+;; both proper and improper lists (binding `rest` to the tail), including when
+;; the ellipsis variable is used in a nested/multi-element template.
+(test "ellipsis directly followed by a dotted rest"
+      (lambda (t)
+        (define-syntax split
+          (syntax-rules ()
+            ((_ (x ... . rest)) (list '(x ...) 'rest))))
+        (t.is (split (1 2 3 . 9)) '((1 2 3) 9))
+        (t.is (split (1 2 3)) '((1 2 3) ()))
+        (define-syntax wrap-rest
+          (syntax-rules ()
+            ((_ (a b ... . rest)) '(a ((w b) ...) rest))))
+        (t.is (wrap-rest (x p q r . z)) '(x ((w p) (w q) (w r)) z))
+        (t.is (wrap-rest (x p q r)) '(x ((w p) (w q) (w r)) ()))))

@@ -209,6 +209,14 @@
           (t.is (a.valueOf) "A")
           (t.is (b.valueOf) "\xFF;"))))
 
+(test "boolean literals"
+      (lambda (t)
+        ;; both short (#t/#f) and long (#true/#false) R7RS boolean literals parse
+        (t.is #t #true)
+        (t.is #f #false)
+        (t.is (list #true #false #t #f) '(#t #f #t #f))
+        (t.is (if #true 'yes 'no) 'yes)))
+
 (test "quotes with literals"
       (lambda (t)
         (t.is ''#f '(quote #f))
@@ -352,8 +360,10 @@
 
 (test "escape symbols"
       (lambda (t)
-        (t.is (map symbol->string '(|name| name|| name|\|| name|\\|xxx name|\\\\| name|\\|))
-              '("name" "name" "name|" "name\\xxx" "name\\\\" "name\\"))))
+        (for-each (lambda (symbol str)
+                    (t.is (symbol->string symbol) str))
+                  '(|name| name|| name|\|| name|\\|xxx name|\\\\| name|\\|)
+                  '("name" "name" "name|" "name\\xxx" "name\\\\" "name\\"))))
 
 (test "lexer: should create tokens for simple list"
       (lambda (t)

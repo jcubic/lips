@@ -316,6 +316,7 @@ They should be loaded as R7RS libraries in final 1.0.0 version
 | Boxes | [SRFI-111](https://srfi.schemers.org/srfi-111/) |
 | Syntactic combiners for binary predicates | [SRFI-156](https://srfi.schemers.org/srfi-156/) |
 | Multiple-value boxes | [SRFI-195](https://srfi.schemers.org/srfi-195) |
+| Pipeline Operators | [SRFI-197](https://srfi.schemers.org/srfi-197) |
 | Procedures and Syntax for Multiple Values | [SRFI-210](https://srfi.schemers.org/srfi-210/) |
 | Evaluating expressions in an unspecified order | [SRFI-236](https://srfi.schemers.org/srfi-236) |
 | Destructuring Lists | [SRFI 239](https://srfi.schemers.org/srfi-239/) |
@@ -350,8 +351,7 @@ in Web (e.g. in Web REPL) you can also use full URL:
   - [x] Tail Call Optimization (TCO).
   - [ ] Fully tested Numerical Tower.
 - [x] Fully working binary compiler (for faster parsing and loading std lib).
-- [ ] Finish `syntax-rules` (ignore limitations of current approach).
-  - [ ] Objects.
+- [x] Finish `syntax-rules` (ignore limitations of current approach).
   - [ ] Vectors.
 
 ### Future Plans
@@ -414,4 +414,4 @@ Thanks to [Algolia DocSearch](https://docsearch.algolia.com/) for providing free
 ## License
 
 Released under [MIT](http://opensource.org/licenses/MIT) license<br/>
-Copyright (c) 2018-2024 [Jakub T. Jankiewicz](https://jcubic.pl/me)
+Copyright (c) 2018-2026 [Jakub T. Jankiewicz](https://jcubic.pl/me)

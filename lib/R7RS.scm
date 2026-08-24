@@ -13,8 +13,16 @@
 ;; https://small.r7rs.org/attachment/r7rs.pdf
 ;;
 ;; This file is part of the LIPS - Scheme based Powerful lisp in JavaScript
-;; Copyright (C) 2019-2024 Jakub T. Jankiewicz <https://jcubic.pl/me>
+;; Copyright (C) 2019-2026 Jakub T. Jankiewicz <https://jcubic.pl/me>
 ;; Released under MIT license
+
+;; -----------------------------------------------------------------------------
+(define (environment)
+  "(environment)
+
+   Function returns full R7RS environment since LIPS doesn't support libraries.
+   It's compatibility layer function to run R7RS chibi tests"
+  (scheme-report-environment 7))
 
 ;; -----------------------------------------------------------------------------
 (define (list-match? predicate list)
@@ -76,6 +84,11 @@
    The macro work similar to let but variable is list of values and value
    need to evaluate to result of calling values.")
 
+;; -----------------------------------------------------------------------------
+(define-syntax delay-force
+  (syntax-rules ()
+    ((delay-force expression)
+     (make-promise #f (lambda () expression)))))
 ;; -----------------------------------------------------------------------------
 (define (vector-copy vector . rest)
   "(vector-copy vector)
@@ -154,16 +167,28 @@
 ;; -----------------------------------------------------------------------------
 (%range-function
  (string->vector string)
- "(string->list string)
-  (string->list string start)
-  (string->list string start end)
+ "(string->vector string)
+  (string->vector string start)
+  (string->vector string start end)
 
-  Function that copies given range of string to list. If no start is specified it use
+  Function that copies given range of string to vector. If no start is specified it use
   start of the string, if no end is specified it convert to the end of the string."
  (typecheck "string->vector" string "string")
  (--> (string.substring start end)
       (split "")
       (map (unary lips.LCharacter))))
+
+;; -----------------------------------------------------------------------------
+(%range-function
+ (string->list string)
+ "(string->list string)
+  (string->list string start)
+  (string->list string start end)
+
+  Function that copies given range of string to list. If no start is specified it use
+  start of the string, if no end is specified it convert to the end of the vector."
+ (typecheck "string->list" string "string")
+ (array->list (string->vector string start end)))
 
 ;; -----------------------------------------------------------------------------
 (%range-function
@@ -183,6 +208,33 @@
 
 ;; -----------------------------------------------------------------------------
 (%range-function
+ (string-copy string)
+  "(string-copy string)
+   (string-copy string start)
+   (string-copy string start end)
+
+   Returns new string created from string of characters in given range.
+   If no start is given it create string from 0, if no end is given it return
+   string to the end."
+  (typecheck "string-copy" string "string")
+  (string.substring start end))
+
+;; -----------------------------------------------------------------------------
+(%range-function
+ (string-copy! to at from)
+ "(string-copy! to at from)
+  (string-copy! to at from start)
+  (string-copy! to at from start end)
+
+  Copies the characters of string from between start and end
+  to string to, starting at at."
+ (typecheck "string-copy!" to "string" 1)
+ (typecheck "string-copy!" at "number" 3)
+ (typecheck "string-copy!" from "string" 3)
+ (to.copy from at start end))
+
+;; -----------------------------------------------------------------------------
+(%range-function
  (vector-fill! vector fill)
  "(vector-fill! vector fill)
   (vector-fill! vector fill start)
@@ -191,17 +243,17 @@
   Fill vector with a given value in given range. If start is not given is start
   at 0. If end is not given it fill till the end if the vector."
  (typecheck "vector->fill!" vector "array")
- (let recur ((n (- end start 1)))
-    (if (>= n start)
-        (begin
-          (set-object! vector n fill)
-          (recur (- n 1))))))
+ (let recur ((n (- end 1)))
+   (if (>= n start)
+       (begin
+         (set-object! vector n fill true)
+         (recur (- n 1))))))
 
 ;; -----------------------------------------------------------------------------
 (define-syntax let*-values
   (syntax-rules (multi single)
     ((_ ()) '())
-    ((_ () body ...) (begin body ...))
+    ((_ () body ...) (let () body ...))
     ((_ ((bind obj) rest ...) . body)
      (apply (lambda bind
               (let*-values (rest ...) . body))
@@ -236,6 +288,17 @@
 (define (truncate-quotient x y)  (quotient x y))
 (define (truncate-remainder x y) (remainder x y))
 
+(define (exact-integer-sqrt num)
+  "(exact-integer-sqrt num)
+
+   Returns two values (s r) representing the exact integer square root and the
+   remainder of num, where num = s^2 + r. num must be a non-negative integer."
+  (typecheck-number "exact-integer-sqrt" num '("integer" "bigint"))
+  (if (< num 0)
+      (error "exact-integer-sqrt: number must be positive")
+      (let ((s (num.exact_sqrt)))
+        (values s (- num (* s s))))))
+
 (define (log z . rest)
   "(log z)
    (log z1 z2)
@@ -248,11 +311,12 @@
       (let ((base (car rest)))
         (/ (log z) (log base)))
       (cond ((real? z)
-             (cond ((zero? z) NaN)
+             (exact->inexact
+              (cond ((zero? z) NaN)
                    ((> z 0) (Math.log z))
                    (else
                     (+ (Math.log (abs z))
-                       (* Math.PI +i)))))
+                       (* Math.PI +i))))))
             ((complex? z)
              (let ((arg (Math.atan2 (imag-part z)
                                     (real-part z))))
@@ -306,16 +370,25 @@
    More arguments will give an error.")
 
 ;; -----------------------------------------------------------------------------
+(define (%same pred lst)
+  "(%same fn list)
+
+   Function compare if all items are the same according to predicate."
+  (cond ((null? lst) #t)
+        ((null? (cdr lst)) #t)
+        ((pred (car lst) (cadr lst)) (%same pred (cdr lst)))
+        (else #f)))
+
+;; -----------------------------------------------------------------------------
 (define (boolean=? . args)
   "(boolean=? b1 b2 ...)
 
    Checks if all arguments are boolean and if they are the same."
   (if (< (length args) 2)
       (error "boolean=?: too few arguments")
-      (reduce (lambda (acc item)
-                (and (boolean? item) (eq? acc item)))
-              (car args)
-              (cdr args))))
+      (%same (lambda (a b)
+               (and (boolean? a) (eq? a b)))
+             args)))
 
 ;; -----------------------------------------------------------------------------
 (define (port? x)
@@ -435,16 +508,60 @@
   (string.upper))
 
 ;; -----------------------------------------------------------------------------
+;; dynamic-wind with support for re-entrant continuations (Hieb, Dybvig &
+;; Bruggeman; see also the R7RS rationale). A global stack of (before . after)
+;; "winders" records the active dynamic-wind extents. call/cc snapshots the
+;; winder stack at capture time; invoking the captured continuation runs the
+;; `after` thunks of the extents being LEFT and the `before` thunks of the
+;; extents being (re)entered - so a continuation that jumps out of or back into
+;; a dynamic-wind body re-runs the right guards.
+;; -----------------------------------------------------------------------------
+(define *winders* '())
+
+(define (%common-tail a b)
+  ;; longest shared suffix of two winder stacks (compared by identity)
+  (let ((la (length a))
+        (lb (length b)))
+    (let loop ((a (if (> la lb) (list-tail a (- la lb)) a))
+               (b (if (> lb la) (list-tail b (- lb la)) b)))
+      (if (eq? a b)
+          a
+          (loop (cdr a) (cdr b))))))
+
+;; -----------------------------------------------------------------------------
+(define (%do-wind target)
+  (let ((tail (%common-tail target *winders*)))
+    ;; leaving: run `after` from the current stack down to the common tail
+    (let loop ((w *winders*))
+      (if (not (eq? w tail))
+          (begin
+            (set! *winders* (cdr w))
+            ((cdr (car w)))
+            (loop (cdr w)))))
+    ;; entering: run `before` from the common tail up to the target stack
+    (let loop ((w target))
+      (if (not (eq? w tail))
+          (begin
+            (loop (cdr w))
+            ((car (car w)))
+            (set! *winders* w))))))
+
+;; -----------------------------------------------------------------------------
 (define (dynamic-wind before thunk after)
   "(dynamic-wind before thunk after)
 
    Accepts 3 procedures/lambdas and executes before, then thunk, and
-   always after even if an error occurs in thunk."
+   always after even if an error occurs in thunk. before is re-run and after
+   is run again when a continuation captured inside thunk is re-entered or
+   escapes across the dynamic-wind boundary."
   (before)
+  (set! *winders* (cons (cons before after) *winders*))
   (let ((result (try (thunk)
                      (catch (e)
+                            (set! *winders* (cdr *winders*))
                             (after)
-                            (error e)))))
+                            (raise e)))))
+    (set! *winders* (cdr *winders*))
     (after)
     result))
 
@@ -453,10 +570,15 @@
   "(with-exception-handler handler thunk)
 
    Procedure call and return value of thunk function, if exception happen
-   it call handler procedure."
+   it call handler procedure. When raise-continuable is captured it will
+   continue execution of the thunk in place when the continuable was rased."
   (try (thunk)
        (catch (e)
-              (handler e))))
+              (if (continuation? e.__cc__)
+                  (e.__cc__ (handler e.__object__))
+                  (begin
+                    (handler e)
+                    (raise e))))))
 
 ;; -----------------------------------------------------------------------------
 ;; macro definition taken from R7RS spec
@@ -542,7 +664,7 @@
     ((_ "step" arg ...)
      (join " " (vector->list  (vector (repr arg) ...))))
     ((_ message arg ...)
-     (error (format "~a ~a" message (_ "step" arg ...))))))
+     (error (format "~a ~a" message (syntax-error "step" arg ...))))))
 
 ;; -----------------------------------------------------------------------------
 ;; based on https://srfi.schemers.org/srfi-0/srfi-0.html
@@ -550,9 +672,9 @@
 (define-syntax cond-expand
   (syntax-rules (and or not else r7rs srfi-0 srfi-2 srfi-4 srfi-6 srfi-10
                      srfi-22 srfi-23 srfi-28 srfi-46 srfi-69 srfi-98 srfi-111
-                     srfi-139 srfi-147 srfi-156 srfi-176 srfi-193 srfi-195 srfi-210
-                     srfi-236 lips r7rs complex full-unicode ieee-float ratios
-                     exact-complex full-numeric-tower)
+                     srfi-139 srfi-147 srfi-156 srfi-176 srfi-193 srfi-195 srfi-197
+                     srfi-210 srfi-236 lips r7rs complex full-unicode ieee-float
+                     ratios exact-complex full-numeric-tower)
     ((cond-expand) (syntax-error "Unfulfilled cond-expand"))
     ((cond-expand (else body ...))
      (begin body ...))
@@ -647,10 +769,10 @@
   "(features)
 
    Function returns implemented features as a list."
-  (let ((result '(r7rs srfi-0 srfi-2 srfi-4 srfi-6 srfi-10 srfi-22 srfi-23 srfi-28 srfi-46 srfi-69
-                  srfi-98 srfi-111 srfi-139 srfi-147 srfi-156 srfi-176 srfi-193 srfi-195 srfi-210
-                  srfi-236 lips complex exact-complex full-unicode ieee-float ratios
-                  full-numeric-tower)))
+  (let ((result '(r7rs srfi-0 srfi-1 srfi-2 srfi-4 srfi-6 srfi-8 srfi-10 srfi-22 srfi-23 srfi-26
+                  srfi-28 srfi-46 srfi-69 srfi-98 srfi-111 srfi-139 srfi-147 srfi-156 srfi-176
+                  srfi-193 srfi-195 srfi-197 srfi-203 srfi-210 srfi-236 srfi-251 lips complex
+                  exact-complex full-unicode ieee-float ratios full-numeric-tower)))
     (freeze-list! result)
     result))
 
@@ -672,7 +794,12 @@
 
    Returns lowercase character using the Unicode simple case-folding algorithm."
   (typecheck "char-foldcase" char "character")
-  (new LCharacter (%foldcase-string char.__char__)))
+  ;; a character always folds to a single character; when full folding would
+  ;; produce several code points (e.g. ß => "ss") the character is unchanged
+  (let ((folded (%foldcase-string char.__char__)))
+    (if (= (string-length folded) 1)
+        (new lips.LCharacter folded)
+        char)))
 
 ;; -----------------------------------------------------------------------------
 (define (string-foldcase string)
@@ -985,15 +1112,24 @@
                      "bytevector-copy! `at` need to be less then byte vector length"))))
   (let* ((start (if (null? rest) 0 (car rest)))
          (end (if (or (null? rest) (null? (cdr rest)))
-                  (- (bytevector-length from) start)
-                  (cadr rest))))
-    (let ((i at) (j start))
-      (while (and (< i (bytevector-length to))
-                  (< i (bytevector-length from))
-                  (< j (+ start end)))
-        (bytevector-u8-set! to i (bytevector-u8-ref from j))
-        (set! i (+ i 1))
-        (set! j (+ j 1))))))
+                  (bytevector-length from)
+                  (cadr rest)))
+         ;; number of bytes to copy, clamped to the space left in `to`
+         (count (min (- end start) (- (bytevector-length to) at))))
+    ;; `to` and `from` may be the same bytevector and the ranges may overlap,
+    ;; so R7RS mandates memmove (not memcpy) semantics: copy backward when the
+    ;; destination is to the right of the source, otherwise forward.
+    (if (> at start)
+        (let loop ((k (- count 1)))
+          (if (>= k 0)
+              (begin
+                (bytevector-u8-set! to (+ at k) (bytevector-u8-ref from (+ start k)))
+                (loop (- k 1)))))
+        (let loop ((k 0))
+          (if (< k count)
+              (begin
+                (bytevector-u8-set! to (+ at k) (bytevector-u8-ref from (+ start k)))
+                (loop (+ k 1))))))))
 
 ;; -----------------------------------------------------------------------------
 (define string->utf8
@@ -1027,7 +1163,7 @@
       (if (null? rest)
           (decoder.decode v)
           (let* ((start (car rest))
-                 (len (--> (Array.from string) 'length))
+                 (len (--> (Array.from v) 'length))
                  (end (if (null? (cdr rest)) len (cadr rest))))
             (decoder.decode (v.slice start end)))))))
 
@@ -1180,18 +1316,28 @@
 (define-macro (%define-binary-output-lambda name type docstring fn)
   (let ((port (gensym 'port))
         (data (gensym 'data))
+        (start (gensym 'start))
+        (end (gensym 'end))
         (name-str (symbol->string name)))
     `(define (,name ,data . rest)
        ,docstring
        (let ((,port (if (null? rest)
                         (current-output-port)
-                        (car rest))))
+                        (car rest)))
+             (,start (if (or (null? rest) (null? (cdr rest)))
+                         0
+                         (cadr rest)))
+             (,end (if (or (null? rest)
+                           (null? (cdr rest))
+                           (null? (cddr rest)))
+                       #void
+                       (caddr rest))))
          (typecheck ,name-str ,port "output-port")
          (typecheck ,name-str ,data ,type)
          (if (not (binary-port? ,port))
              (throw (new Error (string-append ,name-str
                                               " invalid port. Binary port required.")))
-             (,fn ,data ,port))))))
+             (,fn ,data ,port ,start ,end))))))
 
 ;; -----------------------------------------------------------------------------
 (%define-binary-output-lambda
@@ -1212,8 +1358,8 @@
   (write-bytevector bytevector port)
 
   Write byte vector into binary output port."
- (lambda (data port)
-   (port.write_u8_vector data)))
+ (lambda (data port start end)
+   (port.write_u8_vector data start end)))
 
 ;; -----------------------------------------------------------------------------
 (define open-binary-output-file
@@ -1252,8 +1398,37 @@
         (begin
           (typecheck "read-bytevector!" start "number")
           (typecheck "read-bytevector!" end "number")
-          (let ((out (read-bytevector (- end start) port)))
-            (vector.set out start end))))))
+          (let* ((count (- end start))
+                 (out (read-bytevector count port)))
+            (if (eof-object? out)
+                out
+                (begin
+                  (vector.set out start end)
+                  count)))))))
+;; -----------------------------------------------------------------------------
+(define (write-shared x . rest)
+  "(write-shared obj)
+   (write-shared obj port)
+
+  Write object and always displaying datum labels on shared data"
+  (let ((port (if (null? rest)
+                  (current-output-port)
+                  (car rest))))
+    (typecheck "write-shared" port "output-port")
+    (display (repr x true false &(:shared #t)) port)))
+
+;; -----------------------------------------------------------------------------
+(define (write-simple x . rest)
+  "(write-simple obj)
+   (write-simple obj port)
+
+  Write object without displaying datum labels. It can hang when the argument
+  has cycles."
+  (let ((port (if (null? rest)
+                  (current-output-port)
+                  (car rest))))
+    (typecheck "write-simple" port "output-port")
+    (display (repr x true false &(:simple #t)) port)))
 
 ;; -----------------------------------------------------------------------------
 (define delete-file
@@ -1391,10 +1566,11 @@
 
    Copy the object passed as argument but only if it's list. The car elements
    of the list are not copied, they are passed as is."
-  (typecheck "list-copy" obj #("pair" "nil"))
-  (if (null? obj)
-      obj
-      (obj.clone false)))
+  (if (list? obj)
+      (if (null? obj)
+          obj
+          (obj.clone false))
+      obj))
 
 ;; -----------------------------------------------------------------------------
 (define (list-set! l k obj)
@@ -1624,32 +1800,29 @@
 
 ;; -----------------------------------------------------------------------------
 (define-syntax guard
-  (syntax-rules (catch aux =>)
-    ((_ aux)
-     '())
-    ((_ aux (cond result) rest ...)
-     (let ((it cond))
-       (if it
-           result
-           (guard aux rest ...))))
-    ((_ aux (cond => fn) rest ...)
-     (let ((it cond))
-       (if it
-           (fn it)
-           (guard aux rest ...))))
-    ((_ aux (cond) rest ...)
-     (let ((it cond))
-       (if it
-           it
-           (guard aux rest ...))))
-    ((_ (var cond1 cond2 ...)
-        body ...)
-     (try
-       body ...
-       (catch (var)
-              (guard aux
-                     cond1
-                     cond2 ...)))))
+  (syntax-rules ()
+    ((guard (var clause ...) e1 e2 ...)
+     ((call/cc
+       (lambda (guard-k)
+         (with-exception-handler
+          (lambda (condition)
+            ((call/cc
+              (lambda (handler-k)
+                (guard-k
+                 (lambda ()
+                   (let ((var condition))
+                     (guard-aux
+                      (handler-k
+                       (lambda ()
+                         (raise-continuable condition)))
+                      clause ...))))))))
+          (lambda ()
+            (call-with-values
+                (lambda () e1 e2 ...)
+              (lambda args
+                (guard-k
+                 (lambda ()
+                   (apply values args))))))))))))
   "(guard (variable (cond)
                     (cond => fn)
                     (cond2 result))
@@ -1657,6 +1830,39 @@
 
    Macro that executes the body and when there is exception, triggered by
    raise it's saved in variable that can be tested by conditions.")
+
+(define-syntax guard-aux
+  (syntax-rules (else =>)
+    ((guard-aux reraise (else result1 result2 ...))
+     (begin result1 result2 ...))
+    ((guard-aux reraise (test => result))
+     (let ((temp test))
+       (if temp
+           (result temp)
+           reraise)))
+    ((guard-aux reraise (test => result)
+                clause1 clause2 ...)
+     (let ((temp test))
+       (if temp
+           (result temp)
+           (guard-aux reraise clause1 clause2 ...))))
+    ((guard-aux reraise (test))
+     (or test reraise))
+    ((guard-aux reraise (test) clause1 clause2 ...)
+     (let ((temp test))
+       (if temp
+           temp
+           (guard-aux reraise clause1 clause2 ...))))
+    ((guard-aux reraise (test result1 result2 ...))
+     (if test
+         (begin result1 result2 ...)
+         reraise))
+    ((guard-aux reraise
+                (test result1 result2 ...)
+                clause1 clause2 ...)
+     (if test
+         (begin result1 result2 ...)
+         (guard-aux reraise clause1 clause2 ...)))))
 
 ;; -----------------------------------------------------------------------------
 (define-syntax define-library/export
@@ -1677,7 +1883,7 @@
 ;; TODO: use browserFS or LightningFS
 ;; -----------------------------------------------------------------------------
 (define-values (current-directory set-current-directory!)
-  (if (eq? self window)
+  (if (browser?)
       (let ((cwd (string-append location.origin (--> location.pathname
                                                      (replace #/\/[^/]+$/ "/")))))
         (values
@@ -1711,14 +1917,15 @@
 (define (error-object? obj)
   "(error-object? obj)
 
-   Checks if object is of Error object thrown by error function."
-  (instanceof lips.Error obj))
+   Checks if the object is an error."
+  (instanceof Error obj))
 
 ;; -----------------------------------------------------------------------------
 (define (error-object-message obj)
   "(error-object-message error-object)
 
    Returns the message encapsulated by error-object."
+  (typecheck "error-object-message" obj "error")
   (if (error-object? obj)
       obj.message))
 
@@ -1727,8 +1934,9 @@
   "(error-object-irritants error-object)
 
    Returns a list of the irritants encapsulated by error-object."
+  (typecheck "error-object-message" obj "error")
   (if (error-object? obj)
-      obj.args))
+      (vector->list obj.args)))
 
 ;; -----------------------------------------------------------------------------
 (define (get-environment-variables)
@@ -1736,7 +1944,7 @@
 
    Returns all process environment variables as an alist. This function returns
    an empty list when called in the browser."
-  (if (eq? self window)
+  (if (browser?)
       '()
       (object->alist process.env)))
 
@@ -1746,22 +1954,22 @@
 
    Returns given environment variable. This function returns #void
    when called in the browser."
-  (if (not (eq? self window))
+  (if (not (browser?))
       (. process.env name)))
 
 ;; -----------------------------------------------------------------------------
 (define (current-second)
   "(current-second)
 
-   Functionn return exact integer of the seconds since January 1, 1970"
-  (inexact->exact (truncate (/ (+ %%start-jiffy (current-jiffy))
-                               (jiffies-per-second)))))
+   Functionn return inexact integer of the seconds since January 1, 1970"
+  (exact->inexact (/ (+ %%start-jiffy (current-jiffy))
+                     (jiffies-per-second))))
 
 ;; -----------------------------------------------------------------------------
 (define %%start-jiffy
-  (truncate (* 1000 (if (eq? self window)
-                        performance.timing.navigationStart
-                        performance.timeOrigin)))
+  (truncate (* 1000 (if (number? performance.timeOrigin)
+                        performance.timeOrigin
+                        performance.timing.navigationStart)))
   "Constant value that indicates start jiffy of the scheme process.")
 
 ;; -----------------------------------------------------------------------------
@@ -1816,3 +2024,5 @@
           (set! seed (car new-seed))
           (set! seed (modulo (+ (* seed a) c) m)))
       (exact->inexact (/ seed m)))))
+
+

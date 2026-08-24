@@ -16,6 +16,7 @@
   "scripts": {
     "test": "c8 ava --timeout 10m --verbose tests/tests-gen/*.test.js tests/interpreters.js",
     "test-file": "c8 ava --timeout 10m --verbose tests/test.js",
+    "test-file-update": "c8 ava --timeout 10m --update-snapshots --verbose tests/test.js",
     "test-update": "c8 ava --update-snapshots --timeout 10m --verbose tests/tests-gen/*.test.js tests/interpreters.js",
     "coverage": "c8 report --reporter=lcov --reporter=json --reporter=text"
   },
