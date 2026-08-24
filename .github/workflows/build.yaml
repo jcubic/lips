@@ -155,6 +155,6 @@ jobs:
           auto-push: ${{ github.event_name != 'pull_request' }}
           summary-always: true
           comment-always: true
-          alert-threshold: '150%'
+          alert-threshold: '120%'
           fail-on-alert: false
           comment-on-alert: true
