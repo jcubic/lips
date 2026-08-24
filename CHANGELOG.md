@@ -33,7 +33,7 @@
 * fix `denominator` of `0`
 * fix `string-ref` wrong exception when index out of range
 * fix ``call-with-values`` with promises
-* fix using inside web workers [#555](https://github.com/jcubic/lips/issues/555)
+* fix using LIPS inside web workers [#555](https://github.com/jcubic/lips/issues/555)
 * fix for Chibi R7RS tests:
   * fix handling an empty symbol `||`
   * fix `char-foldcase` and `boolean=?`

@@ -9,11 +9,10 @@
     <script type="text/x-scheme">
      (define worker (new lips.Worker location.origin &(:meta true :track true)))
      (let ((response (worker.exec `(let ((message "hello"))
-                                     (display "hello")
-                                     (newline)
+                                     (print message)
                                      message)  ;; `
                                      )))
-         (display "worker"))
+         (print "worker"))
     </script>
     <script>
     // worker JavaScript example

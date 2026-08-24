@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 23 Aug 2026 23:19:40 +0000
+ * build: Mon, 24 Aug 2026 08:58:00 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -14215,6 +14215,19 @@ var global_env = new Environment({
         file = module_path + '/' + file.replace(/^\.?\/?/, '');
       }
     }
+    // worker requires a full URL
+    if (is_worker() && !file.match(/^https?/)) {
+      var loc = get_internal_env(g_env).get('location', {
+        throwError: false
+      });
+      var prefix;
+      if (file.startsWith('/')) {
+        prefix = loc.origin;
+      } else {
+        prefix = loc.href.replace(/\/[^\/]+$/, '/');
+      }
+      file = prefix + file;
+    }
     return fetch(file).then(code => {
       global_env.set(PATH, file.replace(/\/[^/]*$/, ''));
       return run(code);
@@ -14808,9 +14821,9 @@ var global_env = new Environment({
           rules = rules.cdr;
         }
       } catch (e) {
-        var location = "\nin macro:\n  ".concat(macro.toString(true));
-        if (!e.message.includes(location)) {
-          e.message += location;
+        var _location = "\nin macro:\n  ".concat(macro.toString(true));
+        if (!e.message.includes(_location)) {
+          e.message += _location;
         }
         throw e;
       }
@@ -17796,6 +17809,7 @@ function Worker(url) {
         } else {
           importScripts("".concat(_url, "/dist/lips.js"));
           interpreter = new lips.Interpreter('worker', _options2);
+          interpreter.internal.set('location', _options2.location);
           init = lips.bootstrap("".concat(_url, "/dist/std.xcb"));
           init.then(() => {
             send_result(true);
@@ -17832,7 +17846,15 @@ function Worker(url) {
       });
     };
   }();
-  this.rpc('init', [url, options]).catch(error => {
+  var _location2 = location,
+    href = _location2.href,
+    origin = _location2.origin;
+  this.rpc('init', [url, _objectSpread(_objectSpread({}, options), {}, {
+    location: {
+      href,
+      origin
+    }
+  })]).catch(error => {
     console.error(error);
   });
   this.exec = function (code) {
@@ -18160,10 +18182,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 23 Aug 2026 23:19:40 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Mon, 24 Aug 2026 08:58:00 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 23 Aug 2026 23:19:40 +0000').valueOf();
+  var date = LString('Mon, 24 Aug 2026 08:58:00 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18202,7 +18224,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 23 Aug 2026 23:19:40 +0000';
+var date = 'Mon, 24 Aug 2026 08:58:00 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

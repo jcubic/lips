@@ -10152,6 +10152,17 @@ var global_env = new Environment({
                 file = module_path + '/' + file.replace(/^\.?\/?/, '');
             }
         }
+        // worker requires a full URL
+        if (is_worker() && !file.match(/^https?/)) {
+            const loc = get_internal_env(g_env).get('location', { throwError: false });
+            let prefix;
+            if (file.startsWith('/')) {
+                prefix = loc.origin;
+            } else {
+                prefix = loc.href.replace(/\/[^\/]+$/, '/');
+            }
+            file = prefix + file;
+        }
         return fetch(file).then(code => {
             global_env.set(PATH, file.replace(/\/[^/]*$/, ''));
             return run(code);
@@ -14037,6 +14048,7 @@ function Worker(url, options = {}) {
                 } else {
                     importScripts(`${url}/dist/lips.js`);
                     interpreter = new lips.Interpreter('worker', options);
+                    interpreter.internal.set('location', options.location);
                     init = lips.bootstrap(`${url}/dist/std.xcb`);
                     init.then(() => {
                         send_result(true);
@@ -14073,7 +14085,8 @@ function Worker(url, options = {}) {
             });
         };
     })();
-    this.rpc('init', [url, options]).catch((error) => {
+    const { href, origin } = location;
+    this.rpc('init', [url, {...options, location: { href, origin } }]).catch((error) => {
         console.error(error);
     });
     this.exec = function(code, { use_dynamic = false } = {}) {
