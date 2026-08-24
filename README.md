@@ -6,7 +6,7 @@
 <div align="center">
 
 [![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/LIPS_scheme)](https://twitter.com/LIPS_scheme)
-[![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.23-blue.svg)](https://www.npmjs.com/package/lips)
+[![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.23.1-blue.svg)](https://www.npmjs.com/package/lips)
 ![1.0.0 Complete](https://img.shields.io/github/milestones/progress-percent/jcubic/lips/1?label=1.0.0%20Complete)
 [![Build and test](https://github.com/jcubic/lips/actions/workflows/build.yaml/badge.svg?branch=master&event=push)](https://github.com/jcubic/lips/actions/workflows/build.yaml)
 [![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=master&41c7cc10dc588c565625cff9d49c849a)](https://coveralls.io/github/jcubic/lips?branch=master)
