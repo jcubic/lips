@@ -8,8 +8,9 @@ export default function Intro(): JSX.Element {
       <Heading as="h2" id="summary" className={styles.header}>Summary</Heading>
       <p>
         LIPS Scheme is a powerful lisp interpreter written in JavaScript. The aim of the project is
-        to create a fully <a href="https://standards.scheme.org/#r7rs">R7RS</a>-compliant Scheme in
-        JavaScript.
+        to create a fully <a href="https://standards.scheme.org/#r7rs">R7RS</a>-compliant
+        {' '}<strong>Scheme Programming language</strong>. it passes almost 100% of Chibi
+        R7RS-compatiblity tests.
       </p>
       <p>
         The name LIPS is recursive acronym which stands for <strong>LIPS Is Pretty
