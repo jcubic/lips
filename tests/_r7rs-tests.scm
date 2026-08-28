@@ -83,6 +83,8 @@
 (define-macro (test-error expr)
   `(t.is (to.throw ,expr) #t))
 
+(define the-nan +nan.0)
+
 ;; BEGIN of tests
 
 (test-begin "4.1 Primitive expression types"
@@ -2384,7 +2386,7 @@
 (test-numeric-syntax "-.1" -0.1 "-0.1" "-100.0e-3")
 ;; Some Schemes don't allow negative zero. This is okay with the standard
 (test-numeric-syntax "-.0" -0.0 "-0." "-0.0" "0.0" "0." ".0")
-;;(test-numeric-syntax "-0." -0.0 "-.0" "-0.0" "0.0" "0." ".0")
+(test-numeric-syntax "-0." -0.0 "-.0" "-0.0" "0.0" "0." ".0")
 (test-numeric-syntax "#i1.0" 1.0 "1.0" "1.")
 (test-numeric-syntax "#e1.0" 1 "1")
 (test-numeric-syntax "#e-.0" 0 "0")
@@ -2392,14 +2394,14 @@
 ;; Decimal notation with suffix
  (test-numeric-syntax "1e2" 100.0 "100.0" "100.")
  (test-numeric-syntax "1E2" 100.0 "100.0" "100.")
-;; (test-numeric-syntax "1s2" 100.0 "100.0" "100.")
-;; (test-numeric-syntax "1S2" 100.0 "100.0" "100.")
-;; (test-numeric-syntax "1f2" 100.0 "100.0" "100.")
-;; (test-numeric-syntax "1F2" 100.0 "100.0" "100.")
-;; (test-numeric-syntax "1d2" 100.0 "100.0" "100.")
-;; (test-numeric-syntax "1D2" 100.0 "100.0" "100.")
-;; (test-numeric-syntax "1l2" 100.0 "100.0" "100.")
-;; (test-numeric-syntax "1L2" 100.0 "100.0" "100.")
+(test-numeric-syntax "1s2" 100.0 "100.0" "100.")
+(test-numeric-syntax "1S2" 100.0 "100.0" "100.")
+(test-numeric-syntax "1f2" 100.0 "100.0" "100.")
+(test-numeric-syntax "1F2" 100.0 "100.0" "100.")
+(test-numeric-syntax "1d2" 100.0 "100.0" "100.")
+(test-numeric-syntax "1D2" 100.0 "100.0" "100.")
+(test-numeric-syntax "1l2" 100.0 "100.0" "100.")
+(test-numeric-syntax "1L2" 100.0 "100.0" "100.")
 ;; NaN, Inf
 (test-numeric-syntax "+nan.0" +nan.0 "+nan.0" "+NaN.0")
 (test-numeric-syntax "+NAN.0" +nan.0 "+nan.0" "+NaN.0")
@@ -2436,16 +2438,16 @@
 (test-numeric-syntax "1.0+2i" (make-rectangular 1.0 2) "1.0+2.0i" "1.0+2i" "1.+2i" "1.+2.i")
 (test-numeric-syntax "1+2.0i" (make-rectangular 1 2.0) "1.0+2.0i" "1+2.0i" "1.+2.i" "1+2.i")
 (test-numeric-syntax "1e2+1.0i" (make-rectangular 100 1.0) "100.0+1.0i" "100.+1.i")
-;;(test-numeric-syntax "1s2+1.0i" (make-rectangular 100.0 1.0) "100.0+1.0i" "100.+1.i")
+(test-numeric-syntax "1s2+1.0i" (make-rectangular 100.0 1.0) "100.0+1.0i" "100.+1.i")
 (test-numeric-syntax "1.0+1e2i" (make-rectangular 1.0 100.0) "1.0+100.0i" "1.+100.i")
-;;(test-numeric-syntax "1.0+1s2i" (make-rectangular 1.0 100.0) "1.0+100.0i" "1.+100.i")
+(test-numeric-syntax "1.0+1s2i" (make-rectangular 1.0 100.0) "1.0+100.0i" "1.+100.i")
 ;; Fractional complex numbers (rectangular notation)
 (test-numeric-syntax "1/2+3/4i" (make-rectangular (/ 1 2) (/ 3 4)))
 ;; Mixed fractional/decimal notation complex numbers (rectangular notation)
 (test-numeric-syntax "0.5+3/4i" (make-rectangular 0.5 (/ 3 4))
   "0.5+0.75i" ".5+.75i" "0.5+3/4i" ".5+3/4i" "500.0e-3+750.0e-3i")
 ;; Complex NaN, Inf (rectangular notation)
-;;(test-numeric-syntax "+nan.0+nan.0i" (make-rectangular the-nan the-nan) "+NaN.0+NaN.0i")
+(test-numeric-syntax "+nan.0+nan.0i" (make-rectangular the-nan the-nan) "+NaN.0+NaN.0i")
 (test-numeric-syntax "+inf.0+inf.0i" (make-rectangular +inf.0 +inf.0) "+Inf.0+Inf.0i")
 (test-numeric-syntax "-inf.0+inf.0i" (make-rectangular -inf.0 +inf.0) "-Inf.0+Inf.0i")
 (test-numeric-syntax "-inf.0-inf.0i" (make-rectangular -inf.0 -inf.0) "-Inf.0-Inf.0i")

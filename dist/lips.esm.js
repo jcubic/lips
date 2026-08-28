@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Tue, 25 Aug 2026 19:08:52 +0000
+ * build: Fri, 28 Aug 2026 20:04:18 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -3062,8 +3062,10 @@ function gen_complex_re(mnemonic, range) {
 function gen_integer_re(mnemonic, range) {
   return "".concat(num_mnemicic_re(mnemonic), "[+-]?").concat(range, "+");
 }
+var float_types = '[esfdl]';
+var float_sci_re = new RegExp(float_types, 'i');
 var re_re = /^#\/((?:\\\/|[^/]|\[[^\]]*\/[^\]]*\])+)\/([gimyus]*)$/;
-var float_stre = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*)(?:[eE][-+]?[0-9]+)?)|[0-9]+\\.)';
+var float_stre = "(?:[-+]?(?:[0-9]+(?:".concat(float_types, "[-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*)(?:").concat(float_types, "[-+]?[0-9]+)?)|[0-9]+\\.)");
 // TODO: extend to ([+-]1/2|float)([+-]1/2|float)
 var complex_float_stre = "(?:#[ied])?(?:[+-]?(?:[0-9][0-9_]*/[0-9][0-9_]*|nan.0|inf.0|".concat(float_stre, "|[+-]?[0-9]+))?(?:").concat(float_stre, "|[+-](?:[0-9]+/[0-9]+|[0-9]+|nan.0|inf.0))i");
 var float_re = new RegExp("^(#[ied])?".concat(float_stre, "$"), 'i');
@@ -3072,7 +3074,7 @@ function make_complex_match_re(mnemonic, range) {
   var neg = mnemonic === 'x' ? "(?!\\+|".concat(range, ")") : "(?!\\.|".concat(range, ")");
   var fl = '';
   if (['', 'd'].includes(mnemonic)) {
-    fl = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*(?![0-9]))(?:[eE][-+]?[0-9]+)?))';
+    fl = "(?:[-+]?(?:[0-9]+(?:".concat(float_types, "[-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*(?![0-9]))(?:").concat(float_types, "[-+]?[0-9]+)?))");
   }
   return new RegExp("^((?:(?:".concat(fl, "|[-+]?inf.0|[-+]?nan.0|[+-]?").concat(range, "+/").concat(range, "+(?!").concat(range, ")|[+-]?").concat(range, "+)").concat(neg, ")?)(").concat(fl, "|[-+]?inf.0|[-+]?nan.0|[+-]?").concat(range, "+/").concat(range, "+|[+-]?").concat(range, "+|[+-])i$"), 'i');
 }
@@ -3353,7 +3355,8 @@ function parse_big_int(str) {
 
 // ----------------------------------------------------------------------
 function string_to_float(str) {
-  if (str.match(/e/i)) {
+  if (str.match(float_sci_re)) {
+    str = str.replace(float_sci_re, 'e');
     var _str$split = str.split('e'),
       _str$split2 = _slicedToArray(_str$split, 2),
       coefficient = _str$split2[0],
@@ -3364,6 +3367,9 @@ function string_to_float(str) {
       var sign = coefficient[0] === '-' ? '-' : '+';
       var digits = coefficient.replace(/(^[-+])|\./g, '');
       var float_str = "".concat(sign, "0.").concat(zeros).concat(digits);
+      console.log({
+        float_str
+      });
       return parseFloat(float_str);
     }
   }
@@ -18182,10 +18188,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Tue, 25 Aug 2026 19:08:52 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Fri, 28 Aug 2026 20:04:18 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Tue, 25 Aug 2026 19:08:52 +0000').valueOf();
+  var date = LString('Fri, 28 Aug 2026 20:04:18 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18224,7 +18230,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Tue, 25 Aug 2026 19:08:52 +0000';
+var date = 'Fri, 28 Aug 2026 20:04:18 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

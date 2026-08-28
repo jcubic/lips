@@ -177,8 +177,10 @@ function gen_complex_re(mnemonic, range) {
 function gen_integer_re(mnemonic, range) {
     return `${num_mnemicic_re(mnemonic)}[+-]?${range}+`;
 }
-var re_re = /^#\/((?:\\\/|[^/]|\[[^\]]*\/[^\]]*\])+)\/([gimyus]*)$/;
-var float_stre = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*)(?:[eE][-+]?[0-9]+)?)|[0-9]+\\.)';
+const float_types = '[esfdl]';
+const float_sci_re = new RegExp(float_types, 'i');
+const re_re = /^#\/((?:\\\/|[^/]|\[[^\]]*\/[^\]]*\])+)\/([gimyus]*)$/;
+var float_stre = `(?:[-+]?(?:[0-9]+(?:${float_types}[-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*)(?:${float_types}[-+]?[0-9]+)?)|[0-9]+\\.)`;
 // TODO: extend to ([+-]1/2|float)([+-]1/2|float)
 var complex_float_stre = `(?:#[ied])?(?:[+-]?(?:[0-9][0-9_]*/[0-9][0-9_]*|nan.0|inf.0|${float_stre}|[+-]?[0-9]+))?(?:${float_stre}|[+-](?:[0-9]+/[0-9]+|[0-9]+|nan.0|inf.0))i`;
 
@@ -188,7 +190,7 @@ function make_complex_match_re(mnemonic, range) {
     var neg = mnemonic === 'x' ? `(?!\\+|${range})` : `(?!\\.|${range})`;
     var fl = '';
     if (['', 'd'].includes(mnemonic)) {
-        fl = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*(?![0-9]))(?:[eE][-+]?[0-9]+)?))';
+        fl = `(?:[-+]?(?:[0-9]+(?:${float_types}[-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*(?![0-9]))(?:${float_types}[-+]?[0-9]+)?))`;
     }
     return new RegExp(`^((?:(?:${fl}|[-+]?inf.0|[-+]?nan.0|[+-]?${range}+/${range}+(?!${range})|[+-]?${range}+)${neg})?)(${fl}|[-+]?inf.0|[-+]?nan.0|[+-]?${range}+/${range}+|[+-]?${range}+|[+-])i$`, 'i');
 }
@@ -464,7 +466,8 @@ function parse_big_int(str) {
 
 // ----------------------------------------------------------------------
 function string_to_float(str) {
-    if (str.match(/e/i)) {
+    if (str.match(float_sci_re)) {
+        str = str.replace(float_sci_re, 'e');
         const [coefficient, exponent] = str.split('e');
         const decimal_places = Math.abs(parseInt(exponent));
         if (decimal_places < 7 && exponent < 0) {
@@ -472,6 +475,7 @@ function string_to_float(str) {
             const sign = coefficient[0] === '-' ? '-' : '+';
             const digits = coefficient.replace(/(^[-+])|\./g, '');
             const float_str = `${sign}0.${zeros}${digits}`;
+            console.log({ float_str });
             return parseFloat(float_str);
         }
     }

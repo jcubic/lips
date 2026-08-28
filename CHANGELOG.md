@@ -1,3 +1,7 @@
+## 1.0.0-beta.24
+### Bugfix
+* add (`dfls` mnemonics for floatig-point exponent)
+
 ## 1.0.0-beta.23
 ### Breaking
 * `syntax-rules` now treats `_` as the R7RS wildcard: it matches any input
