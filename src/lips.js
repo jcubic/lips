@@ -133,18 +133,12 @@ function log(x, ...args) {
     }
 }
 
-
-// opt-in gate for stack-frame collection (state.stack). Off by default: pushing
-// every continuation seen during evaluation costs time and, in a long tail loop,
-// unbounded memory. Enable with (trace) when you need stack-trace / full error
-// stacks. Stored per-instance in the internal env as __trace__ and read
-// onto state.collect_stack (see read_internal_flags) - not a module global, so
-// several interpreters can run in one runtime with independent tracing.
 // ----------------------------------------------------------------------
 // fast global gate: is_debug() runs in hot paths (every eval step, macros) and
 // its user_env.get('DEBUG') is a full env-chain walk. Keep a module flag that
 // mirrors whether DEBUG is set to a truthy value (updated by Environment.set)
 // so the common (debug-off) case is a single boolean test.
+// ----------------------------------------------------------------------
 let _debug_enabled = false;
 /* c8 ignore start */
 function is_debug(n = null) {
