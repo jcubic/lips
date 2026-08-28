@@ -1,6 +1,6 @@
 ## 1.0.0-beta.24
 ### Bugfix
-* add (`dfls` mnemonics for floatig-point exponent)
+* add (`dfls` mnemonics for floating-point exponent)
 
 ## 1.0.0-beta.23
 ### Breaking
