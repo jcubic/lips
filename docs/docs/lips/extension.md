@@ -88,15 +88,13 @@ LIPS Scheme define those extensions to syntax-rules macros:
 * [SRFI 147](https://srfi.schemers.org/srfi-147/srfi-147.html) allow defining new syntax-rules transformers
 
 ### Macroexpand
-LIPS define `macroexpand` and `macroexpand-1` but they are macros and the expression don't need to be quoted.
-There is an [issue to change those expressions into functions](https://github.com/jcubic/lips/issues/323) like
-in [Common Lisp](http://clhs.lisp.se/Body/f_mexp_.htm).
+LIPS define `macroexpand` and `macroexpand-1` like in [Common Lisp](http://clhs.lisp.se/Body/f_mexp_.htm).
 
-## Syntax extensions
+## Syntax Extensions
 
-Syntax extensions are a way to add new syntax to LIPS Scheme. They are executed at parse time. Object literals and
-vector literals are added using syntax extensions. Syntax extension modify the Parser and allow to add new behavior at
-parse time.
+Syntax extensions are a way to add new syntax to LIPS Scheme. They are executed at parse
+time. Object literals and vector literals are added using syntax extensions. Syntax extensions
+modify the Parser and allow adding new behavior at parse time.
 
 To add a syntax extension, you use the following:
 
@@ -293,7 +291,7 @@ With syntax extensions you can create string interpolation that expand into a Sc
 
 (set-special! "$" interpolate)
 
-(pprint (macroexpand-1 (let ((x 10)) $"x = ${(+ x 2)}")))
+(pprint (macroexpand-1 '(let ((x 10)) $"x = ${(+ x 2)}")))
 ;; ==> (let ((x 10))
 ;; ==>   (string-append "x = " (repr (+ x 2))))
 
@@ -303,12 +301,13 @@ With syntax extensions you can create string interpolation that expand into a Sc
 ```
 
 The limitation of this solution is that you can't use strings inside `${ ... }`. It will break the
-Lexer. In order to have full string interpolation you need to read the parser stream (See [Standard
+Lexer. In order to have full string interpolation, you need to read the parser stream (see [Standard
 input](#standard-input) inside syntax extensions).
 
-### Accessing parser
+### Accessing the Parser
+
 In LIPS syntax extensions you can access the parser instance, so you can implement syntax
-extension that return line number:
+extension that return the line number:
 
 ```scheme
 (define (line-num)
@@ -337,9 +336,9 @@ and executed.
 :::
 
 ### Standard input
-In syntax extensions `current-input-port` points into the parser stream. So you can implement
-your own parser logic. The best way to implement custom syntax extension (that works similar to
-common lips reader macros).
+In syntax extensions, `current-input-port` points into the parser stream. So you can implement
+your own parser logic. The best way to implement a custom syntax extension (that works similarly to
+Common Lisp reader macros).
 
 ```scheme
 (define (raw-string)
@@ -359,7 +358,7 @@ common lips reader macros).
 ```
 
 This extension implements raw strings, like in Python, where you don't need to escape the characters
-that are threat literally.  Similarly, you can implement strings that use backticks; you only need
+that are treated literally.  Similarly, you can implement strings that use backticks; you only need
 to replace `#\"` with `` #\` ``.
 
 ```scheme
