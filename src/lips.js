@@ -469,7 +469,6 @@ function string_to_float(str) {
             const sign = coefficient[0] === '-' ? '-' : '+';
             const digits = coefficient.replace(/(^[-+])|\./g, '');
             const float_str = `${sign}0.${zeros}${digits}`;
-            console.log({ float_str });
             return parseFloat(float_str);
         }
     }
