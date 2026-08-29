@@ -894,35 +894,55 @@
    Function read from input port or stdin and return list of strings
    interleaved with expressions from interpolation ${...}"
   (let ((port (if (null? rest) (current-input-port) (car rest))))
+    (define (skip-spaces)
+      (if (char=? (peek-char port) #\space)
+          (begin
+            (read-char port)
+            (skip-spaces))))
+    (define (expect-brace)
+      (skip-spaces)
+      (let ((next (peek-char port)))
+        (if (char=? next #\})
+            (read-char port)
+            (error (string-append "Parse Error: expecting } got " (repr next))))))
+    (define (read-expression)
+      ;; read a single datum between ${ and }
+      (skip-spaces)
+      (let ((next (peek-char port)))
+        (if (or (char=? next #\() (char=? next #\[) (char=? next #\"))
+            ;; the reader knows where lists and strings end, so it can't
+            ;; over-read; } is not a delimiter for it, so it needs to be
+            ;; consumed separately
+            (let ((expr (read port)))
+              (expect-brace)
+              expr)
+            ;; an atom is not delimited by } either, and unlike a list the
+            ;; reader would happily munch it together with the rest of the
+            ;; line (`${x};"` reads as the symbol `x};"`), so collect the
+            ;; text up to } ourselves and parse that
+            (let loop ((chars '()))
+              (let ((char (read-char port)))
+                (cond ((eof-object? char)
+                       (error "Parse Error: expecting } found #eof"))
+                      ((char=? char #\})
+                       (read (open-input-string (list->string (reverse chars)))))
+                      (else
+                       (loop (cons char chars)))))))))
     (let loop ((part "") (result (vector)) (char (read-char port)))
-      (cond ((and (char=? char #\$)
+      (cond ((eof-object? char)
+             (error "Parse Error: expecting character #eof found"))
+            ((and (char=? char #\$)
                   (char=? (peek-char port) #\{))
-             (read-char)
-             (let ((expr (read port)))
-               (if (symbol? expr)
-                   (let* ((expr (--> (symbol->string expr) (replace #/\}$/ "")))
-                          (value (read (open-input-string expr))))
-                     (loop "" (vector-append result (vector part expr)) (read-char)))
-                   (let inner ((next (peek-char port)))
-                     (cond ((char=? next #\space)
-                            (read-char port)
-                            (inner (peek-char port)))
-                           ((char=? next #\})
-                            (read-char port)
-                            (loop ""
-                                  (vector-append result (vector part expr))
-                                  (read-char port)))
-                           (else
-                            (error (string-append "Parse Error: expecting } got "
-                                                  (repr next)))))))))
+             (read-char port)
+             (loop ""
+                   (vector-append result (vector part (read-expression)))
+                   (read-char port)))
             ((char=? char #\\)
              (loop (string-append part (repr (read-char port)))
                    result
                    (read-char port)))
             ((char=? char #\")
              (vector->list (vector-append result (vector part))))
-            ((eof-object? char)
-             (error "Parse Error: expecting character #eof found"))
             (else
              (loop (string-append part (repr char)) result (read-char port)))))))
 
@@ -944,7 +964,8 @@
                            (%read-interpolated)))))
 
 ;; -----------------------------------------------------------------------------
-(set-special! "#\"" %string-interpolation lips.specials.SYMBOL)
+(set-special! "$\"" %string-interpolation lips.specials.SYMBOL)
+
 ;; -----------------------------------------------------------------------------
 (define (bound? x . rest)
   "(bound? x [env])

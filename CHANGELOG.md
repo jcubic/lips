@@ -1,4 +1,6 @@
 ## 1.0.0-beta.24
+### Breaking
+* string interpolation is now `$" ... "`
 ### Bugfix
 * add (`dfls` mnemonics for floating-point exponent)
 * fix symbol syntax extensions (e.g. empty string interpolation `#""`) failing
