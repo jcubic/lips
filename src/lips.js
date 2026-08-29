@@ -2409,7 +2409,7 @@ class Parser {
             this._skip(token);
             let expr;
             const is_symbol = is_symbol_extension(special);
-            const was_close_paren = this._is_close(await this._peek());
+            const was_close_paren = !is_symbol && this._is_close(await this._peek());
             // expression passed to syntax extension
             const object = is_symbol ? undefined : await this._read_object();
             if (object === eof) {

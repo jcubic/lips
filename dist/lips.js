@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Fri, 28 Aug 2026 20:04:18 +0000
+ * build: Sat, 29 Aug 2026 19:53:30 +0000
  */
 
 (function (global, factory) {
@@ -3022,17 +3022,12 @@
     }
   }
 
-  // opt-in gate for stack-frame collection (state.stack). Off by default: pushing
-  // every continuation seen during evaluation costs time and, in a long tail loop,
-  // unbounded memory. Enable with (trace) when you need stack-trace / full error
-  // stacks. Stored per-instance in the internal env as __trace__ and read
-  // onto state.collect_stack (see read_internal_flags) - not a module global, so
-  // several interpreters can run in one runtime with independent tracing.
   // ----------------------------------------------------------------------
   // fast global gate: is_debug() runs in hot paths (every eval step, macros) and
   // its user_env.get('DEBUG') is a full env-chain walk. Keep a module flag that
   // mirrors whether DEBUG is set to a truthy value (updated by Environment.set)
   // so the common (debug-off) case is a single boolean test.
+  // ----------------------------------------------------------------------
   var _debug_enabled = false;
   /* c8 ignore start */
   function is_debug() {
@@ -5335,7 +5330,7 @@
           var builtin = is_builtin(token.token);
           _this1._skip(token);
           var _is_symbol = is_symbol_extension(special);
-          var was_close_paren = _this1._is_close(yield _this1._peek());
+          var was_close_paren = !_is_symbol && _this1._is_close(yield _this1._peek());
           // expression passed to syntax extension
           var object = _is_symbol ? undefined : yield _this1._read_object();
           if (object === eof) {
@@ -18195,10 +18190,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Fri, 28 Aug 2026 20:04:18 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sat, 29 Aug 2026 19:53:30 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Fri, 28 Aug 2026 20:04:18 +0000').valueOf();
+    var date = LString('Sat, 29 Aug 2026 19:53:30 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -18237,7 +18232,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Fri, 28 Aug 2026 20:04:18 +0000';
+  var date = 'Sat, 29 Aug 2026 19:53:30 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

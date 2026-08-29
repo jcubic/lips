@@ -3,6 +3,15 @@
         (t.plan 1)
         (t.is #"foo" "foo")))
 
+(test "should parse empty string"
+      (lambda (t)
+        (t.plan 3)
+        (t.is #"" "")
+        (t.is (list #"" #"foo") '("" "foo"))
+        ;; `#""` as the last expression of the input: the parser used to
+        ;; tokenize past the extension and fail on the unterminated string
+        (t.is (eval (read (open-input-string "#\"\""))) "")))
+
 (test "should handle escape characters"
       (lambda (t)
         (t.plan 1)
