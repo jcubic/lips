@@ -1,6 +1,6 @@
 ---
 sidebar_position: 6
-description: A way to extends LIPS syntax, not only with macros
+description: A way to extend LIPS syntax, not only with macros
 ---
 
 # Extending LIPS
@@ -10,12 +10,11 @@ There are two ways to extend LIPS Scheme, one is through [macros](#macros) and t
 
 ## Macros
 
-LIPS allow creating Lisp macros and Scheme hygienic macros. Right now the limitations of macros is
-that they are runtime.  There are no expansion time. Macros act like function calls, but they
-transform the code and the interpreter evaluates the code that is returned by the macro. They ware
-implemented like this, because this is how I understood the macros when they first got
-implemented. There is a [plan to create proper macro
-expansion](https://github.com/jcubic/lips/issues/169).
+LIPS allows creating Lisp macros and Scheme hygienic macros. Right now the limitations of macros are
+that they are runtime.  There is no expansion time. Macros act like function calls, but they
+transform the code, and the interpreter evaluates the code that is returned by the macro. They were
+implemented like this because this is how I understood the macros when they first got implemented.
+There is a [plan to create proper macro expansion](https://github.com/jcubic/lips/issues/169).
 
 Quasiquote works with object literals, like with vectors:
 
@@ -26,7 +25,7 @@ Quasiquote works with object literals, like with vectors:
   (print obj))
 ```
 
-to define a lisp macro, you use syntax defined in [Scheme Tutorial about Macros](/docs/scheme-intro/macros).
+to define a Lisp macro, you use syntax defined in the [Scheme Tutorial about Macros](/docs/scheme-intro/macros).
 
 ```scheme
 (define-macro (for var start end . body)
@@ -41,7 +40,7 @@ to define a lisp macro, you use syntax defined in [Scheme Tutorial about Macros]
 ;; ==> #(10 11 12 13 14 15 16 17 18 19 20)
 ```
 
-You can define macro that create shorthand syntax like in JavaScript:
+You can define macros that create shorthand syntax like in JavaScript:
 
 ```javascript
 const x = 10;
@@ -51,7 +50,7 @@ console.log(obj);
 // { x: 10, y: 20 }
 ```
 
-You can create macro that will work the same in LIPS Scheme:
+You can create a macro that will work the same in LIPS Scheme:
 
 ```scheme
 (define (symbol->key symbol)
@@ -71,9 +70,9 @@ You can create macro that will work the same in LIPS Scheme:
 ```
 
 ### Hygienic macros
-LIPS define hygienic macros in form of standard `syntax-rules` expression. Note that there are know
-bugs in `syntax-rules` see [issue #43 on GitHub](https://github.com/jcubic/lips/issues/43) and [unit
-tests](https://github.com/jcubic/lips/blob/devel/tests/syntax.scm) that have tests marked as
+LIPS defines hygienic macros in the form of standard `syntax-rules` expressions. Note that there are
+know bugs in `syntax-rules` see [issue #43 on GitHub](https://github.com/jcubic/lips/issues/43) and
+[unit tests](https://github.com/jcubic/lips/blob/devel/tests/syntax.scm) that have tests marked as
 failing.
 
 If you find a case of failing macro, don't hessitate to create an issue. You can also check if your
@@ -99,28 +98,28 @@ Syntax extensions are a way to add new syntax to LIPS Scheme. They are executed 
 vector literals are added using syntax extensions. Syntax extension modify the Parser and allow to add new behavior at
 parse time.
 
-To add syntax extension you use:
+To add a syntax extension, you use the following:
 
-```scheme
-(set-special! "##" 'my-function lips.specials.LITERAL)
-```
-
-The syntax extension can point to a macro or a function. When extension is a function it's invoked and the result data
-is returned from the parser:
+Define a function:
 
 ```scheme
 (define (my-function number)
   `(list ,number ,number))
+
+(set-special! "##" my-function lips.specials.LITERAL)
 ```
 
-if you define the function like this and execute:
+The syntax extension can point to a macro or a function. When an extension is a function, it's
+invoked, and the result data is returned from the parser:
+
+If you define the function like this and execute it:
 
 ```scheme
 ##10
 ;; ==> (10 10)
 ```
 
-To see the expansion of syntax extension you can use `lips.parse`:
+To see the expansion of syntax extension, you can use `lips.parse`:
 
 ```scheme
 (lips.parse "##10")
@@ -129,26 +128,28 @@ To see the expansion of syntax extension you can use `lips.parse`:
 
 :::info
 
-The `lips.parse` function return array/vector of parsed expressions.
+The `lips.parse` function returns an array/vector of parsed expressions.
 
 :::
 
-There are 3 types of syntax extensions `SPLICE`, `LITERAL`, and `SYMBOL`. You define them using
-constants defined in `lips.specials` object.
+There are 3 types of syntax extensions: `SPLICE`, `LITERAL`, and `SYMBOL`. You define them using
+constants defined in the `lips.specials` object.
 
-* `LITERAL` - used above pass it's argument as is, with literal syntax extension you can execute it
-  on any argument. This is default when no constant in `set-special!` is used.
+* `LITERAL` - used above to pass its argument as is; with literal syntax extension, you can execute
+  it on any argument. This is the default when no constant in `set-special!` is used.
 * `SPLICE` - if you execute syntax `##(1 2 3)` the arguments will be spliced, so the function or a
-  macro needs to use improper list. Or use named arguments if syntax accept fixed amount of arguments.
-* `SYMBOL` - this type of extensions don't accept any arguments and can be used to define parser constants.
+  macro needs to use an improper list. Or use named arguments if syntax accepts a fixed number of
+  arguments.
+* `SYMBOL` - this type of extension doesn't accept any arguments and can be used to define parser
+  constants.
 
 ### Splice syntax extensions
 
 ```scheme
-(set-special! "##" 'complex lips.specials.SPLICE)
-
 (define (complex real imag)
   (make-rectangular real imag))
+
+(set-special! "##" complex lips.specials.SPLICE)
 ```
 
 This syntax extension will define complex numbers and will work only on lists:
@@ -158,14 +159,14 @@ This syntax extension will define complex numbers and will work only on lists:
 ;; ==> 10+20i
 ```
 
-Since it's a macro it evaluate at parse time:
+Since it's a macro, it evaluates at parse time:
 
 ```scheme
 (lips.parse "##(10 20)")
 ;; ==> #(10+20i)
 ```
 
-With splice syntax extension you can limit the number of arguments (remember that LIPS don't check
+With splice syntax extension, you can limit the number of arguments (remember that LIPS doesn't check
 [arity](https://en.wikipedia.org/wiki/Arity)).
 
 ```scheme
@@ -184,15 +185,14 @@ With splice syntax extension you can limit the number of arguments (remember tha
 
 ### Symbol syntax extensions
 
-The last type of syntax extensions are symbols they don't accept any arguments and can be used to
+The last type of syntax extensions are symbols; they don't accept any arguments and can be used to
 define parser constants.
 
 ```scheme
-(set-special! "#nil" 'nil-fn lips.specials.SYMBOL)
-(define (nil-fn) '())
+(set-special! "#nil" (lambda () '()) lips.specials.SYMBOL)
 ```
 
-This will define constant `#nil`. It's different from `nil` variable:
+This will define the constant `#nil`. It's different from the `nil` variable:
 
 ```scheme
 (define nil '())
@@ -213,13 +213,10 @@ You can define a [macro](#macros) that will define a constant:
 
 ```scheme
 (define-macro (define-constant name value)
-  (let ((function-name (gensym "syntax")))
-    `(begin
-       (define (,function-name) ,value)
-       (set-special! ,name ',function-name lips.specials.SYMBOL))))
+  `(set-special! ,name (lambda () ,value) lips.specials.SYMBOL))
 ```
 
-And you can use it as:
+And you can use it as the following:
 
 ```scheme
 (print '(zero))
@@ -251,24 +248,24 @@ If you try to use '(#zero) without defining the constant, you will get an error,
 With syntax extensions you can define autogensyms expressions:
 
 ```scheme
-(set-special! "#:" 'keyword lips.specials.LITERAL)
-
 (define (keyword symbol)
   `(gensym ',symbol))
+
+(set-special! "#:" keyword lips.specials.LITERAL)
 
 (let ((x #:foo))
   (write x))
 ;; ==> #:foo
 ```
 
-This allow to create named [gensyms](/docs/lips/intro#gensyms) that are unique:
+This allows the creation of named [gensyms](/docs/lips/intro#gensyms) that are unique:
 
 ```scheme
 (eq? #:foo #:foo)
 ;; ==> #f
 ```
 
-You can use them with lisp macros instead of `gensym` expressions.
+You can use them with Lisp macros instead of `gensym` expressions.
 
 :::tip
 
@@ -281,8 +278,6 @@ The autogensyms are actually part of the standard library.
 With syntax extensions you can create string interpolation that expand into a Scheme code:
 
 ```scheme
-(set-special! "$" 'interpolate)
-
 (define (interpolate str)
   (typecheck "interpolate" str "string")
   (let* ((re #/(\$\{[^\}]+\})/)
@@ -295,6 +290,8 @@ With syntax extensions you can create string interpolation that expand into a Sc
                                    `(repr ,value))
                                  part))
                            (vector->list parts)))))
+
+(set-special! "$" interpolate)
 
 (pprint (macroexpand-1 (let ((x 10)) $"x = ${(+ x 2)}")))
 ;; ==> (let ((x 10))
@@ -314,8 +311,6 @@ In LIPS syntax extensions you can access the parser instance, so you can impleme
 extension that return line number:
 
 ```scheme
-(set-special! "#:num" 'line-num lips.specials.SYMBOL)
-
 (define (line-num)
   (let* ((lexer lips.__parser__.__lexer__)
          (token lexer.__token__))
@@ -323,6 +318,8 @@ extension that return line number:
     (newline)
     ;; line number start from 0
     (+ token.line 1)))
+
+(set-special! "#:num" line-num lips.specials.SYMBOL)
 
 (print (list
         #:num
@@ -345,8 +342,6 @@ your own parser logic. The best way to implement custom syntax extension (that w
 common lips reader macros).
 
 ```scheme
-(set-special! "$" 'raw-string lips.specials.SYMBOL)
-
 (define (raw-string)
   (if (char=? (peek-char) #\")
       (begin
@@ -357,16 +352,17 @@ common lips reader macros).
               (apply string (vector->list result))
               (loop (vector-append result (vector char)) (peek-char)))))))
 
+(set-special! "$" raw-string lips.specials.SYMBOL)
+
 (print $"foo \ bar")
 ;; ==> "foo \\ bar"
 ```
 
-This extension implements raw string, like in Python, where you don't need to escape the characters that are thread literally.
-Similarly, you can implement strings that use backticks, you only need to replace `#\"` with `` #\` ``.
+This extension implements raw strings, like in Python, where you don't need to escape the characters
+that are threat literally.  Similarly, you can implement strings that use backticks; you only need
+to replace `#\"` with `` #\` ``.
 
 ```scheme
-(set-special! "$" 'raw-string lips.specials.SYMBOL)
-
 (define (raw-string)
   (if (char=? (peek-char) #\`)
       (begin
@@ -376,6 +372,8 @@ Similarly, you can implement strings that use backticks, you only need to replac
           (if (char=? char #\`)
               (apply string (vector->list result))
               (loop (vector-append result (vector char)) (peek-char)))))))
+
+(set-special! "$" raw-string lips.specials.SYMBOL)
 
 (print $`foo \ bar`)
 ;; ==> "foo \\ bar"
@@ -387,16 +385,16 @@ LIPS Scheme in the future).
 ### Limitations
 
 The limitation of syntax extensions is that you can't define a variable that starts with the same
-characters as syntax extension. This may be a benefit and not a limitation. You also need to be
-careful about performance of your extensions.
+characters as the syntax extension. This may be a benefit and not a limitation. You also need to be
+careful about the performance of your extensions.
 
-## New Homoiconic data types
+## New Homoiconic Data Types
 
-With LIPS, you can define representation of custom data types that are the same when printed and read.
+With LIPS, you can define representations of custom data types that are the same when printed and read.
 
-To create custom representation of new data type you can use `set-repr!` expression. It only works
-with JavaScript classes.  But Scheme records in LIPS define new JavaScript class. So you can create
-new records and create different representation for them.
+To create a custom representation of a new data type, you can use the `set-repr!` expression. It only works
+with JavaScript classes.  But Scheme records in LIPS define new JavaScript classes. So you can create
+new records and create different representations for them.
 
 ```scheme
 (define-record-type :Person
@@ -418,22 +416,22 @@ new records and create different representation for them.
 ;; ==> (make-person Mick Jagger 80)
 ```
 
-As you can see the `display` don't quote the strings because of `repr` expression that use `quot`
-argument to the `set-repr!` handler.
+As you can see, the `display` doesn't quote the strings because of the `repr` expression that uses
+the `quot` argument to the `set-repr!` handler.
 
 ### Combining with syntax extensions
 
 You can combine syntax extensions with custom representation:
 
 ```scheme
-(set-special! ":P" 'make-person lips.specials.SPLICE)
-
 (set-repr! :Person (lambda (obj quot)
                      (string-append ":P("
                                     (repr (person-name obj) quot)
                                     " "
                                     (repr (person-age obj) quot)
                                     ")")))
+
+(set-special! ":P" make-person lips.specials.SPLICE)
 
 (write :P("Mick Jagger" 80))
 ;; ==> :P("Mick Jagger" 80)
