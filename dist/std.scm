@@ -1171,7 +1171,9 @@
    Helper function that allows to use [Symbol.asyncIterator] inside method name."
   (if (pair? expr)
       (car expr)
-      (list 'quote expr)))
+      (if (gensym? expr)
+          (--> expr (literal))
+          (list 'quote expr))))
 
 ;; -----------------------------------------------------------------------------
 (define (constructor)
