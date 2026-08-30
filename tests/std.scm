@@ -379,7 +379,7 @@
 (test "string interpolation"
       (lambda (t)
         (let ((x 10) (y 20))
-          (t.snapshot #"this is string \" ${(+ x y)} hello ${(repr "hello" #t)}
+          (t.snapshot $"this is string \" ${(+ x y)} hello ${(repr "hello" #t)}
                         world
                          x
                     x"))))
