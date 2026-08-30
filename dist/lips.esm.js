@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 30 Aug 2026 18:30:33 +0000
+ * build: Sun, 30 Aug 2026 19:30:21 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -9752,11 +9752,16 @@ function transform_syntax() {
   }
   function transform_ellipsis_expr(expr, bindings, state) {
     var next = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : () => {};
-    var nested = state.nested;
+    var nested = state.nested,
+      disabled = state.disabled;
     if (Array.isArray(expr) && !expr.length) {
       return expr;
     }
     if (expr instanceof LSymbol) {
+      // inside an ellipsis escape `...` is an ordinary identifier
+      if (disabled && LSymbol.is(expr, ellipsis_symbol)) {
+        return expr;
+      }
       var name = expr.valueOf();
       if (is_gensym(expr) && !bindings[name]) ;
       if (bindings[name]) {
@@ -9787,7 +9792,18 @@ function transform_syntax() {
     if (is_pair(expr) || is_array) {
       var first = is_array ? expr[0] : expr.car;
       var second = is_array ? expr[1] : is_pair(expr.cdr) && expr.cdr.car;
-      if (first instanceof LSymbol && LSymbol.is(second, ellipsis_symbol)) {
+      // R7RS ellipsis escape inside a repetition, e.g.
+      // `(list (cons arg (... '...)) ...)`: transcribe <template> with
+      // `...` treated as an ordinary identifier. Pattern variables are
+      // still substituted, so it stays in this function rather than
+      // handing off to traverse().
+      if (!disabled && LSymbol.is(first, ellipsis_symbol) && (is_array ? expr.length > 1 : is_pair(expr.cdr))) {
+        var template = is_array ? expr[1] : expr.cdr.car;
+        return transform_ellipsis_expr(template, bindings, _objectSpread(_objectSpread({}, state), {}, {
+          disabled: true
+        }), next);
+      }
+      if (!disabled && first instanceof LSymbol && LSymbol.is(second, ellipsis_symbol)) {
         is_array ? expr.slice(2) : expr.cdr.cdr;
         var _name7 = first.valueOf();
         var item = bindings[_name7];
@@ -9914,6 +9930,19 @@ function transform_syntax() {
       // still transcribed (pattern variables substituted, free
       // identifiers renamed) - only `...` itself is left literal - so it
       // is traversed with `disabled: true`, not emitted verbatim.
+      //
+      // The escape can be the WHOLE template, e.g. `((_) (... '...))`.
+      // There is no surrounding list to rebuild then, so the transcribed
+      // template is the result. (In `'(... ...)` the escape is instead an
+      // ELEMENT of the list `(quote X)` is built from, which the next
+      // branch handles.)
+      if (!disabled && !is_array && LSymbol.is(first, ellipsis_symbol) && is_pair(expr.cdr)) {
+        return traverse(expr.cdr.car, {
+          disabled: true,
+          quoted,
+          in_syntax
+        });
+      }
       if (!disabled && is_pair(first) && LSymbol.is(first.car, ellipsis_symbol) && is_pair(first.cdr)) {
         return new Pair(traverse(first.cdr.car, {
           disabled: true,
@@ -18200,10 +18229,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 30 Aug 2026 18:30:33 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 30 Aug 2026 19:30:21 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 30 Aug 2026 18:30:33 +0000').valueOf();
+  var date = LString('Sun, 30 Aug 2026 19:30:21 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18242,7 +18271,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 30 Aug 2026 18:30:33 +0000';
+var date = 'Sun, 30 Aug 2026 19:30:21 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

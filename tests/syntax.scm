@@ -702,14 +702,14 @@
 
         (t.is (L 1 2 3) '(1 2 3))))
 
-(test.failing "should return list with ellipsis"
+(test "should return list with ellipsis"
        (lambda (t)
 
          (define-syntax test
            (syntax-rules ()
              ((_) (... '...))))
 
-         (t.is (test) '(...))
+         (t.is (test) '...)
 
          (define-syntax test
            (syntax-rules ()

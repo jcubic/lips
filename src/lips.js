@@ -5769,12 +5769,16 @@ function transform_syntax(options = {}) {
         return gensyms[name];
     }
     function transform_ellipsis_expr(expr, bindings, state, next = () => {}) {
-        const { nested } = state;
+        const { nested, disabled } = state;
         log({ bindings, expr });
         if (Array.isArray(expr) && !expr.length) {
             return expr;
         }
         if (expr instanceof LSymbol) {
+            // inside an ellipsis escape `...` is an ordinary identifier
+            if (disabled && LSymbol.is(expr, ellipsis_symbol)) {
+                return expr;
+            }
             let name = expr.valueOf();
             if (is_gensym(expr) && !bindings[name]) {
                // name = expr.literal();
@@ -5805,7 +5809,20 @@ function transform_syntax(options = {}) {
         if (is_pair(expr) || is_array) {
             const first = is_array ? expr[0] : expr.car;
             const second = is_array ? expr[1] : is_pair(expr.cdr) && expr.cdr.car;
-            if (first instanceof LSymbol &&
+            // R7RS ellipsis escape inside a repetition, e.g.
+            // `(list (cons arg (... '...)) ...)`: transcribe <template> with
+            // `...` treated as an ordinary identifier. Pattern variables are
+            // still substituted, so it stays in this function rather than
+            // handing off to traverse().
+            if (!disabled && LSymbol.is(first, ellipsis_symbol) &&
+                (is_array ? expr.length > 1 : is_pair(expr.cdr))) {
+                const template = is_array ? expr[1] : expr.cdr.car;
+                return transform_ellipsis_expr(template, bindings, {
+                    ...state,
+                    disabled: true
+                }, next);
+            }
+            if (!disabled && first instanceof LSymbol &&
                 LSymbol.is(second, ellipsis_symbol)) {
                 let rest = is_array ? expr.slice(2) : expr.cdr.cdr;
                 log('[t 2');
@@ -5946,6 +5963,17 @@ function transform_syntax(options = {}) {
             // still transcribed (pattern variables substituted, free
             // identifiers renamed) - only `...` itself is left literal - so it
             // is traversed with `disabled: true`, not emitted verbatim.
+            //
+            // The escape can be the WHOLE template, e.g. `((_) (... '...))`.
+            // There is no surrounding list to rebuild then, so the transcribed
+            // template is the result. (In `'(... ...)` the escape is instead an
+            // ELEMENT of the list `(quote X)` is built from, which the next
+            // branch handles.)
+            if (!disabled && !is_array &&
+                LSymbol.is(first, ellipsis_symbol) &&
+                is_pair(expr.cdr)) {
+                return traverse(expr.cdr.car, { disabled: true, quoted, in_syntax });
+            }
             if (!disabled && is_pair(first) &&
                 LSymbol.is(first.car, ellipsis_symbol) &&
                 is_pair(first.cdr)) {
