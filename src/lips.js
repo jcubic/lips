@@ -4989,12 +4989,16 @@ Syntax.Parameter = SyntaxParameter;
 // :: TODO detect cycles
 // ----------------------------------------------------------------------
 function extract_patterns(pattern, code, symbols, ellipsis_symbol, scope = {}) {
+    // null prototypes: these maps are keyed by user identifiers and are probed
+    // with `name in map` / `map[name]`, so an inherited Object.prototype member
+    // would masquerade as a binding - a template identifier named `constructor`,
+    // `toString`, `valueOf`, ... would be replaced by the JS builtin
     const bindings = {
         '...': {
-            symbols: { }, // symbols ellipsis (x ...)
+            symbols: Object.create(null), // symbols ellipsis (x ...)
             lists: [ ]
         },
-        symbols: { }
+        symbols: Object.create(null)
     };
     const { expansion, define } = scope;
     // pattern_names parameter is used to distinguish
@@ -5636,7 +5640,10 @@ function transform_syntax(options = {}) {
         names,
         captured = null,
         ellipsis: ellipsis_symbol } = options;
-    const gensyms = {};
+    // null prototype: keyed by user identifiers and probed with `gensyms[name]`,
+    // so an inherited member (`constructor`, `toString`, ...) would read as an
+    // already-assigned gensym and be returned instead of the renamed symbol
+    const gensyms = Object.create(null);
     function valid_symbol(symbol) {
         if (symbol instanceof LSymbol) {
             return true;
@@ -5853,7 +5860,7 @@ function transform_syntax(options = {}) {
                 // them here would both consume them twice and (since they have
                 // no row left to give) stop the loop before it starts
                 const used = template_names(first, bindings);
-                let bind = {};
+                let bind = Object.create(null);
                 used.forEach(key => {
                     const value = bindings[key];
                     if (is_pair(value)) {
@@ -5872,7 +5879,7 @@ function transform_syntax(options = {}) {
                 });
                 let result = is_array ? [] : nil;
                 while (have_binding(bind)) {
-                    const new_bind = {};
+                    const new_bind = Object.create(null);
                     let car = transform_ellipsis_expr(first, bind, {
                         ...state,
                         nested: false
@@ -6110,14 +6117,14 @@ function transform_syntax(options = {}) {
                     let result;
                     if (keys.length) {
                         log('>> 2 (a)');
-                        let bind = { ...symbols };
+                        let bind = Object.assign(Object.create(null), symbols);
                         result = is_array ? [] : nil;
                         while (true) {
                             log({ bind });
                             if (!have_binding(bind)) {
                                 break;
                             }
-                            const new_bind = {};
+                            const new_bind = Object.create(null);
                             const next = (key, value) => {
                                 // ellipsis decide if what should be the next value
                                 // there are two cases ((a . b) ...) and (a ...)
@@ -6213,7 +6220,7 @@ function transform_syntax(options = {}) {
                             log({ bind });
                             break;
                         }
-                        const new_bind = {};
+                        const new_bind = Object.create(null);
                         const next = (key, value) => {
                             new_bind[key] = value;
                         };

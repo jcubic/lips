@@ -535,6 +535,20 @@
 
         (t.is (my-let ((x 10) (y 20)) (+ x y)) 30)))
 
+;; the matcher and the transcriber key their internal maps by identifier name;
+;; an identifier that happens to name an Object.prototype member must not be
+;; mistaken for an inherited JS property of those maps
+(test "identifiers that shadow Object.prototype members"
+      (lambda (t)
+        (t.plan 3)
+        (let-syntax ((q (syntax-rules ()
+                          ((_) '(constructor toString valueOf hasOwnProperty ordinary)))))
+          (t.is (q) '(constructor toString valueOf hasOwnProperty ordinary)))
+        (let-syntax ((r (syntax-rules () ((_ constructor) '(constructor constructor)))))
+          (t.is (r hello) '(hello hello)))
+        (let-syntax ((s (syntax-rules () ((_ toString ...) '(toString ...)))))
+          (t.is (s 1 2 3) '(1 2 3)))))
+
 ;; a repetition whose sub-template is a compound form, nested inside another
 ;; repetition - plain R7RS, every variable is used at its own ellipsis depth
 (test "nested ellipsis over a compound sub-template"
