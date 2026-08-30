@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 30 Aug 2026 19:30:21 +0000
+ * build: Sun, 30 Aug 2026 20:07:32 +0000
  */
 
 'use strict';
@@ -9755,6 +9755,22 @@ function transform_syntax() {
     }
     return gensyms[name];
   }
+  // names bound in BINDINGS that occur as identifiers inside the template NODE
+  function template_names(node, bindings) {
+    var names = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : new Set();
+    if (node instanceof LSymbol) {
+      var name = node.valueOf();
+      if (name in bindings) {
+        names.add(name);
+      }
+    } else if (is_pair(node)) {
+      template_names(node.car, bindings, names);
+      template_names(node.cdr, bindings, names);
+    } else if (Array.isArray(node)) {
+      node.forEach(item => template_names(item, bindings, names));
+    }
+    return names;
+  }
   function transform_ellipsis_expr(expr, bindings, state) {
     var next = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : () => {};
     var nested = state.nested,
@@ -9808,6 +9824,73 @@ function transform_syntax() {
           disabled: true
         }), next);
       }
+      // A nested repetition whose head is a compound template, e.g. the
+      // inner `((a a) ...)` of `'(((a a) ...) ...)`. The [t 2] branch
+      // below only matches `(<symbol> <ellipsis>)`, so without this the
+      // bare `...` would reach the symbol case and fail to transform.
+      // One "row" is peeled off every binding for this repetition - the
+      // remainder belongs to the enclosing one and is handed back through
+      // `next` - and the sub-template is then iterated over that row.
+      if (!disabled && is_pair(first) && LSymbol.is(second, ellipsis_symbol)) {
+        var _rest_expr = is_array ? expr.slice(2) : expr.cdr.cdr;
+        // only the variables the sub-template actually uses take part:
+        // the others belong to the enclosing repetition, and peeling
+        // them here would both consume them twice and (since they have
+        // no row left to give) stop the loop before it starts
+        var used = template_names(first, bindings);
+        var _bind = {};
+        used.forEach(key => {
+          var value = bindings[key];
+          if (is_pair(value)) {
+            _bind[key] = value.car;
+            if (!is_nil(value.cdr)) {
+              next(key, value.cdr);
+            }
+          } else if (Array.isArray(value)) {
+            _bind[key] = value[0];
+            if (value.length > 1) {
+              next(key, value.slice(1));
+            }
+          } else {
+            _bind[key] = value;
+          }
+        });
+        var result = is_array ? [] : _nil;
+        var _loop = function _loop() {
+          var new_bind = {};
+          var car = transform_ellipsis_expr(first, _bind, _objectSpread(_objectSpread({}, state), {}, {
+            nested: false
+          }), (key, value) => {
+            new_bind[key] = value;
+          });
+          if (car !== undefined) {
+            if (Value.of('syntax', car)) {
+              car = car.valueOf();
+            }
+            if (is_array) {
+              result.push(car);
+            } else {
+              result = new Pair(car, result);
+            }
+          }
+          _bind = new_bind;
+        };
+        while (have_binding(_bind)) {
+          _loop();
+        }
+        if (!is_array && !is_nil(result)) {
+          result = result.reverse();
+        }
+        var has_rest = is_array ? _rest_expr.length : !is_nil(_rest_expr);
+        if (!has_rest) {
+          return result;
+        }
+        var _rest6 = transform_ellipsis_expr(_rest_expr, bindings, state, next);
+        if (is_array) {
+          return result.concat(_rest6);
+        }
+        return is_nil(result) ? _rest6 : result.append(_rest6);
+      }
       if (!disabled && first instanceof LSymbol && LSymbol.is(second, ellipsis_symbol)) {
         is_array ? expr.slice(2) : expr.cdr.cdr;
         var _name7 = first.valueOf();
@@ -9818,17 +9901,17 @@ function transform_syntax() {
           if (is_pair(item)) {
             var _car2 = item.car,
               _cdr2 = item.cdr;
-            var _rest_expr = is_array ? expr.slice(2) : expr.cdr.cdr;
+            var _rest_expr2 = is_array ? expr.slice(2) : expr.cdr.cdr;
             if (nested) {
               if (!is_nil(_cdr2)) {
                 next(_name7, _cdr2);
               }
-              if (is_array && _rest_expr.length || !is_nil(_rest_expr) && !is_array) {
-                var _rest7 = transform_ellipsis_expr(_rest_expr, bindings, state, next);
+              if (is_array && _rest_expr2.length || !is_nil(_rest_expr2) && !is_array) {
+                var _rest8 = transform_ellipsis_expr(_rest_expr2, bindings, state, next);
                 if (is_array) {
-                  return _car2.concat(_rest7);
+                  return _car2.concat(_rest8);
                 } else if (is_pair(_car2)) {
-                  return _car2.append(_rest7);
+                  return _car2.append(_rest8);
                 } else ;
               }
               return _car2;
@@ -9852,9 +9935,9 @@ function transform_syntax() {
               next(_name7, item.slice(1));
               return Pair.from_array(item);
             } else {
-              var _rest8 = item.slice(1);
-              if (_rest8.length) {
-                next(_name7, _rest8);
+              var _rest9 = item.slice(1);
+              if (_rest9.length) {
+                next(_name7, _rest9);
               }
               return item[0];
             }
@@ -10000,10 +10083,10 @@ function transform_syntax() {
           }
           var result;
           if (keys.length) {
-            var _bind = _objectSpread({}, _symbols2);
+            var _bind2 = _objectSpread({}, _symbols2);
             result = is_array ? [] : _nil;
-            var _loop = function _loop() {
-              if (!have_binding(_bind)) {
+            var _loop2 = function _loop2() {
+              if (!have_binding(_bind2)) {
                 return 1; // break
               }
               var new_bind = {};
@@ -10012,7 +10095,7 @@ function transform_syntax() {
                 // there are two cases ((a . b) ...) and (a ...)
                 new_bind[key] = value;
               };
-              var car = transform_ellipsis_expr(new_expr, _bind, {
+              var car = transform_ellipsis_expr(new_expr, _bind2, {
                 nested: true
               }, next);
               // undefined can be null caused by null binding
@@ -10039,10 +10122,10 @@ function transform_syntax() {
                   result = new Pair(car, result);
                 }
               }
-              _bind = new_bind;
+              _bind2 = new_bind;
             };
             while (true) {
-              if (_loop()) break;
+              if (_loop2()) break;
             }
             if (!is_nil(result) && !is_spread && !is_array) {
               result = result.reverse();
@@ -10050,22 +10133,22 @@ function transform_syntax() {
             // case of (list) ... (rest code)
             if (is_array) {
               if (rest_second) {
-                var _rest9 = traverse(rest_second, {
+                var _rest0 = traverse(rest_second, {
                   disabled,
                   quoted,
                   in_syntax
                 });
-                return result.concat(_rest9);
+                return result.concat(_rest0);
               }
               return result;
             }
             if (!is_nil(expr.cdr.cdr) && !LSymbol.is(expr.cdr.cdr.car, ellipsis_symbol)) {
-              var _rest0 = traverse(expr.cdr.cdr, {
+              var _rest1 = traverse(expr.cdr.cdr, {
                 disabled,
                 quoted,
                 in_syntax
               });
-              return result.append(_rest0);
+              return result.append(_rest1);
             }
             return result;
           } else {
@@ -10084,20 +10167,20 @@ function transform_syntax() {
           if (LSymbol.is(rest_second.car, ellipsis_symbol)) ;
           // case: (x ...)
           var name = first.__name__;
-          var _bind2 = {
+          var _bind3 = {
             [name]: _symbols2[name]
           };
           var _is_null = _symbols2[name] === null;
           var _result = is_array ? [] : _nil;
-          var _loop2 = function _loop2() {
-            if (!have_binding(_bind2, true)) {
+          var _loop3 = function _loop3() {
+            if (!have_binding(_bind3, true)) {
               return 1; // break
             }
             var new_bind = {};
             var next = (key, value) => {
               new_bind[key] = value;
             };
-            var value = transform_ellipsis_expr(expr, _bind2, {
+            var value = transform_ellipsis_expr(expr, _bind3, {
               nested: false
             }, next);
             if (typeof value !== 'undefined') {
@@ -10110,10 +10193,10 @@ function transform_syntax() {
                 _result = new Pair(value, _result);
               }
             }
-            _bind2 = new_bind;
+            _bind3 = new_bind;
           };
           while (true) {
-            if (_loop2()) break;
+            if (_loop3()) break;
           }
           if (!is_nil(_result) && !is_array) {
             _result = _result.reverse();
@@ -16299,7 +16382,7 @@ function prepare_fn_args(fn, args) {
     // calling map on array should not unbox the value
     var result = [],
       i = args.length;
-    var _loop3 = function _loop3() {
+    var _loop4 = function _loop4() {
         var arg = args[i];
         if (is_lips_function(arg)) {
           wrapper = function wrapper() {
@@ -16322,7 +16405,7 @@ function prepare_fn_args(fn, args) {
       },
       wrapper;
     while (i--) {
-      _loop3();
+      _loop4();
     }
     args = result;
   }
@@ -17154,8 +17237,8 @@ function _macroexpand_code() {
             return new Pair(car, new Pair(target, _body3));
           }
           var _scope2 = macroexpand_shadow(env, [target]);
-          var _rest1 = yield macroexpand_list(code.cdr.cdr, _scope2);
-          return new Pair(car, new Pair(target, _rest1));
+          var _rest10 = yield macroexpand_list(code.cdr.cdr, _scope2);
+          return new Pair(car, new Pair(target, _rest10));
         }
         // a real macro (syntax-rules or define-macro) that isn't shadowed:
         // expand one step then re-expand the result (fixpoint)
@@ -18234,10 +18317,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 30 Aug 2026 19:30:21 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 30 Aug 2026 20:07:32 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 30 Aug 2026 19:30:21 +0000').valueOf();
+  var date = LString('Sun, 30 Aug 2026 20:07:32 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18276,7 +18359,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 30 Aug 2026 19:30:21 +0000';
+var date = 'Sun, 30 Aug 2026 20:07:32 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

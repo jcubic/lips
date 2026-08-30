@@ -535,6 +535,18 @@
 
         (t.is (my-let ((x 10) (y 20)) (+ x y)) 30)))
 
+;; a repetition whose sub-template is a compound form, nested inside another
+;; repetition - plain R7RS, every variable is used at its own ellipsis depth
+(test "nested ellipsis over a compound sub-template"
+      (lambda (t)
+        (t.plan 3)
+        (let-syntax ((f (syntax-rules () ((_ (a ...) ...) '(((a a) ...) ...)))))
+          (t.is (f (1 2) (3 4)) '(((1 1) (2 2)) ((3 3) (4 4)))))
+        (let-syntax ((f (syntax-rules () ((_ (a ...) ...) '(((a) ...) ...)))))
+          (t.is (f (1 2) (3 4)) '(((1) (2)) ((3) (4)))))
+        (let-syntax ((f (syntax-rules () ((_ (a b ...) ...) '((a ((b) ...)) ...)))))
+          (t.is (f (x 1 2) (y 3 4)) '((x ((1) (2))) (y ((3) (4))))))))
+
 (test.failing "lifted ellipsis (SRFI-149)"
       (lambda (t)
         (define result

@@ -5768,6 +5768,21 @@ function transform_syntax(options = {}) {
         }
         return gensyms[name];
     }
+    // names bound in BINDINGS that occur as identifiers inside the template NODE
+    function template_names(node, bindings, names = new Set()) {
+        if (node instanceof LSymbol) {
+            const name = node.valueOf();
+            if (name in bindings) {
+                names.add(name);
+            }
+        } else if (is_pair(node)) {
+            template_names(node.car, bindings, names);
+            template_names(node.cdr, bindings, names);
+        } else if (Array.isArray(node)) {
+            node.forEach(item => template_names(item, bindings, names));
+        }
+        return names;
+    }
     function transform_ellipsis_expr(expr, bindings, state, next = () => {}) {
         const { nested, disabled } = state;
         log({ bindings, expr });
@@ -5821,6 +5836,73 @@ function transform_syntax(options = {}) {
                     ...state,
                     disabled: true
                 }, next);
+            }
+            // A nested repetition whose head is a compound template, e.g. the
+            // inner `((a a) ...)` of `'(((a a) ...) ...)`. The [t 2] branch
+            // below only matches `(<symbol> <ellipsis>)`, so without this the
+            // bare `...` would reach the symbol case and fail to transform.
+            // One "row" is peeled off every binding for this repetition - the
+            // remainder belongs to the enclosing one and is handed back through
+            // `next` - and the sub-template is then iterated over that row.
+            if (!disabled && is_pair(first) &&
+                LSymbol.is(second, ellipsis_symbol)) {
+                log('[t 2 nested list');
+                const rest_expr = is_array ? expr.slice(2) : expr.cdr.cdr;
+                // only the variables the sub-template actually uses take part:
+                // the others belong to the enclosing repetition, and peeling
+                // them here would both consume them twice and (since they have
+                // no row left to give) stop the loop before it starts
+                const used = template_names(first, bindings);
+                let bind = {};
+                used.forEach(key => {
+                    const value = bindings[key];
+                    if (is_pair(value)) {
+                        bind[key] = value.car;
+                        if (!is_nil(value.cdr)) {
+                            next(key, value.cdr);
+                        }
+                    } else if (Array.isArray(value)) {
+                        bind[key] = value[0];
+                        if (value.length > 1) {
+                            next(key, value.slice(1));
+                        }
+                    } else {
+                        bind[key] = value;
+                    }
+                });
+                let result = is_array ? [] : nil;
+                while (have_binding(bind)) {
+                    const new_bind = {};
+                    let car = transform_ellipsis_expr(first, bind, {
+                        ...state,
+                        nested: false
+                    }, (key, value) => {
+                        new_bind[key] = value;
+                    });
+                    if (car !== undefined) {
+                        if (Value.of('syntax', car)) {
+                            car = car.valueOf();
+                        }
+                        if (is_array) {
+                            result.push(car);
+                        } else {
+                            result = new Pair(car, result);
+                        }
+                    }
+                    bind = new_bind;
+                }
+                if (!is_array && !is_nil(result)) {
+                    result = result.reverse();
+                }
+                const has_rest = is_array ? rest_expr.length : !is_nil(rest_expr);
+                if (!has_rest) {
+                    return result;
+                }
+                const rest = transform_ellipsis_expr(rest_expr, bindings, state, next);
+                if (is_array) {
+                    return result.concat(rest);
+                }
+                return is_nil(result) ? rest : result.append(rest);
             }
             if (!disabled && first instanceof LSymbol &&
                 LSymbol.is(second, ellipsis_symbol)) {

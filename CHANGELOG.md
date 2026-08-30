@@ -6,6 +6,9 @@
 * fix symbol syntax extensions (e.g. empty string interpolation `#""`) failing
   with an unterminated expression error
 * fix reference of free variables in syntax-rules expansion
+* fix `syntax-rules` nested ellipsis over a compound sub-template, e.g.
+  `((_ (a ...) ...) '(((a a) ...) ...))` - only `(<symbol> ...)` was handled,
+  a sub-template like `(a a)` failed with "ellipis not transformed"
 * fix R7RS ellipsis escape `(... <template>)` when it is the whole template
   (e.g. `((_) (... '...))`) or appears inside an ellipsis repetition
   (e.g. `((_ arg ...) (list (cons arg (... '...)) ...))`)
