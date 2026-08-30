@@ -922,6 +922,35 @@
         (def hello 10)
         (t.is hello 10)))
 
+;; R7RS 4.3: a template can both DEFINE and REFERENCE a macro-introduced
+;; identifier. Both are renamed to the same gensym, so the reference has to see
+;; the definition - the lazy-alias placeholder created for the free identifier
+;; must not shadow it (see the jabberwocky example in the R7RS test suite).
+(test "macro-introduced identifier defined and referenced by the expansion"
+      (lambda (t)
+        (t.plan 2)
+        ;; the definition is reached through a nested macro
+        (let ()
+          (define-syntax jabberwocky
+            (syntax-rules ()
+              ((_ hatter)
+               (begin
+                 (define march-hare 42)
+                 (define-syntax hatter
+                   (syntax-rules () ((_) march-hare)))))))
+          (jabberwocky mad-hatter)
+          (t.is (mad-hatter) 42))
+        ;; forward reference: `gg` is used before its define
+        (let ()
+          (define-syntax ffoo
+            (syntax-rules ()
+              ((_ ff)
+               (begin
+                 (define (ff x) (gg x))
+                 (define (gg x) (* x x))))))
+          (ffoo ff)
+          (t.is (ff 10) 100))))
+
 (test "should pass body from macro to function"
       (lambda (t)
 

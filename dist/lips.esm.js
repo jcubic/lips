@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 30 Aug 2026 21:06:04 +0000
+ * build: Sun, 30 Aug 2026 22:46:02 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -9672,12 +9672,6 @@ function transform_syntax() {
   function rename(name, symbol) {
     if (!gensyms[name]) {
       var ref = scope.ref(name);
-      // a lazy alias is a placeholder, not a binding: a nested or
-      // recursive syntax-rules has to keep re-renaming its own pattern
-      // variables, otherwise every expansion collapses onto one gensym
-      if (ref && ref.__env__[name] instanceof LazyReference) {
-        ref = null;
-      }
       // nested syntax-rules needs original symbol to get renamed again
       if (typeof name === 'symbol' && !ref) {
         name = symbol.literal();
@@ -13488,10 +13482,14 @@ Environment.prototype._lookup = function (name) {
   if (this.__env__.hasOwnProperty(name)) {
     var value = this.__env__[name];
     if (value instanceof Reference) {
-      // follow the alias to the original binding (already a Value wrapper)
-      return value.lookup();
+      // follow the alias to the original binding (already a Value
+      // wrapper); a transparent lazy alias falls through to the parent
+      if (!is_transparent_alias(value)) {
+        return value.lookup();
+      }
+    } else {
+      return Value(value, 'get');
     }
-    return Value(value, 'get');
   }
   if (this.__parent__) {
     return this.__parent__._lookup(name);
@@ -13682,7 +13680,7 @@ Environment.prototype.ref = function (name) {
     if (!env) {
       break;
     }
-    if (env.has_own(name)) {
+    if (env.has_own(name) && !is_transparent_alias(env.__env__[name])) {
       return env;
     }
     env = env.__parent__;
@@ -13707,7 +13705,13 @@ Environment.prototype.resolve = function (name, seen) {
           return null;
         }
         seen.add(value);
-        return value._env.resolve(value._name, seen);
+        var target = value._env.resolve(value._name, seen);
+        if (target || !(value instanceof LazyReference)) {
+          return target;
+        }
+        // transparent lazy alias: keep looking up the chain
+        env = env.__parent__;
+        continue;
       }
       return {
         env,
@@ -13763,6 +13767,19 @@ class Reference {
 // :: transform_syntax can tell a placeholder from a real binding.
 // -------------------------------------------------------------------------
 class LazyReference extends Reference {}
+// ----------------------------------------------------------------------
+// :: A lazy alias is TRANSPARENT while it resolves to nothing: lookups look
+// :: past it for a real binding of the same name further up the chain. The
+// :: expansion that created the placeholder may go on to define the very same
+// :: gensym in an outer environment - `(begin (define (ff x) (gg x)) (define
+// :: (gg x) (* x x)))` renames both `gg` to one gensym - and the placeholder
+// :: must not shadow that. Once nothing resolves it, it also stops counting as
+// :: a binding for syntax-rules renaming, so a nested or recursive macro keeps
+// :: re-renaming its own pattern variables.
+// ----------------------------------------------------------------------
+function is_transparent_alias(value) {
+  return value instanceof LazyReference && !value.resolve();
+}
 // -------------------------------------------------------------------------
 // :: Quote function used to pause evaluation from Macro
 // -------------------------------------------------------------------------
@@ -18355,10 +18372,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 30 Aug 2026 21:06:04 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 30 Aug 2026 22:46:02 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 30 Aug 2026 21:06:04 +0000').valueOf();
+  var date = LString('Sun, 30 Aug 2026 22:46:02 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18397,7 +18414,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 30 Aug 2026 21:06:04 +0000';
+var date = 'Sun, 30 Aug 2026 22:46:02 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
