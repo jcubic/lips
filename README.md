@@ -5,22 +5,23 @@
 
 <div align="center">
 
-[![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/LIPS_scheme)](https://twitter.com/LIPS_scheme)
 [![npm](https://img.shields.io/badge/npm-1.0.0%E2%80%93beta.23.1-blue.svg)](https://www.npmjs.com/package/lips)
 ![1.0.0 Complete](https://img.shields.io/github/milestones/progress-percent/jcubic/lips/1?label=1.0.0%20Complete)
 [![Build and test](https://github.com/jcubic/lips/actions/workflows/build.yaml/badge.svg?branch=devel&event=push)](https://github.com/jcubic/lips/actions/workflows/build.yaml)
-[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=devel&d71cd65933aad8028969cd66e0ebb806)](https://coveralls.io/github/jcubic/lips?branch=devel)
+[![Coverage Status](https://coveralls.io/repos/github/jcubic/lips/badge.svg?branch=devel&ad3102ba0306d8a298bc209816ec96fe)](https://coveralls.io/github/jcubic/lips?branch=devel)
 [![Join Gitter Chat](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/jcubic/lips)
 ![NPM Download Count](https://img.shields.io/npm/dm/lips)
 ![JSDelivr Download count](https://img.shields.io/jsdelivr/npm/hm/lips)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/jcubic/lips)
 
-</div>
 
+[![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/LIPS_scheme)](https://twitter.com/LIPS_scheme)
 [![GitHub stars](https://img.shields.io/github/stars/jcubic/lips.svg?style=social&label=Star&maxAge=2592000)](https://GitHub.com/jcubic/lips/stargazers/)
 <a href="https://twitter.com/intent/tweet?text=Powerful%20Scheme%20based%20lisp%20language%20written%20in%20JavaScript.%20It%20makes%20life%20easier%20by%20better%20interaction%20with%20JS.%20Use%20full%20power%20of%20JS%2C%20lisp,%20and%20npm%20to%20create%20your%20applications%20via%20@lips_lang&url=https://github.com/jcubic/lips&hashtags=javascript,opensource,lisp,scheme,language,programming">
    <img src="https://github.com/jcubic/lips/blob/devel/assets/tweet-shield.svg?raw=true" alt="Tweet" height="20"/>
 </a>
+
+</div>
 
 [LIPS is a powerful Scheme-based, Lisp language written in JavaScript](https://lips.js.org).
 It is based on the Scheme dialect of lisp and the R5RS/R7RS specifications. It has extensions to make it easier
@@ -321,8 +322,9 @@ They should be loaded as R7RS libraries in final 1.0.0 version
 | Evaluating expressions in an unspecified order | [SRFI-236](https://srfi.schemers.org/srfi-236) |
 | Destructuring Lists | [SRFI 239](https://srfi.schemers.org/srfi-239/) |
 | Uninterned Symbols | [SRFI 258](https://srfi.schemers.org/srfi-258/) |
+| Raw String Syntax | [SRFI 267](https://srfi.schemers.org/srfi-267/) |
 
-in Web (e.g. in Web REPL) you can also use full URL:
+In the web (e.g., in the web REPL), you can also use the full URL:
 
 ```scheme
 (load "https://cdn.jsdelivr.net/npm/lips@beta/lib/srfi/<NUMBER>.scm")
@@ -346,15 +348,15 @@ in Web (e.g. in Web REPL) you can also use full URL:
 ### 1.0
 - [x] Full support for R5RS
 - [ ] Full support for R7RS
-  - [ ] R7RS libraries (`import`/`export`/`define-library`).
   - [x] Continuations.
   - [x] Tail Call Optimization (TCO).
   - [ ] Fully tested Numerical Tower.
 - [x] Fully working binary compiler (for faster parsing and loading std lib).
 - [x] Finish `syntax-rules` (ignore limitations of current approach).
-  - [ ] Vectors.
+  - [x] Vectors.
 
 ### Future Plans
+- [ ] R7RS libraries (`import`/`export`/`define-library`).
 - [ ] Picture language (possibly inspired by P5.js, see [SRFI-203](https://srfi.schemers.org/srfi-203/srfi-203.html)).
 - [ ] Stepper/Debugger.
 - [x] Allow to use read/port in syntax extensions (similar to CL reader macros).

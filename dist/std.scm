@@ -4474,7 +4474,7 @@
   (syntax-rules (and or not else r7rs srfi-0 srfi-2 srfi-4 srfi-6 srfi-10
                      srfi-22 srfi-23 srfi-28 srfi-46 srfi-69 srfi-98 srfi-111
                      srfi-139 srfi-147 srfi-156 srfi-176 srfi-193 srfi-195 srfi-197
-                     srfi-210 srfi-236 lips r7rs complex full-unicode ieee-float
+                     srfi-210 srfi-236 srfi-267 lips r7rs complex full-unicode ieee-float
                      ratios exact-complex full-numeric-tower)
     ((cond-expand) (syntax-error "Unfulfilled cond-expand"))
     ((cond-expand (else body ...))
