@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 29 Aug 2026 20:33:38 +0000
+ * build: Sun, 30 Aug 2026 18:30:33 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -9665,6 +9665,12 @@ function transform_syntax() {
   function rename(name, symbol) {
     if (!gensyms[name]) {
       var ref = scope.ref(name);
+      // a lazy alias is a placeholder, not a binding: a nested or
+      // recursive syntax-rules has to keep re-renaming its own pattern
+      // variables, otherwise every expansion collapses onto one gensym
+      if (ref && ref.__env__[name] instanceof LazyReference) {
+        ref = null;
+      }
       // nested syntax-rules needs original symbol to get renamed again
       if (typeof name === 'symbol' && !ref) {
         name = symbol.literal();
@@ -9713,6 +9719,11 @@ function transform_syntax() {
         // value is not in scope, but it's JavaScript object
         if (typeof _value !== 'undefined') {
           scope.set(gensym_name, _value);
+        } else {
+          // free identifier with no binding yet: defer the lookup to
+          // evaluation time against the DEFINITION environment, so a
+          // binding the expansion itself creates there is found
+          scope.set(gensym_name, new LazyReference(name, scope.__parent__));
         }
       }
       // keep names so they can be restored after evaluation
@@ -13599,13 +13610,12 @@ Environment.prototype.parents = function () {
   return result;
 };
 // -------------------------------------------------------------------------
-// ----------------------------------------------------------------------
 // :: A hygienic alias: a gensym introduced by syntax-rules for a free
 // :: identifier binds to a Reference that points at the ORIGINAL binding
 // :: (name + owning environment). Reads (via _lookup) and writes (via
 // :: next_set/resolve) both follow it, so `set!` mutates the original cell
 // :: instead of a throwaway copy. References chain (nested syntax-rules).
-// ----------------------------------------------------------------------
+// -------------------------------------------------------------------------
 class Reference {
   constructor(name, env) {
     this._name = name;
@@ -13624,6 +13634,16 @@ class Reference {
     return this._env.resolve(this._name);
   }
 }
+// -------------------------------------------------------------------------
+// :: A Reference for a free identifier that had NO binding anywhere when
+// :: syntax-rules renamed it. R7RS 4.3 says such an identifier denotes the
+// :: binding visible where the transformer was specified; that environment
+// :: is still mutable, so the lookup has to be deferred to evaluation time
+// :: (the expansion itself may create the binding, as in a template that
+// :: expands to `(begin (define foo bar) foo)`). Distinct from Reference so
+// :: transform_syntax can tell a placeholder from a real binding.
+// -------------------------------------------------------------------------
+class LazyReference extends Reference {}
 // -------------------------------------------------------------------------
 // :: Quote function used to pause evaluation from Macro
 // -------------------------------------------------------------------------
@@ -18180,10 +18200,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 29 Aug 2026 20:33:38 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 30 Aug 2026 18:30:33 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 29 Aug 2026 20:33:38 +0000').valueOf();
+  var date = LString('Sun, 30 Aug 2026 18:30:33 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18222,7 +18242,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 29 Aug 2026 20:33:38 +0000';
+var date = 'Sun, 30 Aug 2026 18:30:33 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

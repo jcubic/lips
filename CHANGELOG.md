@@ -5,6 +5,7 @@
 * add (`dfls` mnemonics for floating-point exponent)
 * fix symbol syntax extensions (e.g. empty string interpolation `#""`) failing
   with an unterminated expression error
+* fix reference of free variables in syntax-rules expansion
 
 ## 1.0.0-beta.23
 ### Breaking

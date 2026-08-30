@@ -885,15 +885,14 @@
         (define-syntax def-priv (syntax-rules () ((_ y) (define priv y))))
         (t.is (to.throw (let () (def-priv 10) priv)) #t)))
 
-(test.failing "free variables"
+(test "free variables (lazy reference)"
       (lambda (t)
         (define-syntax def (syntax-rules ()
                              ((_ foo bar)
                               (begin
                                 (define foo bar)
-                                hello))))
+                                (t.is hello 10)))))
 
-        (t.is (def hello 10) 10)
         (def hello 10)
         (t.is hello 10)))
 
