@@ -10,6 +10,7 @@
 * fix reference of free variables in syntax-rules expansion
 * fix pollution of `syntax-rules` renaming identifiers by `Object.prototype` members:
   like `constructor`, `toString`, or `valueOf`
+* fix `quote` and `quasiquote` in a `syntax-rules` and remove the `clear_gensyms` hack
 * fix `macroexpand` stopping after one level when a `syntax-rules` macro
 * fix `syntax-rules` nested ellipsis over a compound sub-template, e.g.
   `((_ (a ...) ...) '(((a a) ...) ...))` - only `(<symbol> ...)` was handled,

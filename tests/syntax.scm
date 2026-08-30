@@ -2093,3 +2093,38 @@
             ((_ (a b ... . rest)) '(a ((w b) ...) rest))))
         (t.is (wrap-rest (x p q r . z)) '(x ((w p) (w q) (w r)) z))
         (t.is (wrap-rest (x p q r)) '(x ((w p) (w q) (w r)) ()))))
+
+;; R7RS 4.3.2: identifiers inside `quote`/`quasiquote` in a template are literal
+;; DATA - they are emitted as plain symbols, never hygiene-renamed - no matter
+;; how the data leaves the macro. This used to be patched up after the fact on
+;; the macro's return value only, so data escaping by a side effect kept the
+;; `#:name` gensym.
+(test "quoted data in a template is never hygiene-renamed"
+      (lambda (t)
+        (t.plan 6)
+        ;; a free identifier under an ellipsis
+        (let ()
+          (define-syntax wrap
+            (syntax-rules () ((_ (a b ...)) '(a ((w b) ...)))))
+          (t.is (wrap (x p q)) '(x ((w p) (w q)))))
+        ;; quasiquote, as the return value and escaping by define/set!
+        (let ()
+          (define-syntax qq (syntax-rules () ((_) `(a b))))
+          (t.is (qq) '(a b)))
+        (let ()
+          (define-syntax qq-def (syntax-rules () ((_ n) (define n `(a b)))))
+          (qq-def escaped)
+          (t.is escaped '(a b)))
+        (let ((holder #f))
+          (define-syntax qq-set (syntax-rules () ((_) (set! holder `(a b)))))
+          (qq-set)
+          (t.is holder '(a b)))
+        ;; unquote inside a template must reach the quasiquote implementation,
+        ;; which matches it by name - a renamed `#:unquote` would be left as data
+        (let ()
+          (define-syntax qq-un (syntax-rules () ((_ x) `(a ,x b ,@(list 1 2)))))
+          (t.is (qq-un 9) '(a 9 b 1 2)))
+        ;; a nested quasiquote keeps its inner unquote unevaluated
+        (let ()
+          (define-syntax qq-nest (syntax-rules () ((_) `(a `(b ,(c)) d))))
+          (t.is (qq-nest) '(a (quasiquote (b (unquote (c)))) d)))))
