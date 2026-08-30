@@ -1372,7 +1372,7 @@
                 (list x y))
               '(1 2))))
 
-(test.failing "syntax-parameterize (SRFI-139)"
+(test "syntax-parameterize (SRFI-139)"
       (lambda (t)
 
          (define-syntax-parameter it
@@ -1396,7 +1396,7 @@
              (aif aux test true false))))
 
         (let ((alist '((foo . 10) (bar . 20))))
-          (it.s (aif (assoc 'foo alist) (cdr (it)))
+          (t.is (aif (assoc 'foo alist) (cdr (it)))
                 10)
           (t.is (aif (assoc 'x alist) (cdr (it)))
                 (if #f #f)))))
