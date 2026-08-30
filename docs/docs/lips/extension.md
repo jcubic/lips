@@ -289,14 +289,14 @@ With syntax extensions you can create string interpolation that expand into a Sc
                                  part))
                            (vector->list parts)))))
 
-(set-special! "$" interpolate)
+(set-special! "$:" interpolate)
 
-(pprint (macroexpand-1 '(let ((x 10)) $"x = ${(+ x 2)}")))
+(pprint (macroexpand-1 '(let ((x 10)) $:"x = ${(+ x 2)}")))
 ;; ==> (let ((x 10))
 ;; ==>   (string-append "x = " (repr (+ x 2))))
 
 (let ((x 10))
-  $"x = ${(+ x 2)}")
+  $:"x = ${(+ x 2)}")
 ;; ==> "x = 12"
 ```
 
@@ -306,8 +306,8 @@ input](#standard-input) inside syntax extensions).
 
 ### Accessing the Parser
 
-In LIPS syntax extensions you can access the parser instance, so you can implement syntax
-extension that return the line number:
+In LIPS syntax extensions you can access the parser instance, so you can implement a syntax
+extension that returns the line number:
 
 ```scheme
 (define (line-num)
@@ -328,13 +328,6 @@ extension that return the line number:
 ;; ==> (12 13)
 ```
 
-:::info
-
-The provided output will be exactly the same, when the code will be put into a single file
-and executed.
-
-:::
-
 ### Standard input
 In syntax extensions, `current-input-port` points into the parser stream. So you can implement
 your own parser logic. The best way to implement a custom syntax extension (that works similarly to
@@ -351,9 +344,9 @@ Common Lisp reader macros).
               (apply string (vector->list result))
               (loop (vector-append result (vector char)) (peek-char)))))))
 
-(set-special! "$" raw-string lips.specials.SYMBOL)
+(set-special! "$:" raw-string lips.specials.SYMBOL)
 
-(print $"foo \ bar")
+(print $:"foo \ bar")
 ;; ==> "foo \\ bar"
 ```
 
@@ -372,9 +365,9 @@ to replace `#\"` with `` #\` ``.
               (apply string (vector->list result))
               (loop (vector-append result (vector char)) (peek-char)))))))
 
-(set-special! "$" raw-string lips.specials.SYMBOL)
+(set-special! "$:" raw-string lips.specials.SYMBOL)
 
-(print $`foo \ bar`)
+(print $:`foo \ bar`)
 ;; ==> "foo \\ bar"
 ```
 
