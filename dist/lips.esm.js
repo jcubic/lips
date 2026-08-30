@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 30 Aug 2026 20:07:32 +0000
+ * build: Sun, 30 Aug 2026 21:06:04 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -9031,13 +9031,17 @@ Syntax.Parameter = SyntaxParameter;
 // ----------------------------------------------------------------------
 function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
   var scope = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : {};
+  // null prototypes: these maps are keyed by user identifiers and are probed
+  // with `name in map` / `map[name]`, so an inherited Object.prototype member
+  // would masquerade as a binding - a template identifier named `constructor`,
+  // `toString`, `valueOf`, ... would be replaced by the JS builtin
   var bindings = {
     '...': {
-      symbols: {},
+      symbols: Object.create(null),
       // symbols ellipsis (x ...)
       lists: []
     },
-    symbols: {}
+    symbols: Object.create(null)
   };
   var expansion = scope.expansion,
     define = scope.define;
@@ -9613,7 +9617,10 @@ function transform_syntax() {
     _options$captured = options.captured,
     captured = _options$captured === void 0 ? null : _options$captured,
     ellipsis_symbol = options.ellipsis;
-  var gensyms = {};
+  // null prototype: keyed by user identifiers and probed with `gensyms[name]`,
+  // so an inherited member (`constructor`, `toString`, ...) would read as an
+  // already-assigned gensym and be returned instead of the renamed symbol
+  var gensyms = Object.create(null);
   function valid_symbol(symbol) {
     if (symbol instanceof LSymbol) {
       return true;
@@ -9833,7 +9840,7 @@ function transform_syntax() {
         // them here would both consume them twice and (since they have
         // no row left to give) stop the loop before it starts
         var used = template_names(first, bindings);
-        var _bind = {};
+        var _bind = Object.create(null);
         used.forEach(key => {
           var value = bindings[key];
           if (is_pair(value)) {
@@ -9852,7 +9859,7 @@ function transform_syntax() {
         });
         var result = is_array ? [] : _nil;
         var _loop = function _loop() {
-          var new_bind = {};
+          var new_bind = Object.create(null);
           var car = transform_ellipsis_expr(first, _bind, _objectSpread(_objectSpread({}, state), {}, {
             nested: false
           }), (key, value) => {
@@ -10078,13 +10085,13 @@ function transform_syntax() {
           }
           var result;
           if (keys.length) {
-            var _bind2 = _objectSpread({}, _symbols2);
+            var _bind2 = Object.assign(Object.create(null), _symbols2);
             result = is_array ? [] : _nil;
             var _loop2 = function _loop2() {
               if (!have_binding(_bind2)) {
                 return 1; // break
               }
-              var new_bind = {};
+              var new_bind = Object.create(null);
               var next = (key, value) => {
                 // ellipsis decide if what should be the next value
                 // there are two cases ((a . b) ...) and (a ...)
@@ -10171,7 +10178,7 @@ function transform_syntax() {
             if (!have_binding(_bind3, true)) {
               return 1; // break
             }
-            var new_bind = {};
+            var new_bind = Object.create(null);
             var next = (key, value) => {
               new_bind[key] = value;
             };
@@ -14813,7 +14820,9 @@ var global_env = new Environment({
           throwError: false
         });
         if (value && is_macro(value) && !is_internal_macro(value)) {
-          return macroexpand_once(value, code, this.env);
+          var _yield$macroexpand_on = yield macroexpand_once(value, code, this.env),
+            expr = _yield$macroexpand_on.expr;
+          return expr;
         }
       }
       return code;
@@ -17046,6 +17055,8 @@ function macroexpand_special_forms() {
     let_star: get('let*'),
     letrec: get('letrec'),
     letrec_star: get('letrec*'),
+    let_syntax: get('let-syntax'),
+    letrec_syntax: get('letrec-syntax'),
     quasiquote: get('quasiquote')
   };
 }
@@ -17115,6 +17126,12 @@ function _macroexpand_list() {
 function macroexpand_bindings(_x10, _x11) {
   return _macroexpand_bindings.apply(this, arguments);
 } // -------------------------------------------------------------------------
+// One-step expansion of a macro use into its output code (never evaluated).
+// Returns {expr, scope}: syntax-rules renames the identifiers it introduces to
+// gensyms and binds them in a fresh scope, so re-expanding the output has to
+// continue in THAT scope - looking `#:class` up in the use-site environment
+// finds nothing and the walk would stop at the first level. `scope` inherits
+// from the use site, so ordinary identifiers still resolve.
 function _macroexpand_bindings() {
   _macroexpand_bindings = _asyncToGenerator(function* (bindings, env) {
     // ((name value) ...) - keep names, expand values
@@ -17143,7 +17160,6 @@ function macroexpand_once(_x12, _x13, _x14) {
 } // -------------------------------------------------------------------------
 function _macroexpand_once() {
   _macroexpand_once = _asyncToGenerator(function* (macro, code, env) {
-    // one-step expansion of a macro use into its output code (never evaluated)
     var state = {
       env,
       error: e => {
@@ -17156,13 +17172,25 @@ function _macroexpand_once() {
       result = yield result;
     }
     if (result instanceof SyntaxExpansion) {
-      return result.expr;
+      var _result$env;
+      return {
+        expr: result.expr,
+        scope: (_result$env = result.env) !== null && _result$env !== void 0 ? _result$env : env
+      };
     }
     // syntax-rules in macro_expand mode returns a plain { expr, scope } bag
     if (result && typeof result === 'object' && !is_pair(result) && 'expr' in result) {
-      return result.expr;
+      var _result$scope;
+      return {
+        expr: result.expr,
+        scope: (_result$scope = result.scope) !== null && _result$scope !== void 0 ? _result$scope : env
+      };
     }
-    return result;
+    // define-macro produces plain code and introduces no scope of its own
+    return {
+      expr: result,
+      scope: env
+    };
   });
   return _macroexpand_once.apply(this, arguments);
 }
@@ -17215,31 +17243,46 @@ function _macroexpand_code() {
           }
           return new Pair(car, tail);
         }
-        // (letrec bindings . body): bound names are visible in values too
-        if (value === sf.letrec || value === sf.letrec_star) {
+        // (let-syntax/letrec-syntax bindings . body): keep the transformer
+        // bindings verbatim. They are `syntax-rules` FORMS, not macro uses,
+        // so walking them would either expand `(syntax-rules ...)` as if it
+        // were a macro call or (by expanding the whole let-syntax) leave a
+        // live #<syntax> object in the output - and macroexpand is supposed
+        // to return code. The body is expanded with the keywords shadowed,
+        // since their uses can only be expanded by evaluating the form.
+        if (value === sf.let_syntax || value === sf.letrec_syntax) {
           var _bindings = code.cdr.car;
           var _scope = macroexpand_shadow(env, macroexpand_binding_names(_bindings));
-          var _new_bindings = yield macroexpand_bindings(_bindings, _scope);
           var _body2 = yield macroexpand_list(code.cdr.cdr, _scope);
-          return new Pair(car, new Pair(_new_bindings, _body2));
+          return new Pair(car, new Pair(_bindings, _body2));
+        }
+        // (letrec bindings . body): bound names are visible in values too
+        if (value === sf.letrec || value === sf.letrec_star) {
+          var _bindings2 = code.cdr.car;
+          var _scope2 = macroexpand_shadow(env, macroexpand_binding_names(_bindings2));
+          var _new_bindings = yield macroexpand_bindings(_bindings2, _scope2);
+          var _body3 = yield macroexpand_list(code.cdr.cdr, _scope2);
+          return new Pair(car, new Pair(_new_bindings, _body3));
         }
         // (define name value) or (define (name . args) . body)
         if (value === __define__) {
           var target = code.cdr.car;
           if (is_pair(target)) {
             var _names2 = [target.car, ...macroexpand_names(target.cdr)];
-            var _body3 = yield macroexpand_list(code.cdr.cdr, macroexpand_shadow(env, _names2));
-            return new Pair(car, new Pair(target, _body3));
+            var _body4 = yield macroexpand_list(code.cdr.cdr, macroexpand_shadow(env, _names2));
+            return new Pair(car, new Pair(target, _body4));
           }
-          var _scope2 = macroexpand_shadow(env, [target]);
-          var _rest10 = yield macroexpand_list(code.cdr.cdr, _scope2);
+          var _scope3 = macroexpand_shadow(env, [target]);
+          var _rest10 = yield macroexpand_list(code.cdr.cdr, _scope3);
           return new Pair(car, new Pair(target, _rest10));
         }
         // a real macro (syntax-rules or define-macro) that isn't shadowed:
         // expand one step then re-expand the result (fixpoint)
         if (is_macro(value) && !is_internal_macro(value)) {
-          var expansion = yield macroexpand_once(value, code, env);
-          return macroexpand_code(expansion, env);
+          var _yield$macroexpand_on2 = yield macroexpand_once(value, code, env),
+            expr = _yield$macroexpand_on2.expr,
+            _scope4 = _yield$macroexpand_on2.scope;
+          return macroexpand_code(expr, _scope4);
         }
       }
     }
@@ -18312,10 +18355,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 30 Aug 2026 20:07:32 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 30 Aug 2026 21:06:04 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 30 Aug 2026 20:07:32 +0000').valueOf();
+  var date = LString('Sun, 30 Aug 2026 21:06:04 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18354,7 +18397,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 30 Aug 2026 20:07:32 +0000';
+var date = 'Sun, 30 Aug 2026 21:06:04 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

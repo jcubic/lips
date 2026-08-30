@@ -10889,7 +10889,8 @@ var global_env = new Environment({
         if (is_pair(code) && code.car instanceof LSymbol) {
             const value = this.env.get(code.car, { throwError: false });
             if (value && is_macro(value) && !is_internal_macro(value)) {
-                return macroexpand_once(value, code, this.env);
+                const { expr } = await macroexpand_once(value, code, this.env);
+                return expr;
             }
         }
         return code;
@@ -13352,6 +13353,8 @@ function macroexpand_special_forms() {
         let_star: get('let*'),
         letrec: get('letrec'),
         letrec_star: get('letrec*'),
+        let_syntax: get('let-syntax'),
+        letrec_syntax: get('letrec-syntax'),
         quasiquote: get('quasiquote')
     };
 }
@@ -13434,21 +13437,27 @@ async function macroexpand_bindings(bindings, env) {
     return result;
 }
 // -------------------------------------------------------------------------
+// One-step expansion of a macro use into its output code (never evaluated).
+// Returns {expr, scope}: syntax-rules renames the identifiers it introduces to
+// gensyms and binds them in a fresh scope, so re-expanding the output has to
+// continue in THAT scope - looking `#:class` up in the use-site environment
+// finds nothing and the walk would stop at the first level. `scope` inherits
+// from the use site, so ordinary identifiers still resolve.
 async function macroexpand_once(macro, code, env) {
-    // one-step expansion of a macro use into its output code (never evaluated)
     const state = { env, error: e => { throw e; }, macro_expand: true };
     let result = macro._invoke_state(code, state, true);
     if (is_promise(result)) {
         result = await result;
     }
     if (result instanceof SyntaxExpansion) {
-        return result.expr;
+        return { expr: result.expr, scope: result.env ?? env };
     }
     // syntax-rules in macro_expand mode returns a plain { expr, scope } bag
     if (result && typeof result === 'object' && !is_pair(result) && 'expr' in result) {
-        return result.expr;
+        return { expr: result.expr, scope: result.scope ?? env };
     }
-    return result;
+    // define-macro produces plain code and introduces no scope of its own
+    return { expr: result, scope: env };
 }
 // -------------------------------------------------------------------------
 async function macroexpand_code(code, env) {
@@ -13493,6 +13502,19 @@ async function macroexpand_code(code, env) {
                 }
                 return new Pair(car, tail);
             }
+            // (let-syntax/letrec-syntax bindings . body): keep the transformer
+            // bindings verbatim. They are `syntax-rules` FORMS, not macro uses,
+            // so walking them would either expand `(syntax-rules ...)` as if it
+            // were a macro call or (by expanding the whole let-syntax) leave a
+            // live #<syntax> object in the output - and macroexpand is supposed
+            // to return code. The body is expanded with the keywords shadowed,
+            // since their uses can only be expanded by evaluating the form.
+            if (value === sf.let_syntax || value === sf.letrec_syntax) {
+                const bindings = code.cdr.car;
+                const scope = macroexpand_shadow(env, macroexpand_binding_names(bindings));
+                const body = await macroexpand_list(code.cdr.cdr, scope);
+                return new Pair(car, new Pair(bindings, body));
+            }
             // (letrec bindings . body): bound names are visible in values too
             if (value === sf.letrec || value === sf.letrec_star) {
                 const bindings = code.cdr.car;
@@ -13516,8 +13538,8 @@ async function macroexpand_code(code, env) {
             // a real macro (syntax-rules or define-macro) that isn't shadowed:
             // expand one step then re-expand the result (fixpoint)
             if (is_macro(value) && !is_internal_macro(value)) {
-                const expansion = await macroexpand_once(value, code, env);
-                return macroexpand_code(expansion, env);
+                const { expr, scope } = await macroexpand_once(value, code, env);
+                return macroexpand_code(expr, scope);
             }
         }
     }

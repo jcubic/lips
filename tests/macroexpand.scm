@@ -62,3 +62,19 @@
                (name)))))
 
         (t.snapshot (macroexpand '(symbol hello)))))
+
+;; a syntax-rules macro renames the identifiers it introduces to gensyms and
+;; binds them in a fresh scope, so re-expanding its output has to continue in
+;; THAT scope - otherwise the walk stops at the first level and a classic macro
+;; reached through syntax-rules is left unexpanded
+(test "expands through a chain of syntax-rules and classic macros"
+      (lambda (t)
+        (t.plan 3)
+        (define-macro (twice x) `(begin ,x ,x))
+        (define-syntax outer (syntax-rules () ((_ e) (twice e))))
+        (define-syntax mid (syntax-rules () ((_ e) (outer e))))
+        (t.is (macroexpand '(outer 1)) '(begin 1 1))
+        (t.is (macroexpand '(mid 2)) '(begin 2 2))
+        ;; macroexpand-1 still stops after a single step (it returns the raw
+        ;; one-step output, so the introduced identifier is still a gensym)
+        (t.is (equal? (macroexpand-1 '(mid 3)) (macroexpand '(mid 3))) #f)))
