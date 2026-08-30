@@ -4948,18 +4948,16 @@ Syntax.prototype.toString = function() {
 };
 // ----------------------------------------------------------------------
 // :: The result of expanding a syntax-rules macro: the transcribed
-// :: expression, the hygienic scope it must be evaluated in, and the
-// :: gensym->name map used to un-rename literal symbols in the produced
-// :: value. The transformer returns this instead of evaluating the
-// :: expansion itself, so the caller can evaluate it in the MAIN evaluate
-// :: loop (same continuation chain) - otherwise a continuation captured
-// :: inside, or re-entering, a macro body cannot cross the macro boundary.
+// :: expression and the hygienic scope it must be evaluated in. The
+// :: transformer returns this instead of evaluating the expansion itself,
+// :: so the caller can evaluate it in the MAIN evaluate loop (same
+// :: continuation chain) - otherwise a continuation captured inside, or
+// :: re-entering, a macro body cannot cross the macro boundary.
 // ----------------------------------------------------------------------
 class SyntaxExpansion {
-    constructor(expr, env, names) {
+    constructor(expr, env) {
         this.expr = expr;
         this.env = env;
-        this.names = names;
     }
     // eager evaluation, used by the legacy evaluate()/evaluate_syntax path
     eval(eval_args) {
@@ -5513,11 +5511,6 @@ function is_wildcard(symbol) {
     return symbol.literal() === '_';
 }
 // ----------------------------------------------------------------------
-// :: This function is called after syntax-rules macro is evaluated
-// :: and if there are any gensyms added by macro they need to restored
-// :: to original symbols
-// ----------------------------------------------------------------------
-// ----------------------------------------------------------------------
 // :: A binding is stable (safe to alias with a Reference) when its owning
 // :: environment is a strict ancestor of the transient expansion `scope` -
 // :: it existed before the expansion and is not rebound while it runs.
@@ -5606,7 +5599,6 @@ function transform_syntax(options = {}) {
         expr,
         scope,
         symbols,
-        names,
         captured = null,
         ellipsis: ellipsis_symbol } = options;
     // null prototype: keyed by user identifiers and probed with `gensyms[name]`,
@@ -5718,12 +5710,6 @@ function transform_syntax(options = {}) {
                     scope.set(gensym_name, new LazyReference(name, scope.__parent__));
                 }
             }
-            // keep names so they can be restored after evaluation
-            // if there are free symbols as output
-            // kind of hack
-            names.push({
-                name, gensym: gensym_name
-            });
             gensyms[name] = gensym_name;
             // we need to check if name is a string, because it can be
             // gensym from nested syntax-rules
@@ -11041,15 +11027,12 @@ var global_env = new Environment({
                             console.log('PATTERN: ' + rule.toString(true));
                             console.log('MACRO: ' + code.toString(true));
                         }
-                        // name is modified in transform_syntax
-                        var names = [];
                         const new_expr = transform_syntax({
                             bindings,
                             expr,
                             symbols,
                             scope,
                             lex_scope: var_scope,
-                            names,
                             ellipsis,
                             captured: captured_macros
                         });
@@ -11065,7 +11048,7 @@ var global_env = new Environment({
                         // Return the expansion instead of evaluating it here in
                         // a nested evaluate - the caller evaluates it in the main
                         // loop so continuations work across the macro boundary.
-                        return new SyntaxExpansion(expr, new_env, names);
+                        return new SyntaxExpansion(expr, new_env);
                     }
                     rules = rules.cdr;
                 }
@@ -13688,14 +13671,12 @@ function* evaluate_code(state) {
                     // A syntax-rules macro: evaluate its expansion in THIS loop
                     // (same continuation chain) so a continuation captured
                     // inside - or re-entering - the macro body works across the
-                    // boundary. When the expansion introduced hygienic gensyms
-                    // it is evaluated in the expansion environment, so a
-                    // follow-up continuation restores the caller's environment
-                    // afterwards. The caller's dynamic environment is kept.
-                    if (result.names.length) {
-                        state.cc = new Continuation('syntax', null, code, state,
-                                                    next_syntax, { names: result.names });
-                    }
+                    // boundary. The expansion is evaluated in its own hygienic
+                    // environment; no continuation is needed to restore the
+                    // caller's, because every next_* handler restores env from
+                    // its own captured value, and when there is none beneath
+                    // this one the evaluation is finishing anyway. The caller's
+                    // dynamic environment is kept.
                     state.env = result.env;
                     state.object = result.expr;
                     state.ready = false;
@@ -13725,10 +13706,6 @@ function* evaluate_code(state) {
                         result = yield result;
                     }
                     if (result instanceof SyntaxExpansion) {
-                        if (result.names.length) {
-                            state.cc = new Continuation('syntax', null, code, state,
-                                                        next_syntax, { names: result.names });
-                        }
                         state.env = result.env;
                         state.object = new Pair(result.expr, cdr);
                         state.ready = false;
@@ -13779,15 +13756,6 @@ function next_begin(state) {
 // -------------------------------------------------------------------------
 function next_parameterize(state) {
     state.dynamic_env = this._state.dynamic_env;
-    state.env = this.__env__;
-    state.cc = this.__continuation__;
-    state.ready = true;
-}
-
-// -------------------------------------------------------------------------
-// a syntax-rules expansion finished evaluating - state.object holds its value.
-// -------------------------------------------------------------------------
-function next_syntax(state) {
     state.env = this.__env__;
     state.cc = this.__continuation__;
     state.ready = true;

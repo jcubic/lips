@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 30 Aug 2026 23:12:12 +0000
+ * build: Sun, 30 Aug 2026 23:33:17 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -8983,18 +8983,16 @@ Syntax.prototype.toString = function () {
 };
 // ----------------------------------------------------------------------
 // :: The result of expanding a syntax-rules macro: the transcribed
-// :: expression, the hygienic scope it must be evaluated in, and the
-// :: gensym->name map used to un-rename literal symbols in the produced
-// :: value. The transformer returns this instead of evaluating the
-// :: expansion itself, so the caller can evaluate it in the MAIN evaluate
-// :: loop (same continuation chain) - otherwise a continuation captured
-// :: inside, or re-entering, a macro body cannot cross the macro boundary.
+// :: expression and the hygienic scope it must be evaluated in. The
+// :: transformer returns this instead of evaluating the expansion itself,
+// :: so the caller can evaluate it in the MAIN evaluate loop (same
+// :: continuation chain) - otherwise a continuation captured inside, or
+// :: re-entering, a macro body cannot cross the macro boundary.
 // ----------------------------------------------------------------------
 class SyntaxExpansion {
-  constructor(expr, env, names) {
+  constructor(expr, env) {
     this.expr = expr;
     this.env = env;
-    this.names = names;
   }
   // eager evaluation, used by the legacy evaluate()/evaluate_syntax path
   eval(eval_args) {
@@ -9484,11 +9482,6 @@ function is_wildcard(symbol) {
   return symbol.literal() === '_';
 }
 // ----------------------------------------------------------------------
-// :: This function is called after syntax-rules macro is evaluated
-// :: and if there are any gensyms added by macro they need to restored
-// :: to original symbols
-// ----------------------------------------------------------------------
-// ----------------------------------------------------------------------
 // :: A binding is stable (safe to alias with a Reference) when its owning
 // :: environment is a strict ancestor of the transient expansion `scope` -
 // :: it existed before the expansion and is not rebound while it runs.
@@ -9582,7 +9575,6 @@ function transform_syntax() {
     expr = options.expr,
     scope = options.scope,
     symbols = options.symbols,
-    names = options.names,
     _options$captured = options.captured,
     captured = _options$captured === void 0 ? null : _options$captured,
     ellipsis_symbol = options.ellipsis;
@@ -9696,13 +9688,6 @@ function transform_syntax() {
           scope.set(gensym_name, new LazyReference(name, scope.__parent__));
         }
       }
-      // keep names so they can be restored after evaluation
-      // if there are free symbols as output
-      // kind of hack
-      names.push({
-        name,
-        gensym: gensym_name
-      });
       gensyms[name] = gensym_name;
       // we need to check if name is a string, because it can be
       // gensym from nested syntax-rules
@@ -14924,15 +14909,12 @@ var global_env = new Environment({
               console.log('PATTERN: ' + rule.toString(true));
               console.log('MACRO: ' + code.toString(true));
             }
-            // name is modified in transform_syntax
-            var names = [];
             var new_expr = transform_syntax({
               bindings,
               expr,
               symbols,
               scope,
               lex_scope: var_scope,
-              names,
               ellipsis,
               captured: captured_macros
             });
@@ -14950,7 +14932,7 @@ var global_env = new Environment({
             // Return the expansion instead of evaluating it here in
             // a nested evaluate - the caller evaluates it in the main
             // loop so continuations work across the macro boundary.
-            return new SyntaxExpansion(expr, new_env, names);
+            return new SyntaxExpansion(expr, new_env);
           }
           rules = rules.cdr;
         }
@@ -17378,15 +17360,12 @@ function* evaluate_code(state) {
           // A syntax-rules macro: evaluate its expansion in THIS loop
           // (same continuation chain) so a continuation captured
           // inside - or re-entering - the macro body works across the
-          // boundary. When the expansion introduced hygienic gensyms
-          // it is evaluated in the expansion environment, so a
-          // follow-up continuation restores the caller's environment
-          // afterwards. The caller's dynamic environment is kept.
-          if (result.names.length) {
-            state.cc = new Continuation('syntax', null, code, state, next_syntax, {
-              names: result.names
-            });
-          }
+          // boundary. The expansion is evaluated in its own hygienic
+          // environment; no continuation is needed to restore the
+          // caller's, because every next_* handler restores env from
+          // its own captured value, and when there is none beneath
+          // this one the evaluation is finishing anyway. The caller's
+          // dynamic environment is kept.
           state.env = result.env;
           state.object = result.expr;
           state.ready = false;
@@ -17417,11 +17396,6 @@ function* evaluate_code(state) {
             _result2 = yield _result2;
           }
           if (_result2 instanceof SyntaxExpansion) {
-            if (_result2.names.length) {
-              state.cc = new Continuation('syntax', null, code, state, next_syntax, {
-                names: _result2.names
-              });
-            }
             state.env = _result2.env;
             state.object = new Pair(_result2.expr, cdr);
             state.ready = false;
@@ -17472,15 +17446,6 @@ function next_begin(state) {
 // -------------------------------------------------------------------------
 function next_parameterize(state) {
   state.dynamic_env = this._state.dynamic_env;
-  state.env = this.__env__;
-  state.cc = this.__continuation__;
-  state.ready = true;
-}
-
-// -------------------------------------------------------------------------
-// a syntax-rules expansion finished evaluating - state.object holds its value.
-// -------------------------------------------------------------------------
-function next_syntax(state) {
   state.env = this.__env__;
   state.cc = this.__continuation__;
   state.ready = true;
@@ -18348,10 +18313,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sun, 30 Aug 2026 23:12:12 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 30 Aug 2026 23:33:17 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sun, 30 Aug 2026 23:12:12 +0000').valueOf();
+  var date = LString('Sun, 30 Aug 2026 23:33:17 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18390,7 +18355,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sun, 30 Aug 2026 23:12:12 +0000';
+var date = 'Sun, 30 Aug 2026 23:33:17 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
