@@ -4374,8 +4374,14 @@ function code_has_cycle(root, env) {
 // ----------------------------------------------------------------------
 function check_code_cycles(code, env) {
     if (is_pair(code) && code_has_cycle(code, env)) {
-        throw new Error('Syntax Error: cyclic structure in code, only quoted ' +
-                        'data can contain cycles');
+        const e = new Error('Syntax Error: cyclic structure in code, only quoted ' +
+                            'data can contain cycles');
+        // the offending form is the only frame available: the error is raised
+        // before evaluation starts, so there is no continuation chain to walk.
+        // to_string labels the cycle, so printing it terminates.
+        augment_exception(e, code);
+        e.__stack__ = [to_string(code, true)];
+        throw e;
     }
     return code;
 }

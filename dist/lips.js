@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Mon, 31 Aug 2026 10:45:43 +0000
+ * build: Mon, 31 Aug 2026 11:15:14 +0000
  */
 
 (function (global, factory) {
@@ -8468,7 +8468,13 @@
   // ----------------------------------------------------------------------
   function check_code_cycles(code, env) {
     if (is_pair(code) && code_has_cycle(code, env)) {
-      throw new Error('Syntax Error: cyclic structure in code, only quoted ' + 'data can contain cycles');
+      var e = new Error('Syntax Error: cyclic structure in code, only quoted ' + 'data can contain cycles');
+      // the offending form is the only frame available: the error is raised
+      // before evaluation starts, so there is no continuation chain to walk.
+      // to_string labels the cycle, so printing it terminates.
+      augment_exception(e, code);
+      e.__stack__ = [to_string(code, true)];
+      throw e;
     }
     return code;
   }
@@ -18434,10 +18440,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Mon, 31 Aug 2026 10:45:43 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Mon, 31 Aug 2026 11:15:14 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Mon, 31 Aug 2026 10:45:43 +0000').valueOf();
+    var date = LString('Mon, 31 Aug 2026 11:15:14 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -18476,7 +18482,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Mon, 31 Aug 2026 10:45:43 +0000';
+  var date = 'Mon, 31 Aug 2026 11:15:14 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);
