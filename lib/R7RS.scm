@@ -85,10 +85,76 @@
    need to evaluate to result of calling values.")
 
 ;; -----------------------------------------------------------------------------
+(define-class %Promise Object
+  (constructor (lambda (self done value)
+                 (set-object! self '__done__ done)
+                 (set-object! self '__value__ value))))
+
+;; -----------------------------------------------------------------------------
+(set-repr! %Promise (lambda (self)
+                      (string-append "#<promise - "
+                                     (if self.__forced__
+                                         (string-append
+                                          "forced with "
+                                          (type self.__value__))
+                                         "not forced")
+                                     ">")))
+
+;; -----------------------------------------------------------------------------
+(define (make-promise done? expr)
+  "(make-promise done? expr)
+
+   Function that creates a promise from an expression."
+  (new %Promise done? expr))
+
+;; -----------------------------------------------------------------------------
 (define-syntax delay-force
   (syntax-rules ()
     ((delay-force expression)
-     (make-promise #f (lambda () expression)))))
+     (make-promise #f (lambda () expression))))
+  "(delay-force expr)
+
+   Optimized version of (delay (force expression))")
+
+;; -----------------------------------------------------------------------------
+(define-syntax delay
+  (syntax-rules ()
+    ((delay expression)
+     (delay-force (make-promise #t expression))))
+  "(delay expression)
+
+   Will create a promise from expression that can be forced with (force).")
+
+;; -----------------------------------------------------------------------------
+(define (force promise)
+  "(force promise)
+
+   Function that forces the promise and evaluates the delayed expression."
+  (if (not (promise? promise))
+      promise
+      (if promise.__done__
+          promise.__value__
+          (let ((promise* (promise.__value__)))
+            (unless promise.__done__
+              (%promise-update! promise* promise))
+        (force promise)))))
+
+;; -----------------------------------------------------------------------------
+(define (%promise-update! new old)
+  "(%promise-update! new old)
+
+   Helper function to update promise created with make-promise based on new values."
+  (set-object! old '__done__ new.__done__)
+  (set-object! old '__value__ new.__value__)
+  (set-object! new '__done__ old.__done__))
+
+;; -----------------------------------------------------------------------------
+(define (promise? obj)
+  "(promise? obj)
+
+   Checks if the value is a promise created with delay or make-promise."
+  (instanceof %Promise obj))
+
 ;; -----------------------------------------------------------------------------
 (define (vector-copy vector . rest)
   "(vector-copy vector)
@@ -2024,5 +2090,3 @@
           (set! seed (car new-seed))
           (set! seed (modulo (+ (* seed a) c) m)))
       (exact->inexact (/ seed m)))))
-
-

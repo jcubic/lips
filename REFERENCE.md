@@ -1434,13 +1434,6 @@ Checks if object is a macro and it's expandable.
 Convert degrees to radians.
 ```
 
-## delay
-```
-(delay expression)
-
-Will create a promise from expression that can be forced with (force).
-```
-
 ## delete-file
 ```
 (delete-file filename)
@@ -2565,10 +2558,9 @@ Create new complex number from polar parameters.
 
 ## make-promise
 ```
-(make-promise expr)
-(make-promise done expr)
+(make-promise done? expr)
 
-Function that creates a promise from a function or expression.
+Function that creates a promise from an expression.
 ```
 
 ## make-rectangular

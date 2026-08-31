@@ -339,7 +339,7 @@
 
 (test 2 (head (tail (tail integers))))
 
-#;(define (stream-filter p? s)
+(define (stream-filter p? s)
   (delay-force
    (if (null? (force s))
        (delay '())
@@ -349,7 +349,7 @@
              (delay (cons h (stream-filter p? t)))
              (stream-filter p? t))))))
 
-;;(test 5 (head (tail (tail (stream-filter odd? integers)))))
+(test 5 (head (tail (tail (stream-filter odd? integers)))))
 
 (let ()
   (define x 5)
