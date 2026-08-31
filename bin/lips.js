@@ -135,6 +135,7 @@ function print_error(e, js_trace, exit) {
         message = `Runtime Error: ${message}`;
     }
     log_error(message);
+    let strace;
     if (e.__stack__) {
         strace = e.__stack__.map((line, i) => {
             const prefix = `[${i+1}]: `;
@@ -262,7 +263,6 @@ function log(message) {
 }
 
 // -----------------------------------------------------------------------------
-let strace;
 let rl;
 let output;
 var newline;
