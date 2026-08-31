@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sun, 30 Aug 2026 23:33:17 +0000
+ * build: Mon, 31 Aug 2026 10:45:43 +0000
  */
 
 (function (global, factory) {
@@ -8364,6 +8364,114 @@
     return visit(root);
   }
   // ----------------------------------------------------------------------------
+  // ----------------------------------------------------------------------
+  // :: A form is a QUOTATION when what follows the keyword is literal data
+  // :: rather than code. `literal()` is used so a hygiene-renamed `#:quote`
+  // :: from a macro expansion is recognised too.
+  // ----------------------------------------------------------------------
+  function is_quotation(node) {
+    return node.car instanceof LSymbol && ['quote', 'quasiquote'].includes(node.car.literal());
+  }
+  // ----------------------------------------------------------------------
+  // :: Detect a cycle in CODE. Same path-based DFS as has_cycle (iterative
+  // :: along the spine, so a long list does not grow the JS stack), with two
+  // :: differences: it leaves the print marks (__ref__/__cycles__) alone, and
+  // :: it does not descend into a quotation. The parser only produces data -
+  // :: the evaluator decides what of it is code - and a cyclic DATUM is legal
+  // :: R7RS (`'#0=(1 2 . #0#)`), so only what will actually be evaluated is
+  // :: checked. `quasiquote` is skipped for the same reason, which means a
+  // :: cycle reachable only through an `unquote` is not detected.
+  // ----------------------------------------------------------------------
+  function code_has_cycle(root, env) {
+    var gray = new Set();
+    var black = new Set();
+    // Whether NODE's operands are data rather than code. They are when the
+    // operator is a user macro - the macro consumes them, and only its
+    // EXPANSION is code, which is checked separately when it comes back.
+    // An operator that does not resolve is treated the same way: it may be a
+    // macro defined by an earlier form in the same body, and rejecting valid
+    // code is worse than missing a cycle somewhere exotic (the spine of the
+    // form is walked either way, so the common shapes are still caught).
+    // Internal macros (if/begin/set!/define/let) evaluate their operands
+    // directly, so those operands are still code.
+    function skip_operands(node) {
+      if (!env || !(node.car instanceof LSymbol)) {
+        return false;
+      }
+      try {
+        var value = env.get(node.car, {
+          throwError: false
+        });
+        if (typeof value === 'undefined') {
+          return true;
+        }
+        return is_macro(value) && !is_internal_macro(value);
+      } catch (e) {
+        // resolving an operator must never break the check: a JS
+        // dot-notation name throws on a missing intermediate object, and
+        // the internal-macro table is still in its temporal dead zone
+        // while this module is itself being evaluated
+        return true;
+      }
+    }
+    function visit(node) {
+      var spine = [];
+      var cycle = false;
+      // Only the HEAD of a spine is an operator position: in `(f a b)` the
+      // second pair's car is `a`, an operand. So the operator is classified
+      // once, not once per pair - otherwise an operand that happens to name a
+      // macro would wrongly mark the rest of the spine as data, and every
+      // pair would cost an environment lookup.
+      var head = true;
+      // set when the operator is a macro: its operands are skipped, but the
+      // spine of the CALL is still code and has to be walked - `(m . <cyclic>)`
+      // asks the macro to match infinitely many arguments
+      var operands = false;
+      while (is_pair(node)) {
+        if (gray.has(node)) {
+          cycle = true;
+          break;
+        }
+        if (black.has(node)) {
+          break;
+        }
+        gray.add(node);
+        spine.push(node);
+        if (head) {
+          if (is_quotation(node)) {
+            break;
+          }
+          operands = skip_operands(node);
+          head = false;
+        }
+        if (!operands && is_pair(node.car) && visit(node.car)) {
+          cycle = true;
+          break;
+        }
+        node = node.cdr;
+      }
+      // retire the spine from the current path so sibling branches see its
+      // pairs as shared (black) rather than as ancestors (gray)
+      for (var i = 0; i < spine.length; i++) {
+        gray.delete(spine[i]);
+        black.add(spine[i]);
+      }
+      return cycle;
+    }
+    return visit(root);
+  }
+  // ----------------------------------------------------------------------
+  // :: Reject code that cannot be evaluated because it is cyclic - otherwise
+  // :: the evaluator walks the cycle forever. Called where code ENTERS the
+  // :: evaluator (a whole form) and where a macro or syntax extension hands
+  // :: back an expansion, never per evaluation step.
+  // ----------------------------------------------------------------------
+  function check_code_cycles(code, env) {
+    if (is_pair(code) && code_has_cycle(code, env)) {
+      throw new Error('Syntax Error: cyclic structure in code, only quoted ' + 'data can contain cycles');
+    }
+    return code;
+  }
   function mark_cycles(pair) {
     // acyclic fast path: nothing to label (has_cycle already cleared any stale
     // marks). Only real cycles need the O(n^2) labelling DFS below.
@@ -14684,6 +14792,7 @@
     // ------------------------------------------------------------------
     'eval': doc('eval', function (code, env) {
       env = env || this.get('interaction-environment').call(this);
+      check_code_cycles(code, env);
       return evaluate(code, {
         env,
         dynamic_env: env,
@@ -17157,22 +17266,24 @@
       }
       if (result instanceof SyntaxExpansion) {
         var _result$env;
+        var scope = (_result$env = result.env) !== null && _result$env !== void 0 ? _result$env : env;
         return {
-          expr: result.expr,
-          scope: (_result$env = result.env) !== null && _result$env !== void 0 ? _result$env : env
+          expr: check_code_cycles(result.expr, scope),
+          scope
         };
       }
       // syntax-rules in macro_expand mode returns a plain { expr, scope } bag
       if (result && typeof result === 'object' && !is_pair(result) && 'expr' in result) {
         var _result$scope;
+        var _scope = (_result$scope = result.scope) !== null && _result$scope !== void 0 ? _result$scope : env;
         return {
-          expr: result.expr,
-          scope: (_result$scope = result.scope) !== null && _result$scope !== void 0 ? _result$scope : env
+          expr: check_code_cycles(result.expr, _scope),
+          scope: _scope
         };
       }
       // define-macro produces plain code and introduces no scope of its own
       return {
-        expr: result,
+        expr: check_code_cycles(result, env),
         scope: env
       };
     });
@@ -17236,16 +17347,16 @@
           // since their uses can only be expanded by evaluating the form.
           if (value === sf.let_syntax || value === sf.letrec_syntax) {
             var _bindings = code.cdr.car;
-            var _scope = macroexpand_shadow(env, macroexpand_binding_names(_bindings));
-            var _body2 = yield macroexpand_list(code.cdr.cdr, _scope);
+            var _scope2 = macroexpand_shadow(env, macroexpand_binding_names(_bindings));
+            var _body2 = yield macroexpand_list(code.cdr.cdr, _scope2);
             return new Pair(car, new Pair(_bindings, _body2));
           }
           // (letrec bindings . body): bound names are visible in values too
           if (value === sf.letrec || value === sf.letrec_star) {
             var _bindings2 = code.cdr.car;
-            var _scope2 = macroexpand_shadow(env, macroexpand_binding_names(_bindings2));
-            var _new_bindings = yield macroexpand_bindings(_bindings2, _scope2);
-            var _body3 = yield macroexpand_list(code.cdr.cdr, _scope2);
+            var _scope3 = macroexpand_shadow(env, macroexpand_binding_names(_bindings2));
+            var _new_bindings = yield macroexpand_bindings(_bindings2, _scope3);
+            var _body3 = yield macroexpand_list(code.cdr.cdr, _scope3);
             return new Pair(car, new Pair(_new_bindings, _body3));
           }
           // (define name value) or (define (name . args) . body)
@@ -17256,8 +17367,8 @@
               var _body4 = yield macroexpand_list(code.cdr.cdr, macroexpand_shadow(env, _names2));
               return new Pair(car, new Pair(target, _body4));
             }
-            var _scope3 = macroexpand_shadow(env, [target]);
-            var _rest10 = yield macroexpand_list(code.cdr.cdr, _scope3);
+            var _scope4 = macroexpand_shadow(env, [target]);
+            var _rest10 = yield macroexpand_list(code.cdr.cdr, _scope4);
             return new Pair(car, new Pair(target, _rest10));
           }
           // a real macro (syntax-rules or define-macro) that isn't shadowed:
@@ -17265,8 +17376,8 @@
           if (is_macro(value) && !is_internal_macro(value)) {
             var _yield$macroexpand_on2 = yield macroexpand_once(value, code, env),
               expr = _yield$macroexpand_on2.expr,
-              _scope4 = _yield$macroexpand_on2.scope;
-            return macroexpand_code(expr, _scope4);
+              _scope5 = _yield$macroexpand_on2.scope;
+            return macroexpand_code(expr, _scope5);
           }
         }
       }
@@ -17374,7 +17485,7 @@
             // this one the evaluation is finishing anyway. The caller's
             // dynamic environment is kept.
             state.env = result.env;
-            state.object = result.expr;
+            state.object = check_code_cycles(result.expr, state.env);
             state.ready = false;
           } else if (result !== state) {
             state.object = result;
@@ -17404,7 +17515,7 @@
             }
             if (_result2 instanceof SyntaxExpansion) {
               state.env = _result2.env;
-              state.object = new Pair(_result2.expr, cdr);
+              state.object = new Pair(check_code_cycles(_result2.expr, state.env), cdr);
               state.ready = false;
               expanded = true;
             }
@@ -17460,6 +17571,7 @@
 
   // -------------------------------------------------------------------------
   function next_defmaro(state) {
+    check_code_cycles(state.object, state.env);
     state.cc = this.__continuation__;
     state.env = this.__env__;
     state.ready = false;
@@ -17728,6 +17840,7 @@
         }
         var results = [];
         if (is_pair(arg)) {
+          check_code_cycles(arg, env);
           return [yield evaluate(arg, {
             env,
             dynamic_env,
@@ -17742,6 +17855,7 @@
           for (var _iterator2 = _asyncIterator(input), _step2; _iteratorAbruptCompletion2 = !(_step2 = yield _iterator2.next()).done; _iteratorAbruptCompletion2 = false) {
             var code = _step2.value;
             {
+              check_code_cycles(code, env);
               var value = yield evaluate(code, {
                 env,
                 dynamic_env,
@@ -18320,10 +18434,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sun, 30 Aug 2026 23:33:17 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Mon, 31 Aug 2026 10:45:43 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sun, 30 Aug 2026 23:33:17 +0000').valueOf();
+    var date = LString('Mon, 31 Aug 2026 10:45:43 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -18362,7 +18476,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Sun, 30 Aug 2026 23:33:17 +0000';
+  var date = 'Mon, 31 Aug 2026 10:45:43 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

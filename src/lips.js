@@ -4278,6 +4278,107 @@ function has_cycle(root) {
     return visit(root);
 }
 // ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------
+// :: A form is a QUOTATION when what follows the keyword is literal data
+// :: rather than code. `literal()` is used so a hygiene-renamed `#:quote`
+// :: from a macro expansion is recognised too.
+// ----------------------------------------------------------------------
+function is_quotation(node) {
+    return node.car instanceof LSymbol &&
+        ['quote', 'quasiquote'].includes(node.car.literal());
+}
+// ----------------------------------------------------------------------
+// :: Detect a cycle in CODE. Same path-based DFS as has_cycle (iterative
+// :: along the spine, so a long list does not grow the JS stack), with two
+// :: differences: it leaves the print marks (__ref__/__cycles__) alone, and
+// :: it does not descend into a quotation. The parser only produces data -
+// :: the evaluator decides what of it is code - and a cyclic DATUM is legal
+// :: R7RS (`'#0=(1 2 . #0#)`), so only what will actually be evaluated is
+// :: checked. `quasiquote` is skipped for the same reason, which means a
+// :: cycle reachable only through an `unquote` is not detected.
+// ----------------------------------------------------------------------
+function code_has_cycle(root, env) {
+    const gray = new Set();
+    const black = new Set();
+    // Whether NODE's operands are data rather than code. They are when the
+    // operator is a user macro - the macro consumes them, and only its
+    // EXPANSION is code, which is checked separately when it comes back.
+    // An operator that does not resolve is treated the same way: it may be a
+    // macro defined by an earlier form in the same body, and rejecting valid
+    // code is worse than missing a cycle somewhere exotic (the spine of the
+    // form is walked either way, so the common shapes are still caught).
+    // Internal macros (if/begin/set!/define/let) evaluate their operands
+    // directly, so those operands are still code.
+    function skip_operands(node) {
+        if (!env || !(node.car instanceof LSymbol)) {
+            return false;
+        }
+        try {
+            const value = env.get(node.car, { throwError: false });
+            if (typeof value === 'undefined') {
+                return true;
+            }
+            return is_macro(value) && !is_internal_macro(value);
+        } catch (e) {
+            // resolving an operator must never break the check: a JS
+            // dot-notation name throws on a missing intermediate object, and
+            // the internal-macro table is still in its temporal dead zone
+            // while this module is itself being evaluated
+            return true;
+        }
+    }
+    function visit(node) {
+        const spine = [];
+        let cycle = false;
+        // Only the HEAD of a spine is an operator position: in `(f a b)` the
+        // second pair's car is `a`, an operand. So the operator is classified
+        // once, not once per pair - otherwise an operand that happens to name a
+        // macro would wrongly mark the rest of the spine as data, and every
+        // pair would cost an environment lookup.
+        let head = true;
+        // set when the operator is a macro: its operands are skipped, but the
+        // spine of the CALL is still code and has to be walked - `(m . <cyclic>)`
+        // asks the macro to match infinitely many arguments
+        let operands = false;
+        while (is_pair(node)) {
+            if (gray.has(node)) { cycle = true; break; }
+            if (black.has(node)) { break; }
+            gray.add(node);
+            spine.push(node);
+            if (head) {
+                if (is_quotation(node)) { break; }
+                operands = skip_operands(node);
+                head = false;
+            }
+            if (!operands && is_pair(node.car) && visit(node.car)) {
+                cycle = true;
+                break;
+            }
+            node = node.cdr;
+        }
+        // retire the spine from the current path so sibling branches see its
+        // pairs as shared (black) rather than as ancestors (gray)
+        for (let i = 0; i < spine.length; i++) {
+            gray.delete(spine[i]);
+            black.add(spine[i]);
+        }
+        return cycle;
+    }
+    return visit(root);
+}
+// ----------------------------------------------------------------------
+// :: Reject code that cannot be evaluated because it is cyclic - otherwise
+// :: the evaluator walks the cycle forever. Called where code ENTERS the
+// :: evaluator (a whole form) and where a macro or syntax extension hands
+// :: back an expansion, never per evaluation step.
+// ----------------------------------------------------------------------
+function check_code_cycles(code, env) {
+    if (is_pair(code) && code_has_cycle(code, env)) {
+        throw new Error('Syntax Error: cyclic structure in code, only quoted ' +
+                        'data can contain cycles');
+    }
+    return code;
+}
 function mark_cycles(pair) {
     // acyclic fast path: nothing to label (has_cycle already cleared any stale
     // marks). Only real cycles need the O(n^2) labelling DFS below.
@@ -10785,6 +10886,7 @@ var global_env = new Environment({
     // ------------------------------------------------------------------
     'eval': doc('eval', function(code, env) {
         env = env || this.get('interaction-environment').call(this);
+        check_code_cycles(code, env);
         return evaluate(code, {
             env,
             dynamic_env: env,
@@ -13469,14 +13571,16 @@ async function macroexpand_once(macro, code, env) {
         result = await result;
     }
     if (result instanceof SyntaxExpansion) {
-        return { expr: result.expr, scope: result.env ?? env };
+        const scope = result.env ?? env;
+        return { expr: check_code_cycles(result.expr, scope), scope };
     }
     // syntax-rules in macro_expand mode returns a plain { expr, scope } bag
     if (result && typeof result === 'object' && !is_pair(result) && 'expr' in result) {
-        return { expr: result.expr, scope: result.scope ?? env };
+        const scope = result.scope ?? env;
+        return { expr: check_code_cycles(result.expr, scope), scope };
     }
     // define-macro produces plain code and introduces no scope of its own
-    return { expr: result, scope: env };
+    return { expr: check_code_cycles(result, env), scope: env };
 }
 // -------------------------------------------------------------------------
 async function macroexpand_code(code, env) {
@@ -13678,7 +13782,7 @@ function* evaluate_code(state) {
                     // this one the evaluation is finishing anyway. The caller's
                     // dynamic environment is kept.
                     state.env = result.env;
-                    state.object = result.expr;
+                    state.object = check_code_cycles(result.expr, state.env);
                     state.ready = false;
                 } else if (result !== state) {
                     state.object = result;
@@ -13707,7 +13811,7 @@ function* evaluate_code(state) {
                     }
                     if (result instanceof SyntaxExpansion) {
                         state.env = result.env;
-                        state.object = new Pair(result.expr, cdr);
+                        state.object = new Pair(check_code_cycles(result.expr, state.env), cdr);
                         state.ready = false;
                         expanded = true;
                     }
@@ -13763,6 +13867,7 @@ function next_parameterize(state) {
 
 // -------------------------------------------------------------------------
 function next_defmaro(state) {
+    check_code_cycles(state.object, state.env);
     state.cc = this.__continuation__;
     state.env = this.__env__;
     state.ready = false;
@@ -14031,10 +14136,12 @@ function exec_collect(collect_callback) {
         }
         const results = [];
         if (is_pair(arg)) {
+            check_code_cycles(arg, env);
             return [await evaluate(arg, { env, dynamic_env, use_dynamic })];
         }
         const input = Array.isArray(arg) ? arg : _parse(arg, parser_args);
         for await (let code of input) {
+            check_code_cycles(code, env);
             const value = await evaluate(code, { env, dynamic_env, use_dynamic });
             results.push(collect_callback(code, value));
         }
