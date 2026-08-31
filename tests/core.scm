@@ -73,6 +73,28 @@ This function returns the car (item 1) of the list.")
         ;; we didn't fall back to documenting `help`
         (t.is (string=? (help lambda) (help help)) #f)))
 
+;; R7RS-style `(define name expression "doc string")` - the third argument was
+;; ignored, so only a docstring written INSIDE a lambda body was ever picked up.
+;; define-syntax expands to that same form, which is why macros had no docs.
+(test "define stores the doc string given as its third argument"
+      (lambda (t)
+        (t.plan 5)
+        (define with-lambda (lambda () 10) "lambda doc")
+        (t.is (help with-lambda) "lambda doc")
+        (define with-value 10 "value doc")
+        (t.is (help with-value) "value doc")
+        ;; a docstring in the body of (define (name) ...) still works
+        (define (in-body) "body doc" 10)
+        (t.is (help in-body) "body doc")
+        ;; define-syntax expands to (define name <syntax> "doc")
+        (define-syntax documented-syntax
+          (syntax-rules () ((_) 1))
+          "syntax doc")
+        (t.is (help documented-syntax) "syntax doc")
+        ;; without a doc string there is nothing to report
+        (define undocumented 10)
+        (t.is (help undocumented) #void)))
+
 (test "help resolves docstrings stored in __docs__ at runtime"
       (lambda (t)
         ;; a user function's docstring lives in the environment's __docs__ map

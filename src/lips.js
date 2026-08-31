@@ -9406,7 +9406,7 @@ function Environment(obj, parent, name) {
 // -------------------------------------------------------------------------
 Environment.prototype.clone = function() {
     const copy = new Environment({...this.__env__}, this.__parent__, this.__name__);
-    copy.__doc__ = new Map(this.__doc__);
+    copy.__docs__ = new Map(this.__docs__);
     return copy;
 };
 // -------------------------------------------------------------------------
@@ -9459,11 +9459,11 @@ Environment.prototype.doc = function(name, value = null, dump = false) {
     const ref = this.ref(name);
     if (ref) {
         if (ref.__docs__ !== null && ref.__docs__.has(name)) {
-            return ref.__docs__.get(name);
+            return ref.__docs__.get(name).valueOf();
         }
         const value = ref.get(name);
         if (value?.__doc__) {
-            return value?.__doc__;
+            return value?.__doc__.valueOf();
         }
     }
 };
@@ -13754,10 +13754,19 @@ function* evaluate_code(state) {
                 } else {
                     typecheck('define', car, 'symbol');
                     let doc;
-                    if (is_pair(cdr.cdr.car) &&
+                    if (is_pair(cdr.cdr.cdr) && LString.isString(cdr.cdr.cdr.car)) {
+                        // (define name expression "doc string"). define-syntax
+                        // expands to this form too, so it is how a macro gets
+                        // its documentation.
+                        doc = cdr.cdr.cdr.car.valueOf();
+                    } else if (is_pair(cdr.cdr.car) &&
                         LSymbol.is(cdr.cdr.car.car, 'lambda') &&
                         is_pair(cdr.cdr.car.cdr) &&
+                        is_pair(cdr.cdr.car.cdr.cdr) &&
                         LString.isString(cdr.cdr.car.cdr.cdr.car)) {
+                        // (define (name . args) "doc string" . body) has already
+                        // been rewritten to a lambda whose body opens with the
+                        // doc string
                         doc = cdr.cdr.car.cdr.cdr.car.valueOf();
                     }
                     const value = state.object = cdr.cdr.car;

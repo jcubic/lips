@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Mon, 31 Aug 2026 11:15:14 +0000
+ * build: Mon, 31 Aug 2026 19:45:35 +0000
  */
 
 (function (global, factory) {
@@ -13488,7 +13488,7 @@
   // -------------------------------------------------------------------------
   Environment.prototype.clone = function () {
     var copy = new Environment(_objectSpread({}, this.__env__), this.__parent__, this.__name__);
-    copy.__doc__ = new Map(this.__doc__);
+    copy.__docs__ = new Map(this.__docs__);
     return copy;
   };
   // -------------------------------------------------------------------------
@@ -13544,11 +13544,11 @@
     var ref = this.ref(name);
     if (ref) {
       if (ref.__docs__ !== null && ref.__docs__.has(name)) {
-        return ref.__docs__.get(name);
+        return ref.__docs__.get(name).valueOf();
       }
       var _value4 = ref.get(name);
       if (_value4 !== null && _value4 !== void 0 && _value4.__doc__) {
-        return _value4 === null || _value4 === void 0 ? void 0 : _value4.__doc__;
+        return _value4 === null || _value4 === void 0 ? void 0 : _value4.__doc__.valueOf();
       }
     }
   };
@@ -17460,7 +17460,15 @@
           } else {
             typecheck('define', car, 'symbol');
             var _doc;
-            if (is_pair(cdr.cdr.car) && LSymbol.is(cdr.cdr.car.car, 'lambda') && is_pair(cdr.cdr.car.cdr) && LString.isString(cdr.cdr.car.cdr.cdr.car)) {
+            if (is_pair(cdr.cdr.cdr) && LString.isString(cdr.cdr.cdr.car)) {
+              // (define name expression "doc string"). define-syntax
+              // expands to this form too, so it is how a macro gets
+              // its documentation.
+              _doc = cdr.cdr.cdr.car.valueOf();
+            } else if (is_pair(cdr.cdr.car) && LSymbol.is(cdr.cdr.car.car, 'lambda') && is_pair(cdr.cdr.car.cdr) && is_pair(cdr.cdr.car.cdr.cdr) && LString.isString(cdr.cdr.car.cdr.cdr.car)) {
+              // (define (name . args) "doc string" . body) has already
+              // been rewritten to a lambda whose body opens with the
+              // doc string
               _doc = cdr.cdr.car.cdr.cdr.car.valueOf();
             }
             var value = state.object = cdr.cdr.car;
@@ -18440,10 +18448,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Mon, 31 Aug 2026 11:15:14 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Mon, 31 Aug 2026 19:45:35 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Mon, 31 Aug 2026 11:15:14 +0000').valueOf();
+    var date = LString('Mon, 31 Aug 2026 19:45:35 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -18482,7 +18490,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Mon, 31 Aug 2026 11:15:14 +0000';
+  var date = 'Mon, 31 Aug 2026 19:45:35 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

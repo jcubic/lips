@@ -14,6 +14,7 @@
 * fix `quote` and `quasiquote` in a `syntax-rules` and remove the `clear_gensyms` hack
 * evaluating cyclic code now throws a Syntax Error instead of hanging the interpreter
 * fix REPL reporting the previous error's stack trace for an error didn't have its own
+* fix `(define name expression "doc string")` ignoring the doc string
 * fix `macroexpand` stopping after one level when a `syntax-rules` macro
 * fix `syntax-rules` nested ellipsis over a compound sub-template, e.g.
   `((_ (a ...) ...) '(((a a) ...) ...))` - only `(<symbol> ...)` was handled,

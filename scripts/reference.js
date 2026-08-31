@@ -3,20 +3,21 @@ import fs from 'fs/promises';
 import { env, exec } from '../src/lips.js';
 
 function skip_internal([name]) {
-    return name.match(/^%/) === null;
+    return name.match(/^(%|\*\*)/) === null;
 }
 
-function map_docs(pairs) {
+function map_docs(pairs, env) {
     return pairs.filter(skip_internal).map(([name, obj]) => {
+        let doc = env.doc(name);
         return {
-            name: name,
-            doc: obj?.__doc__ && obj.__doc__.valueOf()
+            name,
+            doc
         };
     }).filter(object => object.doc);
 }
 function get_docs_strings() {
     const global_env = env.__parent__.__env__;
-    const docs = map_docs(Object.entries(global_env));
+    const docs = map_docs(Object.entries(global_env), env.__parent__);
     docs.sort((a, b) => a.name.localeCompare(b.name));
     return docs;
 }

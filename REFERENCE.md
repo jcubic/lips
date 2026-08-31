@@ -9,6 +9,13 @@ Subtracts n2 and subsequent numbers from n1. If only one argument is passed
 it will negate the value.
 ```
 
+## --
+```
+(-- variable)
+
+Works only on variables and decrements the value by one.
+```
+
 ## -->
 ```
 Helper macro that simplifies calling methods on objects. It works with chaining
@@ -56,13 +63,6 @@ Multiplies all numbers passed as arguments. If single value is passed
 it will return that value.
 ```
 
-## **
-```
-(** a b)
-
-Function that calculates number a to to the power of b.
-```
-
 ## /
 ```
 (/ n1 n2 ...)
@@ -92,6 +92,13 @@ Function that calculates the bitwise xor (exclusive or) operation.
 
 Sums all numbers passed as arguments. If single value is passed it will
 return that value.
+```
+
+## ++
+```
+(++ variable)
+
+Works only on variables and increment the value by one.
 ```
 
 ## <
@@ -734,6 +741,40 @@ continuation was captured.
 This function returns the car (item 1) of the list.
 ```
 
+## case
+```
+(case value
+     ((<items>) result1)
+     ((<items>) result2)
+     [else result3])
+
+Macro for switch case statement. It test if value is any of the item. If
+item match the value it will return corresponding result expression value.
+If no value match and there is else it will return that result.
+```
+
+## case-lambda
+```
+(case-lambda expr ...)
+
+Macro create new function with different version of the function depend on
+number of arguments. Each expression is similar to single lambda.
+
+e.g.:
+
+    (define sum
+       (case-lambda
+         ((x) x)
+         ((x y) (+ x y))
+         ((x y z) (+ x y z))))
+
+    (sum 1)
+    (sum 1 2)
+    (sum 1 2 3)
+
+More arguments will give an error.
+```
+
 ## cdaaaar
 ```
 (cdaaaar arg)
@@ -1108,6 +1149,13 @@ Returns true if characters are monotonically decreasing.
 Returns true if characters are monotonically non-increasing.
 ```
 
+## class
+```
+(class <parent> body ...)
+
+Allows to create anonymous classes. See define-class for details.
+```
+
 ## clone
 ```
 (clone list)
@@ -1193,6 +1241,13 @@ Macro for condition checks. For usage instead of nested ifs.
 You can use predicate and any number of expressions. Or symbol =>
 Followed by procedure that will be invoked with result
 of the predicate.
+```
+
+## cond-expand
+```
+(cond-expand (cond body ...)
+
+Conditionally execute code based on a features by Scheme implementation.
 ```
 
 ## cons
@@ -1420,6 +1475,14 @@ and in the absence of syntax-parameterize, is functionally equivalent to
 define-syntax.
 ```
 
+## define-values
+```
+(define-values (a b ...) expr)
+
+Evaluates expression expr and if it evaluates to result of values
+then it will define each value as a variable like with define.
+```
+
 ## defmacro?
 ```
 (defmacro? expression)
@@ -1432,6 +1495,20 @@ Checks if object is a macro and it's expandable.
 (degree->radians x)
 
 Convert degrees to radians.
+```
+
+## delay
+```
+(delay expression)
+
+Will create a promise from expression that can be forced with (force).
+```
+
+## delay-force
+```
+(delay-force expr)
+
+Optimized version of (delay (force expression))
 ```
 
 ## delete-file
@@ -2061,6 +2138,17 @@ JavaScript files only.
  to global scope.
 ```
 
+## guard
+```
+(guard (variable (cond)
+                 (cond => fn)
+                 (cond2 result))
+       body)
+
+Macro that executes the body and when there is exception, triggered by
+raise it's saved in variable that can be tested by conditions.
+```
+
 ## help
 ```
 (help object)
@@ -2335,6 +2423,14 @@ it is similar to let-env but lexical scope is working with it.
  The macro to letrec-syntax is like letrec is to let.
 ```
 
+## let-values
+```
+(let-values (binding ...) body ...)
+
+The macro work similar to let but variable is list of values and value
+need to evaluate to result of calling values.
+```
+
 ## let*
 ```
 (let* ((a value-a) (b value-b) ...) . body)
@@ -2342,6 +2438,14 @@ it is similar to let-env but lexical scope is working with it.
 Macro similar to `let`, but the subsequent bindings after the first
 are evaluated in the environment including the previous let variables,
 so you can define one variable, and use it in the next's definition.
+```
+
+## let*-values
+```
+(let*-values binding body ...)
+
+The macro work similar to let* but variable is list of values and value
+need to evaluate to result of calling values.
 ```
 
 ## letrec
@@ -4290,6 +4394,13 @@ return a pair where first is the item added to the list and second is next value
 passed to the function. If the function returns false it ends the loop.
 ```
 
+## unless
+```
+(unless test body ...)
+
+Executes body when test expression is false.
+```
+
 ## unquote
 ```
 (unquote code) or ,code
@@ -4482,6 +4593,13 @@ Returns true if value is vector and false if not.
 (wait time . expr)
 
 Returns a promise that will resolve with the expression after delay.
+```
+
+## when
+```
+(when test body ...)
+
+Executes body when test expression is true.
 ```
 
 ## while
