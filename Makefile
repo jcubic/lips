@@ -39,7 +39,7 @@ define ver_date
 	-e "s/{{YEAR}}/${YEAR}/" $(1) || $(SED) -i -e "s/{{VER}}/DEV/g" -e "s/{{DATE}}/$(DATE)/g" $(1)
 endef
 
-ALL: package.json .$(VERSION) assets/classDiagram.svg dist/base.js dist/lips.js dist/lips.esm.js dist/lips.min.js dist/lips.esm.min.js README.md REFERENCE.md dist/std.min.scm dist/std.xcb docs/reference.json docs/version.json
+ALL: package.json .$(VERSION) assets/classDiagram.svg dist/base.js dist/lips.js dist/lips.esm.js dist/lips.min.js dist/lips.esm.min.js README.md REFERENCE.md dist/std.min.scm dist/std.xcb docs/reference.json docs/version.json docs/src/pages/changelog.md
 
 dist/banner.js: src/banner.js src/lips.js .$(VERSION)
 	$(CP) src/banner.js dist/banner.js
@@ -51,6 +51,9 @@ dist/base.js: src/lips.js .$(VERSION)
 
 docs/version.json: ./docs/version.mjs .$(VERSION)
 	$(NODE) ./docs/version.mjs
+
+docs/src/pages/changelog.md: CHANGELOG.md ./docs/changelog.mjs
+	$(NODE) ./docs/changelog.mjs
 
 dist/lips.js dist/lips.esm.js dist/lips.cjs: dist/banner.js dist/base.js .$(VERSION) rollup.config.js
 	$(ROLLUP) -c

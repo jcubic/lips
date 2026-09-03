@@ -1,3 +1,20 @@
+---
+title: Changelog
+description: Release notes for LIPS Scheme - new features, bug fixes, breaking changes, and procedures that were renamed or removed in each version.
+keywords: [changelog, release notes, breaking changes, removed, renamed, migration]
+# only the version headings in the table of contents - every release repeats
+# the same Breaking/Features/Bugfix sections, which just buries the versions
+toc_max_heading_level: 2
+format: md
+---
+
+<!-- GENERATED FILE - edit CHANGELOG.md in the repository root instead. -->
+
+# Changelog
+
+All versions of LIPS Scheme. It includes all features, bugfixes and breaking changes.
+
+
 ## 1.0.0-beta.23
 ### Breaking
 * `syntax-rules` now treats `_` as the R7RS wildcard: it matches any input

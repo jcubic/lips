@@ -115,6 +115,7 @@ const config: Config = {
         },
         {to: '/reference', label: 'Reference', position: 'left' },
         {to: '/blog', label: 'Blog', position: 'left'},
+        {to: '/changelog', label: 'Changelog', position: 'left'},
         {
           href: 'https://twitter.com/LIPS_scheme',
           label: 'Twitter/X',
