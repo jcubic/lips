@@ -65,7 +65,7 @@
   (ikarus     (#f #f #f #t #f #t #f #t #f #f #f #f #t #f #f #t #t #t #f #f))
   (scheme48   (#f #f #f #t #t #t #f #t #t #t #t #t #t #t #t #t #t #f #f #f))
   (mit-scheme (#t #t #t #t #t #f #t #t #t #f #t #f #f #f #f #t #t #f #t #f))
-  (lips       (#t #f #f #t #f #t #f #t #t #f #f #f #t #t #f #f #f #t #t #f))
+  (lips       (#t #f #f #t #f #f #f #t #t #f #f #f #t #t #f #f #f #t #t #f))
   (gauche     (#f #f #f #t #f #f #f #t #t #f #f #f #f #f #f #t #t #f #f #f))))
 
 ;; DETECT:MATCH-SIGNATURE

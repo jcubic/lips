@@ -3902,7 +3902,7 @@
 ;; -----------------------------------------------------------------------------
 (set-repr! %Promise (lambda (self)
                       (string-append "#<promise - "
-                                     (if self.__forced__
+                                     (if self.__done__
                                          (string-append
                                           "forced with "
                                           (type self.__value__))
@@ -3910,17 +3910,17 @@
                                      ">")))
 
 ;; -----------------------------------------------------------------------------
-(define (make-promise done? expr)
+(define (make-promise expr)
   "(make-promise done? expr)
 
-   Function that creates a promise from an expression."
-  (new %Promise done? expr))
+   Function that creates a promise from an expression that can later be forced."
+  (new %Promise #f (lambda () expr)))
 
 ;; -----------------------------------------------------------------------------
 (define-syntax delay-force
   (syntax-rules ()
     ((delay-force expression)
-     (make-promise #f (lambda () expression))))
+     (new %Promise #f (lambda () expression))))
   "(delay-force expr)
 
    Optimized version of (delay (force expression))")
@@ -3929,7 +3929,7 @@
 (define-syntax delay
   (syntax-rules ()
     ((delay expression)
-     (delay-force (make-promise #t expression))))
+     (delay-force (new %Promise #t expression))))
   "(delay expression)
 
    Will create a promise from expression that can be forced with (force).")
