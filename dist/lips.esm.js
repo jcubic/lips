@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Mon, 31 Aug 2026 19:45:35 +0000
+ * build: Thu, 03 Sep 2026 21:21:12 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -8007,6 +8007,61 @@ Pair.prototype.reverse = function () {
     node = next;
   }
   return prev;
+};
+
+// ----------------------------------------------------------------------
+// :: Structural comparison of two lists, used by R7RS `equal?`.
+// ::
+// :: Cyclic structures are compared coinductively: a pair of nodes that is
+// :: already under comparison is ASSUMED equal. Walking on can only prove them
+// :: different, and if it never does they are equal - so `equal?` terminates on
+// :: a cycle, a cycle compares equal to itself, and two structurally identical
+// :: cycles compare equal.
+// ::
+// :: The walk is an explicit stack rather than recursion: a list is unbounded
+// :: and its spine would otherwise be one JS frame per element.
+// ----------------------------------------------------------------------
+Pair.prototype.equal = function (arg) {
+  // everything that is not a pair (strings, vectors, records, numbers, ...)
+  // is compared by `equal?` from the standard library. It is only there once
+  // the library is loaded, so until then fall back to the atom comparison.
+  var scheme_equal = global_env && global_env.get('equal?', {
+    throwError: false
+  });
+  var same = is_function(scheme_equal) ? scheme_equal : equal;
+  // left node -> right nodes it is already assumed equal to
+  var assumed = new Map();
+  var stack = [[this, arg]];
+  while (stack.length) {
+    var _stack$pop = stack.pop(),
+      _stack$pop2 = _slicedToArray(_stack$pop, 2),
+      left = _stack$pop2[0],
+      right = _stack$pop2[1];
+    if (left === right) {
+      // same object - includes nil, and a cycle compared with itself
+      continue;
+    }
+    if (is_pair(left) && is_pair(right)) {
+      var seen = assumed.get(left);
+      if (!seen) {
+        seen = new Set();
+        assumed.set(left, seen);
+      } else if (seen.has(right)) {
+        // this exact node pair is already being compared: a cycle that
+        // has closed without finding a difference
+        continue;
+      }
+      seen.add(right);
+      // cdr first, so the car (pushed last) is compared first and a
+      // difference near the head is found without walking the whole list
+      stack.push([left.cdr, right.cdr], [left.car, right.car]);
+    } else if (is_pair(left) || is_pair(right)) {
+      return false;
+    } else if (same(left, right) === false) {
+      return false;
+    }
+  }
+  return true;
 };
 
 // ----------------------------------------------------------------------
@@ -18441,10 +18496,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Mon, 31 Aug 2026 19:45:35 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Thu, 03 Sep 2026 21:21:12 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Mon, 31 Aug 2026 19:45:35 +0000').valueOf();
+  var date = LString('Thu, 03 Sep 2026 21:21:12 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18483,7 +18538,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Mon, 31 Aug 2026 19:45:35 +0000';
+var date = 'Thu, 03 Sep 2026 21:21:12 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

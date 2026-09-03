@@ -3939,6 +3939,56 @@ Pair.prototype.reverse = function() {
 };
 
 // ----------------------------------------------------------------------
+// :: Structural comparison of two lists, used by R7RS `equal?`.
+// ::
+// :: Cyclic structures are compared coinductively: a pair of nodes that is
+// :: already under comparison is ASSUMED equal. Walking on can only prove them
+// :: different, and if it never does they are equal - so `equal?` terminates on
+// :: a cycle, a cycle compares equal to itself, and two structurally identical
+// :: cycles compare equal.
+// ::
+// :: The walk is an explicit stack rather than recursion: a list is unbounded
+// :: and its spine would otherwise be one JS frame per element.
+// ----------------------------------------------------------------------
+Pair.prototype.equal = function(arg) {
+    // everything that is not a pair (strings, vectors, records, numbers, ...)
+    // is compared by `equal?` from the standard library. It is only there once
+    // the library is loaded, so until then fall back to the atom comparison.
+    const scheme_equal = global_env && global_env.get('equal?', { throwError: false });
+    const same = is_function(scheme_equal) ? scheme_equal : equal;
+    // left node -> right nodes it is already assumed equal to
+    const assumed = new Map();
+    const stack = [[this, arg]];
+    while (stack.length) {
+        const [left, right] = stack.pop();
+        if (left === right) {
+            // same object - includes nil, and a cycle compared with itself
+            continue;
+        }
+        if (is_pair(left) && is_pair(right)) {
+            let seen = assumed.get(left);
+            if (!seen) {
+                seen = new Set();
+                assumed.set(left, seen);
+            } else if (seen.has(right)) {
+                // this exact node pair is already being compared: a cycle that
+                // has closed without finding a difference
+                continue;
+            }
+            seen.add(right);
+            // cdr first, so the car (pushed last) is compared first and a
+            // difference near the head is found without walking the whole list
+            stack.push([left.cdr, right.cdr], [left.car, right.car]);
+        } else if (is_pair(left) || is_pair(right)) {
+            return false;
+        } else if (same(left, right) === false) {
+            return false;
+        }
+    }
+    return true;
+};
+
+// ----------------------------------------------------------------------
 Pair.prototype.map = function(fn) {
     if (typeof this.car !== 'undefined') {
         return new Pair(fn(this.car), is_nil(this.cdr) ? nil : this.cdr.map(fn));

@@ -2203,12 +2203,11 @@
   "(equal? a b)
 
    The function checks if values are equal. If both are a pair or an array
-   it compares their elements recursively. If pairs have cycles it compares
-   them with eq?"
+   it compares their elements recursively. Cyclic lists are compared without
+   looping: a cycle is equal to itself and to a structurally identical cycle."
   (cond ((and (pair? a))
          (and (pair? b)
-              (equal? (car a) (car b))
-              (equal? (cdr a) (cdr b))))
+              (a.equal b)))
         ((symbol? a)
          (and (symbol? b)
               (eq? a b)))

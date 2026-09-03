@@ -335,13 +335,13 @@
 
         (t.is (kons 1 2) (kons 1 2))))
 
-(test.skip "equal? on same cycle"
+(test "equal? on same cycle"
       (lambda (t)
         (let ((x (cons 1 (cons 2 '()))))
           (set-cdr! (cdr x) x)
           (t.is (equal? x x) #t))))
 
-(test.skip "equal?  on identical cycles"
+(test "equal?  on identical cycles"
       (lambda (t)
         (let ((a (list 1 2))
               (b (list 1 2)))

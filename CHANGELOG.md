@@ -15,6 +15,8 @@
 * evaluating cyclic code now throws a Syntax Error instead of hanging the interpreter
 * fix REPL reporting the previous error's stack trace for an error didn't have its own
 * fix `(define name expression "doc string")` ignoring the doc string
+* `equal?` no longer loops forever on cyclic lists - a cycle is now equal
+  to itself and to a structurally identical cycle (new `Pair::equal` method)
 * fix `macroexpand` stopping after one level when a `syntax-rules` macro
 * fix `syntax-rules` nested ellipsis over a compound sub-template, e.g.
   `((_ (a ...) ...) '(((a a) ...) ...))` - only `(<symbol> ...)` was handled,
