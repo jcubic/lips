@@ -2,6 +2,9 @@
 ### Breaking
 * string interpolation is now `$" ... "`
 * `macroexpand` no longer expands `let-syntax`/`letrec-syntax` into `let`
+* rename `let-env` to `letenv` and `let-env-values` to `letenv-values` - `letrec`
+  is also two words without a separator; the old names are kept only to report
+  the rename [#436](https://github.com/jcubic/lips/issues/436)
 ### Features
 * add misssing R7RS `include-ci` and `delay-force`
 ### Bugfix

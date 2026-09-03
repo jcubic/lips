@@ -208,12 +208,12 @@ Note that you also need to bootstrap the standard library to have fully working 
 :::
 
 ```javascript
-await interpreter.exec(`(let-env lips.env.__parent__
+await interpreter.exec(`(letenv lips.env.__parent__
                           (load "<path or URL>/dist/std.xcb"))`);
 ```
 
 `lips.env` is user environment and `__parent__` is real top level global environment.  To see more
-about `let-env` expression check [documentation about LIPS environments](/docs/lips/environments).
+about `letenv` expression check [documentation about LIPS environments](/docs/lips/environments).
 
 ## Dynamic Scope
 

@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Thu, 03 Sep 2026 21:21:12 +0000
+ * build: Thu, 03 Sep 2026 21:53:26 +0000
  */
 
 (function (global, factory) {
@@ -5814,7 +5814,7 @@
     offset: 0,
     indent: 2,
     exceptions: {
-      specials: [/^(?:#:)?(?:define(?:-values|-syntax|-macro|-class|-record-type)?|(?:call-with-(?:input-file|output-file|port))|lambda|let-env|try|catch|when|unless|while|syntax-rules|(let|letrec)(-syntax|\*?-values|\*)?)$/],
+      specials: [/^(?:#:)?(?:define(?:-values|-syntax|-macro|-class|-record-type)?|(?:call-with-(?:input-file|output-file|port))|lambda|letenv|try|catch|when|unless|while|syntax-rules|(let|letrec)(-syntax|\*?-values|\*)?)$/],
       shift: {
         1: ['&', '#']
       }
@@ -14370,7 +14370,7 @@
       }
       if (!(env instanceof Environment)) {
         if (g_env === global_env) {
-          // this is used for let-env + load
+          // this is used for letenv + load
           // this may be obsolete when there is env arg
           env = g_env;
         } else {
@@ -14567,13 +14567,13 @@
     // ------------------------------------------------------------------
     'if': doc(Macro.internal('if'), "(if cond true-expr false-expr)\n\n         Macro that evaluates cond expression and if the value is true, it\n         evaluates and returns true-expression, if not it evaluates and returns\n         false-expression."),
     // ------------------------------------------------------------------
-    'let-env': new Macro('let-env', function (source) {
+    letenv: new Macro('letenv', function (source) {
       var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
       var code = source.cdr;
       var dynamic_env = options.dynamic_env,
         use_dynamic = options.use_dynamic,
         error = options.error;
-      typecheck('let-env', code, 'pair');
+      typecheck('letenv', code, 'pair');
       var ret = evaluate(code.car, {
         env: this,
         dynamic_env,
@@ -14581,14 +14581,20 @@
         use_dynamic
       });
       return unpromise(ret, function (value) {
-        typecheck('let-env', value, 'environment');
+        typecheck('letenv', value, 'environment');
         return evaluate(Pair(LSymbol('begin'), code.cdr), {
           env: value,
           dynamic_env,
           error
         });
       });
-    }, "(let-env env . body)\n\n        Special macro that evaluates body in context of given environment\n        object."),
+    }, "(letenv env . body)\n\n        Special macro that evaluates body in context of given environment\n        object."),
+    // ------------------------------------------------------------------
+    // kept only to report the rename: `letenv` follows `letrec`, which is also
+    // two words written without a separator (#436)
+    'let-env': new Macro('let-env', function () {
+      throw new Error('let-env: this macro was renamed to `letenv`');
+    }, "(let-env env . body)\n\n        Removed - renamed to `letenv`."),
     // ------------------------------------------------------------------
     'letrec': doc(let_macro('letrec'), "(letrec ((a value-a) (b value-b) ...) . body)\n\n         Macro that creates a new environment, then evaluates and assigns values to\n         names and then evaluates the body in context of that environment.\n         Values are evaluated sequentially and the next value can access the\n         previous values/names."),
     // ---------------------------------------------------------------------
@@ -18503,10 +18509,10 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Thu, 03 Sep 2026 21:21:12 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Thu, 03 Sep 2026 21:53:26 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Thu, 03 Sep 2026 21:21:12 +0000').valueOf();
+    var date = LString('Thu, 03 Sep 2026 21:53:26 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
@@ -18545,7 +18551,7 @@
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
   var version = 'DEV';
-  var date = 'Thu, 03 Sep 2026 21:21:12 +0000';
+  var date = 'Thu, 03 Sep 2026 21:53:26 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);

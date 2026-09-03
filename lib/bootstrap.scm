@@ -19,7 +19,7 @@
 
 ;; -----------------------------------------------------------------------------
 (define-macro (%internal)
-  `(let-env **interaction-environment** **internal-env**))
+  `(letenv **interaction-environment** **internal-env**))
 
 ;; -----------------------------------------------------------------------------
 (define (%set-internal prop value)
@@ -1425,7 +1425,7 @@
   "(reset)
 
   Function resets the environment and removes all user defined variables."
-  (let-env **interaction-environment**
+  (letenv **interaction-environment**
            (let ((defaults **interaction-environment-defaults**)
                  (env **interaction-environment**))
              (--> env (list) (forEach (lambda (name)
@@ -1626,17 +1626,24 @@
 (set-special! "’" %warn-quote)
 
 ;; -----------------------------------------------------------------------------
-(define-macro (let-env-values env spec . body)
-  "(let-env-values env ((name var)) . body)
+(define-macro (letenv-values env spec . body)
+  "(letenv-values env ((name var)) . body)
 
    Adds mappings for variables var from specified env.
-   it is similar to let-env but lexical scope is working with it."
+   it is similar to letenv but lexical scope is working with it."
   (let ((env-name (gensym 'env)))
     `(let ((,env-name ,env))
        (let ,(map (lambda (pair)
                     `(,(car pair) (--> ,env-name (get ',(cadr pair)))))
                   spec)
          ,@body))))
+
+;; -----------------------------------------------------------------------------
+(define-macro (let-env-values . rest)
+  "(let-env-values env ((name var)) . body)
+
+   Removed - renamed to `letenv-values`."
+  (throw "let-env-values: this macro was renamed to `letenv-values`"))
 
 ;; -----------------------------------------------------------------------------
 (define (apropos name)

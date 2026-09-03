@@ -2409,16 +2409,14 @@ to define multiple variables and use them in each other's definitions, use
 ```
 (let-env env . body)
 
-Special macro that evaluates body in context of given environment
-object.
+Removed - renamed to `letenv`.
 ```
 
 ## let-env-values
 ```
 (let-env-values env ((name var)) . body)
 
-Adds mappings for variables var from specified env.
-it is similar to let-env but lexical scope is working with it.
+Removed - renamed to `letenv-values`.
 ```
 
 ## let-syntax
@@ -2453,6 +2451,22 @@ so you can define one variable, and use it in the next's definition.
 
 The macro work similar to let* but variable is list of values and value
 need to evaluate to result of calling values.
+```
+
+## letenv
+```
+(letenv env . body)
+
+Special macro that evaluates body in context of given environment
+object.
+```
+
+## letenv-values
+```
+(letenv-values env ((name var)) . body)
+
+Adds mappings for variables var from specified env.
+it is similar to letenv but lexical scope is working with it.
 ```
 
 ## letrec

@@ -35,7 +35,7 @@ import fs from 'fs/promises';
 
 const code = await fs.readFile(new URL('../../tests/${scm}', import.meta.url), 'utf8');
 await exec(\`
-  (let-env lips.env.__parent__
+  (letenv lips.env.__parent__
     (load "@lips/dist/std.xcb")
     (load "@lips/lib/srfi/258.scm")
     (load "@lips/tests/helpers/helpers.scm"))

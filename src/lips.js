@@ -2863,7 +2863,7 @@ Formatter.defaults = {
     indent: 2,
     exceptions: {
         specials: [
-            /^(?:#:)?(?:define(?:-values|-syntax|-macro|-class|-record-type)?|(?:call-with-(?:input-file|output-file|port))|lambda|let-env|try|catch|when|unless|while|syntax-rules|(let|letrec)(-syntax|\*?-values|\*)?)$/
+            /^(?:#:)?(?:define(?:-values|-syntax|-macro|-class|-record-type)?|(?:call-with-(?:input-file|output-file|port))|lambda|letenv|try|catch|when|unless|while|syntax-rules|(let|letrec)(-syntax|\*?-values|\*)?)$/
         ],
         shift: {
             1: ['&', '#']
@@ -10346,7 +10346,7 @@ var global_env = new Environment({
         }
         if (!(env instanceof Environment)) {
             if (g_env === global_env) {
-                // this is used for let-env + load
+                // this is used for letenv + load
                 // this may be obsolete when there is env arg
                 env = g_env;
             } else {
@@ -10588,21 +10588,29 @@ var global_env = new Environment({
          evaluates and returns true-expression, if not it evaluates and returns
          false-expression.`),
     // ------------------------------------------------------------------
-    'let-env': new Macro('let-env', function(source, options = {}) {
+    letenv: new Macro('letenv', function(source, options = {}) {
         const code = source.cdr;
         const { dynamic_env, use_dynamic, error } = options;
-        typecheck('let-env', code, 'pair');
+        typecheck('letenv', code, 'pair');
         const ret = evaluate(code.car, { env: this, dynamic_env, error, use_dynamic });
         return unpromise(ret, function(value) {
-            typecheck('let-env', value, 'environment');
+            typecheck('letenv', value, 'environment');
             return evaluate(Pair(LSymbol('begin'), code.cdr), {
                 env: value, dynamic_env, error
             });
         });
-    }, `(let-env env . body)
+    }, `(letenv env . body)
 
         Special macro that evaluates body in context of given environment
         object.`),
+    // ------------------------------------------------------------------
+    // kept only to report the rename: `letenv` follows `letrec`, which is also
+    // two words written without a separator (#436)
+    'let-env': new Macro('let-env', function() {
+        throw new Error('let-env: this macro was renamed to `letenv`');
+    }, `(let-env env . body)
+
+        Removed - renamed to \`letenv\`.`),
     // ------------------------------------------------------------------
     'letrec': doc(
         let_macro('letrec'),
