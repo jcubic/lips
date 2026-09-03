@@ -693,7 +693,7 @@
    then it will define each value as a variable like with define.")
 
 ;; -----------------------------------------------------------------------------
-(define (%incldue type files)
+(define (%include type files)
   "(%include type files)
 
    Helper function that that parse a file and return it as data.
@@ -733,7 +733,7 @@
    Load at least one file content and insert them into one, body expression."
   (if (null? files)
       (throw (new Error "include: at least one file path required"))
-      (let ((result (%incldue #f files)))
+      (let ((result (%include #f files)))
         (if (> result.length 0)
             `(begin
               ,@(vector->list result))))))
@@ -745,8 +745,8 @@
    Load at least one file content and insert them into one, body expression.
    Similar to `include` but the input code is folded like it uses #!fold-case."
   (if (null? files)
-      (throw (new Error "include: at least one file path required"))
-      (let ((result (%incldue #t files)))
+      (throw (new Error "include-ci: at least one file path required"))
+      (let ((result (%include #t files)))
         (if (> result.length 0)
             `(begin
               ,@(vector->list result))))))

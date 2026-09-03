@@ -6,7 +6,7 @@
   is also two words without a separator; the old names are kept only to report
   the rename [#436](https://github.com/jcubic/lips/issues/436)
 ### Features
-* add misssing R7RS `include-ci` and `delay-force`
+* add missing R7RS `include-ci` and `delay-force`
 ### Bugfix
 * add `dfls` mnemonics for floating-point exponent
 * fix symbol syntax extensions (e.g. empty string interpolation `#""`) failing
