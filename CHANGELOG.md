@@ -3,7 +3,7 @@
 * string interpolation is now `$" ... "`
 * `macroexpand` no longer expands `let-syntax`/`letrec-syntax` into `let`
 ### Features
-* add R7RS promises with `delay-force`
+* add misssing R7RS `include-ci` and `delay-force`
 ### Bugfix
 * add `dfls` mnemonics for floating-point exponent
 * fix symbol syntax extensions (e.g. empty string interpolation `#""`) failing

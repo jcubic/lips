@@ -4495,14 +4495,18 @@
    then it will define each value as a variable like with define.")
 
 ;; -----------------------------------------------------------------------------
-(define-macro (include . files)
-  "(include file ...)
+(define (%incldue type files)
+  "(%include type files)
 
-   Load at least one file content and insert them into one,
-   body expression."
-  (if (null? files)
-      (throw (new Error "include: at least one file path required"))
-      (let ((result (vector)) (env (interaction-environment)))
+   Helper function that that parse a file and return it as data.
+   The if first argument is true it use fold-case on the input file"
+  (let* ((result (vector))
+         (env (interaction-environment))
+         (parse (lambda (string)
+                  (let ((string (if type
+                                    (string-append "#!fold-case\n" string)
+                                    string)))
+                      (lips.parse string env)))))
         (if (eq? self global)
             (let* ((fs (require "fs"))
                    (readFile (lambda (file)
@@ -4514,14 +4518,37 @@
                                                                                (toString)))
                                                                  (reject err)))))))))
               (for-each (lambda (file)
-                          (let* ((expr (lips.parse (readFile file) env)))
+                          (let* ((expr (parse (readFile file))))
                             (set! result (--> result (concat expr)))))
                         files))
             (for-each (lambda (file)
                         (let* ((text (--> (fetch file) (text)))
-                               (expr (lips.parse text env)))
+                               (expr (parse text)))
                           (set! result (--> result (concat expr)))))
                       files))
+        result))
+
+;; -----------------------------------------------------------------------------
+(define-macro (include . files)
+  "(include file ...)
+
+   Load at least one file content and insert them into one, body expression."
+  (if (null? files)
+      (throw (new Error "include: at least one file path required"))
+      (let ((result (%incldue #f files)))
+        (if (> result.length 0)
+            `(begin
+              ,@(vector->list result))))))
+
+;; -----------------------------------------------------------------------------
+(define-macro (include-ci . files)
+  "(include-ci file ...)
+
+   Load at least one file content and insert them into one, body expression.
+   Similar to `include` but the input code is folded like it uses #!fold-case."
+  (if (null? files)
+      (throw (new Error "include: at least one file path required"))
+      (let ((result (%incldue #t files)))
         (if (> result.length 0)
             `(begin
               ,@(vector->list result))))))

@@ -2221,8 +2221,15 @@ a valid property in the value.
 ```
 (include file ...)
 
-Load at least one file content and insert them into one,
-body expression.
+Load at least one file content and insert them into one, body expression.
+```
+
+## include-ci
+```
+(include-ci file ...)
+
+Load at least one file content and insert them into one, body expression.
+Similar to `include` but the input code is folded like it uses #!fold-case.
 ```
 
 ## indexed-db?
