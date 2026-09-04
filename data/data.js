@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788475465722,
+  "lastUpdate": 1788522268816,
   "repoUrl": "https://github.com/jcubic/lips",
   "entries": {
     "LIPS interpreter benchmark": [
@@ -6415,6 +6415,72 @@ window.BENCHMARK_DATA = {
             "range": "±0.69%",
             "unit": "ops/sec",
             "extra": "90 samples"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jcubic@jcubic.pl",
+            "name": "Jakub T. Jankiewicz",
+            "username": "jcubic"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b5bee8d64e45e756c1443995341bb3614c2d7ec7",
+          "message": "Merge pull request #563 from jcubic/dependabot/npm_and_yarn/browserslist-4.28.8\n\nBump browserslist from 4.28.1 to 4.28.8",
+          "timestamp": "2026-09-04T13:38:14+02:00",
+          "tree_id": "e8c680e1cf5e7f4f841c273da06cbf82be809f32",
+          "url": "https://github.com/jcubic/lips/commit/b5bee8d64e45e756c1443995341bb3614c2d7ec7"
+        },
+        "date": 1788522267960,
+        "tool": "benchmarkjs",
+        "benches": [
+          {
+            "name": "array-map: pow",
+            "value": 82497.43,
+            "range": "±1.32%",
+            "unit": "ops/sec",
+            "extra": "93 samples"
+          },
+          {
+            "name": "array-map: mix",
+            "value": 83674.36,
+            "range": "±0.99%",
+            "unit": "ops/sec",
+            "extra": "94 samples"
+          },
+          {
+            "name": "recursion: nested loops",
+            "value": 103.8,
+            "range": "±1.09%",
+            "unit": "ops/sec",
+            "extra": "8 samples"
+          },
+          {
+            "name": "array-map: string",
+            "value": 36389.5,
+            "range": "±0.61%",
+            "unit": "ops/sec",
+            "extra": "92 samples"
+          },
+          {
+            "name": "recursion: fib(18)",
+            "value": 1523.71,
+            "range": "±1.02%",
+            "unit": "ops/sec",
+            "extra": "39 samples"
+          },
+          {
+            "name": "recursion: fib-map",
+            "value": 79701.22,
+            "range": "±0.75%",
+            "unit": "ops/sec",
+            "extra": "94 samples"
           }
         ]
       }
