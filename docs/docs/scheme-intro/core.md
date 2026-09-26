@@ -54,7 +54,7 @@ Trigonometry functions:
 * `acos`
 * `atan`
 
-logarithms:
+Logarithms:
 * `log`
 
 Exponentiation function:
@@ -214,7 +214,7 @@ You can create local variables with `let` syntax:
 This will create two variables `x` and `y` with values `10` and `20` respectively and sum those with
 plus procedure.
 
-There is also additional `let*` expression that allow to return previous value in next expression:
+There is also additional `let*` expression that allows you to reference previous binding in subsequent bindings:
 
 ```scheme
 (let* ((x 10) (y (* x x)))
@@ -265,7 +265,7 @@ You also have a shortcut for this case in `when`:
 ;; ==> "this is true"
 ```
 
-There is also create the opposite with `unless`:
+You can do the opposite with `unless`:
 
 ```scheme
 (unless #f
@@ -309,8 +309,10 @@ from [John McCarthy](https://en.wikipedia.org/wiki/John_McCarthy_(computer_scien
 Lisp.
 
 
-* `and` - returns `true` when all elements are true value (in Scheme all values are true except `#f`),
-  and stop evaluates when it finds `#f`
+* `and` - evaluates operands from left to right, returning `#f` at the first operand evaluating to
+  false (`#f`); otherwise, it returns the last operand's value, or `#t` if there are no operands.
+
+**NOTE:** In Scheme all values are true except `#f`.
 
 ```scheme
 (if (and (< 1 2) (> 3 1))
@@ -318,7 +320,8 @@ Lisp.
 ;; ==> true
 ```
 
-* `or` - returns `#f` when all elements are `#f`, and return `#t` immediately when any of the values is `true`.
+* `or` - evaluates operands from left to right, returning the value of first operand evaluating to
+  true (non-`#f`), or `#f` if all operands are false.
 
 ```scheme
 (if (or (< 1 2) (/ 1 0))
@@ -380,8 +383,8 @@ You can define inner procedures inside other procedures:
 
 ### Immediately invoked lambda
 When calling a function, that first element doesn't need to be a symbol. It can be expression which
-evaluates to a function. So you can use lambda expression as first argument, but don't call it only
-evaluate it immediately, without saving it in a variable.
+evaluates to a function. So you can use a lambda expression in operator position, followed by its
+arguments to call it immediately, without binding a name to it.
 
 ```scheme
 ((lambda (x) (* x x)) 10)
@@ -443,7 +446,7 @@ and when you evaluate:
 ;; ==> 1/2
 ```
 
-If scheme provides rational numbers, or it will return `0.5` otherwise.
+If your Scheme implementation provides rational numbers, this returns `1/2`; otherwise, it returns `0.5`.
 
 ### Recursion
 You can define a function that reference to itself:
@@ -458,7 +461,7 @@ You can define a function that reference to itself:
 ;; ==> 3628800
 ```
 
-There is a main if statement that is called base condition. If the value `n` is less or equal 1 it
+The `if` expression checks for base condition. If the value `n` is less or equal 1 it
 stop recursion and return 1. If not, it calls itself recursively decreasing the value `n`.
 
 You can also define recursion using named `let` syntax:
@@ -476,7 +479,7 @@ You can also define recursion using named `let` syntax:
 
 #### Local Recursive Functions
 
-By default, you can define a local variable with let that is a `lambda` that reference itself. But you can do this with `letrec` syntax:
+By default, you cannot use `let` binding on `lambda` that reference itself. But you can do this with `letrec` syntax:
 
 ```scheme
 (letrec ((sum (lambda (x)
@@ -505,13 +508,13 @@ This is an example of Tail Call:
           (loop (- n 1) (* n result)))))
 ```
 
-This function is similar to previous recursive function, but note that loop is the last expression,
+This function is similar to previous recursive function, but note that `loop` is the last expression,
 the result of loop don't need to wait on anything. This type of code is optimized by Scheme and can
-recur any number of types.
+recur any number of times.
 
-If you need to create a recursive procedure that accumulate something, like create a list of create
-a value, you need to add additional variable where you will old that value, the local variable is
-ofen called result, but you can name it like you want.
+If you need to create a recursive procedure that accumulate something, like create a list or create
+a value, you need to add additional variable where you will hold that value, the local variable is
+often called result, but you can name it like you want.
 
 ## Loops
 Recursion is not the only way to create loops in Scheme. You also have `do` syntax:
@@ -599,7 +602,7 @@ You have 3 functions that operate on alists:
 * `assv`
 * `assoc`
 
-The return pair that match first argument or `#f` if not found. The alist is passed as second
+They return first pair whose key matches the first argument, or `#f` if not found. The alist is passed as second
 argument.  They use `eq?`, `eqv?`, and `equal?` respectively.
 
 ```scheme
@@ -626,13 +629,13 @@ You can use `cond` expression with `=>` syntax to get the value of alist:
 
 ## Finding element in the list
 
-Similar to operation on alist there are 3 functions that find if the element is present in the normal list
+Similar to operation on alist, there are 3 functions that find if the element is present in the normal list:
 
 * `memq`
 * `memv`
 * `member`
 
-The return cons cell where `car` match object passed as first argument or #f if not found:
+They return a sublist starting from the first occurrence of first argument to the end, or #f if not found:
 
 ```scheme
 (let ((lst '(1 2 3 x y z)))
@@ -966,7 +969,7 @@ You can use this record like this:
 ```
 
 ## Dynamic variables
-Even that Scheme has lexical scope, you can define dynamic variables. They are the opposite of
+Even though Scheme has lexical scope, you can define dynamic variables. They are the opposite of
 lexical variables. When you define a dynamic variable, Scheme will search for them not in the place
 where function is defined, but in the place where it's called. That's why if you have fully dynamic lisp
 you can't have closures. Unless you can somehow add lexical variables. This is the case of
@@ -988,8 +991,8 @@ To create dynamic variable in Scheme, you can code like this:
 ;; ==> 20
 ```
 
-Parameters works like procedures. Do define new dynamic parameter you use `make-parameter` and to
-change its value you can use `parameterize` that works like `let`. You can also call the parameter
+Parameters works like procedures. To define a new dynamic parameter, you use `make-parameter` and to
+change its value, you can use `parameterize` that works like `let`. You can also call the parameter
 with different value and the parameter will use this value as default.
 
 ```scheme
@@ -1029,7 +1032,7 @@ You can use those procedures to get different environments:
 
 ## Scheme libraries
 R<sup>7</sup>RS standard of Scheme also define a way to define libraries. This is a common way to
-create modules that can be used inside your project or my other people.
+create modules that can be used inside your project or by other people.
 
 To import a library that is part of the scheme implementation, you use `import` expression:
 
