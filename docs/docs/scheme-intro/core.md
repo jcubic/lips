@@ -309,8 +309,10 @@ from [John McCarthy](https://en.wikipedia.org/wiki/John_McCarthy_(computer_scien
 Lisp.
 
 
-* `and` - returns `#t` when all elements are true value (in Scheme all values are true except `#f`),
-  and stop evaluation when it finds `#f`.
+* `and` - evaluates operands from left to right, returning `#f` at the first operand evaluating to
+  false (`#f`); otherwise, it returns the last operand's value, or `#t` if there are no operands.
+
+**NOTE:** In Scheme all values are true except `#f`.
 
 ```scheme
 (if (and (< 1 2) (> 3 1))
@@ -318,7 +320,8 @@ Lisp.
 ;; ==> true
 ```
 
-* `or` - returns `#f` when all elements are `#f`, otherwise return `#t` immediately on first true value.
+* `or` - evaluates operands from left to right, returning the value of first operand evaluating to
+  true (non-`#f`), or `#f` if all operands are false.
 
 ```scheme
 (if (or (< 1 2) (/ 1 0))
@@ -380,8 +383,8 @@ You can define inner procedures inside other procedures:
 
 ### Immediately invoked lambda
 When calling a function, that first element doesn't need to be a symbol. It can be expression which
-evaluates to a function. So you can use lambda expression as first argument to evaluate it immediately
-without naming it.
+evaluates to a function. So you can use a lambda expression in operator position, followed by its
+arguments to call it immediately, without binding a name to it.
 
 ```scheme
 ((lambda (x) (* x x)) 10)
@@ -443,7 +446,7 @@ and when you evaluate:
 ;; ==> 1/2
 ```
 
-If your scheme implementation provides rational numbers, or it will return `0.5` otherwise.
+If your Scheme implementation provides rational numbers, this returns `1/2`; otherwise, it returns `0.5`.
 
 ### Recursion
 You can define a function that reference to itself:
@@ -507,7 +510,7 @@ This is an example of Tail Call:
 
 This function is similar to previous recursive function, but note that `loop` is the last expression,
 the result of loop don't need to wait on anything. This type of code is optimized by Scheme and can
-recur any number of types.
+recur any number of times.
 
 If you need to create a recursive procedure that accumulate something, like create a list or create
 a value, you need to add additional variable where you will hold that value, the local variable is
