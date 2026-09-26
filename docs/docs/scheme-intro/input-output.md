@@ -46,8 +46,11 @@ You can also flush the buffer by hand without printing a newline:
 
 `flush-output` accepts an optional port argument, and by default flushes the current output port.
 
-Note this only matters for scripts. In the REPL everything prints right away, so you never
-need to flush there.
+:::info
+
+This only matters for scripts. In the REPL everything prints right away, so you never need to flush there.
+
+:::
 
 ## Standard input
 
