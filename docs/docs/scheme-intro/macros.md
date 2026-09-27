@@ -595,3 +595,63 @@ You can use this macro like this:
 ```
 
 Note the difference, the parameter needs to be wrapped by parentheses like a procedure/macro call.
+
+### Symbol Macros
+Apart from normal macros LIPS has reader level syntax extensions called symbol macros. They work a
+bit like Common Lisp reader macros, except they receive already parsed code, just like normal
+macros do. A symbol macro is tied to a character sequence in the source, when the parser finds it
+the macro runs at parse time and its output lands in the code.
+
+You define one with `define-symbol-macro`:
+
+```scheme
+(define-symbol-macro type (name . args) . body)
+```
+
+`type` is either `LITERAL` or `SPLICE`. A `LITERAL` macro reads the single expression that follows
+the symbol and passes it as the first argument, this is how builtins like `'`, `` ` `` and `,`
+work (they map to `quote`, `quasiquote` and `unquote`). A `SPLICE` macro reads the list that
+follows and spreads its elements into the argument list.
+
+The `#` vector literal syntax is a symbol macro. It is defined in the standard library roughly
+like this:
+
+```scheme
+(define-symbol-macro SPLICE (vector-literal "#" . args)
+  (let ((v (list->array args)))
+    (Object.freeze v)
+    v))
+```
+
+Because of that, vector literals are automatically quoted, expressions inside them are not
+evaluated:
+
+```scheme
+(display #(1 (+ 1 2)))
+;; ==> #(1 (+ 1 2))
+```
+
+Compare with the `vector` procedure, which evaluates its arguments like a normal call:
+
+```scheme
+(display (vector 4 (+ 1 2)))
+;; ==> #(4 3)
+```
+
+You can define your own. This one grabs the expression after `@` and takes its first element:
+
+```scheme
+(define-symbol-macro LITERAL (my-first "@" . args)
+  (cons 'car args))
+
+(display @'(10 20 30))
+;; ==> 10
+```
+
+:::info
+
+If you want to hook a new character sequence straight into the parser without the macro wrapper,
+see `set-special!`, try `(help set-special!)` in the REPL. The `LITERAL` and `SPLICE` types live
+under `lips.specials` when you use it directly.
+
+:::
