@@ -16,6 +16,42 @@ To print anything on the screen, you use `(write x)` or `(display x)` and `(newl
 
 There is also a function that write single character `(write-char x)`
 
+### Buffered output
+
+The standard output is buffered. Nothing is shown on the screen until the buffer is flushed.
+This can be confusing when you debug code in the browser, because this prints nothing:
+
+```scheme
+(display "message")
+```
+
+The buffer is flushed every time something ending with a newline is written, so any of these
+will show the text:
+
+```scheme
+(display "message\n")
+```
+
+```scheme
+(display "message")
+(newline)
+```
+
+You can also flush the buffer by hand without printing a newline:
+
+```scheme
+(display "message")
+(flush-output)
+```
+
+`flush-output` accepts an optional port argument, and by default flushes the current output port.
+
+:::info
+
+This only matters for scripts. In the REPL everything prints right away, so you never need to flush there.
+
+:::
+
 ## Standard input
 
 The standard input is a way to get stuff from the user. Scheme provides one function for this which
