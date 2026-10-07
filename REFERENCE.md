@@ -1448,16 +1448,6 @@ Macro for defining records. Example of usage:
 ;; ==> 3
 ```
 
-## define-symbol-macro
-```
-(define-symbol-macro type (name . args) . body)
-
-Creates syntax extensions for evaluator similar to built-in , or `.
-It's like an alias for a real macro. Similar to CL reader macros
-but it receives already parsed code like normal macros. Type can be SPLICE
-or LITERAL symbols (see set-special!). ALL default symbol macros are literal.
-```
-
 ## define-syntax
 ```
 (define-syntax name expression [__doc__])
