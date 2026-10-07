@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788522268816,
+  "lastUpdate": 1791379883681,
   "repoUrl": "https://github.com/jcubic/lips",
   "entries": {
     "LIPS interpreter benchmark": [
@@ -6481,6 +6481,72 @@ window.BENCHMARK_DATA = {
             "range": "±0.75%",
             "unit": "ops/sec",
             "extra": "94 samples"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "jcubic@jcubic.pl",
+            "name": "Jakub T. Jankiewicz",
+            "username": "jcubic"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "436e541a834e0e5b7dae80b34bbfcdb2d6151dc6",
+          "message": "Merge pull request #574 from GhostCoder6969/remove-define-symbol-macro\n\nRemove define-symbol-macro and inline the vector literal",
+          "timestamp": "2026-10-07T15:29:36+02:00",
+          "tree_id": "acb9a54b2bf77fc40742032c15850df2cc5bd6b4",
+          "url": "https://github.com/jcubic/lips/commit/436e541a834e0e5b7dae80b34bbfcdb2d6151dc6"
+        },
+        "date": 1791379882496,
+        "tool": "benchmarkjs",
+        "benches": [
+          {
+            "name": "array-map: pow",
+            "value": 85011.71,
+            "range": "±1.58%",
+            "unit": "ops/sec",
+            "extra": "92 samples"
+          },
+          {
+            "name": "array-map: mix",
+            "value": 85211.81,
+            "range": "±0.6%",
+            "unit": "ops/sec",
+            "extra": "95 samples"
+          },
+          {
+            "name": "recursion: nested loops",
+            "value": 104.68,
+            "range": "±0.74%",
+            "unit": "ops/sec",
+            "extra": "7 samples"
+          },
+          {
+            "name": "array-map: string",
+            "value": 36341.83,
+            "range": "±0.51%",
+            "unit": "ops/sec",
+            "extra": "90 samples"
+          },
+          {
+            "name": "recursion: fib(18)",
+            "value": 1443.02,
+            "range": "±1.89%",
+            "unit": "ops/sec",
+            "extra": "35 samples"
+          },
+          {
+            "name": "recursion: fib-map",
+            "value": 87914.92,
+            "range": "±0.57%",
+            "unit": "ops/sec",
+            "extra": "95 samples"
           }
         ]
       }
