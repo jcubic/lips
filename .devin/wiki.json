@@ -301,7 +301,7 @@
     },
     {
       "title": "Extensibility Mechanisms",
-      "purpose": "Document reader macros, parser extensions via specials map, define-symbol-macro, SXML for React/Preact, and custom syntax examples like defstruct",
+      "purpose": "Document reader macros, parser extensions via specials map, SXML for React/Preact, and custom syntax examples like defstruct",
       "parent": "Development Guide",
       "page_notes": [
         {

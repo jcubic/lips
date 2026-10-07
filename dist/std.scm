@@ -2119,32 +2119,16 @@
   (or (function? obj) (continuation? obj)))
 
 ;; -----------------------------------------------------------------------------
-(define-macro (define-symbol-macro type spec . rest)
-  "(define-symbol-macro type (name . args) . body)
-
-   Creates syntax extensions for evaluator similar to built-in , or `.
-   It's like an alias for a real macro. Similar to CL reader macros
-   but it receives already parsed code like normal macros. Type can be SPLICE
-   or LITERAL symbols (see set-special!). ALL default symbol macros are literal."
-  (let* ((name (car spec))
-         (symbol (cadr spec))
-         (args (cddr spec)))
-     `(begin
-        (define-macro (,name ,@args) ,@rest)
-        (set-special! ,symbol ,name ,(string->symbol
-                                      (concat "lips.specials."
-                                              (symbol->string type)))))))
-
-;; -----------------------------------------------------------------------------
 ;; Vector literals syntax using parser syntax extensions
 ;; -----------------------------------------------------------------------------
-(define-symbol-macro SPLICE (vector-literal "#" . args)
+(define-macro (vector-literal . args)
   (if (not (or (pair? args) (eq? args '())))
       (throw (new Error (concat "Parse Error: vector require pair got "
                                 (type args) " in " (repr args))))
       (let ((v (list->array args)))
         (Object.freeze v)
         v)))
+(set-special! "#" vector-literal lips.specials.SPLICE)
 
 ;; -----------------------------------------------------------------------------
 (define (vector . rest)
