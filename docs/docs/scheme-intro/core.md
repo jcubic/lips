@@ -235,7 +235,11 @@ And `letrec` that allows to create local recursive functions (allow reference sa
 
 ## Conditionals
 
-In Scheme there are 3 ways to define conditionals. The basic expression is `if` statement.
+In Scheme there are 3 ways to define conditionals.
+
+### If
+
+The basic expression is `if` statement.
 
 ```scheme
 (if (< 1 2)
@@ -256,6 +260,8 @@ expect single expression) you can use begin:
 
 The else part is optional.
 
+### When
+
 You also have a shortcut for this case in `when`:
 
 ```scheme
@@ -265,6 +271,8 @@ You also have a shortcut for this case in `when`:
 ;; ==> "this is true"
 ```
 
+### Unless
+
 You can do the opposite with `unless`:
 
 ```scheme
@@ -273,6 +281,8 @@ You can do the opposite with `unless`:
      (newline))
 ;; ==> "this is true"
 ```
+
+### Cond
 
 `cond` is another expression that allow to add multiple conditions:
 
@@ -285,6 +295,8 @@ You can do the opposite with `unless`:
 ```
 
 The first two expressions return false, so `cond` will evaluate the `else` condition and display `"other"`.
+
+### Case
 
 Case is the last of basic condition expressions. It allows checking given expression is one of the given values.
 
