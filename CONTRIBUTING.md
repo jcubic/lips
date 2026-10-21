@@ -47,9 +47,9 @@ creating [UMD](https://github.com/umdjs/umd) file in `./dist` directory.
 
 ## LLM Contributions
 
-LLMs are just tools, and I belive if the change is meanigful it should not matter what tools the contributor use to create it.
+LLMs are just tools, and I believe if the change is meaningful, it should not matter what tools the contributor uses to create it.
 
-So LLM contribution are ok.
+So LLM contributions are ok.
 
 ## Documentation
 
