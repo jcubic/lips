@@ -1,11 +1,11 @@
-## Contributing to LIPS
+# Contributing to LIPS
 
 First off, thank you to consider contributing to LIPS!
 Few things to consider when contributing:
 
 * JavaScript code that can be modified is located in lib/js and src directory
   use ES6 ESNext code you can use ES6 classes (initial code was not using ES6 classes
-  because I don't like them, but since then I started to use them more).
+  because I din't like them, but since then I started to use them more).
   You can use any new feature of the language.
 * Writing Scheme code should not use named lets and recursion on lists (because LIPS
   as of now, don't have TCO).
@@ -44,6 +44,12 @@ make
 Make assume Unix like system with standard Unix tools like `sed`, `cp`, `rm`, `cat`.
 Make use [Rollup](https://rollupjs.org/) and [Babel](https://babeljs.io/) for
 creating [UMD](https://github.com/umdjs/umd) file in `./dist` directory.
+
+## LLM Contributions
+
+LLMs are just tools, and I belive if the change is meanigful it should not matter what tools the contributor use to create it.
+
+So LLM contribution are ok.
 
 ## Documentation
 
