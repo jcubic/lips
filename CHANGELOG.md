@@ -27,6 +27,7 @@
 * fix R7RS ellipsis escape `(... <template>)` when it is the whole template
   (e.g. `((_) (... '...))`) or appears inside an ellipsis repetition
   (e.g. `((_ arg ...) (list (cons arg (... '...)) ...))`)
+* fix unboxing of values from records [#587](https://github.com/jcubic/lips/issues/587)
 
 ## 1.0.0-beta.23
 ### Breaking
