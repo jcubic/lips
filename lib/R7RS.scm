@@ -1699,7 +1699,7 @@
                                                     (let* ((name (symbol->string field))
                                                            (prop (string-append "self."
                                                                                 name)))
-                                                      `(set! ,(string->symbol prop) ,field)))
+                                                      `(set-object! self ,name ,field true)))
                                                   (cdr constructor))))
                             (equal (lambda (self other)
                                      (if (instanceof ,name other)
@@ -1740,7 +1740,7 @@
                              (if (not (,pred ,obj-name))
                                  (throw (new Error ,(string-append "object is not record of type "
                                                                    (symbol->string name))))
-                                 (set-object! ,obj-name ',prop-name ,value-name)))))))
+                                 (set-object! ,obj-name ',prop-name ,value-name true)))))))
               fields))))
 
 ;; -----------------------------------------------------------------------------
