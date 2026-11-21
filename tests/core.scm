@@ -73,6 +73,28 @@ This function returns the car (item 1) of the list.")
         ;; we didn't fall back to documenting `help`
         (t.is (string=? (help lambda) (help help)) #f)))
 
+;; R7RS-style `(define name expression "doc string")` - the third argument was
+;; ignored, so only a docstring written INSIDE a lambda body was ever picked up.
+;; define-syntax expands to that same form, which is why macros had no docs.
+(test "define stores the doc string given as its third argument"
+      (lambda (t)
+        (t.plan 5)
+        (define with-lambda (lambda () 10) "lambda doc")
+        (t.is (help with-lambda) "lambda doc")
+        (define with-value 10 "value doc")
+        (t.is (help with-value) "value doc")
+        ;; a docstring in the body of (define (name) ...) still works
+        (define (in-body) "body doc" 10)
+        (t.is (help in-body) "body doc")
+        ;; define-syntax expands to (define name <syntax> "doc")
+        (define-syntax documented-syntax
+          (syntax-rules () ((_) 1))
+          "syntax doc")
+        (t.is (help documented-syntax) "syntax doc")
+        ;; without a doc string there is nothing to report
+        (define undocumented 10)
+        (t.is (help undocumented) #void)))
+
 (test "help resolves docstrings stored in __docs__ at runtime"
       (lambda (t)
         ;; a user function's docstring lives in the environment's __docs__ map
@@ -1144,6 +1166,52 @@ This function returns the car (item 1) of the list.")
                   (display (string-append self._name " says hi"))
                   (newline))))
           (t.is (repr Person) "#<class:Person>")))
+
+;; A structure only becomes cyclic through pair mutation or a self-referencing
+;; datum label. Cyclic DATA is legal R7RS and has to keep working - including
+;; through a macro, which consumes its operands as data - but cyclic CODE cannot
+;; be evaluated: the evaluator would walk the cycle forever, so it is rejected.
+(test "cycles are allowed in data and rejected in code"
+      (lambda (t)
+        (t.plan 8)
+        (define (cyclic-code)
+          ;; (list 1 2 . <itself>) - an application with an endless argument list
+          (let ((l (list 'list 1 2)))
+            (set-cdr! (cdr (cdr l)) l)
+            l))
+        (define (cyclic-data)
+          (let ((l (list 1 2)))
+            (set-cdr! (cdr l) l)
+            l))
+        (define-macro (%cycle-macro)
+          (let ((l (list 'list 1 2)))
+            (set-cdr! (cdr (cdr l)) l)
+            l))
+        (define (syntax-error? thunk)
+          (try (begin (thunk) #f)
+               (catch (e) (if (--> e.message (includes "cyclic structure in code"))
+                              #t
+                              e.message))))
+
+        ;; data: legal, and still legal after passing through a macro
+        (let ((c (cyclic-data)))
+          (t.is (list (car c) (cadr c) (caddr c)) '(1 2 1)))
+        (let ()
+          (define-syntax quote-it (syntax-rules () ((_ x) (quote x))))
+          (define c (quote-it #0=(1 2 . #0#)))
+          (t.is (list (car c) (cadr c) (caddr c)) '(1 2 1)))
+        (let ()
+          (define-macro (data-cycle) (list 'quote (cyclic-data)))
+          (t.is (car (data-cycle)) 1))
+
+        ;; code: rejected wherever it comes from
+        (t.is (syntax-error? (lambda () (eval (cyclic-code)))) #t)
+        (t.is (syntax-error? (lambda () (eval (cyclic-code)))) #t)
+        ;; a cycle buried in a sub-form is found too
+        (t.is (syntax-error? (lambda () (eval (list 'begin 1 (cyclic-code))))) #t)
+        ;; ... and one produced by a macro, both when evaluated and expanded
+        (t.is (syntax-error? (lambda () (%cycle-macro))) #t)
+        (t.is (syntax-error? (lambda () (macroexpand '(%cycle-macro)))) #t)))
 
 ;; TODO
 ;; begin*

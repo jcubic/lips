@@ -9,6 +9,13 @@ Subtracts n2 and subsequent numbers from n1. If only one argument is passed
 it will negate the value.
 ```
 
+## --
+```
+(-- variable)
+
+Works only on variables and decrements the value by one.
+```
+
 ## -->
 ```
 Helper macro that simplifies calling methods on objects. It works with chaining
@@ -56,13 +63,6 @@ Multiplies all numbers passed as arguments. If single value is passed
 it will return that value.
 ```
 
-## **
-```
-(** a b)
-
-Function that calculates number a to to the power of b.
-```
-
 ## /
 ```
 (/ n1 n2 ...)
@@ -92,6 +92,13 @@ Function that calculates the bitwise xor (exclusive or) operation.
 
 Sums all numbers passed as arguments. If single value is passed it will
 return that value.
+```
+
+## ++
+```
+(++ variable)
+
+Works only on variables and increment the value by one.
 ```
 
 ## <
@@ -734,6 +741,40 @@ continuation was captured.
 This function returns the car (item 1) of the list.
 ```
 
+## case
+```
+(case value
+     ((<items>) result1)
+     ((<items>) result2)
+     [else result3])
+
+Macro for switch case statement. It test if value is any of the item. If
+item match the value it will return corresponding result expression value.
+If no value match and there is else it will return that result.
+```
+
+## case-lambda
+```
+(case-lambda expr ...)
+
+Macro create new function with different version of the function depend on
+number of arguments. Each expression is similar to single lambda.
+
+e.g.:
+
+    (define sum
+       (case-lambda
+         ((x) x)
+         ((x y) (+ x y))
+         ((x y z) (+ x y z))))
+
+    (sum 1)
+    (sum 1 2)
+    (sum 1 2 3)
+
+More arguments will give an error.
+```
+
 ## cdaaaar
 ```
 (cdaaaar arg)
@@ -1108,6 +1149,13 @@ Returns true if characters are monotonically decreasing.
 Returns true if characters are monotonically non-increasing.
 ```
 
+## class
+```
+(class <parent> body ...)
+
+Allows to create anonymous classes. See define-class for details.
+```
+
 ## clone
 ```
 (clone list)
@@ -1193,6 +1241,13 @@ Macro for condition checks. For usage instead of nested ifs.
 You can use predicate and any number of expressions. Or symbol =>
 Followed by procedure that will be invoked with result
 of the predicate.
+```
+
+## cond-expand
+```
+(cond-expand (cond body ...)
+
+Conditionally execute code based on a features by Scheme implementation.
 ```
 
 ## cons
@@ -1393,16 +1448,6 @@ Macro for defining records. Example of usage:
 ;; ==> 3
 ```
 
-## define-symbol-macro
-```
-(define-symbol-macro type (name . args) . body)
-
-Creates syntax extensions for evaluator similar to built-in , or `.
-It's like an alias for a real macro. Similar to CL reader macros
-but it receives already parsed code like normal macros. Type can be SPLICE
-or LITERAL symbols (see set-special!). ALL default symbol macros are literal.
-```
-
 ## define-syntax
 ```
 (define-syntax name expression [__doc__])
@@ -1418,6 +1463,14 @@ Binds <keyword> to the transformer obtained by evaluating <transformer spec>.
 The transformer provides the default expansion for the syntax parameter,
 and in the absence of syntax-parameterize, is functionally equivalent to
 define-syntax.
+```
+
+## define-values
+```
+(define-values (a b ...) expr)
+
+Evaluates expression expr and if it evaluates to result of values
+then it will define each value as a variable like with define.
 ```
 
 ## defmacro?
@@ -1439,6 +1492,13 @@ Convert degrees to radians.
 (delay expression)
 
 Will create a promise from expression that can be forced with (force).
+```
+
+## delay-force
+```
+(delay-force expr)
+
+Optimized version of (delay (force expression))
 ```
 
 ## delete-file
@@ -1591,8 +1651,8 @@ Function that compares two values if they are identical.
 (equal? a b)
 
 The function checks if values are equal. If both are a pair or an array
-it compares their elements recursively. If pairs have cycles it compares
-them with eq?
+it compares their elements recursively. Cyclic lists are compared without
+looping: a cycle is equal to itself and to a structurally identical cycle.
 ```
 
 ## eqv?
@@ -2068,6 +2128,17 @@ JavaScript files only.
  to global scope.
 ```
 
+## guard
+```
+(guard (variable (cond)
+                 (cond => fn)
+                 (cond2 result))
+       body)
+
+Macro that executes the body and when there is exception, triggered by
+raise it's saved in variable that can be tested by conditions.
+```
+
 ## help
 ```
 (help object)
@@ -2140,8 +2211,15 @@ a valid property in the value.
 ```
 (include file ...)
 
-Load at least one file content and insert them into one,
-body expression.
+Load at least one file content and insert them into one, body expression.
+```
+
+## include-ci
+```
+(include-ci file ...)
+
+Load at least one file content and insert them into one, body expression.
+Similar to `include` but the input code is folded like it uses #!fold-case.
 ```
 
 ## indexed-db?
@@ -2321,16 +2399,14 @@ to define multiple variables and use them in each other's definitions, use
 ```
 (let-env env . body)
 
-Special macro that evaluates body in context of given environment
-object.
+Removed - renamed to `letenv`.
 ```
 
 ## let-env-values
 ```
 (let-env-values env ((name var)) . body)
 
-Adds mappings for variables var from specified env.
-it is similar to let-env but lexical scope is working with it.
+Removed - renamed to `letenv-values`.
 ```
 
 ## let-syntax
@@ -2342,6 +2418,14 @@ it is similar to let-env but lexical scope is working with it.
  The macro to letrec-syntax is like letrec is to let.
 ```
 
+## let-values
+```
+(let-values (binding ...) body ...)
+
+The macro work similar to let but variable is list of values and value
+need to evaluate to result of calling values.
+```
+
 ## let*
 ```
 (let* ((a value-a) (b value-b) ...) . body)
@@ -2349,6 +2433,30 @@ it is similar to let-env but lexical scope is working with it.
 Macro similar to `let`, but the subsequent bindings after the first
 are evaluated in the environment including the previous let variables,
 so you can define one variable, and use it in the next's definition.
+```
+
+## let*-values
+```
+(let*-values binding body ...)
+
+The macro work similar to let* but variable is list of values and value
+need to evaluate to result of calling values.
+```
+
+## letenv
+```
+(letenv env . body)
+
+Special macro that evaluates body in context of given environment
+object.
+```
+
+## letenv-values
+```
+(letenv-values env ((name var)) . body)
+
+Adds mappings for variables var from specified env.
+it is similar to letenv but lexical scope is working with it.
 ```
 
 ## letrec
@@ -2565,10 +2673,9 @@ Create new complex number from polar parameters.
 
 ## make-promise
 ```
-(make-promise expr)
-(make-promise done expr)
+(make-promise done? expr)
 
-Function that creates a promise from a function or expression.
+Function that creates a promise from an expression that can later be forced.
 ```
 
 ## make-rectangular
@@ -4298,6 +4405,13 @@ return a pair where first is the item added to the list and second is next value
 passed to the function. If the function returns false it ends the loop.
 ```
 
+## unless
+```
+(unless test body ...)
+
+Executes body when test expression is false.
+```
+
 ## unquote
 ```
 (unquote code) or ,code
@@ -4492,6 +4606,13 @@ Returns true if value is vector and false if not.
 Returns a promise that will resolve with the expression after delay.
 ```
 
+## when
+```
+(when test body ...)
+
+Executes body when test expression is true.
+```
+
 ## while
 ```
 (while cond body)
@@ -4607,14 +4728,30 @@ Write byte into binary output port.
 ```
 (Y f)
 
-  _ __   __    _            _       _      _ __   __         _   _  _
- /  \ \ / /   /  __        /   ____  \    /  \ \ / /    ____  \   \  \
-+    \ v /   +   \ \      +   / ___|  +  +    \ v /    / ___|  +   +  +
-|     \ /    |    \ \     |  | |__    |  |     \ /    | |__    |   |  |
-|     | |    |    /  \    |  |  __|   |  |     | |    |  __|   |   |  |
-|     | |    |   / /\ \   |  | |      |  |     | |    | |      |   |  |
-+     |_|    +  /_/  \_\  +  |_|      +  +     |_|    |_|      +   +  +
- \_           \_           \_       _/    \_                 _/  _/ _/
+  _ __   __    _            _       _
+ /  \ \ / /   /  __        /   ____  \
++    \ v /   +   \ \      +   / ___|  +
+|     \ /    |    \ \     |  | |__    |
+|     | |    |    /  \    |  |  __|   |
+|     | |    |   / /\ \   |  | |      |
++     |_|    +  /_/  \_\  +  |_|      +
+ \_           \_           \_       _/
+                    _            _ _
+                   /  __        /   \
+                  +   \ \      +     +
+                  |    \ \     |     |
+                  |    /  \    |     |
+                  |   / /\ \   |     |
+                  +  /_/  \_\  +     +
+                   \_           \_ _/
+                         _       _   _   _  _
+                        /   ____  \   \   \  \
+                       +   / ___|  +   +   +  +
+                       |  | |__    |   |   |  |
+                       |  |  __|   |   |   |  |
+                       |  | |      |   |   |  |
+                       +  |_|      +   +   +  +
+                        \_       _/  _/  _/ _/
 ```
 
 ## zero?

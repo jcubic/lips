@@ -19,7 +19,7 @@
 
 ;; -----------------------------------------------------------------------------
 (define-macro (%internal)
-  `(let-env **interaction-environment** **internal-env**))
+  `(letenv **interaction-environment** **internal-env**))
 
 ;; -----------------------------------------------------------------------------
 (define (%set-internal prop value)
@@ -894,35 +894,55 @@
    Function read from input port or stdin and return list of strings
    interleaved with expressions from interpolation ${...}"
   (let ((port (if (null? rest) (current-input-port) (car rest))))
+    (define (skip-spaces)
+      (if (char=? (peek-char port) #\space)
+          (begin
+            (read-char port)
+            (skip-spaces))))
+    (define (expect-brace)
+      (skip-spaces)
+      (let ((next (peek-char port)))
+        (if (char=? next #\})
+            (read-char port)
+            (error (string-append "Parse Error: expecting } got " (repr next))))))
+    (define (read-expression)
+      ;; read a single datum between ${ and }
+      (skip-spaces)
+      (let ((next (peek-char port)))
+        (if (or (char=? next #\() (char=? next #\[) (char=? next #\"))
+            ;; the reader knows where lists and strings end, so it can't
+            ;; over-read; } is not a delimiter for it, so it needs to be
+            ;; consumed separately
+            (let ((expr (read port)))
+              (expect-brace)
+              expr)
+            ;; an atom is not delimited by } either, and unlike a list the
+            ;; reader would happily munch it together with the rest of the
+            ;; line (`${x};"` reads as the symbol `x};"`), so collect the
+            ;; text up to } ourselves and parse that
+            (let loop ((chars '()))
+              (let ((char (read-char port)))
+                (cond ((eof-object? char)
+                       (error "Parse Error: expecting } found #eof"))
+                      ((char=? char #\})
+                       (read (open-input-string (list->string (reverse chars)))))
+                      (else
+                       (loop (cons char chars)))))))))
     (let loop ((part "") (result (vector)) (char (read-char port)))
-      (cond ((and (char=? char #\$)
+      (cond ((eof-object? char)
+             (error "Parse Error: expecting character #eof found"))
+            ((and (char=? char #\$)
                   (char=? (peek-char port) #\{))
-             (read-char)
-             (let ((expr (read port)))
-               (if (symbol? expr)
-                   (let* ((expr (--> (symbol->string expr) (replace #/\}$/ "")))
-                          (value (read (open-input-string expr))))
-                     (loop "" (vector-append result (vector part expr)) (read-char)))
-                   (let inner ((next (peek-char port)))
-                     (cond ((char=? next #\space)
-                            (read-char port)
-                            (inner (peek-char port)))
-                           ((char=? next #\})
-                            (read-char port)
-                            (loop ""
-                                  (vector-append result (vector part expr))
-                                  (read-char port)))
-                           (else
-                            (error (string-append "Parse Error: expecting } got "
-                                                  (repr next)))))))))
+             (read-char port)
+             (loop ""
+                   (vector-append result (vector part (read-expression)))
+                   (read-char port)))
             ((char=? char #\\)
              (loop (string-append part (repr (read-char port)))
                    result
                    (read-char port)))
             ((char=? char #\")
              (vector->list (vector-append result (vector part))))
-            ((eof-object? char)
-             (error "Parse Error: expecting character #eof found"))
             (else
              (loop (string-append part (repr char)) result (read-char port)))))))
 
@@ -944,7 +964,8 @@
                            (%read-interpolated)))))
 
 ;; -----------------------------------------------------------------------------
-(set-special! "#\"" %string-interpolation lips.specials.SYMBOL)
+(set-special! "$\"" %string-interpolation lips.specials.SYMBOL)
+
 ;; -----------------------------------------------------------------------------
 (define (bound? x . rest)
   "(bound? x [env])
@@ -1150,7 +1171,9 @@
    Helper function that allows to use [Symbol.asyncIterator] inside method name."
   (if (pair? expr)
       (car expr)
-      (list 'quote expr)))
+      (if (gensym? expr)
+          (--> expr (literal))
+          (list 'quote expr))))
 
 ;; -----------------------------------------------------------------------------
 (define (constructor)
@@ -1402,7 +1425,7 @@
   "(reset)
 
   Function resets the environment and removes all user defined variables."
-  (let-env **interaction-environment**
+  (letenv **interaction-environment**
            (let ((defaults **interaction-environment-defaults**)
                  (env **interaction-environment**))
              (--> env (list) (forEach (lambda (name)
@@ -1603,17 +1626,24 @@
 (set-special! "’" %warn-quote)
 
 ;; -----------------------------------------------------------------------------
-(define-macro (let-env-values env spec . body)
-  "(let-env-values env ((name var)) . body)
+(define-macro (letenv-values env spec . body)
+  "(letenv-values env ((name var)) . body)
 
    Adds mappings for variables var from specified env.
-   it is similar to let-env but lexical scope is working with it."
+   it is similar to letenv but lexical scope is working with it."
   (let ((env-name (gensym 'env)))
     `(let ((,env-name ,env))
        (let ,(map (lambda (pair)
                     `(,(car pair) (--> ,env-name (get ',(cadr pair)))))
                   spec)
          ,@body))))
+
+;; -----------------------------------------------------------------------------
+(define-macro (let-env-values . rest)
+  "(let-env-values env ((name var)) . body)
+
+   Removed - renamed to `letenv-values`."
+  (throw "let-env-values: this macro was renamed to `letenv-values`"))
 
 ;; -----------------------------------------------------------------------------
 (define (apropos name)
@@ -1690,14 +1720,30 @@
   (lambda (h)
     "(Y f)
 
-       _ __   __    _            _       _      _ __   __         _   _  _
-      /  \\ \\ / /   /  __        /   ____  \\    /  \\ \\ / /    ____  \\   \\  \\
-     +    \\ v /   +   \\ \\      +   / ___|  +  +    \\ v /    / ___|  +   +  +
-     |     \\ /    |    \\ \\     |  | |__    |  |     \\ /    | |__    |   |  |
-     |     | |    |    /  \\    |  |  __|   |  |     | |    |  __|   |   |  |
-     |     | |    |   / /\\ \\   |  | |      |  |     | |    | |      |   |  |
-     +     |_|    +  /_/  \\_\\  +  |_|      +  +     |_|    |_|      +   +  +
-      \\_           \\_           \\_       _/    \\_                 _/  _/ _/"
+       _ __   __    _            _       _
+      /  \\ \\ / /   /  __        /   ____  \\
+     +    \\ v /   +   \\ \\      +   / ___|  +
+     |     \\ /    |    \\ \\     |  | |__    |
+     |     | |    |    /  \\    |  |  __|   |
+     |     | |    |   / /\\ \\   |  | |      |
+     +     |_|    +  /_/  \\_\\  +  |_|      +
+      \\_           \\_           \\_       _/
+                         _            _ _
+                        /  __        /   \\
+                       +   \\ \\      +     +
+                       |    \\ \\     |     |
+                       |    /  \\    |     |
+                       |   / /\\ \\   |     |
+                       +  /_/  \\_\\  +     +
+                        \\_           \\_ _/
+                              _       _   _   _  _
+                             /   ____  \\   \\   \\  \\
+                            +   / ___|  +   +   +  +
+                            |  | |__    |   |   |  |
+                            |  |  __|   |   |   |  |
+                            |  | |      |   |   |  |
+                            +  |_|      +   +   +  +
+                             \\_       _/  _/  _/ _/"
           ((lambda (x) (x x))
            (lambda (g)
              (h (lambda args (apply (g g) args)))))))
@@ -2073,32 +2119,16 @@
   (or (function? obj) (continuation? obj)))
 
 ;; -----------------------------------------------------------------------------
-(define-macro (define-symbol-macro type spec . rest)
-  "(define-symbol-macro type (name . args) . body)
-
-   Creates syntax extensions for evaluator similar to built-in , or `.
-   It's like an alias for a real macro. Similar to CL reader macros
-   but it receives already parsed code like normal macros. Type can be SPLICE
-   or LITERAL symbols (see set-special!). ALL default symbol macros are literal."
-  (let* ((name (car spec))
-         (symbol (cadr spec))
-         (args (cddr spec)))
-     `(begin
-        (define-macro (,name ,@args) ,@rest)
-        (set-special! ,symbol ,name ,(string->symbol
-                                      (concat "lips.specials."
-                                              (symbol->string type)))))))
-
-;; -----------------------------------------------------------------------------
 ;; Vector literals syntax using parser syntax extensions
 ;; -----------------------------------------------------------------------------
-(define-symbol-macro SPLICE (vector-literal "#" . args)
+(define-macro (vector-literal . args)
   (if (not (or (pair? args) (eq? args '())))
       (throw (new Error (concat "Parse Error: vector require pair got "
                                 (type args) " in " (repr args))))
       (let ((v (list->array args)))
         (Object.freeze v)
         v)))
+(set-special! "#" vector-literal lips.specials.SPLICE)
 
 ;; -----------------------------------------------------------------------------
 (define (vector . rest)
@@ -2164,12 +2194,11 @@
   "(equal? a b)
 
    The function checks if values are equal. If both are a pair or an array
-   it compares their elements recursively. If pairs have cycles it compares
-   them with eq?"
+   it compares their elements recursively. Cyclic lists are compared without
+   looping: a cycle is equal to itself and to a structurally identical cycle."
   (cond ((and (pair? a))
          (and (pair? b)
-              (equal? (car a) (car b))
-              (equal? (cdr a) (cdr b))))
+              (a.equal b)))
         ((symbol? a)
          (and (symbol? b)
               (eq? a b)))
@@ -3849,10 +3878,76 @@
    need to evaluate to result of calling values.")
 
 ;; -----------------------------------------------------------------------------
+(define-class %Promise Object
+  (constructor (lambda (self done value)
+                 (set-object! self '__done__ done)
+                 (set-object! self '__value__ value))))
+
+;; -----------------------------------------------------------------------------
+(set-repr! %Promise (lambda (self)
+                      (string-append "#<promise - "
+                                     (if self.__done__
+                                         (string-append
+                                          "forced with "
+                                          (type self.__value__))
+                                         "not forced")
+                                     ">")))
+
+;; -----------------------------------------------------------------------------
+(define (make-promise expr)
+  "(make-promise done? expr)
+
+   Function that creates a promise from an expression that can later be forced."
+  (new %Promise #f (lambda () expr)))
+
+;; -----------------------------------------------------------------------------
 (define-syntax delay-force
   (syntax-rules ()
     ((delay-force expression)
-     (make-promise #f (lambda () expression)))))
+     (new %Promise #f (lambda () expression))))
+  "(delay-force expr)
+
+   Optimized version of (delay (force expression))")
+
+;; -----------------------------------------------------------------------------
+(define-syntax delay
+  (syntax-rules ()
+    ((delay expression)
+     (delay-force (new %Promise #t expression))))
+  "(delay expression)
+
+   Will create a promise from expression that can be forced with (force).")
+
+;; -----------------------------------------------------------------------------
+(define (force promise)
+  "(force promise)
+
+   Function that forces the promise and evaluates the delayed expression."
+  (if (not (promise? promise))
+      promise
+      (if promise.__done__
+          promise.__value__
+          (let ((promise* (promise.__value__)))
+            (unless promise.__done__
+              (%promise-update! promise* promise))
+        (force promise)))))
+
+;; -----------------------------------------------------------------------------
+(define (%promise-update! new old)
+  "(%promise-update! new old)
+
+   Helper function to update promise created with make-promise based on new values."
+  (set-object! old '__done__ new.__done__)
+  (set-object! old '__value__ new.__value__)
+  (set-object! new '__done__ old.__done__))
+
+;; -----------------------------------------------------------------------------
+(define (promise? obj)
+  "(promise? obj)
+
+   Checks if the value is a promise created with delay or make-promise."
+  (instanceof %Promise obj))
+
 ;; -----------------------------------------------------------------------------
 (define (vector-copy vector . rest)
   "(vector-copy vector)
@@ -4391,14 +4486,18 @@
    then it will define each value as a variable like with define.")
 
 ;; -----------------------------------------------------------------------------
-(define-macro (include . files)
-  "(include file ...)
+(define (%include type files)
+  "(%include type files)
 
-   Load at least one file content and insert them into one,
-   body expression."
-  (if (null? files)
-      (throw (new Error "include: at least one file path required"))
-      (let ((result (vector)) (env (interaction-environment)))
+   Helper function that that parse a file and return it as data.
+   The if first argument is true it use fold-case on the input file"
+  (let* ((result (vector))
+         (env (interaction-environment))
+         (parse (lambda (string)
+                  (let ((string (if type
+                                    (string-append "#!fold-case\n" string)
+                                    string)))
+                      (lips.parse string env)))))
         (if (eq? self global)
             (let* ((fs (require "fs"))
                    (readFile (lambda (file)
@@ -4410,14 +4509,37 @@
                                                                                (toString)))
                                                                  (reject err)))))))))
               (for-each (lambda (file)
-                          (let* ((expr (lips.parse (readFile file) env)))
+                          (let* ((expr (parse (readFile file))))
                             (set! result (--> result (concat expr)))))
                         files))
             (for-each (lambda (file)
                         (let* ((text (--> (fetch file) (text)))
-                               (expr (lips.parse text env)))
+                               (expr (parse text)))
                           (set! result (--> result (concat expr)))))
                       files))
+        result))
+
+;; -----------------------------------------------------------------------------
+(define-macro (include . files)
+  "(include file ...)
+
+   Load at least one file content and insert them into one, body expression."
+  (if (null? files)
+      (throw (new Error "include: at least one file path required"))
+      (let ((result (%include #f files)))
+        (if (> result.length 0)
+            `(begin
+              ,@(vector->list result))))))
+
+;; -----------------------------------------------------------------------------
+(define-macro (include-ci . files)
+  "(include-ci file ...)
+
+   Load at least one file content and insert them into one, body expression.
+   Similar to `include` but the input code is folded like it uses #!fold-case."
+  (if (null? files)
+      (throw (new Error "include-ci: at least one file path required"))
+      (let ((result (%include #t files)))
         (if (> result.length 0)
             `(begin
               ,@(vector->list result))))))
@@ -4437,7 +4559,7 @@
   (syntax-rules (and or not else r7rs srfi-0 srfi-2 srfi-4 srfi-6 srfi-10
                      srfi-22 srfi-23 srfi-28 srfi-46 srfi-69 srfi-98 srfi-111
                      srfi-139 srfi-147 srfi-156 srfi-176 srfi-193 srfi-195 srfi-197
-                     srfi-210 srfi-236 lips r7rs complex full-unicode ieee-float
+                     srfi-210 srfi-236 srfi-267 lips r7rs complex full-unicode ieee-float
                      ratios exact-complex full-numeric-tower)
     ((cond-expand) (syntax-error "Unfulfilled cond-expand"))
     ((cond-expand (else body ...))
@@ -5788,8 +5910,6 @@
           (set! seed (car new-seed))
           (set! seed (modulo (+ (* seed a) c) m)))
       (exact->inexact (/ seed m)))))
-
-
 ;; -----------------------------------------------------------------------------
 ;; init internal fs for LIPS Scheme Input/Output functions
 ;; -----------------------------------------------------------------------------

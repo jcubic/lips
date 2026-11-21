@@ -39,32 +39,16 @@
   (or (function? obj) (continuation? obj)))
 
 ;; -----------------------------------------------------------------------------
-(define-macro (define-symbol-macro type spec . rest)
-  "(define-symbol-macro type (name . args) . body)
-
-   Creates syntax extensions for evaluator similar to built-in , or `.
-   It's like an alias for a real macro. Similar to CL reader macros
-   but it receives already parsed code like normal macros. Type can be SPLICE
-   or LITERAL symbols (see set-special!). ALL default symbol macros are literal."
-  (let* ((name (car spec))
-         (symbol (cadr spec))
-         (args (cddr spec)))
-     `(begin
-        (define-macro (,name ,@args) ,@rest)
-        (set-special! ,symbol ,name ,(string->symbol
-                                      (concat "lips.specials."
-                                              (symbol->string type)))))))
-
-;; -----------------------------------------------------------------------------
 ;; Vector literals syntax using parser syntax extensions
 ;; -----------------------------------------------------------------------------
-(define-symbol-macro SPLICE (vector-literal "#" . args)
+(define-macro (vector-literal . args)
   (if (not (or (pair? args) (eq? args '())))
       (throw (new Error (concat "Parse Error: vector require pair got "
                                 (type args) " in " (repr args))))
       (let ((v (list->array args)))
         (Object.freeze v)
         v)))
+(set-special! "#" vector-literal lips.specials.SPLICE)
 
 ;; -----------------------------------------------------------------------------
 (define (vector . rest)
@@ -130,12 +114,11 @@
   "(equal? a b)
 
    The function checks if values are equal. If both are a pair or an array
-   it compares their elements recursively. If pairs have cycles it compares
-   them with eq?"
+   it compares their elements recursively. Cyclic lists are compared without
+   looping: a cycle is equal to itself and to a structurally identical cycle."
   (cond ((and (pair? a))
          (and (pair? b)
-              (equal? (car a) (car b))
-              (equal? (cdr a) (cdr b))))
+              (a.equal b)))
         ((symbol? a)
          (and (symbol? b)
               (eq? a b)))

@@ -1,3 +1,34 @@
+## 1.0.0-beta.24
+### Breaking
+* string interpolation is now `$" ... "`
+* `macroexpand` no longer expands `let-syntax`/`letrec-syntax` into `let`
+* rename `let-env` to `letenv` and `let-env-values` to `letenv-values` - `letrec`
+  is also two words without a separator; the old names are kept only to report
+  the rename [#436](https://github.com/jcubic/lips/issues/436)
+### Features
+* add missing R7RS `include-ci` and `delay-force`
+### Bugfix
+* add `dfls` mnemonics for floating-point exponent
+* fix symbol syntax extensions (e.g. empty string interpolation `#""`) failing
+  with an unterminated expression error
+* fix reference of free variables in syntax-rules expansion
+* fix pollution of `syntax-rules` renaming identifiers by `Object.prototype` members:
+  like `constructor`, `toString`, or `valueOf`
+* fix `quote` and `quasiquote` in a `syntax-rules` and remove the `clear_gensyms` hack
+* evaluating cyclic code now throws a Syntax Error instead of hanging the interpreter
+* fix REPL reporting the previous error's stack trace for an error didn't have its own
+* fix `(define name expression "doc string")` ignoring the doc string
+* `equal?` no longer loops forever on cyclic lists - a cycle is now equal
+  to itself and to a structurally identical cycle (new `Pair::equal` method)
+* fix `macroexpand` stopping after one level when a `syntax-rules` macro
+* fix `syntax-rules` nested ellipsis over a compound sub-template, e.g.
+  `((_ (a ...) ...) '(((a a) ...) ...))` - only `(<symbol> ...)` was handled,
+  a sub-template like `(a a)` failed with "ellipis not transformed"
+* fix R7RS ellipsis escape `(... <template>)` when it is the whole template
+  (e.g. `((_) (... '...))`) or appears inside an ellipsis repetition
+  (e.g. `((_ arg ...) (list (cons arg (... '...)) ...))`)
+* fix unboxing of values from records [#587](https://github.com/jcubic/lips/issues/587)
+
 ## 1.0.0-beta.23
 ### Breaking
 * `syntax-rules` now treats `_` as the R7RS wildcard: it matches any input

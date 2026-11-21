@@ -66,11 +66,11 @@
               (apply string (vector->list result))
               (loop (vector-append result (vector char)) (peek-char)))))))
 
-(set-special! "$" raw-string lips.specials.SYMBOL)
+(set-special! "$:" raw-string lips.specials.SYMBOL)
 
-(define parser/t9 $"foo \ bar")
+(define parser/t9 $:"foo \ bar")
 
-(unset-special! "$")
+(unset-special! "$:")
 
 (define (line-num)
   (let* ((lexer lips.__parser__.__lexer__)

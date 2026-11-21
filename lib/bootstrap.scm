@@ -19,7 +19,7 @@
 
 ;; -----------------------------------------------------------------------------
 (define-macro (%internal)
-  `(let-env **interaction-environment** **internal-env**))
+  `(letenv **interaction-environment** **internal-env**))
 
 ;; -----------------------------------------------------------------------------
 (define (%set-internal prop value)
@@ -894,35 +894,55 @@
    Function read from input port or stdin and return list of strings
    interleaved with expressions from interpolation ${...}"
   (let ((port (if (null? rest) (current-input-port) (car rest))))
+    (define (skip-spaces)
+      (if (char=? (peek-char port) #\space)
+          (begin
+            (read-char port)
+            (skip-spaces))))
+    (define (expect-brace)
+      (skip-spaces)
+      (let ((next (peek-char port)))
+        (if (char=? next #\})
+            (read-char port)
+            (error (string-append "Parse Error: expecting } got " (repr next))))))
+    (define (read-expression)
+      ;; read a single datum between ${ and }
+      (skip-spaces)
+      (let ((next (peek-char port)))
+        (if (or (char=? next #\() (char=? next #\[) (char=? next #\"))
+            ;; the reader knows where lists and strings end, so it can't
+            ;; over-read; } is not a delimiter for it, so it needs to be
+            ;; consumed separately
+            (let ((expr (read port)))
+              (expect-brace)
+              expr)
+            ;; an atom is not delimited by } either, and unlike a list the
+            ;; reader would happily munch it together with the rest of the
+            ;; line (`${x};"` reads as the symbol `x};"`), so collect the
+            ;; text up to } ourselves and parse that
+            (let loop ((chars '()))
+              (let ((char (read-char port)))
+                (cond ((eof-object? char)
+                       (error "Parse Error: expecting } found #eof"))
+                      ((char=? char #\})
+                       (read (open-input-string (list->string (reverse chars)))))
+                      (else
+                       (loop (cons char chars)))))))))
     (let loop ((part "") (result (vector)) (char (read-char port)))
-      (cond ((and (char=? char #\$)
+      (cond ((eof-object? char)
+             (error "Parse Error: expecting character #eof found"))
+            ((and (char=? char #\$)
                   (char=? (peek-char port) #\{))
-             (read-char)
-             (let ((expr (read port)))
-               (if (symbol? expr)
-                   (let* ((expr (--> (symbol->string expr) (replace #/\}$/ "")))
-                          (value (read (open-input-string expr))))
-                     (loop "" (vector-append result (vector part expr)) (read-char)))
-                   (let inner ((next (peek-char port)))
-                     (cond ((char=? next #\space)
-                            (read-char port)
-                            (inner (peek-char port)))
-                           ((char=? next #\})
-                            (read-char port)
-                            (loop ""
-                                  (vector-append result (vector part expr))
-                                  (read-char port)))
-                           (else
-                            (error (string-append "Parse Error: expecting } got "
-                                                  (repr next)))))))))
+             (read-char port)
+             (loop ""
+                   (vector-append result (vector part (read-expression)))
+                   (read-char port)))
             ((char=? char #\\)
              (loop (string-append part (repr (read-char port)))
                    result
                    (read-char port)))
             ((char=? char #\")
              (vector->list (vector-append result (vector part))))
-            ((eof-object? char)
-             (error "Parse Error: expecting character #eof found"))
             (else
              (loop (string-append part (repr char)) result (read-char port)))))))
 
@@ -944,7 +964,8 @@
                            (%read-interpolated)))))
 
 ;; -----------------------------------------------------------------------------
-(set-special! "#\"" %string-interpolation lips.specials.SYMBOL)
+(set-special! "$\"" %string-interpolation lips.specials.SYMBOL)
+
 ;; -----------------------------------------------------------------------------
 (define (bound? x . rest)
   "(bound? x [env])
@@ -1150,7 +1171,9 @@
    Helper function that allows to use [Symbol.asyncIterator] inside method name."
   (if (pair? expr)
       (car expr)
-      (list 'quote expr)))
+      (if (gensym? expr)
+          (--> expr (literal))
+          (list 'quote expr))))
 
 ;; -----------------------------------------------------------------------------
 (define (constructor)
@@ -1402,7 +1425,7 @@
   "(reset)
 
   Function resets the environment and removes all user defined variables."
-  (let-env **interaction-environment**
+  (letenv **interaction-environment**
            (let ((defaults **interaction-environment-defaults**)
                  (env **interaction-environment**))
              (--> env (list) (forEach (lambda (name)
@@ -1603,17 +1626,24 @@
 (set-special! "’" %warn-quote)
 
 ;; -----------------------------------------------------------------------------
-(define-macro (let-env-values env spec . body)
-  "(let-env-values env ((name var)) . body)
+(define-macro (letenv-values env spec . body)
+  "(letenv-values env ((name var)) . body)
 
    Adds mappings for variables var from specified env.
-   it is similar to let-env but lexical scope is working with it."
+   it is similar to letenv but lexical scope is working with it."
   (let ((env-name (gensym 'env)))
     `(let ((,env-name ,env))
        (let ,(map (lambda (pair)
                     `(,(car pair) (--> ,env-name (get ',(cadr pair)))))
                   spec)
          ,@body))))
+
+;; -----------------------------------------------------------------------------
+(define-macro (let-env-values . rest)
+  "(let-env-values env ((name var)) . body)
+
+   Removed - renamed to `letenv-values`."
+  (throw "let-env-values: this macro was renamed to `letenv-values`"))
 
 ;; -----------------------------------------------------------------------------
 (define (apropos name)
@@ -1690,14 +1720,30 @@
   (lambda (h)
     "(Y f)
 
-       _ __   __    _            _       _      _ __   __         _   _  _
-      /  \\ \\ / /   /  __        /   ____  \\    /  \\ \\ / /    ____  \\   \\  \\
-     +    \\ v /   +   \\ \\      +   / ___|  +  +    \\ v /    / ___|  +   +  +
-     |     \\ /    |    \\ \\     |  | |__    |  |     \\ /    | |__    |   |  |
-     |     | |    |    /  \\    |  |  __|   |  |     | |    |  __|   |   |  |
-     |     | |    |   / /\\ \\   |  | |      |  |     | |    | |      |   |  |
-     +     |_|    +  /_/  \\_\\  +  |_|      +  +     |_|    |_|      +   +  +
-      \\_           \\_           \\_       _/    \\_                 _/  _/ _/"
+       _ __   __    _            _       _
+      /  \\ \\ / /   /  __        /   ____  \\
+     +    \\ v /   +   \\ \\      +   / ___|  +
+     |     \\ /    |    \\ \\     |  | |__    |
+     |     | |    |    /  \\    |  |  __|   |
+     |     | |    |   / /\\ \\   |  | |      |
+     +     |_|    +  /_/  \\_\\  +  |_|      +
+      \\_           \\_           \\_       _/
+                         _            _ _
+                        /  __        /   \\
+                       +   \\ \\      +     +
+                       |    \\ \\     |     |
+                       |    /  \\    |     |
+                       |   / /\\ \\   |     |
+                       +  /_/  \\_\\  +     +
+                        \\_           \\_ _/
+                              _       _   _   _  _
+                             /   ____  \\   \\   \\  \\
+                            +   / ___|  +   +   +  +
+                            |  | |__    |   |   |  |
+                            |  |  __|   |   |   |  |
+                            |  | |      |   |   |  |
+                            +  |_|      +   +   +  +
+                             \\_       _/  _/  _/ _/"
           ((lambda (x) (x x))
            (lambda (g)
              (h (lambda args (apply (g g) args)))))))

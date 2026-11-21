@@ -535,6 +535,32 @@
 
         (t.is (my-let ((x 10) (y 20)) (+ x y)) 30)))
 
+;; the matcher and the transcriber key their internal maps by identifier name;
+;; an identifier that happens to name an Object.prototype member must not be
+;; mistaken for an inherited JS property of those maps
+(test "identifiers that shadow Object.prototype members"
+      (lambda (t)
+        (t.plan 3)
+        (let-syntax ((q (syntax-rules ()
+                          ((_) '(constructor toString valueOf hasOwnProperty ordinary)))))
+          (t.is (q) '(constructor toString valueOf hasOwnProperty ordinary)))
+        (let-syntax ((r (syntax-rules () ((_ constructor) '(constructor constructor)))))
+          (t.is (r hello) '(hello hello)))
+        (let-syntax ((s (syntax-rules () ((_ toString ...) '(toString ...)))))
+          (t.is (s 1 2 3) '(1 2 3)))))
+
+;; a repetition whose sub-template is a compound form, nested inside another
+;; repetition - plain R7RS, every variable is used at its own ellipsis depth
+(test "nested ellipsis over a compound sub-template"
+      (lambda (t)
+        (t.plan 3)
+        (let-syntax ((f (syntax-rules () ((_ (a ...) ...) '(((a a) ...) ...)))))
+          (t.is (f (1 2) (3 4)) '(((1 1) (2 2)) ((3 3) (4 4)))))
+        (let-syntax ((f (syntax-rules () ((_ (a ...) ...) '(((a) ...) ...)))))
+          (t.is (f (1 2) (3 4)) '(((1) (2)) ((3) (4)))))
+        (let-syntax ((f (syntax-rules () ((_ (a b ...) ...) '((a ((b) ...)) ...)))))
+          (t.is (f (x 1 2) (y 3 4)) '((x ((1) (2))) (y ((3) (4))))))))
+
 (test.failing "lifted ellipsis (SRFI-149)"
       (lambda (t)
         (define result
@@ -702,14 +728,14 @@
 
         (t.is (L 1 2 3) '(1 2 3))))
 
-(test.failing "should return list with ellipsis"
+(test "should return list with ellipsis"
        (lambda (t)
 
          (define-syntax test
            (syntax-rules ()
              ((_) (... '...))))
 
-         (t.is (test) '(...))
+         (t.is (test) '...)
 
          (define-syntax test
            (syntax-rules ()
@@ -885,17 +911,45 @@
         (define-syntax def-priv (syntax-rules () ((_ y) (define priv y))))
         (t.is (to.throw (let () (def-priv 10) priv)) #t)))
 
-(test.failing "free variables"
+(test "free variables (lazy reference)"
       (lambda (t)
         (define-syntax def (syntax-rules ()
                              ((_ foo bar)
                               (begin
                                 (define foo bar)
-                                hello))))
+                                (t.is hello 10)))))
 
-        (t.is (def hello 10) 10)
         (def hello 10)
         (t.is hello 10)))
+
+;; R7RS 4.3: a template can both DEFINE and REFERENCE a macro-introduced
+;; identifier. Both are renamed to the same gensym, so the reference has to see
+;; the definition - the lazy-alias placeholder created for the free identifier
+;; must not shadow it (see the jabberwocky example in the R7RS test suite).
+(test "macro-introduced identifier defined and referenced by the expansion"
+      (lambda (t)
+        (t.plan 2)
+        ;; the definition is reached through a nested macro
+        (let ()
+          (define-syntax jabberwocky
+            (syntax-rules ()
+              ((_ hatter)
+               (begin
+                 (define march-hare 42)
+                 (define-syntax hatter
+                   (syntax-rules () ((_) march-hare)))))))
+          (jabberwocky mad-hatter)
+          (t.is (mad-hatter) 42))
+        ;; forward reference: `gg` is used before its define
+        (let ()
+          (define-syntax ffoo
+            (syntax-rules ()
+              ((_ ff)
+               (begin
+                 (define (ff x) (gg x))
+                 (define (gg x) (* x x))))))
+          (ffoo ff)
+          (t.is (ff 10) 100))))
 
 (test "should pass body from macro to function"
       (lambda (t)
@@ -1373,7 +1427,7 @@
                 (list x y))
               '(1 2))))
 
-(test.failing "syntax-parameterize (SRFI-139)"
+(test "syntax-parameterize (SRFI-139)"
       (lambda (t)
 
          (define-syntax-parameter it
@@ -1397,7 +1451,7 @@
              (aif aux test true false))))
 
         (let ((alist '((foo . 10) (bar . 20))))
-          (it.s (aif (assoc 'foo alist) (cdr (it)))
+          (t.is (aif (assoc 'foo alist) (cdr (it)))
                 10)
           (t.is (aif (assoc 'x alist) (cdr (it)))
                 (if #f #f)))))
@@ -2039,3 +2093,38 @@
             ((_ (a b ... . rest)) '(a ((w b) ...) rest))))
         (t.is (wrap-rest (x p q r . z)) '(x ((w p) (w q) (w r)) z))
         (t.is (wrap-rest (x p q r)) '(x ((w p) (w q) (w r)) ()))))
+
+;; R7RS 4.3.2: identifiers inside `quote`/`quasiquote` in a template are literal
+;; DATA - they are emitted as plain symbols, never hygiene-renamed - no matter
+;; how the data leaves the macro. This used to be patched up after the fact on
+;; the macro's return value only, so data escaping by a side effect kept the
+;; `#:name` gensym.
+(test "quoted data in a template is never hygiene-renamed"
+      (lambda (t)
+        (t.plan 6)
+        ;; a free identifier under an ellipsis
+        (let ()
+          (define-syntax wrap
+            (syntax-rules () ((_ (a b ...)) '(a ((w b) ...)))))
+          (t.is (wrap (x p q)) '(x ((w p) (w q)))))
+        ;; quasiquote, as the return value and escaping by define/set!
+        (let ()
+          (define-syntax qq (syntax-rules () ((_) `(a b))))
+          (t.is (qq) '(a b)))
+        (let ()
+          (define-syntax qq-def (syntax-rules () ((_ n) (define n `(a b)))))
+          (qq-def escaped)
+          (t.is escaped '(a b)))
+        (let ((holder #f))
+          (define-syntax qq-set (syntax-rules () ((_) (set! holder `(a b)))))
+          (qq-set)
+          (t.is holder '(a b)))
+        ;; unquote inside a template must reach the quasiquote implementation,
+        ;; which matches it by name - a renamed `#:unquote` would be left as data
+        (let ()
+          (define-syntax qq-un (syntax-rules () ((_ x) `(a ,x b ,@(list 1 2)))))
+          (t.is (qq-un 9) '(a 9 b 1 2)))
+        ;; a nested quasiquote keeps its inner unquote unevaluated
+        (let ()
+          (define-syntax qq-nest (syntax-rules () ((_) `(a `(b ,(c)) d))))
+          (t.is (qq-nest) '(a (quasiquote (b (unquote (c)))) d)))))

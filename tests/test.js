@@ -35,7 +35,7 @@ get_files().then(filenames => {
         return fs.readFile(file, 'utf8');
     })).then(async function (files) {
         await exec(`
-          (let-env lips.env.__parent__
+          (letenv lips.env.__parent__
             (load "@lips/dist/std.xcb")
             (load "@lips/lib/srfi/258.scm")
             (load "@lips/tests/helpers/helpers.scm"))

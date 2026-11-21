@@ -85,10 +85,76 @@
    need to evaluate to result of calling values.")
 
 ;; -----------------------------------------------------------------------------
+(define-class %Promise Object
+  (constructor (lambda (self done value)
+                 (set-object! self '__done__ done)
+                 (set-object! self '__value__ value))))
+
+;; -----------------------------------------------------------------------------
+(set-repr! %Promise (lambda (self)
+                      (string-append "#<promise - "
+                                     (if self.__done__
+                                         (string-append
+                                          "forced with "
+                                          (type self.__value__))
+                                         "not forced")
+                                     ">")))
+
+;; -----------------------------------------------------------------------------
+(define (make-promise expr)
+  "(make-promise done? expr)
+
+   Function that creates a promise from an expression that can later be forced."
+  (new %Promise #f (lambda () expr)))
+
+;; -----------------------------------------------------------------------------
 (define-syntax delay-force
   (syntax-rules ()
     ((delay-force expression)
-     (make-promise #f (lambda () expression)))))
+     (new %Promise #f (lambda () expression))))
+  "(delay-force expr)
+
+   Optimized version of (delay (force expression))")
+
+;; -----------------------------------------------------------------------------
+(define-syntax delay
+  (syntax-rules ()
+    ((delay expression)
+     (delay-force (new %Promise #t expression))))
+  "(delay expression)
+
+   Will create a promise from expression that can be forced with (force).")
+
+;; -----------------------------------------------------------------------------
+(define (force promise)
+  "(force promise)
+
+   Function that forces the promise and evaluates the delayed expression."
+  (if (not (promise? promise))
+      promise
+      (if promise.__done__
+          promise.__value__
+          (let ((promise* (promise.__value__)))
+            (unless promise.__done__
+              (%promise-update! promise* promise))
+        (force promise)))))
+
+;; -----------------------------------------------------------------------------
+(define (%promise-update! new old)
+  "(%promise-update! new old)
+
+   Helper function to update promise created with make-promise based on new values."
+  (set-object! old '__done__ new.__done__)
+  (set-object! old '__value__ new.__value__)
+  (set-object! new '__done__ old.__done__))
+
+;; -----------------------------------------------------------------------------
+(define (promise? obj)
+  "(promise? obj)
+
+   Checks if the value is a promise created with delay or make-promise."
+  (instanceof %Promise obj))
+
 ;; -----------------------------------------------------------------------------
 (define (vector-copy vector . rest)
   "(vector-copy vector)
@@ -627,14 +693,18 @@
    then it will define each value as a variable like with define.")
 
 ;; -----------------------------------------------------------------------------
-(define-macro (include . files)
-  "(include file ...)
+(define (%include type files)
+  "(%include type files)
 
-   Load at least one file content and insert them into one,
-   body expression."
-  (if (null? files)
-      (throw (new Error "include: at least one file path required"))
-      (let ((result (vector)) (env (interaction-environment)))
+   Helper function that that parse a file and return it as data.
+   The if first argument is true it use fold-case on the input file"
+  (let* ((result (vector))
+         (env (interaction-environment))
+         (parse (lambda (string)
+                  (let ((string (if type
+                                    (string-append "#!fold-case\n" string)
+                                    string)))
+                      (lips.parse string env)))))
         (if (eq? self global)
             (let* ((fs (require "fs"))
                    (readFile (lambda (file)
@@ -646,14 +716,37 @@
                                                                                (toString)))
                                                                  (reject err)))))))))
               (for-each (lambda (file)
-                          (let* ((expr (lips.parse (readFile file) env)))
+                          (let* ((expr (parse (readFile file))))
                             (set! result (--> result (concat expr)))))
                         files))
             (for-each (lambda (file)
                         (let* ((text (--> (fetch file) (text)))
-                               (expr (lips.parse text env)))
+                               (expr (parse text)))
                           (set! result (--> result (concat expr)))))
                       files))
+        result))
+
+;; -----------------------------------------------------------------------------
+(define-macro (include . files)
+  "(include file ...)
+
+   Load at least one file content and insert them into one, body expression."
+  (if (null? files)
+      (throw (new Error "include: at least one file path required"))
+      (let ((result (%include #f files)))
+        (if (> result.length 0)
+            `(begin
+              ,@(vector->list result))))))
+
+;; -----------------------------------------------------------------------------
+(define-macro (include-ci . files)
+  "(include-ci file ...)
+
+   Load at least one file content and insert them into one, body expression.
+   Similar to `include` but the input code is folded like it uses #!fold-case."
+  (if (null? files)
+      (throw (new Error "include-ci: at least one file path required"))
+      (let ((result (%include #t files)))
         (if (> result.length 0)
             `(begin
               ,@(vector->list result))))))
@@ -673,7 +766,7 @@
   (syntax-rules (and or not else r7rs srfi-0 srfi-2 srfi-4 srfi-6 srfi-10
                      srfi-22 srfi-23 srfi-28 srfi-46 srfi-69 srfi-98 srfi-111
                      srfi-139 srfi-147 srfi-156 srfi-176 srfi-193 srfi-195 srfi-197
-                     srfi-210 srfi-236 lips r7rs complex full-unicode ieee-float
+                     srfi-210 srfi-236 srfi-267 lips r7rs complex full-unicode ieee-float
                      ratios exact-complex full-numeric-tower)
     ((cond-expand) (syntax-error "Unfulfilled cond-expand"))
     ((cond-expand (else body ...))
@@ -1606,7 +1699,7 @@
                                                     (let* ((name (symbol->string field))
                                                            (prop (string-append "self."
                                                                                 name)))
-                                                      `(set! ,(string->symbol prop) ,field)))
+                                                      `(set-object! self ,name ,field true)))
                                                   (cdr constructor))))
                             (equal (lambda (self other)
                                      (if (instanceof ,name other)
@@ -1647,7 +1740,7 @@
                              (if (not (,pred ,obj-name))
                                  (throw (new Error ,(string-append "object is not record of type "
                                                                    (symbol->string name))))
-                                 (set-object! ,obj-name ',prop-name ,value-name)))))))
+                                 (set-object! ,obj-name ',prop-name ,value-name true)))))))
               fields))))
 
 ;; -----------------------------------------------------------------------------
@@ -2024,5 +2117,3 @@
           (set! seed (car new-seed))
           (set! seed (modulo (+ (* seed a) c) m)))
       (exact->inexact (/ seed m)))))
-
-

@@ -135,6 +135,7 @@ function print_error(e, js_trace, exit) {
         message = `Runtime Error: ${message}`;
     }
     log_error(message);
+    let strace;
     if (e.__stack__) {
         strace = e.__stack__.map((line, i) => {
             const prefix = `[${i+1}]: `;
@@ -262,7 +263,6 @@ function log(message) {
 }
 
 // -----------------------------------------------------------------------------
-let strace;
 let rl;
 let output;
 var newline;
@@ -360,8 +360,8 @@ function get_command_line_args() {
 if (options.version || options.V) {
     // generated with `make srfi`
     const srfi = [
-        0, 1, 2, 4, 6, 8, 10, 22, 23, 26, 28, 46, 69, 98, 111,
-        139, 147, 156, 176, 193, 195, 197, 203, 210, 236, 251
+        0, 1, 2, 4, 6, 8, 10, 22, 23, 26, 28, 46, 69, 98, 111, 139, 147, 156, 176,
+        193, 195, 197, 203, 210, 236, 251, 267
     ];
     // SRFI 176
     global.output = Pair.from_array([

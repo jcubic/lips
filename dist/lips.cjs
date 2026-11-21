@@ -4,7 +4,7 @@
  * | |   \ \     | |  | || . \/ __>  | |
  * | |    > \    | |_ | ||  _/\__ \  | |
  * | |   / ^ \   |___||_||_|  <___/  | |
- *  \_\ /_/ \_\                     /_/ v. 1.0.0-beta.23.1
+ *  \_\ /_/ \_\                     /_/ v. DEV
  *
  * LIPS is Pretty Simple - Scheme based Powerful LISP in JavaScript
  *
@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Mon, 24 Aug 2026 18:55:31 +0000
+ * build: Thu, 03 Sep 2026 21:53:26 +0000
  */
 
 'use strict';
@@ -3020,17 +3020,12 @@ function contentLoaded(win, fn) {
   }
 }
 
-// opt-in gate for stack-frame collection (state.stack). Off by default: pushing
-// every continuation seen during evaluation costs time and, in a long tail loop,
-// unbounded memory. Enable with (trace) when you need stack-trace / full error
-// stacks. Stored per-instance in the internal env as __trace__ and read
-// onto state.collect_stack (see read_internal_flags) - not a module global, so
-// several interpreters can run in one runtime with independent tracing.
 // ----------------------------------------------------------------------
 // fast global gate: is_debug() runs in hot paths (every eval step, macros) and
 // its user_env.get('DEBUG') is a full env-chain walk. Keep a module flag that
 // mirrors whether DEBUG is set to a truthy value (updated by Environment.set)
 // so the common (debug-off) case is a single boolean test.
+// ----------------------------------------------------------------------
 var _debug_enabled = false;
 /* c8 ignore start */
 function is_debug() {
@@ -3067,8 +3062,10 @@ function gen_complex_re(mnemonic, range) {
 function gen_integer_re(mnemonic, range) {
   return "".concat(num_mnemicic_re(mnemonic), "[+-]?").concat(range, "+");
 }
+var float_types = '[esfdl]';
+var float_sci_re = new RegExp(float_types, 'i');
 var re_re = /^#\/((?:\\\/|[^/]|\[[^\]]*\/[^\]]*\])+)\/([gimyus]*)$/;
-var float_stre = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*)(?:[eE][-+]?[0-9]+)?)|[0-9]+\\.)';
+var float_stre = "(?:[-+]?(?:[0-9]+(?:".concat(float_types, "[-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*)(?:").concat(float_types, "[-+]?[0-9]+)?)|[0-9]+\\.)");
 // TODO: extend to ([+-]1/2|float)([+-]1/2|float)
 var complex_float_stre = "(?:#[ied])?(?:[+-]?(?:[0-9][0-9_]*/[0-9][0-9_]*|nan.0|inf.0|".concat(float_stre, "|[+-]?[0-9]+))?(?:").concat(float_stre, "|[+-](?:[0-9]+/[0-9]+|[0-9]+|nan.0|inf.0))i");
 var float_re = new RegExp("^(#[ied])?".concat(float_stre, "$"), 'i');
@@ -3077,7 +3074,7 @@ function make_complex_match_re(mnemonic, range) {
   var neg = mnemonic === 'x' ? "(?!\\+|".concat(range, ")") : "(?!\\.|".concat(range, ")");
   var fl = '';
   if (['', 'd'].includes(mnemonic)) {
-    fl = '(?:[-+]?(?:[0-9]+(?:[eE][-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*(?![0-9]))(?:[eE][-+]?[0-9]+)?))';
+    fl = "(?:[-+]?(?:[0-9]+(?:".concat(float_types, "[-+]?[0-9]+)|(?:\\.[0-9]+|[0-9]+\\.[0-9]*(?![0-9]))(?:").concat(float_types, "[-+]?[0-9]+)?))");
   }
   return new RegExp("^((?:(?:".concat(fl, "|[-+]?inf.0|[-+]?nan.0|[+-]?").concat(range, "+/").concat(range, "+(?!").concat(range, ")|[+-]?").concat(range, "+)").concat(neg, ")?)(").concat(fl, "|[-+]?inf.0|[-+]?nan.0|[+-]?").concat(range, "+/").concat(range, "+|[+-]?").concat(range, "+|[+-])i$"), 'i');
 }
@@ -3358,7 +3355,8 @@ function parse_big_int(str) {
 
 // ----------------------------------------------------------------------
 function string_to_float(str) {
-  if (str.match(/e/i)) {
+  if (str.match(float_sci_re)) {
+    str = str.replace(float_sci_re, 'e');
     var _str$split = str.split('e'),
       _str$split2 = _slicedToArray(_str$split, 2),
       coefficient = _str$split2[0],
@@ -5327,7 +5325,7 @@ class Parser {
         var builtin = is_builtin(token.token);
         _this1._skip(token);
         var _is_symbol = is_symbol_extension(special);
-        var was_close_paren = _this1._is_close(yield _this1._peek());
+        var was_close_paren = !_is_symbol && _this1._is_close(yield _this1._peek());
         // expression passed to syntax extension
         var object = _is_symbol ? undefined : yield _this1._read_object();
         if (object === eof) {
@@ -5814,7 +5812,7 @@ Formatter.defaults = {
   offset: 0,
   indent: 2,
   exceptions: {
-    specials: [/^(?:#:)?(?:define(?:-values|-syntax|-macro|-class|-record-type)?|(?:call-with-(?:input-file|output-file|port))|lambda|let-env|try|catch|when|unless|while|syntax-rules|(let|letrec)(-syntax|\*?-values|\*)?)$/],
+    specials: [/^(?:#:)?(?:define(?:-values|-syntax|-macro|-class|-record-type)?|(?:call-with-(?:input-file|output-file|port))|lambda|letenv|try|catch|when|unless|while|syntax-rules|(let|letrec)(-syntax|\*?-values|\*)?)$/],
     shift: {
       1: ['&', '#']
     }
@@ -8017,6 +8015,61 @@ Pair.prototype.reverse = function () {
 };
 
 // ----------------------------------------------------------------------
+// :: Structural comparison of two lists, used by R7RS `equal?`.
+// ::
+// :: Cyclic structures are compared coinductively: a pair of nodes that is
+// :: already under comparison is ASSUMED equal. Walking on can only prove them
+// :: different, and if it never does they are equal - so `equal?` terminates on
+// :: a cycle, a cycle compares equal to itself, and two structurally identical
+// :: cycles compare equal.
+// ::
+// :: The walk is an explicit stack rather than recursion: a list is unbounded
+// :: and its spine would otherwise be one JS frame per element.
+// ----------------------------------------------------------------------
+Pair.prototype.equal = function (arg) {
+  // everything that is not a pair (strings, vectors, records, numbers, ...)
+  // is compared by `equal?` from the standard library. It is only there once
+  // the library is loaded, so until then fall back to the atom comparison.
+  var scheme_equal = global_env && global_env.get('equal?', {
+    throwError: false
+  });
+  var same = is_function(scheme_equal) ? scheme_equal : equal;
+  // left node -> right nodes it is already assumed equal to
+  var assumed = new Map();
+  var stack = [[this, arg]];
+  while (stack.length) {
+    var _stack$pop = stack.pop(),
+      _stack$pop2 = _slicedToArray(_stack$pop, 2),
+      left = _stack$pop2[0],
+      right = _stack$pop2[1];
+    if (left === right) {
+      // same object - includes nil, and a cycle compared with itself
+      continue;
+    }
+    if (is_pair(left) && is_pair(right)) {
+      var seen = assumed.get(left);
+      if (!seen) {
+        seen = new Set();
+        assumed.set(left, seen);
+      } else if (seen.has(right)) {
+        // this exact node pair is already being compared: a cycle that
+        // has closed without finding a difference
+        continue;
+      }
+      seen.add(right);
+      // cdr first, so the car (pushed last) is compared first and a
+      // difference near the head is found without walking the whole list
+      stack.push([left.cdr, right.cdr], [left.car, right.car]);
+    } else if (is_pair(left) || is_pair(right)) {
+      return false;
+    } else if (same(left, right) === false) {
+      return false;
+    }
+  }
+  return true;
+};
+
+// ----------------------------------------------------------------------
 Pair.prototype.map = function (fn) {
   if (typeof this.car !== 'undefined') {
     return new Pair(fn(this.car), is_nil(this.cdr) ? _nil : this.cdr.map(fn));
@@ -8364,6 +8417,120 @@ function has_cycle(root) {
   return visit(root);
 }
 // ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------
+// :: A form is a QUOTATION when what follows the keyword is literal data
+// :: rather than code. `literal()` is used so a hygiene-renamed `#:quote`
+// :: from a macro expansion is recognised too.
+// ----------------------------------------------------------------------
+function is_quotation(node) {
+  return node.car instanceof LSymbol && ['quote', 'quasiquote'].includes(node.car.literal());
+}
+// ----------------------------------------------------------------------
+// :: Detect a cycle in CODE. Same path-based DFS as has_cycle (iterative
+// :: along the spine, so a long list does not grow the JS stack), with two
+// :: differences: it leaves the print marks (__ref__/__cycles__) alone, and
+// :: it does not descend into a quotation. The parser only produces data -
+// :: the evaluator decides what of it is code - and a cyclic DATUM is legal
+// :: R7RS (`'#0=(1 2 . #0#)`), so only what will actually be evaluated is
+// :: checked. `quasiquote` is skipped for the same reason, which means a
+// :: cycle reachable only through an `unquote` is not detected.
+// ----------------------------------------------------------------------
+function code_has_cycle(root, env) {
+  var gray = new Set();
+  var black = new Set();
+  // Whether NODE's operands are data rather than code. They are when the
+  // operator is a user macro - the macro consumes them, and only its
+  // EXPANSION is code, which is checked separately when it comes back.
+  // An operator that does not resolve is treated the same way: it may be a
+  // macro defined by an earlier form in the same body, and rejecting valid
+  // code is worse than missing a cycle somewhere exotic (the spine of the
+  // form is walked either way, so the common shapes are still caught).
+  // Internal macros (if/begin/set!/define/let) evaluate their operands
+  // directly, so those operands are still code.
+  function skip_operands(node) {
+    if (!env || !(node.car instanceof LSymbol)) {
+      return false;
+    }
+    try {
+      var value = env.get(node.car, {
+        throwError: false
+      });
+      if (typeof value === 'undefined') {
+        return true;
+      }
+      return is_macro(value) && !is_internal_macro(value);
+    } catch (e) {
+      // resolving an operator must never break the check: a JS
+      // dot-notation name throws on a missing intermediate object, and
+      // the internal-macro table is still in its temporal dead zone
+      // while this module is itself being evaluated
+      return true;
+    }
+  }
+  function visit(node) {
+    var spine = [];
+    var cycle = false;
+    // Only the HEAD of a spine is an operator position: in `(f a b)` the
+    // second pair's car is `a`, an operand. So the operator is classified
+    // once, not once per pair - otherwise an operand that happens to name a
+    // macro would wrongly mark the rest of the spine as data, and every
+    // pair would cost an environment lookup.
+    var head = true;
+    // set when the operator is a macro: its operands are skipped, but the
+    // spine of the CALL is still code and has to be walked - `(m . <cyclic>)`
+    // asks the macro to match infinitely many arguments
+    var operands = false;
+    while (is_pair(node)) {
+      if (gray.has(node)) {
+        cycle = true;
+        break;
+      }
+      if (black.has(node)) {
+        break;
+      }
+      gray.add(node);
+      spine.push(node);
+      if (head) {
+        if (is_quotation(node)) {
+          break;
+        }
+        operands = skip_operands(node);
+        head = false;
+      }
+      if (!operands && is_pair(node.car) && visit(node.car)) {
+        cycle = true;
+        break;
+      }
+      node = node.cdr;
+    }
+    // retire the spine from the current path so sibling branches see its
+    // pairs as shared (black) rather than as ancestors (gray)
+    for (var i = 0; i < spine.length; i++) {
+      gray.delete(spine[i]);
+      black.add(spine[i]);
+    }
+    return cycle;
+  }
+  return visit(root);
+}
+// ----------------------------------------------------------------------
+// :: Reject code that cannot be evaluated because it is cyclic - otherwise
+// :: the evaluator walks the cycle forever. Called where code ENTERS the
+// :: evaluator (a whole form) and where a macro or syntax extension hands
+// :: back an expansion, never per evaluation step.
+// ----------------------------------------------------------------------
+function check_code_cycles(code, env) {
+  if (is_pair(code) && code_has_cycle(code, env)) {
+    var e = new Error('Syntax Error: cyclic structure in code, only quoted ' + 'data can contain cycles');
+    // the offending form is the only frame available: the error is raised
+    // before evaluation starts, so there is no continuation chain to walk.
+    // to_string labels the cycle, so printing it terminates.
+    augment_exception(e, code);
+    e.__stack__ = [to_string(code, true)];
+    throw e;
+  }
+  return code;
+}
 function mark_cycles(pair) {
   // acyclic fast path: nothing to label (has_cycle already cleared any stale
   // marks). Only real cycles need the O(n^2) labelling DFS below.
@@ -8990,25 +9157,22 @@ Syntax.prototype.toString = function () {
 };
 // ----------------------------------------------------------------------
 // :: The result of expanding a syntax-rules macro: the transcribed
-// :: expression, the hygienic scope it must be evaluated in, and the
-// :: gensym->name map used to un-rename literal symbols in the produced
-// :: value. The transformer returns this instead of evaluating the
-// :: expansion itself, so the caller can evaluate it in the MAIN evaluate
-// :: loop (same continuation chain) - otherwise a continuation captured
-// :: inside, or re-entering, a macro body cannot cross the macro boundary.
+// :: expression and the hygienic scope it must be evaluated in. The
+// :: transformer returns this instead of evaluating the expansion itself,
+// :: so the caller can evaluate it in the MAIN evaluate loop (same
+// :: continuation chain) - otherwise a continuation captured inside, or
+// :: re-entering, a macro body cannot cross the macro boundary.
 // ----------------------------------------------------------------------
 class SyntaxExpansion {
-  constructor(expr, env, names) {
+  constructor(expr, env) {
     this.expr = expr;
     this.env = env;
-    this.names = names;
   }
   // eager evaluation, used by the legacy evaluate()/evaluate_syntax path
   eval(eval_args) {
-    var result = evaluate(this.expr, _objectSpread(_objectSpread({}, eval_args), {}, {
+    return evaluate(this.expr, _objectSpread(_objectSpread({}, eval_args), {}, {
       env: this.env
     }));
-    return clear_gensyms(result, this.names);
   }
 }
 // ----------------------------------------------------------------------
@@ -9038,13 +9202,17 @@ Syntax.Parameter = SyntaxParameter;
 // ----------------------------------------------------------------------
 function extract_patterns(pattern, code, symbols, ellipsis_symbol) {
   var scope = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : {};
+  // null prototypes: these maps are keyed by user identifiers and are probed
+  // with `name in map` / `map[name]`, so an inherited Object.prototype member
+  // would masquerade as a binding - a template identifier named `constructor`,
+  // `toString`, `valueOf`, ... would be replaced by the JS builtin
   var bindings = {
     '...': {
-      symbols: {},
+      symbols: Object.create(null),
       // symbols ellipsis (x ...)
       lists: []
     },
-    symbols: {}
+    symbols: Object.create(null)
   };
   var expansion = scope.expansion,
     define = scope.define;
@@ -9488,41 +9656,6 @@ function is_wildcard(symbol) {
   return symbol.literal() === '_';
 }
 // ----------------------------------------------------------------------
-// :: This function is called after syntax-rules macro is evaluated
-// :: and if there are any gensyms added by macro they need to restored
-// :: to original symbols
-// ----------------------------------------------------------------------
-function clear_gensyms(node, gensyms) {
-  if (!gensyms.length) {
-    return node;
-  }
-  function traverse(node) {
-    if (is_pair(node)) {
-      var car = traverse(node.car);
-      var cdr = traverse(node.cdr);
-      // Only rebuild the pair when a gensym was actually replaced
-      // inside it. Rebuilding unconditionally deep-copies every list a
-      // macro returns, which breaks identity - e.g. a macro that yields
-      // a free variable's value would return a copy, so `eq?` fails.
-      if (car === node.car && cdr === node.cdr) {
-        return node;
-      }
-      return new Pair(car, cdr);
-    } else if (node instanceof LSymbol) {
-      var replacement = gensyms.find(gensym => {
-        return gensym.gensym === node;
-      });
-      if (replacement) {
-        return LSymbol(replacement.name);
-      }
-      return node;
-    } else {
-      return node;
-    }
-  }
-  return traverse(node);
-}
-// ----------------------------------------------------------------------
 // :: A binding is stable (safe to alias with a Reference) when its owning
 // :: environment is a strict ancestor of the transient expansion `scope` -
 // :: it existed before the expansion and is not rebound while it runs.
@@ -9616,11 +9749,13 @@ function transform_syntax() {
     expr = options.expr,
     scope = options.scope,
     symbols = options.symbols,
-    names = options.names,
     _options$captured = options.captured,
     captured = _options$captured === void 0 ? null : _options$captured,
     ellipsis_symbol = options.ellipsis;
-  var gensyms = {};
+  // null prototype: keyed by user identifiers and probed with `gensyms[name]`,
+  // so an inherited member (`constructor`, `toString`, ...) would read as an
+  // already-assigned gensym and be returned instead of the renamed symbol
+  var gensyms = Object.create(null);
   function valid_symbol(symbol) {
     if (symbol instanceof LSymbol) {
       return true;
@@ -9720,15 +9855,13 @@ function transform_syntax() {
         // value is not in scope, but it's JavaScript object
         if (typeof _value !== 'undefined') {
           scope.set(gensym_name, _value);
+        } else {
+          // free identifier with no binding yet: defer the lookup to
+          // evaluation time against the DEFINITION environment, so a
+          // binding the expansion itself creates there is found
+          scope.set(gensym_name, new LazyReference(name, scope.__parent__));
         }
       }
-      // keep names so they can be restored after evaluation
-      // if there are free symbols as output
-      // kind of hack
-      names.push({
-        name,
-        gensym: gensym_name
-      });
       gensyms[name] = gensym_name;
       // we need to check if name is a string, because it can be
       // gensym from nested syntax-rules
@@ -9746,13 +9879,54 @@ function transform_syntax() {
     }
     return gensyms[name];
   }
+  // names bound in BINDINGS that occur as identifiers inside the template NODE
+  function template_names(node, bindings) {
+    var names = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : new Set();
+    if (node instanceof LSymbol) {
+      var name = node.valueOf();
+      if (name in bindings) {
+        names.add(name);
+      }
+    } else if (is_pair(node)) {
+      template_names(node.car, bindings, names);
+      template_names(node.cdr, bindings, names);
+    } else if (Array.isArray(node)) {
+      node.forEach(item => template_names(item, bindings, names));
+    }
+    return names;
+  }
+  // An identifier inside `quote`/`quasiquote` is literal DATA: a pattern
+  // variable is still substituted, but anything else is emitted as its plain
+  // symbol, never a hygiene gensym. R7RS quoted identifiers are plain symbols
+  // regardless of the macro's scope.
+  function quoted_datum(value) {
+    // the substituted value can itself be a gensym - an enclosing macro
+    // renamed it - and inside quote that is data too, so un-rename it
+    if (value instanceof LSymbol && value.is_gensym()) {
+      return LSymbol(value.literal());
+    }
+    return value;
+  }
+  function quoted_symbol(expr) {
+    var pname = expr.valueOf();
+    if (pname in bindings.symbols) {
+      return quoted_datum(bindings.symbols[pname]);
+    }
+    return LSymbol(expr.literal());
+  }
   function transform_ellipsis_expr(expr, bindings, state) {
     var next = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : () => {};
-    var nested = state.nested;
+    var nested = state.nested,
+      disabled = state.disabled,
+      quoted = state.quoted;
     if (Array.isArray(expr) && !expr.length) {
       return expr;
     }
     if (expr instanceof LSymbol) {
+      // inside an ellipsis escape `...` is an ordinary identifier
+      if (disabled && LSymbol.is(expr, ellipsis_symbol)) {
+        return expr;
+      }
       var name = expr.valueOf();
       if (is_gensym(expr) && !bindings[name]) ;
       if (bindings[name]) {
@@ -9766,16 +9940,22 @@ function transform_syntax() {
             if (!is_nil(cadr)) {
               next(name, new Pair(cadr, _nil));
             }
-            return caar;
+            return quoted ? quoted_datum(caar) : caar;
           }
           if (!is_nil(cdr)) {
             next(name, cdr);
           }
-          return car;
+          return quoted ? quoted_datum(car) : car;
         } else if (bindings[name] instanceof Array) {
           next(name, bindings[name].slice(1));
-          return bindings[name][0];
+          var value = bindings[name][0];
+          return quoted ? quoted_datum(value) : value;
         }
+      }
+      // a free identifier under an ellipsis inside quote is data as well
+      // - traverse() never sees it, so the same rule is applied here
+      if (quoted) {
+        return quoted_symbol(expr);
       }
       return transform(expr);
     }
@@ -9783,7 +9963,85 @@ function transform_syntax() {
     if (is_pair(expr) || is_array) {
       var first = is_array ? expr[0] : expr.car;
       var second = is_array ? expr[1] : is_pair(expr.cdr) && expr.cdr.car;
-      if (first instanceof LSymbol && LSymbol.is(second, ellipsis_symbol)) {
+      // R7RS ellipsis escape inside a repetition, e.g.
+      // `(list (cons arg (... '...)) ...)`: transcribe <template> with
+      // `...` treated as an ordinary identifier. Pattern variables are
+      // still substituted, so it stays in this function rather than
+      // handing off to traverse().
+      if (!disabled && LSymbol.is(first, ellipsis_symbol) && (is_array ? expr.length > 1 : is_pair(expr.cdr))) {
+        var template = is_array ? expr[1] : expr.cdr.car;
+        return transform_ellipsis_expr(template, bindings, _objectSpread(_objectSpread({}, state), {}, {
+          disabled: true
+        }), next);
+      }
+      // A nested repetition whose head is a compound template, e.g. the
+      // inner `((a a) ...)` of `'(((a a) ...) ...)`. The [t 2] branch
+      // below only matches `(<symbol> <ellipsis>)`, so without this the
+      // bare `...` would reach the symbol case and fail to transform.
+      // One "row" is peeled off every binding for this repetition - the
+      // remainder belongs to the enclosing one and is handed back through
+      // `next` - and the sub-template is then iterated over that row.
+      if (!disabled && is_pair(first) && LSymbol.is(second, ellipsis_symbol)) {
+        var _rest_expr = is_array ? expr.slice(2) : expr.cdr.cdr;
+        // only the variables the sub-template actually uses take part:
+        // the others belong to the enclosing repetition, and peeling
+        // them here would both consume them twice and (since they have
+        // no row left to give) stop the loop before it starts
+        var used = template_names(first, bindings);
+        var _bind = Object.create(null);
+        used.forEach(key => {
+          var value = bindings[key];
+          if (is_pair(value)) {
+            _bind[key] = value.car;
+            if (!is_nil(value.cdr)) {
+              next(key, value.cdr);
+            }
+          } else if (Array.isArray(value)) {
+            _bind[key] = value[0];
+            if (value.length > 1) {
+              next(key, value.slice(1));
+            }
+          } else {
+            _bind[key] = value;
+          }
+        });
+        var result = is_array ? [] : _nil;
+        var _loop = function _loop() {
+          var new_bind = Object.create(null);
+          var car = transform_ellipsis_expr(first, _bind, _objectSpread(_objectSpread({}, state), {}, {
+            nested: false
+          }), (key, value) => {
+            new_bind[key] = value;
+          });
+          if (car !== undefined) {
+            if (Value.of('syntax', car)) {
+              car = car.valueOf();
+            }
+            if (is_array) {
+              result.push(car);
+            } else {
+              result = new Pair(car, result);
+            }
+          }
+          _bind = new_bind;
+        };
+        while (have_binding(_bind)) {
+          _loop();
+        }
+        if (!is_array && !is_nil(result)) {
+          result = result.reverse();
+        }
+        var has_rest = is_array ? _rest_expr.length : !is_nil(_rest_expr);
+        if (!has_rest) {
+          return result;
+        }
+        var _rest6 = transform_ellipsis_expr(_rest_expr, bindings, state, next);
+        if (is_array) {
+          return result.concat(_rest6);
+        }
+        return is_nil(result) ? _rest6 : result.append(_rest6);
+      }
+      if (!disabled && first instanceof LSymbol && LSymbol.is(second, ellipsis_symbol)) {
         is_array ? expr.slice(2) : expr.cdr.cdr;
         var _name7 = first.valueOf();
         var item = bindings[_name7];
@@ -9793,17 +10051,17 @@ function transform_syntax() {
           if (is_pair(item)) {
             var _car2 = item.car,
               _cdr2 = item.cdr;
-            var _rest_expr = is_array ? expr.slice(2) : expr.cdr.cdr;
+            var _rest_expr2 = is_array ? expr.slice(2) : expr.cdr.cdr;
             if (nested) {
               if (!is_nil(_cdr2)) {
                 next(_name7, _cdr2);
               }
-              if (is_array && _rest_expr.length || !is_nil(_rest_expr) && !is_array) {
-                var _rest7 = transform_ellipsis_expr(_rest_expr, bindings, state, next);
+              if (is_array && _rest_expr2.length || !is_nil(_rest_expr2) && !is_array) {
+                var _rest8 = transform_ellipsis_expr(_rest_expr2, bindings, state, next);
                 if (is_array) {
-                  return _car2.concat(_rest7);
+                  return _car2.concat(_rest8);
                 } else if (is_pair(_car2)) {
-                  return _car2.append(_rest7);
+                  return _car2.append(_rest8);
                 } else ;
               }
               return _car2;
@@ -9827,9 +10085,9 @@ function transform_syntax() {
               next(_name7, item.slice(1));
               return Pair.from_array(item);
             } else {
-              var _rest8 = item.slice(1);
-              if (_rest8.length) {
-                next(_name7, _rest8);
+              var _rest9 = item.slice(1);
+              if (_rest9.length) {
+                next(_name7, _rest9);
               }
               return item[0];
             }
@@ -9865,10 +10123,11 @@ function transform_syntax() {
     return Object.keys(object).concat(Object.getOwnPropertySymbols(object));
   }
   function traverse(expr) {
-    var _ref30 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-      disabled = _ref30.disabled,
-      quoted = _ref30.quoted,
-      in_syntax = _ref30.in_syntax;
+    var state = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
+    var disabled = state.disabled,
+      quoted = state.quoted,
+      quasi = state.quasi,
+      in_syntax = state.in_syntax;
     var is_array = Array.isArray(expr);
     if (is_array && expr.length === 0) {
       return expr;
@@ -9887,10 +10146,7 @@ function transform_syntax() {
       // in "quoted" mode so pattern variables are still substituted but
       // free identifiers are emitted verbatim (never hygiene-renamed).
       // R7RS quoted identifiers are plain symbols regardless of the
-      // macro's scope; renaming them to gensyms only works out when
-      // clear_gensyms fixes up the macro's RETURN value, so data reaching
-      // the program by a side effect (set!/define) would otherwise keep a
-      // `#:name` gensym. The quote keyword itself is still transcribed
+      // macro's scope. The quote keyword itself is still transcribed
       // normally so it resolves hygienically.
       // Not while transcribing a NESTED syntax-rules definition
       // (in_syntax): there a quoted identifier may be the inner macro's
@@ -9905,21 +10161,61 @@ function transform_syntax() {
           quoted: true
         }));
       }
+      // (quasiquote <template>): the literal parts are data, exactly like
+      // `quote`, but an unquoted part is code again - so the nesting
+      // level is tracked and `unquote`/`unquote-splicing` switch back.
+      if (!quoted && !disabled && !in_syntax && first instanceof LSymbol && first.literal() === 'quasiquote' && !(first.valueOf() in bindings.symbols) && is_pair(expr.cdr)) {
+        return new Pair(traverse(first, {
+          disabled
+        }), traverse(expr.cdr, {
+          disabled,
+          quoted: true,
+          quasi: 1
+        }));
+      }
+      // Inside a quasiquote, step the level on a nested `quasiquote` and
+      // on `unquote`/`unquote-splicing`; at level 0 the operand is
+      // transcribed as ordinary code. The keyword itself has to stay a
+      // PLAIN symbol: the quasiquote implementation matches it by name
+      // (`LSymbol.is(x, 'unquote')`), so a renamed `#:unquote` would not
+      // be recognised and the form would be left in the output as data.
+      if (quoted && quasi && first instanceof LSymbol && is_pair(expr.cdr) && !(first.valueOf() in bindings.symbols)) {
+        var keyword = first.literal();
+        if (keyword === 'unquote' || keyword === 'unquote-splicing') {
+          var level = quasi - 1;
+          return new Pair(LSymbol(keyword), traverse(expr.cdr, level === 0 ? {
+            disabled,
+            in_syntax
+          } : _objectSpread(_objectSpread({}, state), {}, {
+            quasi: level
+          })));
+        }
+        if (keyword === 'quasiquote') {
+          return new Pair(LSymbol(keyword), traverse(expr.cdr, _objectSpread(_objectSpread({}, state), {}, {
+            quasi: quasi + 1
+          })));
+        }
+      }
       // ellipsis escape from R7RS: `(<ellipsis> <template>)` produces
       // <template> with ellipses NOT treated specially. The template is
       // still transcribed (pattern variables substituted, free
       // identifiers renamed) - only `...` itself is left literal - so it
       // is traversed with `disabled: true`, not emitted verbatim.
-      if (!disabled && is_pair(first) && LSymbol.is(first.car, ellipsis_symbol) && is_pair(first.cdr)) {
-        return new Pair(traverse(first.cdr.car, {
-          disabled: true,
-          quoted,
-          in_syntax
-        }), traverse(expr.cdr, {
-          disabled,
-          quoted,
-          in_syntax
+      //
+      // The escape can be the WHOLE template, e.g. `((_) (... '...))`.
+      // There is no surrounding list to rebuild then, so the transcribed
+      // template is the result. (In `'(... ...)` the escape is instead an
+      // ELEMENT of the list `(quote X)` is built from, which the next
+      // branch handles.)
+      if (!disabled && !is_array && LSymbol.is(first, ellipsis_symbol) && is_pair(expr.cdr)) {
+        return traverse(expr.cdr.car, _objectSpread(_objectSpread({}, state), {}, {
+          disabled: true
         }));
+      }
+      if (!disabled && is_pair(first) && LSymbol.is(first.car, ellipsis_symbol) && is_pair(first.cdr)) {
+        return new Pair(traverse(first.cdr.car, _objectSpread(_objectSpread({}, state), {}, {
+          disabled: true
+        })), traverse(expr.cdr, state));
       }
       if (second && LSymbol.is(second, ellipsis_symbol) && !disabled) {
         var _symbols2 = bindings['...'].symbols;
@@ -9927,11 +10223,7 @@ function transform_syntax() {
         // and code was (x z) so y == null
         var values = Object.values(_symbols2);
         if (values.length && values.every(x => x === null)) {
-          return traverse(rest_second, {
-            disabled,
-            quoted,
-            in_syntax
-          });
+          return traverse(rest_second, state);
         }
         var keys = get_names(_symbols2);
         // case of list as first argument ((x . y) ...) or (x ... ...)
@@ -9947,11 +10239,7 @@ function transform_syntax() {
           // nesting here?
           if (is_nil(bindings['...'].lists[0])) {
             if (!is_spread) {
-              return traverse(rest_second, {
-                disabled,
-                quoted,
-                in_syntax
-              });
+              return traverse(rest_second, state);
             }
             return _nil;
           }
@@ -9962,20 +10250,21 @@ function transform_syntax() {
           }
           var result;
           if (keys.length) {
-            var _bind = _objectSpread({}, _symbols2);
+            var _bind2 = Object.assign(Object.create(null), _symbols2);
             result = is_array ? [] : _nil;
-            var _loop = function _loop() {
-              if (!have_binding(_bind)) {
+            var _loop2 = function _loop2() {
+              if (!have_binding(_bind2)) {
                 return 1; // break
               }
-              var new_bind = {};
+              var new_bind = Object.create(null);
               var next = (key, value) => {
                 // ellipsis decide if what should be the next value
                 // there are two cases ((a . b) ...) and (a ...)
                 new_bind[key] = value;
               };
-              var car = transform_ellipsis_expr(new_expr, _bind, {
-                nested: true
+              var car = transform_ellipsis_expr(new_expr, _bind2, {
+                nested: true,
+                quoted
               }, next);
               // undefined can be null caused by null binding
               // on empty ellipsis
@@ -10001,10 +10290,10 @@ function transform_syntax() {
                   result = new Pair(car, result);
                 }
               }
-              _bind = new_bind;
+              _bind2 = new_bind;
             };
             while (true) {
-              if (_loop()) break;
+              if (_loop2()) break;
             }
             if (!is_nil(result) && !is_spread && !is_array) {
               result = result.reverse();
@@ -10012,27 +10301,20 @@ function transform_syntax() {
             // case of (list) ... (rest code)
             if (is_array) {
               if (rest_second) {
-                var _rest9 = traverse(rest_second, {
-                  disabled,
-                  quoted,
-                  in_syntax
-                });
-                return result.concat(_rest9);
+                var _rest0 = traverse(rest_second, state);
+                return result.concat(_rest0);
               }
               return result;
             }
             if (!is_nil(expr.cdr.cdr) && !LSymbol.is(expr.cdr.cdr.car, ellipsis_symbol)) {
-              var _rest0 = traverse(expr.cdr.cdr, {
-                disabled,
-                quoted,
-                in_syntax
-              });
-              return result.append(_rest0);
+              var _rest1 = traverse(expr.cdr.cdr, state);
+              return result.append(_rest1);
             }
             return result;
           } else {
             var car = transform_ellipsis_expr(first, _symbols2, {
-              nested: true
+              nested: true,
+              quoted
             });
             if (car) {
               if (Value.of('syntax', car)) {
@@ -10046,21 +10328,22 @@ function transform_syntax() {
           if (LSymbol.is(rest_second.car, ellipsis_symbol)) ;
           // case: (x ...)
           var name = first.__name__;
-          var _bind2 = {
+          var _bind3 = {
             [name]: _symbols2[name]
           };
           var _is_null = _symbols2[name] === null;
           var _result = is_array ? [] : _nil;
-          var _loop2 = function _loop2() {
-            if (!have_binding(_bind2, true)) {
+          var _loop3 = function _loop3() {
+            if (!have_binding(_bind3, true)) {
               return 1; // break
             }
-            var new_bind = {};
+            var new_bind = Object.create(null);
             var next = (key, value) => {
               new_bind[key] = value;
             };
-            var value = transform_ellipsis_expr(expr, _bind2, {
-              nested: false
+            var value = transform_ellipsis_expr(expr, _bind3, {
+              nested: false,
+              quoted
             }, next);
             if (typeof value !== 'undefined') {
               if (Value.of('syntax', value)) {
@@ -10072,10 +10355,10 @@ function transform_syntax() {
                 _result = new Pair(value, _result);
               }
             }
-            _bind2 = new_bind;
+            _bind3 = new_bind;
           };
           while (true) {
-            if (_loop2()) break;
+            if (_loop3()) break;
           }
           if (!is_nil(_result) && !is_array) {
             _result = _result.reverse();
@@ -10085,11 +10368,7 @@ function transform_syntax() {
           // by ellipsis transformation
           if (is_pair(expr.cdr)) {
             if (is_pair(expr.cdr.cdr) || expr.cdr.cdr instanceof LSymbol) {
-              var node = traverse(expr.cdr.cdr, {
-                disabled,
-                quoted,
-                in_syntax
-              });
+              var node = traverse(expr.cdr.cdr, state);
               if (_is_null) {
                 return node;
               }
@@ -10110,23 +10389,11 @@ function transform_syntax() {
         // later ellipsis, e.g. #(a b ...), still expands - then rebuild a
         // vector. The Pair reconstruction below is list-only and would
         // otherwise turn #(a) into the improper list (a . #void).
-        var _head = traverse(first, {
-          disabled,
-          quoted,
-          in_syntax
-        });
-        var tail = traverse(expr.slice(1), {
-          disabled,
-          quoted,
-          in_syntax
-        });
+        var _head = traverse(first, state);
+        var tail = traverse(expr.slice(1), state);
         return [_head].concat(tail);
       }
-      var head = traverse(first, {
-        disabled,
-        quoted,
-        in_syntax
-      });
+      var head = traverse(first, state);
       var rest;
       var is_syntax;
       if (!quoted && first instanceof LSymbol) {
@@ -10163,11 +10430,7 @@ function transform_syntax() {
           }));
         }
       } else {
-        rest = traverse(expr.cdr, {
-          disabled,
-          quoted,
-          in_syntax
-        });
+        rest = traverse(expr.cdr, state);
       }
       return new Pair(head, rest);
     }
@@ -10182,14 +10445,7 @@ function transform_syntax() {
         throw new Error("syntax-rules: ".concat(msg));
       }
       if (quoted) {
-        // literal datum inside quote: substitute pattern variables, but
-        // emit any other identifier as its plain symbol - never rename
-        // it to a hygiene gensym (see the quote handling above).
-        var pname = expr.valueOf();
-        if (pname in bindings.symbols) {
-          return bindings.symbols[pname];
-        }
-        return LSymbol(expr.literal());
+        return quoted_symbol(expr);
       }
       var _value2 = transform(expr);
       if (typeof _value2 !== 'undefined') {
@@ -10636,9 +10892,9 @@ function let_macro(name) {
 // -------------------------------------------------------------------------
 function parallel(name, fn) {
   return new Macro(name, function (source) {
-    var _ref31 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-      use_dynamic = _ref31.use_dynamic,
-      error = _ref31.error;
+    var _ref30 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+      use_dynamic = _ref30.use_dynamic,
+      error = _ref30.error;
     var code = source;
     var env = this;
     var dynamic_env = this;
@@ -13142,19 +13398,19 @@ EOF.prototype.toString = function () {
 // Simpler way to create interpreter with interaction-environment
 // -------------------------------------------------------------------------
 function Interpreter(name) {
-  var _ref34 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-    stderr = _ref34.stderr,
-    stdin = _ref34.stdin,
-    stdout = _ref34.stdout,
-    _ref34$meta = _ref34.meta,
-    meta = _ref34$meta === void 0 ? false : _ref34$meta,
-    _ref34$trace = _ref34.trace,
-    trace = _ref34$trace === void 0 ? false : _ref34$trace,
-    _ref34$command_line = _ref34.command_line,
-    command_line = _ref34$command_line === void 0 ? null : _ref34$command_line,
-    _ref34$filename = _ref34.filename,
-    filename = _ref34$filename === void 0 ? null : _ref34$filename,
-    obj = _objectWithoutProperties(_ref34, _excluded3);
+  var _ref33 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+    stderr = _ref33.stderr,
+    stdin = _ref33.stdin,
+    stdout = _ref33.stdout,
+    _ref33$meta = _ref33.meta,
+    meta = _ref33$meta === void 0 ? false : _ref33$meta,
+    _ref33$trace = _ref33.trace,
+    trace = _ref33$trace === void 0 ? false : _ref33$trace,
+    _ref33$command_line = _ref33.command_line,
+    command_line = _ref33$command_line === void 0 ? null : _ref33$command_line,
+    _ref33$filename = _ref33.filename,
+    filename = _ref33$filename === void 0 ? null : _ref33$filename,
+    obj = _objectWithoutProperties(_ref33, _excluded3);
   if (typeof this !== 'undefined' && !(this instanceof Interpreter) || typeof this === 'undefined') {
     return new Interpreter(name, _objectSpread({
       stdin,
@@ -13285,7 +13541,7 @@ function Environment(obj, parent, name) {
 // -------------------------------------------------------------------------
 Environment.prototype.clone = function () {
   var copy = new Environment(_objectSpread({}, this.__env__), this.__parent__, this.__name__);
-  copy.__doc__ = new Map(this.__doc__);
+  copy.__docs__ = new Map(this.__docs__);
   return copy;
 };
 // -------------------------------------------------------------------------
@@ -13341,11 +13597,11 @@ Environment.prototype.doc = function (name) {
   var ref = this.ref(name);
   if (ref) {
     if (ref.__docs__ !== null && ref.__docs__.has(name)) {
-      return ref.__docs__.get(name);
+      return ref.__docs__.get(name).valueOf();
     }
     var _value4 = ref.get(name);
     if (_value4 !== null && _value4 !== void 0 && _value4.__doc__) {
-      return _value4 === null || _value4 === void 0 ? void 0 : _value4.__doc__;
+      return _value4 === null || _value4 === void 0 ? void 0 : _value4.__doc__.valueOf();
     }
   }
 };
@@ -13365,10 +13621,14 @@ Environment.prototype._lookup = function (name) {
   if (this.__env__.hasOwnProperty(name)) {
     var value = this.__env__[name];
     if (value instanceof Reference) {
-      // follow the alias to the original binding (already a Value wrapper)
-      return value.lookup();
+      // follow the alias to the original binding (already a Value
+      // wrapper); a transparent lazy alias falls through to the parent
+      if (!is_transparent_alias(value)) {
+        return value.lookup();
+      }
+    } else {
+      return Value(value, 'get');
     }
-    return Value(value, 'get');
   }
   if (this.__parent__) {
     return this.__parent__._lookup(name);
@@ -13559,7 +13819,7 @@ Environment.prototype.ref = function (name) {
     if (!env) {
       break;
     }
-    if (env.has_own(name)) {
+    if (env.has_own(name) && !is_transparent_alias(env.__env__[name])) {
       return env;
     }
     env = env.__parent__;
@@ -13584,7 +13844,13 @@ Environment.prototype.resolve = function (name, seen) {
           return null;
         }
         seen.add(value);
-        return value._env.resolve(value._name, seen);
+        var target = value._env.resolve(value._name, seen);
+        if (target || !(value instanceof LazyReference)) {
+          return target;
+        }
+        // transparent lazy alias: keep looking up the chain
+        env = env.__parent__;
+        continue;
       }
       return {
         env,
@@ -13606,13 +13872,12 @@ Environment.prototype.parents = function () {
   return result;
 };
 // -------------------------------------------------------------------------
-// ----------------------------------------------------------------------
 // :: A hygienic alias: a gensym introduced by syntax-rules for a free
 // :: identifier binds to a Reference that points at the ORIGINAL binding
 // :: (name + owning environment). Reads (via _lookup) and writes (via
 // :: next_set/resolve) both follow it, so `set!` mutates the original cell
 // :: instead of a throwaway copy. References chain (nested syntax-rules).
-// ----------------------------------------------------------------------
+// -------------------------------------------------------------------------
 class Reference {
   constructor(name, env) {
     this._name = name;
@@ -13630,6 +13895,29 @@ class Reference {
   resolve() {
     return this._env.resolve(this._name);
   }
+}
+// -------------------------------------------------------------------------
+// :: A Reference for a free identifier that had NO binding anywhere when
+// :: syntax-rules renamed it. R7RS 4.3 says such an identifier denotes the
+// :: binding visible where the transformer was specified; that environment
+// :: is still mutable, so the lookup has to be deferred to evaluation time
+// :: (the expansion itself may create the binding, as in a template that
+// :: expands to `(begin (define foo bar) foo)`). Distinct from Reference so
+// :: transform_syntax can tell a placeholder from a real binding.
+// -------------------------------------------------------------------------
+class LazyReference extends Reference {}
+// ----------------------------------------------------------------------
+// :: A lazy alias is TRANSPARENT while it resolves to nothing: lookups look
+// :: past it for a real binding of the same name further up the chain. The
+// :: expansion that created the placeholder may go on to define the very same
+// :: gensym in an outer environment - `(begin (define (ff x) (gg x)) (define
+// :: (gg x) (* x x)))` renames both `gg` to one gensym - and the placeholder
+// :: must not shadow that. Once nothing resolves it, it also stops counting as
+// :: a binding for syntax-rules renaming, so a nested or recursive macro keeps
+// :: re-renaming its own pattern variables.
+// ----------------------------------------------------------------------
+function is_transparent_alias(value) {
+  return value instanceof LazyReference && !value.resolve();
 }
 // -------------------------------------------------------------------------
 // :: Quote function used to pause evaluation from Macro
@@ -13781,10 +14069,10 @@ var constants = _objectSpread(_objectSpread(_objectSpread({
   '#f': false,
   '#true': true,
   '#false': false
-}, Object.fromEntries(inf_nan)), Object.fromEntries(inf_nan.map(_ref35 => {
-  var _ref36 = _slicedToArray(_ref35, 2),
-    token = _ref36[0],
-    value = _ref36[1];
+}, Object.fromEntries(inf_nan)), Object.fromEntries(inf_nan.map(_ref34 => {
+  var _ref35 = _slicedToArray(_ref34, 2),
+    token = _ref35[0],
+    value = _ref35[1];
   return ['#i' + token, value];
 }))), parsable_contants);
 
@@ -13964,10 +14252,10 @@ var global_env = new Environment({
     return unbind(a) === unbind(b);
   }, "(%same-functions a b)\n\n        A helper function that checks if the two input functions are\n        the same."),
   // ------------------------------------------------------------------
-  help: doc(new Macro('help', function (source, _ref37) {
-    var dynamic_env = _ref37.dynamic_env,
-      use_dynamic = _ref37.use_dynamic,
-      error = _ref37.error;
+  help: doc(new Macro('help', function (source, _ref36) {
+    var dynamic_env = _ref36.dynamic_env,
+      use_dynamic = _ref36.use_dynamic,
+      error = _ref36.error;
     var code = source.cdr;
     var symbol;
     if (code.car instanceof LSymbol) {
@@ -14080,7 +14368,7 @@ var global_env = new Environment({
     }
     if (!(env instanceof Environment)) {
       if (g_env === global_env) {
-        // this is used for let-env + load
+        // this is used for letenv + load
         // this may be obsolete when there is env arg
         env = g_env;
       } else {
@@ -14147,7 +14435,7 @@ var global_env = new Environment({
     }
     if (is_node()) {
       return new Promise(/*#__PURE__*/function () {
-        var _ref38 = _asyncToGenerator(function* (resolve, reject) {
+        var _ref37 = _asyncToGenerator(function* (resolve, reject) {
           try {
             yield node_ready;
             var _path = node_require('path');
@@ -14177,7 +14465,7 @@ var global_env = new Environment({
             }
             global_env.set(PATH, _path.dirname(file));
             _fs.readFile(file, /*#__PURE__*/function () {
-              var _ref39 = _asyncToGenerator(function* (err, data) {
+              var _ref38 = _asyncToGenerator(function* (err, data) {
                 if (err) {
                   global_env.set(PATH, module_path);
                   reject(err);
@@ -14193,7 +14481,7 @@ var global_env = new Environment({
                 }
               });
               return function (_x5, _x6) {
-                return _ref39.apply(this, arguments);
+                return _ref38.apply(this, arguments);
               };
             }());
           } catch (e) {
@@ -14201,7 +14489,7 @@ var global_env = new Environment({
           }
         });
         return function (_x3, _x4) {
-          return _ref38.apply(this, arguments);
+          return _ref37.apply(this, arguments);
         };
       }());
     }
@@ -14277,13 +14565,13 @@ var global_env = new Environment({
   // ------------------------------------------------------------------
   'if': doc(Macro.internal('if'), "(if cond true-expr false-expr)\n\n         Macro that evaluates cond expression and if the value is true, it\n         evaluates and returns true-expression, if not it evaluates and returns\n         false-expression."),
   // ------------------------------------------------------------------
-  'let-env': new Macro('let-env', function (source) {
+  letenv: new Macro('letenv', function (source) {
     var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
     var code = source.cdr;
     var dynamic_env = options.dynamic_env,
       use_dynamic = options.use_dynamic,
       error = options.error;
-    typecheck('let-env', code, 'pair');
+    typecheck('letenv', code, 'pair');
     var ret = evaluate(code.car, {
       env: this,
       dynamic_env,
@@ -14291,14 +14579,20 @@ var global_env = new Environment({
       use_dynamic
     });
     return unpromise(ret, function (value) {
-      typecheck('let-env', value, 'environment');
+      typecheck('letenv', value, 'environment');
       return evaluate(Pair(LSymbol('begin'), code.cdr), {
         env: value,
         dynamic_env,
         error
       });
     });
-  }, "(let-env env . body)\n\n        Special macro that evaluates body in context of given environment\n        object."),
+  }, "(letenv env . body)\n\n        Special macro that evaluates body in context of given environment\n        object."),
+  // ------------------------------------------------------------------
+  // kept only to report the rename: `letenv` follows `letrec`, which is also
+  // two words written without a separator (#436)
+  'let-env': new Macro('let-env', function () {
+    throw new Error('let-env: this macro was renamed to `letenv`');
+  }, "(let-env env . body)\n\n        Removed - renamed to `letenv`."),
   // ------------------------------------------------------------------
   'letrec': doc(let_macro('letrec'), "(letrec ((a value-a) (b value-b) ...) . body)\n\n         Macro that creates a new environment, then evaluates and assigns values to\n         names and then evaluates the body in context of that environment.\n         Values are evaluated sequentially and the next value can access the\n         previous values/names."),
   // ---------------------------------------------------------------------
@@ -14563,6 +14857,7 @@ var global_env = new Environment({
   // ------------------------------------------------------------------
   'eval': doc('eval', function (code, env) {
     env = env || this.get('interaction-environment').call(this);
+    check_code_cycles(code, env);
     return evaluate(code, {
       env,
       dynamic_env: env,
@@ -14660,7 +14955,7 @@ var global_env = new Environment({
   }, "(lambda (a b) body)\n        (lambda args body)\n        (lambda (a b . rest) body)\n\n        The lambda macro creates a new anonymous function. If the first element of\n        the body is a string and there is more elements the string is used as the\n        documentation string, that can be read using (help fn)."),
   // ------------------------------------------------------------------
   macroexpand: doc(/*#__PURE__*/function () {
-    var _ref40 = _asyncToGenerator(function* (code) {
+    var _ref39 = _asyncToGenerator(function* (code) {
       // macroexpand is a function (like Common Lisp), NOT a macro, so its
       // argument is already evaluated - quote the code you want expanded:
       // (macroexpand '(when test body)). The expansion is produced in the tco
@@ -14674,12 +14969,12 @@ var global_env = new Environment({
       });
     });
     return function (_x7) {
-      return _ref40.apply(this, arguments);
+      return _ref39.apply(this, arguments);
     };
   }(), "(macroexpand expr)\n\n        Function that expands all macros in the quoted expression and returns\n        the expanded code. Being a function, its argument is evaluated, so pass\n        quoted code: (macroexpand '(when x y))."),
   // ------------------------------------------------------------------
   'macroexpand-1': doc(/*#__PURE__*/function () {
-    var _ref41 = _asyncToGenerator(function* (code) {
+    var _ref40 = _asyncToGenerator(function* (code) {
       // like macroexpand but expands only the outermost macro use one step
       // (does not recurse into the result or subforms). Also a function, so
       // pass quoted code: (macroexpand-1 '(when x y)).
@@ -14688,13 +14983,15 @@ var global_env = new Environment({
           throwError: false
         });
         if (value && is_macro(value) && !is_internal_macro(value)) {
-          return macroexpand_once(value, code, this.env);
+          var _yield$macroexpand_on = yield macroexpand_once(value, code, this.env),
+            expr = _yield$macroexpand_on.expr;
+          return expr;
         }
       }
       return code;
     });
     return function (_x8) {
-      return _ref41.apply(this, arguments);
+      return _ref40.apply(this, arguments);
     };
   }(), "(macroexpand-1 expr)\n\n         Function similar to macroexpand but it expands the outermost macro only\n         one level and returns the resulting code. Being a function, its argument\n         is evaluated, so pass quoted code: (macroexpand-1 '(when x y))."),
   // ------------------------------------------------------------------
@@ -14744,8 +15041,8 @@ var global_env = new Environment({
       });
     }
     var captured_macros = collect_macros(macro, env);
-    var syntax = new Syntax(function (code, _ref42) {
-      var macro_expand = _ref42.macro_expand;
+    var syntax = new Syntax(function (code, _ref41) {
+      var macro_expand = _ref41.macro_expand;
       var scope = env.inherit('syntax');
       var var_scope = this;
       // for macros that define variables used in macro (2 levels nestting)
@@ -14793,15 +15090,12 @@ var global_env = new Environment({
               console.log('PATTERN: ' + rule.toString(true));
               console.log('MACRO: ' + code.toString(true));
             }
-            // name is modified in transform_syntax
-            var names = [];
             var new_expr = transform_syntax({
               bindings,
               expr,
               symbols,
               scope,
               lex_scope: var_scope,
-              names,
               ellipsis,
               captured: captured_macros
             });
@@ -14819,9 +15113,7 @@ var global_env = new Environment({
             // Return the expansion instead of evaluating it here in
             // a nested evaluate - the caller evaluates it in the main
             // loop so continuations work across the macro boundary.
-            // The gensym->literal fixup (clear_gensyms) is applied to
-            // the produced value by whoever evaluates the expansion.
-            return new SyntaxExpansion(expr, new_env, names);
+            return new SyntaxExpansion(expr, new_env);
           }
           rules = rules.cdr;
         }
@@ -16155,10 +16447,10 @@ function type(obj) {
     return t;
   }
   if (typeof obj === 'object') {
-    for (var _ref45 of type_mapping_entries) {
-      var _ref44 = _slicedToArray(_ref45, 2);
-      var _key48 = _ref44[0];
-      var value = _ref44[1];
+    for (var _ref44 of type_mapping_entries) {
+      var _ref43 = _slicedToArray(_ref44, 2);
+      var _key48 = _ref43[0];
+      var value = _ref43[1];
       if (obj instanceof value) {
         return _key48;
       }
@@ -16252,7 +16544,7 @@ function prepare_fn_args(fn, args) {
     // calling map on array should not unbox the value
     var result = [],
       i = args.length;
-    var _loop3 = function _loop3() {
+    var _loop4 = function _loop4() {
         var arg = args[i];
         if (is_lips_function(arg)) {
           wrapper = function wrapper() {
@@ -16275,7 +16567,7 @@ function prepare_fn_args(fn, args) {
       },
       wrapper;
     while (i--) {
-      _loop3();
+      _loop4();
     }
     args = result;
   }
@@ -16284,12 +16576,12 @@ function prepare_fn_args(fn, args) {
 
 // -------------------------------------------------------------------------
 function call_function(fn, args) {
-  var _ref46 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
-    env = _ref46.env,
-    dynamic_env = _ref46.dynamic_env,
-    use_dynamic = _ref46.use_dynamic,
-    _ref46$check_promise = _ref46.check_promise,
-    check_promise = _ref46$check_promise === void 0 ? true : _ref46$check_promise;
+  var _ref45 = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : {},
+    env = _ref45.env,
+    dynamic_env = _ref45.dynamic_env,
+    use_dynamic = _ref45.use_dynamic,
+    _ref45$check_promise = _ref45.check_promise,
+    check_promise = _ref45$check_promise === void 0 ? true : _ref45$check_promise;
   if (!fn._context) {
     read_only(fn, '_context', new LambdaContext({}), {
       hidden: true
@@ -16507,12 +16799,12 @@ class Continuation {
 // :: code based on ideas from jsScheme by Alex Yakovlev
 // -------------------------------------------------------------------------
 class State {
-  constructor(object, cc, _ref47) {
-    var env = _ref47.env,
-      dynamic_env = _ref47.dynamic_env,
-      use_dynamic = _ref47.use_dynamic,
-      error = _ref47.error,
-      macro_expand = _ref47.macro_expand;
+  constructor(object, cc, _ref46) {
+    var env = _ref46.env,
+      dynamic_env = _ref46.dynamic_env,
+      use_dynamic = _ref46.use_dynamic,
+      error = _ref46.error,
+      macro_expand = _ref46.macro_expand;
     this.env = env;
     this.object = object;
     this.cc = cc;
@@ -16635,13 +16927,13 @@ function evaluate() {
 // -------------------------------------------------------------------------
 // :: Tail Call Optimized eval
 // -------------------------------------------------------------------------
-function tco_generator(code, _ref48) {
-  var env = _ref48.env,
-    cc = _ref48.cc,
-    dynamic_env = _ref48.dynamic_env,
-    use_dynamic = _ref48.use_dynamic,
-    _ref48$macro_expand = _ref48.macro_expand,
-    macro_expand = _ref48$macro_expand === void 0 ? false : _ref48$macro_expand;
+function tco_generator(code, _ref47) {
+  var env = _ref47.env,
+    cc = _ref47.cc,
+    dynamic_env = _ref47.dynamic_env,
+    use_dynamic = _ref47.use_dynamic,
+    _ref47$macro_expand = _ref47.macro_expand,
+    macro_expand = _ref47$macro_expand === void 0 ? false : _ref47$macro_expand;
   return function* () {
     if (!is_env(dynamic_env)) {
       dynamic_env = env === true ? user_env : env || user_env;
@@ -16802,11 +17094,11 @@ function macro_result_value(result, state) {
 }
 
 // -------------------------------------------------------------------------
-function lambda_scope(self, fn, code, args, _ref49) {
-  var use_dynamic = _ref49.use_dynamic,
-    error = _ref49.error,
-    cc = _ref49.cc,
-    call_dynamic_env = _ref49.dynamic_env;
+function lambda_scope(self, fn, code, args, _ref48) {
+  var use_dynamic = _ref48.use_dynamic,
+    error = _ref48.error,
+    cc = _ref48.cc,
+    call_dynamic_env = _ref48.dynamic_env;
   // lambda got scopes as context in apply
   var dynamic_env;
   if (is_context(this)) {
@@ -16921,6 +17213,8 @@ function macroexpand_special_forms() {
     let_star: get('let*'),
     letrec: get('letrec'),
     letrec_star: get('letrec*'),
+    let_syntax: get('let-syntax'),
+    letrec_syntax: get('letrec-syntax'),
     quasiquote: get('quasiquote')
   };
 }
@@ -16990,6 +17284,12 @@ function _macroexpand_list() {
 function macroexpand_bindings(_x10, _x11) {
   return _macroexpand_bindings.apply(this, arguments);
 } // -------------------------------------------------------------------------
+// One-step expansion of a macro use into its output code (never evaluated).
+// Returns {expr, scope}: syntax-rules renames the identifiers it introduces to
+// gensyms and binds them in a fresh scope, so re-expanding the output has to
+// continue in THAT scope - looking `#:class` up in the use-site environment
+// finds nothing and the walk would stop at the first level. `scope` inherits
+// from the use site, so ordinary identifiers still resolve.
 function _macroexpand_bindings() {
   _macroexpand_bindings = _asyncToGenerator(function* (bindings, env) {
     // ((name value) ...) - keep names, expand values
@@ -17018,7 +17318,6 @@ function macroexpand_once(_x12, _x13, _x14) {
 } // -------------------------------------------------------------------------
 function _macroexpand_once() {
   _macroexpand_once = _asyncToGenerator(function* (macro, code, env) {
-    // one-step expansion of a macro use into its output code (never evaluated)
     var state = {
       env,
       error: e => {
@@ -17031,13 +17330,27 @@ function _macroexpand_once() {
       result = yield result;
     }
     if (result instanceof SyntaxExpansion) {
-      return result.expr;
+      var _result$env;
+      var scope = (_result$env = result.env) !== null && _result$env !== void 0 ? _result$env : env;
+      return {
+        expr: check_code_cycles(result.expr, scope),
+        scope
+      };
     }
     // syntax-rules in macro_expand mode returns a plain { expr, scope } bag
     if (result && typeof result === 'object' && !is_pair(result) && 'expr' in result) {
-      return result.expr;
+      var _result$scope;
+      var _scope = (_result$scope = result.scope) !== null && _result$scope !== void 0 ? _result$scope : env;
+      return {
+        expr: check_code_cycles(result.expr, _scope),
+        scope: _scope
+      };
     }
-    return result;
+    // define-macro produces plain code and introduces no scope of its own
+    return {
+      expr: check_code_cycles(result, env),
+      scope: env
+    };
   });
   return _macroexpand_once.apply(this, arguments);
 }
@@ -17090,31 +17403,46 @@ function _macroexpand_code() {
           }
           return new Pair(car, tail);
         }
+        // (let-syntax/letrec-syntax bindings . body): keep the transformer
+        // bindings verbatim. They are `syntax-rules` FORMS, not macro uses,
+        // so walking them would either expand `(syntax-rules ...)` as if it
+        // were a macro call or (by expanding the whole let-syntax) leave a
+        // live #<syntax> object in the output - and macroexpand is supposed
+        // to return code. The body is expanded with the keywords shadowed,
+        // since their uses can only be expanded by evaluating the form.
+        if (value === sf.let_syntax || value === sf.letrec_syntax) {
+          var _bindings = code.cdr.car;
+          var _scope2 = macroexpand_shadow(env, macroexpand_binding_names(_bindings));
+          var _body2 = yield macroexpand_list(code.cdr.cdr, _scope2);
+          return new Pair(car, new Pair(_bindings, _body2));
+        }
         // (letrec bindings . body): bound names are visible in values too
         if (value === sf.letrec || value === sf.letrec_star) {
-          var _bindings = code.cdr.car;
-          var _scope = macroexpand_shadow(env, macroexpand_binding_names(_bindings));
-          var _new_bindings = yield macroexpand_bindings(_bindings, _scope);
-          var _body2 = yield macroexpand_list(code.cdr.cdr, _scope);
-          return new Pair(car, new Pair(_new_bindings, _body2));
+          var _bindings2 = code.cdr.car;
+          var _scope3 = macroexpand_shadow(env, macroexpand_binding_names(_bindings2));
+          var _new_bindings = yield macroexpand_bindings(_bindings2, _scope3);
+          var _body3 = yield macroexpand_list(code.cdr.cdr, _scope3);
+          return new Pair(car, new Pair(_new_bindings, _body3));
         }
         // (define name value) or (define (name . args) . body)
         if (value === __define__) {
           var target = code.cdr.car;
           if (is_pair(target)) {
             var _names2 = [target.car, ...macroexpand_names(target.cdr)];
-            var _body3 = yield macroexpand_list(code.cdr.cdr, macroexpand_shadow(env, _names2));
-            return new Pair(car, new Pair(target, _body3));
+            var _body4 = yield macroexpand_list(code.cdr.cdr, macroexpand_shadow(env, _names2));
+            return new Pair(car, new Pair(target, _body4));
           }
-          var _scope2 = macroexpand_shadow(env, [target]);
-          var _rest1 = yield macroexpand_list(code.cdr.cdr, _scope2);
-          return new Pair(car, new Pair(target, _rest1));
+          var _scope4 = macroexpand_shadow(env, [target]);
+          var _rest10 = yield macroexpand_list(code.cdr.cdr, _scope4);
+          return new Pair(car, new Pair(target, _rest10));
         }
         // a real macro (syntax-rules or define-macro) that isn't shadowed:
         // expand one step then re-expand the result (fixpoint)
         if (is_macro(value) && !is_internal_macro(value)) {
-          var expansion = yield macroexpand_once(value, code, env);
-          return macroexpand_code(expansion, env);
+          var _yield$macroexpand_on2 = yield macroexpand_once(value, code, env),
+            expr = _yield$macroexpand_on2.expr,
+            _scope5 = _yield$macroexpand_on2.scope;
+          return macroexpand_code(expr, _scope5);
         }
       }
     }
@@ -17191,7 +17519,15 @@ function* evaluate_code(state) {
         } else {
           typecheck('define', car, 'symbol');
           var _doc;
-          if (is_pair(cdr.cdr.car) && LSymbol.is(cdr.cdr.car.car, 'lambda') && is_pair(cdr.cdr.car.cdr) && LString.isString(cdr.cdr.car.cdr.cdr.car)) {
+          if (is_pair(cdr.cdr.cdr) && LString.isString(cdr.cdr.cdr.car)) {
+            // (define name expression "doc string"). define-syntax
+            // expands to this form too, so it is how a macro gets
+            // its documentation.
+            _doc = cdr.cdr.cdr.car.valueOf();
+          } else if (is_pair(cdr.cdr.car) && LSymbol.is(cdr.cdr.car.car, 'lambda') && is_pair(cdr.cdr.car.cdr) && is_pair(cdr.cdr.car.cdr.cdr) && LString.isString(cdr.cdr.car.cdr.cdr.car)) {
+            // (define (name . args) "doc string" . body) has already
+            // been rewritten to a lambda whose body opens with the
+            // doc string
             _doc = cdr.cdr.car.cdr.cdr.car.valueOf();
           }
           var value = state.object = cdr.cdr.car;
@@ -17215,16 +17551,14 @@ function* evaluate_code(state) {
           // A syntax-rules macro: evaluate its expansion in THIS loop
           // (same continuation chain) so a continuation captured
           // inside - or re-entering - the macro body works across the
-          // boundary. If the expansion introduced hygienic gensyms, a
-          // follow-up continuation restores their literal names in the
-          // produced value. The caller's dynamic environment is kept.
-          if (result.names.length) {
-            state.cc = new Continuation('syntax', null, code, state, next_syntax, {
-              names: result.names
-            });
-          }
+          // boundary. The expansion is evaluated in its own hygienic
+          // environment; no continuation is needed to restore the
+          // caller's, because every next_* handler restores env from
+          // its own captured value, and when there is none beneath
+          // this one the evaluation is finishing anyway. The caller's
+          // dynamic environment is kept.
           state.env = result.env;
-          state.object = result.expr;
+          state.object = check_code_cycles(result.expr, state.env);
           state.ready = false;
         } else if (result !== state) {
           state.object = result;
@@ -17253,13 +17587,8 @@ function* evaluate_code(state) {
             _result2 = yield _result2;
           }
           if (_result2 instanceof SyntaxExpansion) {
-            if (_result2.names.length) {
-              state.cc = new Continuation('syntax', null, code, state, next_syntax, {
-                names: _result2.names
-              });
-            }
             state.env = _result2.env;
-            state.object = new Pair(_result2.expr, cdr);
+            state.object = new Pair(check_code_cycles(_result2.expr, state.env), cdr);
             state.ready = false;
             expanded = true;
           }
@@ -17314,19 +17643,8 @@ function next_parameterize(state) {
 }
 
 // -------------------------------------------------------------------------
-// a syntax-rules expansion finished evaluating - state.object holds its value.
-// Restore hygienic gensyms to their literal names (see the macro branch in
-// evaluate_code and clear_gensyms).
-// -------------------------------------------------------------------------
-function next_syntax(state) {
-  state.object = clear_gensyms(state.object, this._state.names);
-  state.env = this.__env__;
-  state.cc = this.__continuation__;
-  state.ready = true;
-}
-
-// -------------------------------------------------------------------------
 function next_defmaro(state) {
+  check_code_cycles(state.object, state.env);
   state.cc = this.__continuation__;
   state.env = this.__env__;
   state.ready = false;
@@ -17595,6 +17913,7 @@ function exec_collect(collect_callback) {
       }
       var results = [];
       if (is_pair(arg)) {
+        check_code_cycles(arg, env);
         return [yield evaluate(arg, {
           env,
           dynamic_env,
@@ -17609,6 +17928,7 @@ function exec_collect(collect_callback) {
         for (var _iterator2 = _asyncIterator(input), _step2; _iteratorAbruptCompletion2 = !(_step2 = yield _iterator2.next()).done; _iteratorAbruptCompletion2 = false) {
           var code = _step2.value;
           {
+            check_code_cycles(code, env);
             var value = yield evaluate(code, {
               env,
               dynamic_env,
@@ -17863,9 +18183,9 @@ function Worker(url) {
     console.error(error);
   });
   this.exec = function (code) {
-    var _ref50 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
-      _ref50$use_dynamic = _ref50.use_dynamic,
-      use_dynamic = _ref50$use_dynamic === void 0 ? false : _ref50$use_dynamic;
+    var _ref49 = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {},
+      _ref49$use_dynamic = _ref49.use_dynamic,
+      use_dynamic = _ref49$use_dynamic === void 0 ? false : _ref49$use_dynamic;
     var is_code = is_pair(code);
     if (is_code) {
       code = serialize(code);
@@ -17881,10 +18201,10 @@ function Worker(url) {
 // :: Serialization
 // -------------------------------------------------------------------------
 var serialization_map = {
-  'pair': _ref51 => {
-    var _ref52 = _slicedToArray(_ref51, 2),
-      car = _ref52[0],
-      cdr = _ref52[1];
+  'pair': _ref50 => {
+    var _ref51 = _slicedToArray(_ref50, 2),
+      car = _ref51[0],
+      cdr = _ref51[1];
     return Pair(car, cdr);
   },
   'number': function number(value) {
@@ -17896,10 +18216,10 @@ var serialization_map = {
     }
     return LNumber(value);
   },
-  'regex': function regex(_ref53) {
-    var _ref54 = _slicedToArray(_ref53, 2),
-      pattern = _ref54[0],
-      flag = _ref54[1];
+  'regex': function regex(_ref52) {
+    var _ref53 = _slicedToArray(_ref52, 2),
+      pattern = _ref53[0],
+      flag = _ref53[1];
     return new RegExp(pattern, flag);
   },
   'nil': function nil() {
@@ -17919,10 +18239,10 @@ var serialization_map = {
 // class mapping to create smaller JSON
 var available_class = Object.keys(serialization_map);
 var class_map = {};
-for (var _ref57 of Object.entries(available_class)) {
-  var _ref56 = _slicedToArray(_ref57, 2);
-  var i = _ref56[0];
-  var cls = _ref56[1];
+for (var _ref56 of Object.entries(available_class)) {
+  var _ref55 = _slicedToArray(_ref56, 2);
+  var i = _ref55[0];
+  var cls = _ref55[1];
   class_map[cls] = +i;
 }
 function mangle_name(name) {
@@ -17989,10 +18309,10 @@ var cbor = function () {
   }
   var encoder = new Encoder();
   var cbor_serialization_map = {};
-  for (var _ref60 of Object.entries(serialization_map)) {
-    var _ref59 = _slicedToArray(_ref60, 2);
-    var name = _ref59[0];
-    var _fn2 = _ref59[1];
+  for (var _ref59 of Object.entries(serialization_map)) {
+    var _ref58 = _slicedToArray(_ref59, 2);
+    var name = _ref58[0];
+    var _fn2 = _ref58[1];
     var Class = types[name];
     cbor_serialization_map[name] = serializer(Class, _fn2);
   }
@@ -18187,15 +18507,15 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Mon, 24 Aug 2026 18:55:31 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Thu, 03 Sep 2026 21:53:26 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Mon, 24 Aug 2026 18:55:31 +0000').valueOf();
+  var date = LString('Thu, 03 Sep 2026 21:53:26 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
   var _build = [_year, _format(_date.getMonth() + 1), _format(_date.getDate())].join('-');
-  var banner = "\n  __ __                          __\n / / \\ \\       _    _  ___  ___  \\ \\\n| |   \\ \\     | |  | || . \\/ __>  | |\n| |    > \\    | |_ | ||  _/\\__ \\  | |\n| |   / ^ \\   |___||_||_|  <___/  | |\n \\_\\ /_/ \\_\\                     /_/\n\nLIPS Interpreter 1.0.0-beta.23.1 (".concat(_build, ") <https://lips.js.org>\nCopyright (c) 2018-").concat(_year, " Jakub T. Jankiewicz\n\nType (env) to see environment with functions macros and variables. You can also\nuse (help name) to display help for specific function or macro, (apropos name)\nto display list of matched names in environment and (dir object) to list\nproperties of an object.\n").replace(/^.*\n/, '');
+  var banner = "\n  __ __                          __\n / / \\ \\       _    _  ___  ___  \\ \\\n| |   \\ \\     | |  | || . \\/ __>  | |\n| |    > \\    | |_ | ||  _/\\__ \\  | |\n| |   / ^ \\   |___||_||_|  <___/  | |\n \\_\\ /_/ \\_\\                     /_/\n\nLIPS Interpreter DEV (".concat(_build, ") <https://lips.js.org>\nCopyright (c) 2018-").concat(_year, " Jakub T. Jankiewicz\n\nType (env) to see environment with functions macros and variables. You can also\nuse (help name) to display help for specific function or macro, (apropos name)\nto display list of matched names in environment and (dir object) to list\nproperties of an object.\n").replace(/^.*\n/, '');
   return banner;
 }();
 // -------------------------------------------------------------------------
@@ -18228,8 +18548,8 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
-var version = '1.0.0-beta.23.1';
-var date = 'Mon, 24 Aug 2026 18:55:31 +0000';
+var version = 'DEV';
+var date = 'Thu, 03 Sep 2026 21:53:26 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

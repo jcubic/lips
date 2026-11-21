@@ -31,13 +31,13 @@ is in Scheme. But with environment object you can access that chain.
 
 ## Changing environment without eval
 
-In LIPS you can change the environment with `let-env` syntax:
+In LIPS you can change the environment with `letenv` syntax:
 
 ```scheme
 (define env (let ((x 10) (y 20))
               (current-environment)))
 
-(let-env env
+(letenv env
   (+ x y))
 ;; ==> 30
 ```
@@ -56,20 +56,20 @@ some of them got additional arguments. R<sup>n</sup>RS is backward compatible.
 
 :::
 
-You can use this function with `eval` or `let-env`:
+You can use this function with `eval` or `letenv`:
 
 ```scheme
 (let ((env (scheme-report-environment 7)))
-  (let-env env
+  (letenv env
      (display (+ 1 2))))
 ;; ==> 3
-(let-env (scheme-report-environment 7)
+(letenv (scheme-report-environment 7)
   (display (--> "string" (toUpperCase))))
 ;; ==> Unbound variable `-->'
-(let-env (scheme-report-environment 7)
+(letenv (scheme-report-environment 7)
    (write (vector-map + #(1 2 3) #(4 5 6 7))))
 ;; ==> #(5 7 9)
-(let-env (scheme-report-environment 5)
+(letenv (scheme-report-environment 5)
    (write (vector-map + #(1 2 3) #(4 5 6 7))))
 ;; ==> Unbound variable `vector-map'
 ```
@@ -122,7 +122,7 @@ If you execute this code in REPL or in a script it will only add `define` into `
 If you really want to overwrite `define` you can (not that you should):
 
 ```scheme
-(let-env lips.env.__parent__
+(letenv lips.env.__parent__
   (define-macro (define x)
     `(print ,x)))
 
@@ -136,6 +136,6 @@ If you really want to overwrite `define` you can (not that you should):
 The only time you may want to use `lips.env.__parent__` when you bootstrap the LIPS Scheme system.
 
 ```scheme
-(let-env lips.env.__parent__
+(letenv lips.env.__parent__
   (load "<path or URL>/dist/std.xcb"))
 ```
