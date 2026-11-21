@@ -56,10 +56,11 @@
   "overrides": {
     "@types/react": "^18.3.12",
     "serialize-javascript": "^7.1.0",
+    "tinypool": "^2.2.0",
     "uuid": "^11.1.1"
   },
   "allowScripts": {
-    "puppeteer@25.8.0": true,
-    "core-js@3.50.0": true
+    "puppeteer@25.18.1": true,
+    "core-js@3.51.0": true
   }
 }
