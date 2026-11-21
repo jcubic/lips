@@ -55,7 +55,7 @@
 (define (%doc string fn)
   (typecheck "%doc" fn "function")
   (typecheck "%doc" string "string")
-  (set-object! fn '__doc__ (--> string (replace #/^ +/mg "")))
+  (set-object! fn '__doc__ (string.replace #/^ +/mg ""))
   fn)
 
 ;; -----------------------------------------------------------------------------

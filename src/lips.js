@@ -2657,10 +2657,30 @@ function doc(name, fn, doc, dump) {
         name = null;
     }
     if (doc) {
-        if (dump) {
-            fn.__doc__ = doc;
+        if (is_function(doc)) {
+            Object.defineProperty(fn, '__doc__', {
+                get: () => {
+                    const __doc__ = doc();
+                    if (!dump) {
+                        __doc__ = trim_lines(__doc__);
+                    }
+                    return __doc__;
+                },
+                set: (value) => {
+                    Object.defineProperty(fn, '__doc__', {
+                        value,
+                        writable: true,
+                        configurable: true
+                    });
+                },
+                configurable: true,
+                enumarable: true
+            });
         } else {
-            fn.__doc__ = trim_lines(doc);
+            if (!dump) {
+                doc = trim_lines(doc);
+            }
+            fn.__doc__ = doc;
         }
     }
     if (name) {
@@ -10995,15 +11015,9 @@ var global_env = new Environment({
     lambda: new Macro('lambda', function(source, state) {
         const code = source.cdr;
         delete state.object;
-        var self = this;
-        var __doc__;
-        if (is_pair(code.cdr) &&
-            LString.isString(code.cdr.car) &&
-            !is_nil(code.cdr.cdr)) {
-            __doc__ = code.cdr.car.valueOf();
-        }
-        const rest = __doc__ ? code.cdr.cdr : code.cdr;
+        const self = this;
         function lambda(...args) {
+            const { code, rest } = lambda._get_data();
             const eval_args = lambda_scope.call(this, self, lambda, code, args, state);
             const { dynamic_env, use_dynamic } = eval_args;
             // Cache the hygienic (begin . body) wrapper and bind its gensym once
@@ -11019,6 +11033,9 @@ var global_env = new Environment({
                 lambda._begin_gensym = g;
                 body = lambda._hygienic_body = new Pair(g, rest);
                 self.set(g, global_env.get('begin'));
+            } else {
+                // update body to allow mutation of __code__
+                body.cdr = rest;
             }
             // dynamic-scope mode evaluates the body with dynamic_env (which does
             // not chain to `self`), so rebind the gensym there per call.
@@ -11028,16 +11045,34 @@ var global_env = new Environment({
             return evaluate(body, { ...eval_args, cc: top_cc });
         }
         var length = is_pair(code.car) ? code.car.length() : null;
-        read_only(lambda, '_env', self, { hidden: true });
-        read_only(lambda, '_body', rest, { hidden: true });
-        read_only(lambda, '_code', code, { hidden: true });
+        read_only(lambda, '_get_data', () => {
+            const env = self;
+            const source = lambda.__code__;
+            const code = source.cdr;
+            let __doc__;
+            if (is_pair(code.cdr) &&
+                LString.isString(code.cdr.car) &&
+                !is_nil(code.cdr.cdr)) {
+                __doc__ = code.cdr.car.valueOf();
+            }
+            const rest = __doc__ ? code.cdr.cdr : code.cdr;
+            return {
+                __doc__,
+                rest,
+                code,
+                env
+            };
+        }, { hidden: true });
         lambda.__code__ = source;
         lambda[__lambda__] = true;
         if (is_pair(code.car)) {
             // lambda have list of arguments
             lambda = set_fn_length(lambda, length);
         }
-        lambda = doc(lambda, __doc__, true);
+        lambda = doc(lambda, () => {
+            const { __doc__ } = lambda._get_data();
+            return __doc__;
+        }, true);
         // continuation for stack trace
         state.cc = new Continuation('lambda', null, source, state, function(state) {
             state.object = lambda;
@@ -13817,15 +13852,6 @@ function* evaluate_code(state) {
                         // expands to this form too, so it is how a macro gets
                         // its documentation.
                         doc = cdr.cdr.cdr.car.valueOf();
-                    } else if (is_pair(cdr.cdr.car) &&
-                        LSymbol.is(cdr.cdr.car.car, 'lambda') &&
-                        is_pair(cdr.cdr.car.cdr) &&
-                        is_pair(cdr.cdr.car.cdr.cdr) &&
-                        LString.isString(cdr.cdr.car.cdr.cdr.car)) {
-                        // (define (name . args) "doc string" . body) has already
-                        // been rewritten to a lambda whose body opens with the
-                        // doc string
-                        doc = cdr.cdr.car.cdr.cdr.car.valueOf();
                     }
                     const value = state.object = cdr.cdr.car;
                     // the value has not been evaluated yet, so decide whether it
@@ -14042,8 +14068,8 @@ async function next_macro(state) {
 // -------------------------------------------------------------------------
 function evaluate_lambda(fn, args, state, cc) {
     state.cc = cc.__continuation__;
-    const define_env = fn._env;
-    const scope = lambda_scope.call(cc, define_env, fn, fn._code, args, {
+    const { code, rest, env: define_env } = fn._get_data();
+    const scope = lambda_scope.call(cc, define_env, fn, code, args, {
         error: state.error,
         use_dynamic: state.use_dynamic,
         dynamic_env: state.dynamic_env
@@ -14058,8 +14084,11 @@ function evaluate_lambda(fn, args, state, cc) {
     if (is_undef(body)) {
         const g = gensym('begin');
         fn._begin_gensym = g;
-        body = read_only(fn, '_hygienic_body', new Pair(g, fn._body), { hidden: true });
+        body = read_only(fn, '_hygienic_body', new Pair(g, rest), { hidden: true });
         define_env.set(g, global_env.get('begin'));
+    } else {
+        // update body to allow mutation of __code__
+        body.cdr = rest;
     }
     // dynamic-scope mode evaluates the body with `dynamic_env` as its scope, and
     // that environment does not chain to `define_env`, so the gensym has to be

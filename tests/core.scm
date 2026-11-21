@@ -1213,6 +1213,24 @@ This function returns the car (item 1) of the list.")
         (t.is (syntax-error? (lambda () (%cycle-macro))) #t)
         (t.is (syntax-error? (lambda () (macroexpand '(%cycle-macro)))) #t)))
 
+(test "allow function mutation"
+      (lambda (t)
+        (define (foo x)
+          "hello"
+          (* x x))
+        (define (bar x)
+          "world"
+          (+ x x))
+        (let ((code foo.__code__))
+          (set! foo.__code__ bar.__code__)
+          (t.is (foo 10) 20)
+          (t.is (foo 10) (bar 10))
+          (t.is foo.__doc__ "world")
+          (t.is foo.__doc__ bar.__doc__)
+          (set! foo.__code__ code)
+          (t.is (foo 10) 100)
+          (t.is foo.__doc__ "hello"))))
+
 ;; TODO
 ;; begin*
 ;; set-object! throws with null or boolean

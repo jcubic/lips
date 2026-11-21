@@ -4,7 +4,7 @@
  * | |   \ \     | |  | || . \/ __>  | |
  * | |    > \    | |_ | ||  _/\__ \  | |
  * | |   / ^ \   |___||_||_|  <___/  | |
- *  \_\ /_/ \_\                     /_/ v. 1.0.0-beta.24
+ *  \_\ /_/ \_\                     /_/ v. DEV
  *
  * LIPS is Pretty Simple - Scheme based Powerful LISP in JavaScript
  *
@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 21 Nov 2026 11:10:04 +0000
+ * build: Sat, 21 Nov 2026 18:39:03 +0000
  */
 
 (function (global, factory) {
@@ -69,6 +69,10 @@
 
   function _toArray(r) {
     return _arrayWithHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableRest();
+  }
+
+  function _readOnlyError(r) {
+    throw new TypeError('"' + r + '" is read-only');
   }
 
   function asyncGeneratorStep(n, t, e, r, o, a, c) {
@@ -5610,10 +5614,30 @@
       name = null;
     }
     if (doc) {
-      if (dump) {
-        fn.__doc__ = doc;
+      if (is_function(doc)) {
+        Object.defineProperty(fn, '__doc__', {
+          get: () => {
+            var __doc__ = doc();
+            if (!dump) {
+              trim_lines(__doc__), _readOnlyError("__doc__");
+            }
+            return __doc__;
+          },
+          set: value => {
+            Object.defineProperty(fn, '__doc__', {
+              value,
+              writable: true,
+              configurable: true
+            });
+          },
+          configurable: true,
+          enumarable: true
+        });
       } else {
-        fn.__doc__ = trim_lines(doc);
+        if (!dump) {
+          doc = trim_lines(doc);
+        }
+        fn.__doc__ = doc;
       }
     }
     if (name) {
@@ -14894,12 +14918,10 @@
       var code = source.cdr;
       delete state.object;
       var self = this;
-      var __doc__;
-      if (is_pair(code.cdr) && LString.isString(code.cdr.car) && !is_nil(code.cdr.cdr)) {
-        __doc__ = code.cdr.car.valueOf();
-      }
-      var rest = __doc__ ? code.cdr.cdr : code.cdr;
       function lambda() {
+        var _lambda$_get_data = lambda._get_data(),
+          code = _lambda$_get_data.code,
+          rest = _lambda$_get_data.rest;
         for (var _len25 = arguments.length, args = new Array(_len25), _key25 = 0; _key25 < _len25; _key25++) {
           args[_key25] = arguments[_key25];
         }
@@ -14919,6 +14941,9 @@
           lambda._begin_gensym = g;
           body = lambda._hygienic_body = new Pair(g, rest);
           self.set(g, global_env.get('begin'));
+        } else {
+          // update body to allow mutation of __code__
+          body.cdr = rest;
         }
         // dynamic-scope mode evaluates the body with dynamic_env (which does
         // not chain to `self`), so rebind the gensym there per call.
@@ -14930,13 +14955,22 @@
         }));
       }
       var length = is_pair(code.car) ? code.car.length() : null;
-      read_only(lambda, '_env', self, {
-        hidden: true
-      });
-      read_only(lambda, '_body', rest, {
-        hidden: true
-      });
-      read_only(lambda, '_code', code, {
+      read_only(lambda, '_get_data', () => {
+        var env = self;
+        var source = lambda.__code__;
+        var code = source.cdr;
+        var __doc__;
+        if (is_pair(code.cdr) && LString.isString(code.cdr.car) && !is_nil(code.cdr.cdr)) {
+          __doc__ = code.cdr.car.valueOf();
+        }
+        var rest = __doc__ ? code.cdr.cdr : code.cdr;
+        return {
+          __doc__,
+          rest,
+          code,
+          env
+        };
+      }, {
         hidden: true
       });
       lambda.__code__ = source;
@@ -14945,7 +14979,11 @@
         // lambda have list of arguments
         lambda = set_fn_length(lambda, length);
       }
-      lambda = doc(lambda, __doc__, true);
+      lambda = doc(lambda, () => {
+        var _lambda$_get_data2 = lambda._get_data(),
+          __doc__ = _lambda$_get_data2.__doc__;
+        return __doc__;
+      }, true);
       // continuation for stack trace
       state.cc = new Continuation('lambda', null, source, state, function (state) {
         state.object = lambda;
@@ -17526,11 +17564,6 @@
               // expands to this form too, so it is how a macro gets
               // its documentation.
               _doc = cdr.cdr.cdr.car.valueOf();
-            } else if (is_pair(cdr.cdr.car) && LSymbol.is(cdr.cdr.car.car, 'lambda') && is_pair(cdr.cdr.car.cdr) && is_pair(cdr.cdr.car.cdr.cdr) && LString.isString(cdr.cdr.car.cdr.cdr.car)) {
-              // (define (name . args) "doc string" . body) has already
-              // been rewritten to a lambda whose body opens with the
-              // doc string
-              _doc = cdr.cdr.car.cdr.cdr.car.valueOf();
             }
             var value = state.object = cdr.cdr.car;
             // the value has not been evaluated yet, so decide whether it
@@ -17737,8 +17770,11 @@
   }
   function evaluate_lambda(fn, args, state, cc) {
     state.cc = cc.__continuation__;
-    var define_env = fn._env;
-    var scope = lambda_scope.call(cc, define_env, fn, fn._code, args, {
+    var _fn$_get_data = fn._get_data(),
+      code = _fn$_get_data.code,
+      rest = _fn$_get_data.rest,
+      define_env = _fn$_get_data.env;
+    var scope = lambda_scope.call(cc, define_env, fn, code, args, {
       error: state.error,
       use_dynamic: state.use_dynamic,
       dynamic_env: state.dynamic_env
@@ -17754,10 +17790,13 @@
     if (is_undef(body)) {
       var g = gensym('begin');
       fn._begin_gensym = g;
-      body = read_only(fn, '_hygienic_body', new Pair(g, fn._body), {
+      body = read_only(fn, '_hygienic_body', new Pair(g, rest), {
         hidden: true
       });
       define_env.set(g, global_env.get('begin'));
+    } else {
+      // update body to allow mutation of __code__
+      body.cdr = rest;
     }
     // dynamic-scope mode evaluates the body with `dynamic_env` as its scope, and
     // that environment does not chain to `define_env`, so the gensym has to be
@@ -18509,15 +18548,15 @@
   // -------------------------------------------------------------------------
   var banner = function () {
     // Rollup tree-shaking is removing the variable if it's normal string because
-    // obviously 'Sat, 21 Nov 2026 11:10:04 +0000' == '{{' + 'DATE}}'; can be removed
+    // obviously 'Sat, 21 Nov 2026 18:39:03 +0000' == '{{' + 'DATE}}'; can be removed
     // but disabling Tree-shaking is adding lot of not used code so we use this
     // hack instead
-    var date = LString('Sat, 21 Nov 2026 11:10:04 +0000').valueOf();
+    var date = LString('Sat, 21 Nov 2026 18:39:03 +0000').valueOf();
     var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
     var _format = x => x.toString().padStart(2, '0');
     var _year = _date.getFullYear();
     var _build = [_year, _format(_date.getMonth() + 1), _format(_date.getDate())].join('-');
-    var banner = "\n  __ __                          __\n / / \\ \\       _    _  ___  ___  \\ \\\n| |   \\ \\     | |  | || . \\/ __>  | |\n| |    > \\    | |_ | ||  _/\\__ \\  | |\n| |   / ^ \\   |___||_||_|  <___/  | |\n \\_\\ /_/ \\_\\                     /_/\n\nLIPS Interpreter 1.0.0-beta.24 (".concat(_build, ") <https://lips.js.org>\nCopyright (c) 2018-").concat(_year, " Jakub T. Jankiewicz\n\nType (env) to see environment with functions macros and variables. You can also\nuse (help name) to display help for specific function or macro, (apropos name)\nto display list of matched names in environment and (dir object) to list\nproperties of an object.\n").replace(/^.*\n/, '');
+    var banner = "\n  __ __                          __\n / / \\ \\       _    _  ___  ___  \\ \\\n| |   \\ \\     | |  | || . \\/ __>  | |\n| |    > \\    | |_ | ||  _/\\__ \\  | |\n| |   / ^ \\   |___||_||_|  <___/  | |\n \\_\\ /_/ \\_\\                     /_/\n\nLIPS Interpreter DEV (".concat(_build, ") <https://lips.js.org>\nCopyright (c) 2018-").concat(_year, " Jakub T. Jankiewicz\n\nType (env) to see environment with functions macros and variables. You can also\nuse (help name) to display help for specific function or macro, (apropos name)\nto display list of matched names in environment and (dir object) to list\nproperties of an object.\n").replace(/^.*\n/, '');
     return banner;
   }();
   // -------------------------------------------------------------------------
@@ -18550,8 +18589,8 @@
   read_only(Continuation, '__class__', 'continuation');
   read_only(Parameter, '__class__', 'parameter');
   // -------------------------------------------------------------------------
-  var version = '1.0.0-beta.24';
-  var date = 'Sat, 21 Nov 2026 11:10:04 +0000';
+  var version = 'DEV';
+  var date = 'Sat, 21 Nov 2026 18:39:03 +0000';
 
   // unwrap async generator into Promise<Array>
   var parse = compose(uniterate_async, _parse);
