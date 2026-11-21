@@ -6902,9 +6902,12 @@ function hidden_prop(obj, name, value) {
 // ----------------------------------------------------------------------
 function set_fn_length(fn, length) {
     try {
+        if (!is_function(length)) {
+            length = () => length;
+        }
         Object.defineProperty(fn, 'length', {
             get: function() {
-                return length;
+                return length();
             }
         });
         return fn;
@@ -11046,7 +11049,6 @@ var global_env = new Environment({
             }
             return evaluate(body, { ...eval_args, cc: top_cc });
         }
-        var length = is_pair(code.car) ? code.car.length() : null;
         read_only(lambda, '_get_data', () => {
             const env = self;
             // user can mutate the code and add cycle
@@ -11059,9 +11061,11 @@ var global_env = new Environment({
                 __doc__ = code.cdr.car.valueOf();
             }
             const rest = __doc__ ? code.cdr.cdr : code.cdr;
+            const length = is_pair(code.car) ? code.car.length() : null;
             check_code_cycles(rest, self);
             return {
                 __doc__,
+                length,
                 rest,
                 code,
                 env
@@ -11069,10 +11073,10 @@ var global_env = new Environment({
         }, { hidden: true });
         lambda.__code__ = source;
         lambda[__lambda__] = true;
-        if (is_pair(code.car)) {
-            // lambda have list of arguments
-            lambda = set_fn_length(lambda, length);
-        }
+        lambda = set_fn_length(lambda, () => {
+            const { length } = lambda._get_data();
+            return length;
+        });
         lambda = doc(lambda, () => {
             const { __doc__ } = lambda._get_data();
             return __doc__;

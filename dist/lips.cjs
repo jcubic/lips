@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 21 Nov 2026 20:16:48 +0000
+ * build: Sat, 21 Nov 2026 20:49:03 +0000
  */
 
 'use strict';
@@ -10809,9 +10809,12 @@ function hidden_prop(obj, name, value) {
 // ----------------------------------------------------------------------
 function set_fn_length(fn, length) {
   try {
+    if (!is_function(length)) {
+      length = () => length;
+    }
     Object.defineProperty(fn, 'length', {
       get: function get() {
-        return length;
+        return length();
       }
     });
     return fn;
@@ -14954,7 +14957,6 @@ var global_env = new Environment({
         cc: top_cc
       }));
     }
-    var length = is_pair(code.car) ? code.car.length() : null;
     read_only(lambda, '_get_data', () => {
       var env = self;
       // user can mutate the code and add cycle
@@ -14965,9 +14967,11 @@ var global_env = new Environment({
         __doc__ = code.cdr.car.valueOf();
       }
       var rest = __doc__ ? code.cdr.cdr : code.cdr;
+      var length = is_pair(code.car) ? code.car.length() : null;
       check_code_cycles(rest, self);
       return {
         __doc__,
+        length,
         rest,
         code,
         env
@@ -14979,11 +14983,14 @@ var global_env = new Environment({
     lambda[__lambda__] = true;
     if (is_pair(code.car)) {
       // lambda have list of arguments
-      lambda = set_fn_length(lambda, length);
+      lambda = set_fn_length(lambda, () => {
+        var _lambda$_get_data2 = lambda._get_data();
+          _lambda$_get_data2.length;
+      });
     }
     lambda = doc(lambda, () => {
-      var _lambda$_get_data2 = lambda._get_data(),
-        __doc__ = _lambda$_get_data2.__doc__;
+      var _lambda$_get_data3 = lambda._get_data(),
+        __doc__ = _lambda$_get_data3.__doc__;
       return __doc__;
     }, true);
     // continuation for stack trace
@@ -18553,10 +18560,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 21 Nov 2026 20:16:48 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sat, 21 Nov 2026 20:49:03 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 21 Nov 2026 20:16:48 +0000').valueOf();
+  var date = LString('Sat, 21 Nov 2026 20:49:03 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18595,7 +18602,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 21 Nov 2026 20:16:48 +0000';
+var date = 'Sat, 21 Nov 2026 20:49:03 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
