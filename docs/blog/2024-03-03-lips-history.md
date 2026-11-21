@@ -22,8 +22,9 @@ code like it was data.
 ## What is LIPS?
 
 LIPS name is a recursive ancronym which stands for **"LIPS Is Pretty Simple"**. LIPS Scheme is
-implementation of Scheme programming language in JavaScript. It adds a lot of stuff on top of Scheme
-to make it more powerful and easier to interact with JavaScript.
+implementation of [Scheme programming language](/docs/category/introduction-to-scheme) in
+JavaScript.  It adds a lot of stuff on top of Scheme to make it more powerful and easier to interact
+with JavaScript.
 
 ## History of LIPS
 

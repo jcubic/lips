@@ -26,7 +26,8 @@ export default function Bookmark(): JSX.Element {
         <Heading as="h3">Bookmarklet</Heading>
         <p>
           When you're learning Scheme language, you can run the REPL directly on any page that
-          have Scheme tutorial you're learning from. It even work with PDF files and new empty tab
+          have <a href="/docs/category/introduction-to-scheme">Scheme tutorial</a> you're learning
+          from. It even work with PDF files and new empty tab
           (at least in Chrome). Drag this link <a id="bookmark_link" ref={ref}>LIPS REPL</a> to your
           bookmarks. When you click on the bookmark it will run the interpreter. You can also just
           click the link.</p> <p>The bookmark can also be used to add REPL to your LIPS Web
