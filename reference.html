@@ -10,8 +10,8 @@
 
 
 <script crossorigin="anonymous" src="https://js.sentry-cdn.com/c6868ced9c228b7da5e50196c0ab2f14@o4508899181723648.ingest.de.sentry.io/4508899184607312.min.js"></script><link rel="stylesheet" href="/assets/css/styles.008bfdaa.css">
-<script src="/assets/js/runtime~main.d3a176d3.js" defer="defer"></script>
-<script src="/assets/js/main.e1d66653.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.909d0c93.js" defer="defer"></script>
+<script src="/assets/js/main.183b1735.js" defer="defer"></script>
 </head>
 <body>
 <svg style="display: none;"><defs>
@@ -21,7 +21,9 @@
 (- n)
 
 Subtracts n2 and subsequent numbers from n1. If only one argument is passed
-it will negate the value.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="--&gt;">--&gt;<a href="#--&gt;" class="hash-link" aria-label="Direct link to --&gt;" title="Direct link to --&gt;" translate="no">​</a></h2><pre>Helper macro that simplifies calling methods on objects. It works with chaining
+it will negate the value.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="--">--<a href="#--" class="hash-link" aria-label="Direct link to --" title="Direct link to --" translate="no">​</a></h2><pre>(-- variable)
+
+Works only on variables and decrements the value by one.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="--&gt;">--&gt;<a href="#--&gt;" class="hash-link" aria-label="Direct link to --&gt;" title="Direct link to --&gt;" translate="no">​</a></h2><pre>Helper macro that simplifies calling methods on objects. It works with chaining
 usage: (--&gt; ($ &quot;body&quot;)
             (css &quot;color&quot; &quot;red&quot;)
             (on &quot;click&quot; (lambda () (display &quot;click&quot;))))
@@ -53,9 +55,7 @@ without problem unlike in JavaScript when you use
 pass it as an argument.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="*">*<a href="#*" class="hash-link" aria-label="Direct link to *" title="Direct link to *" translate="no">​</a></h2><pre>(* . numbers)
 
 Multiplies all numbers passed as arguments. If single value is passed
-it will return that value.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="**">**<a href="#**" class="hash-link" aria-label="Direct link to **" title="Direct link to **" translate="no">​</a></h2><pre>(** a b)
-
-Function that calculates number a to to the power of b.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="/">/<a href="#/" class="hash-link" aria-label="Direct link to /" title="Direct link to /" translate="no">​</a></h2><pre>(/ n1 n2 ...)
+it will return that value.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="/">/<a href="#/" class="hash-link" aria-label="Direct link to /" title="Direct link to /" translate="no">​</a></h2><pre>(/ n1 n2 ...)
 (/ n)
 
 Divides n1 by n2 and subsequent arguments one by one. If single argument
@@ -66,7 +66,9 @@ Function that calculates the bitwise and operation.</pre></li><li><h2 class="anc
 Function that calculates the bitwise xor (exclusive or) operation.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="+">+<a href="#+" class="hash-link" aria-label="Direct link to +" title="Direct link to +" translate="no">​</a></h2><pre>(+ . numbers)
 
 Sums all numbers passed as arguments. If single value is passed it will
-return that value.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="&lt;">&lt;<a href="#&lt;" class="hash-link" aria-label="Direct link to &lt;" title="Direct link to &lt;" translate="no">​</a></h2><pre>(&lt; x1 x2 ...)
+return that value.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="++">++<a href="#++" class="hash-link" aria-label="Direct link to ++" title="Direct link to ++" translate="no">​</a></h2><pre>(++ variable)
+
+Works only on variables and increment the value by one.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="&lt;">&lt;<a href="#&lt;" class="hash-link" aria-label="Direct link to &lt;" title="Direct link to &lt;" translate="no">​</a></h2><pre>(&lt; x1 x2 ...)
 
 Function that compares its numerical arguments and checks if they are
 monotonically increasing, i.e. x1 &lt; x2 and x2 &lt; x3 and so on.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="&lt;&lt;">&lt;&lt;<a href="#&lt;&lt;" class="hash-link" aria-label="Direct link to &lt;&lt;" title="Direct link to &lt;&lt;" translate="no">​</a></h2><pre>(&lt;&lt; a b)
@@ -286,7 +288,31 @@ that continuation passed as the only argument. The continuation act
 like a procedure that can be called to jump back into the place where
 continuation was captured.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="car">car<a href="#car" class="hash-link" aria-label="Direct link to car" title="Direct link to car" translate="no">​</a></h2><pre>(car pair)
 
-This function returns the car (item 1) of the list.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="cdaaaar">cdaaaar<a href="#cdaaaar" class="hash-link" aria-label="Direct link to cdaaaar" title="Direct link to cdaaaar" translate="no">​</a></h2><pre>(cdaaaar arg)
+This function returns the car (item 1) of the list.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="case">case<a href="#case" class="hash-link" aria-label="Direct link to case" title="Direct link to case" translate="no">​</a></h2><pre>(case value
+     ((&lt;items&gt;) result1)
+     ((&lt;items&gt;) result2)
+     [else result3])
+
+Macro for switch case statement. It test if value is any of the item. If
+item match the value it will return corresponding result expression value.
+If no value match and there is else it will return that result.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="case-lambda">case-lambda<a href="#case-lambda" class="hash-link" aria-label="Direct link to case-lambda" title="Direct link to case-lambda" translate="no">​</a></h2><pre>(case-lambda expr ...)
+
+Macro create new function with different version of the function depend on
+number of arguments. Each expression is similar to single lambda.
+
+e.g.:
+
+    (define sum
+       (case-lambda
+         ((x) x)
+         ((x y) (+ x y))
+         ((x y z) (+ x y z))))
+
+    (sum 1)
+    (sum 1 2)
+    (sum 1 2 3)
+
+More arguments will give an error.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="cdaaaar">cdaaaar<a href="#cdaaaar" class="hash-link" aria-label="Direct link to cdaaaar" title="Direct link to cdaaaar" translate="no">​</a></h2><pre>(cdaaaar arg)
 
 Function that calculates (cdr (car (car (car (car arg)))))</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="cdaaadr">cdaaadr<a href="#cdaaadr" class="hash-link" aria-label="Direct link to cdaaadr" title="Direct link to cdaaadr" translate="no">​</a></h2><pre>(cdaaadr arg)
 
@@ -395,7 +421,9 @@ Checks if all characters are equal.</pre></li><li><h2 class="anchor anchorTarget
 
 Returns true if characters are monotonically decreasing.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="char&gt;=?">char&gt;=?<a href="#char&gt;=?" class="hash-link" aria-label="Direct link to char&gt;=?" title="Direct link to char&gt;=?" translate="no">​</a></h2><pre>(char&lt;? chr1 chr2 ...)
 
-Returns true if characters are monotonically non-increasing.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="clone">clone<a href="#clone" class="hash-link" aria-label="Direct link to clone" title="Direct link to clone" translate="no">​</a></h2><pre>(clone list)
+Returns true if characters are monotonically non-increasing.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="class">class<a href="#class" class="hash-link" aria-label="Direct link to class" title="Direct link to class" translate="no">​</a></h2><pre>(class &lt;parent&gt; body ...)
+
+Allows to create anonymous classes. See define-class for details.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="clone">clone<a href="#clone" class="hash-link" aria-label="Direct link to clone" title="Direct link to clone" translate="no">​</a></h2><pre>(clone list)
 
 Function that returns a clone of the list, that does not share any pairs with the
 original, so the clone can be safely mutated without affecting the original.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="close-input-port">close-input-port<a href="#close-input-port" class="hash-link" aria-label="Direct link to close-input-port" title="Direct link to close-input-port" translate="no">​</a></h2><pre>(close-input-port port)
@@ -432,7 +460,9 @@ Function that creates a new string by joining its arguments.</pre></li><li><h2 c
 Macro for condition checks. For usage instead of nested ifs.
 You can use predicate and any number of expressions. Or symbol =&gt;
 Followed by procedure that will be invoked with result
-of the predicate.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="cons">cons<a href="#cons" class="hash-link" aria-label="Direct link to cons" title="Direct link to cons" translate="no">​</a></h2><pre>(cons left right)
+of the predicate.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="cond-expand">cond-expand<a href="#cond-expand" class="hash-link" aria-label="Direct link to cond-expand" title="Direct link to cond-expand" translate="no">​</a></h2><pre>(cond-expand (cond body ...)
+
+Conditionally execute code based on a features by Scheme implementation.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="cons">cons<a href="#cons" class="hash-link" aria-label="Direct link to cons" title="Direct link to cons" translate="no">​</a></h2><pre>(cons left right)
 
 This function returns a new list with the first appended
 before the second. If the second is not a list cons will
@@ -530,25 +560,25 @@ Macro for defining records. Example of usage:
 ;; ==&gt; 1
 (set-kdr! p 3)
 (print (kdr p))
-;; ==&gt; 3</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="define-symbol-macro">define-symbol-macro<a href="#define-symbol-macro" class="hash-link" aria-label="Direct link to define-symbol-macro" title="Direct link to define-symbol-macro" translate="no">​</a></h2><pre>(define-symbol-macro type (name . args) . body)
-
-Creates syntax extensions for evaluator similar to built-in , or `.
-It&#x27;s like an alias for a real macro. Similar to CL reader macros
-but it receives already parsed code like normal macros. Type can be SPLICE
-or LITERAL symbols (see set-special!). ALL default symbol macros are literal.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="define-syntax">define-syntax<a href="#define-syntax" class="hash-link" aria-label="Direct link to define-syntax" title="Direct link to define-syntax" translate="no">​</a></h2><pre>(define-syntax name expression [__doc__])
+;; ==&gt; 3</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="define-syntax">define-syntax<a href="#define-syntax" class="hash-link" aria-label="Direct link to define-syntax" title="Direct link to define-syntax" translate="no">​</a></h2><pre>(define-syntax name expression [__doc__])
 
 Defines a new hygienic macro using syntax-rules with optional documentation.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="define-syntax-parameter">define-syntax-parameter<a href="#define-syntax-parameter" class="hash-link" aria-label="Direct link to define-syntax-parameter" title="Direct link to define-syntax-parameter" translate="no">​</a></h2><pre>(define-syntax-parameter name syntax [__doc__])
 
 Binds &lt;keyword&gt; to the transformer obtained by evaluating &lt;transformer spec&gt;.
 The transformer provides the default expansion for the syntax parameter,
 and in the absence of syntax-parameterize, is functionally equivalent to
-define-syntax.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="defmacro?">defmacro?<a href="#defmacro?" class="hash-link" aria-label="Direct link to defmacro?" title="Direct link to defmacro?" translate="no">​</a></h2><pre>(defmacro? expression)
+define-syntax.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="define-values">define-values<a href="#define-values" class="hash-link" aria-label="Direct link to define-values" title="Direct link to define-values" translate="no">​</a></h2><pre>(define-values (a b ...) expr)
+
+Evaluates expression expr and if it evaluates to result of values
+then it will define each value as a variable like with define.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="defmacro?">defmacro?<a href="#defmacro?" class="hash-link" aria-label="Direct link to defmacro?" title="Direct link to defmacro?" translate="no">​</a></h2><pre>(defmacro? expression)
 
 Checks if object is a macro and it&#x27;s expandable.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="degree-&gt;radians">degree-&gt;radians<a href="#degree-&gt;radians" class="hash-link" aria-label="Direct link to degree-&gt;radians" title="Direct link to degree-&gt;radians" translate="no">​</a></h2><pre>(degree-&gt;radians x)
 
 Convert degrees to radians.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="delay">delay<a href="#delay" class="hash-link" aria-label="Direct link to delay" title="Direct link to delay" translate="no">​</a></h2><pre>(delay expression)
 
-Will create a promise from expression that can be forced with (force).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="delete-file">delete-file<a href="#delete-file" class="hash-link" aria-label="Direct link to delete-file" title="Direct link to delete-file" translate="no">​</a></h2><pre>(delete-file filename)
+Will create a promise from expression that can be forced with (force).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="delay-force">delay-force<a href="#delay-force" class="hash-link" aria-label="Direct link to delay-force" title="Direct link to delay-force" translate="no">​</a></h2><pre>(delay-force expr)
+
+Optimized version of (delay (force expression))</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="delete-file">delete-file<a href="#delete-file" class="hash-link" aria-label="Direct link to delete-file" title="Direct link to delete-file" translate="no">​</a></h2><pre>(delete-file filename)
 
 Deletes the file of given name.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="denominator">denominator<a href="#denominator" class="hash-link" aria-label="Direct link to denominator" title="Direct link to denominator" translate="no">​</a></h2><pre>(denominator n)
 
@@ -606,8 +636,8 @@ port when there are no more data to read.</pre></li><li><h2 class="anchor anchor
 Function that compares two values if they are identical.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="equal?">equal?<a href="#equal?" class="hash-link" aria-label="Direct link to equal?" title="Direct link to equal?" translate="no">​</a></h2><pre>(equal? a b)
 
 The function checks if values are equal. If both are a pair or an array
-it compares their elements recursively. If pairs have cycles it compares
-them with eq?</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="eqv?">eqv?<a href="#eqv?" class="hash-link" aria-label="Direct link to eqv?" title="Direct link to eqv?" translate="no">​</a></h2><pre>(eqv? a b)
+it compares their elements recursively. Cyclic lists are compared without
+looping: a cycle is equal to itself and to a structurally identical cycle.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="eqv?">eqv?<a href="#eqv?" class="hash-link" aria-label="Direct link to eqv?" title="Direct link to eqv?" translate="no">​</a></h2><pre>(eqv? a b)
 
 Function that compares the values. It returns true if they are the same, they
 need to have the same type.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="error">error<a href="#error" class="hash-link" aria-label="Direct link to error" title="Direct link to error" translate="no">​</a></h2><pre>(error message ...)
@@ -795,7 +825,13 @@ of the current document. When called from Node it allow it allows to load
 JavaScript files only.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="globalize">globalize<a href="#globalize" class="hash-link" aria-label="Direct link to globalize" title="Direct link to globalize" translate="no">​</a></h2><pre>(globalize expr)
 
  Macro will get the value of the expression and add each method as function
- to global scope.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="help">help<a href="#help" class="hash-link" aria-label="Direct link to help" title="Direct link to help" translate="no">​</a></h2><pre>(help object)
+ to global scope.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="guard">guard<a href="#guard" class="hash-link" aria-label="Direct link to guard" title="Direct link to guard" translate="no">​</a></h2><pre>(guard (variable (cond)
+                 (cond =&gt; fn)
+                 (cond2 result))
+       body)
+
+Macro that executes the body and when there is exception, triggered by
+raise it&#x27;s saved in variable that can be tested by conditions.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="help">help<a href="#help" class="hash-link" aria-label="Direct link to help" title="Direct link to help" translate="no">​</a></h2><pre>(help object)
 
 This macro returns documentation for a function, macro, or a variable.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="http-get">http-get<a href="#http-get" class="hash-link" aria-label="Direct link to http-get" title="Direct link to http-get" translate="no">​</a></h2><pre>(http-get url)
 
@@ -825,8 +861,10 @@ Macro for importing names from library.</pre></li><li><h2 class="anchor anchorTa
 Function that uses the Javascript &quot;in&quot; operator to check if key is
 a valid property in the value.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="include">include<a href="#include" class="hash-link" aria-label="Direct link to include" title="Direct link to include" translate="no">​</a></h2><pre>(include file ...)
 
-Load at least one file content and insert them into one,
-body expression.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="indexed-db?">indexed-db?<a href="#indexed-db?" class="hash-link" aria-label="Direct link to indexed-db?" title="Direct link to indexed-db?" translate="no">​</a></h2><pre>(indexed-db?)
+Load at least one file content and insert them into one, body expression.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="include-ci">include-ci<a href="#include-ci" class="hash-link" aria-label="Direct link to include-ci" title="Direct link to include-ci" translate="no">​</a></h2><pre>(include-ci file ...)
+
+Load at least one file content and insert them into one, body expression.
+Similar to `include` but the input code is folded like it uses #!fold-case.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="indexed-db?">indexed-db?<a href="#indexed-db?" class="hash-link" aria-label="Direct link to indexed-db?" title="Direct link to indexed-db?" translate="no">​</a></h2><pre>(indexed-db?)
 
 Function that tests if IndexedDB is available.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="inexact">inexact<a href="#inexact" class="hash-link" aria-label="Direct link to inexact" title="Direct link to inexact" translate="no">​</a></h2><pre>(exact-&gt;inexact n)
 
@@ -886,19 +924,29 @@ evaluated. You can only get them in the body of the let expression.  (If you wan
 to define multiple variables and use them in each other&#x27;s definitions, use
 `let*`.)</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="let-env">let-env<a href="#let-env" class="hash-link" aria-label="Direct link to let-env" title="Direct link to let-env" translate="no">​</a></h2><pre>(let-env env . body)
 
-Special macro that evaluates body in context of given environment
-object.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="let-env-values">let-env-values<a href="#let-env-values" class="hash-link" aria-label="Direct link to let-env-values" title="Direct link to let-env-values" translate="no">​</a></h2><pre>(let-env-values env ((name var)) . body)
+Removed - renamed to `letenv`.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="let-env-values">let-env-values<a href="#let-env-values" class="hash-link" aria-label="Direct link to let-env-values" title="Direct link to let-env-values" translate="no">​</a></h2><pre>(let-env-values env ((name var)) . body)
 
-Adds mappings for variables var from specified env.
-it is similar to let-env but lexical scope is working with it.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="let-syntax">let-syntax<a href="#let-syntax" class="hash-link" aria-label="Direct link to let-syntax" title="Direct link to let-syntax" translate="no">​</a></h2><pre>(let-syntax ((name fn) ...) . body)
+Removed - renamed to `letenv-values`.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="let-syntax">let-syntax<a href="#let-syntax" class="hash-link" aria-label="Direct link to let-syntax" title="Direct link to let-syntax" translate="no">​</a></h2><pre>(let-syntax ((name fn) ...) . body)
 
  Works like a combination of let and define-syntax. It creates
  local macros and evaluates body in context of those macros.
- The macro to letrec-syntax is like letrec is to let.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="let*">let*<a href="#let*" class="hash-link" aria-label="Direct link to let*" title="Direct link to let*" translate="no">​</a></h2><pre>(let* ((a value-a) (b value-b) ...) . body)
+ The macro to letrec-syntax is like letrec is to let.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="let-values">let-values<a href="#let-values" class="hash-link" aria-label="Direct link to let-values" title="Direct link to let-values" translate="no">​</a></h2><pre>(let-values (binding ...) body ...)
+
+The macro work similar to let but variable is list of values and value
+need to evaluate to result of calling values.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="let*">let*<a href="#let*" class="hash-link" aria-label="Direct link to let*" title="Direct link to let*" translate="no">​</a></h2><pre>(let* ((a value-a) (b value-b) ...) . body)
 
 Macro similar to `let`, but the subsequent bindings after the first
 are evaluated in the environment including the previous let variables,
-so you can define one variable, and use it in the next&#x27;s definition.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="letrec">letrec<a href="#letrec" class="hash-link" aria-label="Direct link to letrec" title="Direct link to letrec" translate="no">​</a></h2><pre>(letrec ((a value-a) (b value-b) ...) . body)
+so you can define one variable, and use it in the next&#x27;s definition.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="let*-values">let*-values<a href="#let*-values" class="hash-link" aria-label="Direct link to let*-values" title="Direct link to let*-values" translate="no">​</a></h2><pre>(let*-values binding body ...)
+
+The macro work similar to let* but variable is list of values and value
+need to evaluate to result of calling values.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="letenv">letenv<a href="#letenv" class="hash-link" aria-label="Direct link to letenv" title="Direct link to letenv" translate="no">​</a></h2><pre>(letenv env . body)
+
+Special macro that evaluates body in context of given environment
+object.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="letenv-values">letenv-values<a href="#letenv-values" class="hash-link" aria-label="Direct link to letenv-values" title="Direct link to letenv-values" translate="no">​</a></h2><pre>(letenv-values env ((name var)) . body)
+
+Adds mappings for variables var from specified env.
+it is similar to letenv but lexical scope is working with it.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="letrec">letrec<a href="#letrec" class="hash-link" aria-label="Direct link to letrec" title="Direct link to letrec" translate="no">​</a></h2><pre>(letrec ((a value-a) (b value-b) ...) . body)
 
 Macro that creates a new environment, then evaluates and assigns values to
 names and then evaluates the body in context of that environment.
@@ -980,10 +1028,9 @@ macro. The value should be assigned to a variable e.g.:
 
 The result value is a procedure that return the value of dynamic variable.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-polar">make-polar<a href="#make-polar" class="hash-link" aria-label="Direct link to make-polar" title="Direct link to make-polar" translate="no">​</a></h2><pre>(make-polar magnitude angle)
 
-Create new complex number from polar parameters.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-promise">make-promise<a href="#make-promise" class="hash-link" aria-label="Direct link to make-promise" title="Direct link to make-promise" translate="no">​</a></h2><pre>(make-promise expr)
-(make-promise done expr)
+Create new complex number from polar parameters.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-promise">make-promise<a href="#make-promise" class="hash-link" aria-label="Direct link to make-promise" title="Direct link to make-promise" translate="no">​</a></h2><pre>(make-promise done? expr)
 
-Function that creates a promise from a function or expression.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-rectangular">make-rectangular<a href="#make-rectangular" class="hash-link" aria-label="Direct link to make-rectangular" title="Direct link to make-rectangular" translate="no">​</a></h2><pre>(make-rectangular re im)
+Function that creates a promise from an expression that can later be forced.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-rectangular">make-rectangular<a href="#make-rectangular" class="hash-link" aria-label="Direct link to make-rectangular" title="Direct link to make-rectangular" translate="no">​</a></h2><pre>(make-rectangular re im)
 
 Creates a complex number from imaginary and real part (a+bi form).</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="make-s16vector">make-s16vector<a href="#make-s16vector" class="hash-link" aria-label="Direct link to make-s16vector" title="Direct link to make-s16vector" translate="no">​</a></h2><pre>(make-s16vector k fill)
 
@@ -1635,7 +1682,9 @@ can get properties from the actual function object.</pre></li><li><h2 class="anc
 
 Returns a list from the given function and init value. The function should
 return a pair where first is the item added to the list and second is next value
-passed to the function. If the function returns false it ends the loop.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="unquote">unquote<a href="#unquote" class="hash-link" aria-label="Direct link to unquote" title="Direct link to unquote" translate="no">​</a></h2><pre>(unquote code) or ,code
+passed to the function. If the function returns false it ends the loop.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="unless">unless<a href="#unless" class="hash-link" aria-label="Direct link to unless" title="Direct link to unless" translate="no">​</a></h2><pre>(unless test body ...)
+
+Executes body when test expression is false.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="unquote">unquote<a href="#unquote" class="hash-link" aria-label="Direct link to unquote" title="Direct link to unquote" translate="no">​</a></h2><pre>(unquote code) or ,code
 
 Special form used in the quasiquote macro. It evaluates the expression inside and
 substitutes the value into quasiquote&#x27;s result.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="unquote-splicing">unquote-splicing<a href="#unquote-splicing" class="hash-link" aria-label="Direct link to unquote-splicing" title="Direct link to unquote-splicing" translate="no">​</a></h2><pre>(unquote-splicing code) or ,@code
@@ -1714,7 +1763,9 @@ Function that sets nth item of the vector to value.</pre></li><li><h2 class="anc
 
 Returns true if value is vector and false if not.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="wait">wait<a href="#wait" class="hash-link" aria-label="Direct link to wait" title="Direct link to wait" translate="no">​</a></h2><pre>(wait time . expr)
 
-Returns a promise that will resolve with the expression after delay.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="while">while<a href="#while" class="hash-link" aria-label="Direct link to while" title="Direct link to while" translate="no">​</a></h2><pre>(while cond body)
+Returns a promise that will resolve with the expression after delay.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="when">when<a href="#when" class="hash-link" aria-label="Direct link to when" title="Direct link to when" translate="no">​</a></h2><pre>(when test body ...)
+
+Executes body when test expression is true.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="while">while<a href="#while" class="hash-link" aria-label="Direct link to while" title="Direct link to while" translate="no">​</a></h2><pre>(while cond body)
 
 Creates a loop, it executes cond and body until cond expression is false.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="with-exception-handler">with-exception-handler<a href="#with-exception-handler" class="hash-link" aria-label="Direct link to with-exception-handler" title="Direct link to with-exception-handler" translate="no">​</a></h2><pre>(with-exception-handler handler thunk)
 
@@ -1762,14 +1813,30 @@ to the textual output port.</pre></li><li><h2 class="anchor anchorTargetStickyNa
 
 Write byte into binary output port.</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="Y">Y<a href="#Y" class="hash-link" aria-label="Direct link to Y" title="Direct link to Y" translate="no">​</a></h2><pre>(Y f)
 
-  _ __   __    _            _       _      _ __   __         _   _  _
- /  \ \ / /   /  __        /   ____  \    /  \ \ / /    ____  \   \  \
-+    \ v /   +   \ \      +   / ___|  +  +    \ v /    / ___|  +   +  +
-|     \ /    |    \ \     |  | |__    |  |     \ /    | |__    |   |  |
-|     | |    |    /  \    |  |  __|   |  |     | |    |  __|   |   |  |
-|     | |    |   / /\ \   |  | |      |  |     | |    | |      |   |  |
-+     |_|    +  /_/  \_\  +  |_|      +  +     |_|    |_|      +   +  +
- \_           \_           \_       _/    \_                 _/  _/ _/</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="zero?">zero?<a href="#zero?" class="hash-link" aria-label="Direct link to zero?" title="Direct link to zero?" translate="no">​</a></h2><pre>(zero? x)
+  _ __   __    _            _       _
+ /  \ \ / /   /  __        /   ____  \
++    \ v /   +   \ \      +   / ___|  +
+|     \ /    |    \ \     |  | |__    |
+|     | |    |    /  \    |  |  __|   |
+|     | |    |   / /\ \   |  | |      |
++     |_|    +  /_/  \_\  +  |_|      +
+ \_           \_           \_       _/
+                    _            _ _
+                   /  __        /   \
+                  +   \ \      +     +
+                  |    \ \     |     |
+                  |    /  \    |     |
+                  |   / /\ \   |     |
+                  +  /_/  \_\  +     +
+                   \_           \_ _/
+                         _       _   _   _  _
+                        /   ____  \   \   \  \
+                       +   / ___|  +   +   +  +
+                       |  | |__    |   |   |  |
+                       |  |  __|   |   |   |  |
+                       |  | |      |   |   |  |
+                       +  |_|      +   +   +  +
+                        \_       _/  _/  _/ _/</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="zero?">zero?<a href="#zero?" class="hash-link" aria-label="Direct link to zero?" title="Direct link to zero?" translate="no">​</a></h2><pre>(zero? x)
 
 Checks if the number is equal to 0</pre></li><li><h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="zip">zip<a href="#zip" class="hash-link" aria-label="Direct link to zip" title="Direct link to zip" translate="no">​</a></h2><pre>(zip list1 list2 ...)
 
