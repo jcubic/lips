@@ -1250,6 +1250,101 @@ This function returns the car (item 1) of the list.")
                    (match #/cyclic/))
               #("cyclic"))))
 
+;; The cycle check classifies the head of each body form to tell code from
+;; macro operands. Resolving a dot-notation head as a property path would run
+;; a user getter - and __doc__ reads the code back, so the check would re-enter
+;; itself until the stack was gone.
+(test "cycle check in a body does not read properties"
+      (lambda (t)
+        (t.plan 3)
+        (define obj (object))
+        (define count 0)
+        (Object.defineProperty obj "probe"
+                               (object :get (lambda ()
+                                              (set! count (+ count 1))
+                                              42)
+                                       :configurable #t))
+        (define (g) obj.probe)
+        (t.is (g) 42)
+        (t.is count 1)
+        (define (f) "doc f" f.__doc__)
+        (t.is (f) "doc f")))
+
+(test "should reject cycles under a dot-notation head"
+      (lambda (t)
+        (define obj (object))
+        (define (h) (obj.method (* 1 1)))
+        ;; make the operand cyclic: (* . #0=(1 1 . #0#))
+        (let ((op (cadr (caddr h.__code__))))
+          (set-cdr! (cddr op) (cdr op)))
+        (t.is (--> (try (h) (catch (e) e.message))
+                   (match #/cyclic/))
+              #("cyclic"))))
+
+(test "should reject cycles created after the first call"
+      (lambda (t)
+        (t.plan 4)
+        (define (foo x)
+          "hello"
+          (* x x))
+        ;; the first call caches a clean cycle check
+        (t.is (foo 10) 100)
+        (set-cdr! (cdr (cdadddr foo.__code__)) (cdadddr foo.__code__))
+        (t.is (--> (try (foo 10) (catch (e) e.message))
+                   (match #/cyclic/))
+              #("cyclic"))
+        ;; set-object! writes car/cdr too
+        (define (bar x)
+          "hello"
+          (* x x))
+        (t.is (bar 10) 100)
+        (let ((body (cdadddr bar.__code__)))
+          (set-object! body "cdr" body))
+        (t.is (--> (try (bar 10) (catch (e) e.message))
+                   (match #/cyclic/))
+              #("cyclic"))))
+
+(test "pair set method writes car/cdr"
+      (lambda (t)
+        (t.plan 3)
+        (let ((p (list 1 2)))
+          (--> p (set "car" 5))
+          (t.is (car p) 5))
+        (define (foo x)
+          "hello"
+          (* x x))
+        (t.is (foo 10) 100)
+        (let ((body (cdadddr foo.__code__)))
+          (--> body (set "cdr" body)))
+        (t.is (--> (try (foo 10) (catch (e) e.message))
+                   (match #/cyclic/))
+              #("cyclic"))))
+
+(test "set-object! rejects a value that is not an object"
+      (lambda (t)
+        (t.is (--> (try (set-object! #f "x" 1) (catch (e) e.message))
+                   (match #/Expecting object or function got boolean/))
+              #("Expecting object or function got boolean"))))
+
+;; A pair carries cycle labels only after mark_cycles has walked it, which
+;; printing and an environment lookup both do. Structure built in JavaScript
+;; never went through either, so is_cycle has to find the cycle itself.
+(test "is_cycle finds a cycle that was never labelled"
+      (lambda (t)
+        (t.plan 4)
+        (define raw-is-cycle
+          (Function "lips" "cyclic"
+                    "const l = lips.Pair.from_array([1, 2]);
+                     if (cyclic) { l.cdr.cdr = l; }
+                     return l.is_cycle();"))
+        (t.is (raw-is-cycle lips #f) #f)
+        (t.is (raw-is-cycle lips #t) #t)
+        ;; a labelled structure still answers correctly, and stays printable
+        (let ((p (list 1 2)))
+          (set-cdr! (cdr p) p)
+          (t.is (--> p (is_cycle)) #t)
+          (t.is (repr p) "#0=(1 2 . #0#)"))))
+
 ;; TODO
 ;; begin*
 ;; set-object! throws with null or boolean

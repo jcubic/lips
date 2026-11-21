@@ -1,6 +1,8 @@
 ## 1.0.0-beta.25
 ### Features
 * allow mutation of `lambda.__code__` list
+### Bugfix
+* fix `is_cycle` pair method, it only saw cycles already labelled by printing or a variable lookup
 
 ## 1.0.0-beta.24
 ### Breaking

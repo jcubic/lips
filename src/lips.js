@@ -4292,20 +4292,14 @@ Pair.prototype.have_cycles = function(name = null) {
 };
 
 // ----------------------------------------------------------------------------
+// The cycle labels read by have_cycles() are written by mark_cycles, which runs
+// on printing and on an environment lookup - structure that went through
+// neither has none, so the labels cannot answer this. has_cycle walks the
+// structure itself and follows the cdr spine iteratively, so a long list and a
+// cyclic one both terminate.
 Pair.prototype.is_cycle = function() {
-    return is_cycle(this);
+    return has_cycle(this);
 };
-
-// ----------------------------------------------------------------------------
-function is_cycle(pair) {
-    if (!is_pair(pair)) {
-        return false;
-    }
-    if (pair.have_cycles()) {
-        return true;
-    }
-    return is_cycle(pair.car) || is_cycle(pair.cdr);
-}
 
 // ----------------------------------------------------------------------------
 // Fast O(n) acyclicity check used to short-circuit mark_cycles. mark_cycles is
@@ -4383,15 +4377,26 @@ function code_has_cycle(root, env, force = false) {
         if (!env || !(node.car instanceof LSymbol)) {
             return false;
         }
+        // a gensym's name is a JS Symbol, which has no property path
+        const name = node.car.valueOf();
+        const dotted = node.car[LSymbol.object] !== undefined ||
+            (typeof name === 'string' && name.includes('.'));
+        // The operator is classified from its binding alone. Environment::get
+        // would walk a dot-notation name as a property path and run the
+        // getters on the way - and the __doc__ getter reads the code back, so
+        // the check would re-enter itself until the stack was gone. A property
+        // access is never a macro, so its operands are code either way.
+        const ref = env.ref(name);
+        if (!ref) {
+            return !dotted;
+        }
         try {
-            const value = env.get(node.car, { throwError: false });
+            const value = ref.get(name, { throwError: false });
             if (typeof value === 'undefined') {
                 return true;
             }
             return is_macro(value) && !is_internal_macro(value);
         } catch (e) {
-            // resolving an operator must never break the check: a JS
-            // dot-notation name throws on a missing intermediate object, and
             // the internal-macro table is still in its temporal dead zone
             // while this module is itself being evaluated
             return true;
@@ -11054,6 +11059,12 @@ var global_env = new Environment({
             // user can mutate the code and add cycle
             const source = lambda.__code__;
             const code = source.cdr;
+            // Checking `code` covers both the argument list and the body, and
+            // keeps the `lambda` keyword out of operator position - there it
+            // would be taken for a macro and its operands left unchecked. It
+            // has to run before code.car.length() below, which walks a cyclic
+            // argument list forever.
+            check_code_cycles(code, self);
             let __doc__;
             if (is_pair(code.cdr) &&
                 LString.isString(code.cdr.car) &&
@@ -11062,7 +11073,6 @@ var global_env = new Environment({
             }
             const rest = __doc__ ? code.cdr.cdr : code.cdr;
             const length = is_pair(code.car) ? code.car.length() : null;
-            check_code_cycles(rest, self);
             return {
                 __doc__,
                 length,

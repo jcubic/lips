@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 21 Nov 2026 20:49:03 +0000
+ * build: Sat, 21 Nov 2026 23:07:42 +0000
  */
 
 function _arrayWithHoles(r) {
@@ -8368,20 +8368,14 @@ Pair.prototype.have_cycles = function () {
 };
 
 // ----------------------------------------------------------------------------
+// The cycle labels read by have_cycles() are written by mark_cycles, which runs
+// on printing and on an environment lookup - structure that went through
+// neither has none, so the labels cannot answer this. has_cycle walks the
+// structure itself and follows the cdr spine iteratively, so a long list and a
+// cyclic one both terminate.
 Pair.prototype.is_cycle = function () {
-  return is_cycle(this);
+  return has_cycle(this);
 };
-
-// ----------------------------------------------------------------------------
-function is_cycle(pair) {
-  if (!is_pair(pair)) {
-    return false;
-  }
-  if (pair.have_cycles()) {
-    return true;
-  }
-  return is_cycle(pair.car) || is_cycle(pair.cdr);
-}
 
 // ----------------------------------------------------------------------------
 // Fast O(n) acyclicity check used to short-circuit mark_cycles. mark_cycles is
@@ -8471,8 +8465,20 @@ function code_has_cycle(root, env) {
     if (!env || !(node.car instanceof LSymbol)) {
       return false;
     }
+    // a gensym's name is a JS Symbol, which has no property path
+    var name = node.car.valueOf();
+    var dotted = node.car[LSymbol.object] !== undefined || typeof name === 'string' && name.includes('.');
+    // The operator is classified from its binding alone. Environment::get
+    // would walk a dot-notation name as a property path and run the
+    // getters on the way - and the __doc__ getter reads the code back, so
+    // the check would re-enter itself until the stack was gone. A property
+    // access is never a macro, so its operands are code either way.
+    var ref = env.ref(name);
+    if (!ref) {
+      return !dotted;
+    }
     try {
-      var value = env.get(node.car, {
+      var value = ref.get(name, {
         throwError: false
       });
       if (typeof value === 'undefined') {
@@ -8480,8 +8486,6 @@ function code_has_cycle(root, env) {
       }
       return is_macro(value) && !is_internal_macro(value);
     } catch (e) {
-      // resolving an operator must never break the check: a JS
-      // dot-notation name throws on a missing intermediate object, and
       // the internal-macro table is still in its temporal dead zone
       // while this module is itself being evaluated
       return true;
@@ -14913,7 +14917,7 @@ var global_env = new Environment({
   'is-debug': doc(is_debug, "(is-debug)\n         (is-debug value)\n\n         Debug function, which checks if internal debug state is set to\n         a given value or true."),
   // ------------------------------------------------------------------
   lambda: new Macro('lambda', function (source, state) {
-    var code = source.cdr;
+    source.cdr;
     delete state.object;
     var self = this;
     function lambda() {
@@ -14957,13 +14961,18 @@ var global_env = new Environment({
       // user can mutate the code and add cycle
       var source = lambda.__code__;
       var code = source.cdr;
+      // Checking `code` covers both the argument list and the body, and
+      // keeps the `lambda` keyword out of operator position - there it
+      // would be taken for a macro and its operands left unchecked. It
+      // has to run before code.car.length() below, which walks a cyclic
+      // argument list forever.
+      check_code_cycles(code, self);
       var __doc__;
       if (is_pair(code.cdr) && LString.isString(code.cdr.car) && !is_nil(code.cdr.cdr)) {
         __doc__ = code.cdr.car.valueOf();
       }
       var rest = __doc__ ? code.cdr.cdr : code.cdr;
       var length = is_pair(code.car) ? code.car.length() : null;
-      check_code_cycles(rest, self);
       return {
         __doc__,
         length,
@@ -14976,13 +14985,11 @@ var global_env = new Environment({
     });
     lambda.__code__ = source;
     lambda[__lambda__] = true;
-    if (is_pair(code.car)) {
-      // lambda have list of arguments
-      lambda = set_fn_length(lambda, () => {
-        var _lambda$_get_data2 = lambda._get_data();
-          _lambda$_get_data2.length;
-      });
-    }
+    lambda = set_fn_length(lambda, () => {
+      var _lambda$_get_data2 = lambda._get_data(),
+        length = _lambda$_get_data2.length;
+      return length;
+    });
     lambda = doc(lambda, () => {
       var _lambda$_get_data3 = lambda._get_data(),
         __doc__ = _lambda$_get_data3.__doc__;
@@ -18555,10 +18562,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 21 Nov 2026 20:49:03 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sat, 21 Nov 2026 23:07:42 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 21 Nov 2026 20:49:03 +0000').valueOf();
+  var date = LString('Sat, 21 Nov 2026 23:07:42 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18597,7 +18604,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 21 Nov 2026 20:49:03 +0000';
+var date = 'Sat, 21 Nov 2026 23:07:42 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
