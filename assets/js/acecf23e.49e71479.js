@@ -1,0 +1,1 @@
+"use strict";(Array.isArray(globalThis.webpackChunknew_docs)?globalThis.webpackChunknew_docs:globalThis.webpackChunknew_docs=[]).push([[1903],{1912(s){s.exports=JSON.parse('{"blogBasePath":"/blog","blogTitle":"Blog","authorsListPath":"/blog/authors"}')}}]);

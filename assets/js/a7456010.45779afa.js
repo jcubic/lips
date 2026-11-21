@@ -1,0 +1,1 @@
+"use strict";(Array.isArray(globalThis.webpackChunknew_docs)?globalThis.webpackChunknew_docs:globalThis.webpackChunknew_docs=[]).push([[1235],{8552(s){s.exports=JSON.parse('{"name":"docusaurus-plugin-content-pages","id":"default"}')}}]);
