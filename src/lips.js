@@ -4367,7 +4367,7 @@ function is_quotation(node) {
 // :: checked. `quasiquote` is skipped for the same reason, which means a
 // :: cycle reachable only through an `unquote` is not detected.
 // ----------------------------------------------------------------------
-function code_has_cycle(root, env) {
+function code_has_cycle(root, env, force = false) {
     const gray = new Set();
     const black = new Set();
     // Whether NODE's operands are data rather than code. They are when the
@@ -4416,7 +4416,9 @@ function code_has_cycle(root, env) {
             gray.add(node);
             spine.push(node);
             if (head) {
-                if (is_quotation(node)) { break; }
+                if (!force && is_quotation(node)) {
+                    break;
+                }
                 operands = skip_operands(node);
                 head = false;
             }
@@ -4442,8 +4444,8 @@ function code_has_cycle(root, env) {
 // :: evaluator (a whole form) and where a macro or syntax extension hands
 // :: back an expansion, never per evaluation step.
 // ----------------------------------------------------------------------
-function check_code_cycles(code, env) {
-    if (is_pair(code) && code_has_cycle(code, env)) {
+function check_code_cycles(code, env, force = false) {
+    if (is_pair(code) && code_has_cycle(code, env, force)) {
         const e = new Error('Syntax Error: cyclic structure in code, only quoted ' +
                             'data can contain cycles');
         // the offending form is the only frame available: the error is raised
@@ -13509,7 +13511,7 @@ function lambda_scope(self, fn, code, args, { use_dynamic, error, cc, dynamic_en
     let name = code.car;
     let i = 0;
     if (is_pair(code.car)) {
-        check_code_cycles(code.car, env);
+        check_code_cycles(code.car, env, true);
     }
     if (name instanceof LSymbol || !is_nil(name)) {
         while (true) {

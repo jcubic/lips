@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 21 Nov 2026 19:34:38 +0000
+ * build: Sat, 21 Nov 2026 20:16:48 +0000
  */
 
 'use strict';
@@ -8460,6 +8460,7 @@ function is_quotation(node) {
 // :: cycle reachable only through an `unquote` is not detected.
 // ----------------------------------------------------------------------
 function code_has_cycle(root, env) {
+  var force = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
   var gray = new Set();
   var black = new Set();
   // Whether NODE's operands are data rather than code. They are when the
@@ -8515,7 +8516,7 @@ function code_has_cycle(root, env) {
       gray.add(node);
       spine.push(node);
       if (head) {
-        if (is_quotation(node)) {
+        if (!force && is_quotation(node)) {
           break;
         }
         operands = skip_operands(node);
@@ -8544,7 +8545,8 @@ function code_has_cycle(root, env) {
 // :: back an expansion, never per evaluation step.
 // ----------------------------------------------------------------------
 function check_code_cycles(code, env) {
-  if (is_pair(code) && code_has_cycle(code, env)) {
+  var force = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+  if (is_pair(code) && code_has_cycle(code, env, force)) {
     var e = new Error('Syntax Error: cyclic structure in code, only quoted ' + 'data can contain cycles');
     // the offending form is the only frame available: the error is raised
     // before evaluation starts, so there is no continuation chain to walk.
@@ -17193,7 +17195,7 @@ function lambda_scope(self, fn, code, args, _ref48) {
   var name = code.car;
   var i = 0;
   if (is_pair(code.car)) {
-    check_code_cycles(code.car, env);
+    check_code_cycles(code.car, env, true);
   }
   if (name instanceof LSymbol || !is_nil(name)) {
     while (true) {
@@ -18551,10 +18553,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 21 Nov 2026 19:34:38 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sat, 21 Nov 2026 20:16:48 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 21 Nov 2026 19:34:38 +0000').valueOf();
+  var date = LString('Sat, 21 Nov 2026 20:16:48 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18593,7 +18595,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 21 Nov 2026 19:34:38 +0000';
+var date = 'Sat, 21 Nov 2026 20:16:48 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);
