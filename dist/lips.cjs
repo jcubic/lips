@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 21 Nov 2026 18:39:03 +0000
+ * build: Sat, 21 Nov 2026 19:34:38 +0000
  */
 
 'use strict';
@@ -8385,7 +8385,7 @@ function is_cycle(pair) {
   if (pair.have_cycles()) {
     return true;
   }
-  return is_cycle(pair.car, fn) || is_cycle(pair.cdr, fn);
+  return is_cycle(pair.car) || is_cycle(pair.cdr);
 }
 
 // ----------------------------------------------------------------------------
@@ -14955,6 +14955,7 @@ var global_env = new Environment({
     var length = is_pair(code.car) ? code.car.length() : null;
     read_only(lambda, '_get_data', () => {
       var env = self;
+      // user can mutate the code and add cycle
       var source = lambda.__code__;
       var code = source.cdr;
       var __doc__;
@@ -14962,6 +14963,7 @@ var global_env = new Environment({
         __doc__ = code.cdr.car.valueOf();
       }
       var rest = __doc__ ? code.cdr.cdr : code.cdr;
+      check_code_cycles(rest, self);
       return {
         __doc__,
         rest,
@@ -17190,6 +17192,9 @@ function lambda_scope(self, fn, code, args, _ref48) {
   }
   var name = code.car;
   var i = 0;
+  if (is_pair(code.car)) {
+    check_code_cycles(code.car, env);
+  }
   if (name instanceof LSymbol || !is_nil(name)) {
     while (true) {
       if (!is_nil(name.car)) {
@@ -17845,12 +17850,12 @@ function next_pair(state) {
       }
       state.cc = clone;
     } else if (first === __apply__ && is_lambda(args[0])) {
-      var _fn = args.shift();
-      typecheck('apply', _fn, 'function', 1);
+      var fn = args.shift();
+      typecheck('apply', fn, 'function', 1);
       var last = args.pop();
       typecheck('apply', last, ['pair', 'nil'], args.length + 2);
       last = global_env.get('list->array').call(global_env, last);
-      evaluate_lambda(_fn, args.concat(last), state, this);
+      evaluate_lambda(fn, args.concat(last), state, this);
     } else if (first === __call_with_values__ && is_lambda(args[1])) {
       // Run the CONSUMER in this (the main) trampoline, so a continuation
       // captured outside and invoked by the consumer escapes correctly.
@@ -18351,9 +18356,9 @@ var cbor = function () {
   for (var _ref59 of Object.entries(serialization_map)) {
     var _ref58 = _slicedToArray(_ref59, 2);
     var name = _ref58[0];
-    var _fn2 = _ref58[1];
+    var fn = _ref58[1];
     var Class = types[name];
-    cbor_serialization_map[name] = serializer(Class, _fn2);
+    cbor_serialization_map[name] = serializer(Class, fn);
   }
   // add CBOR data mapping
   var tag = 43311;
@@ -18546,10 +18551,10 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 21 Nov 2026 18:39:03 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sat, 21 Nov 2026 19:34:38 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 21 Nov 2026 18:39:03 +0000').valueOf();
+  var date = LString('Sat, 21 Nov 2026 19:34:38 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
@@ -18588,7 +18593,7 @@ read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
 var version = 'DEV';
-var date = 'Sat, 21 Nov 2026 18:39:03 +0000';
+var date = 'Sat, 21 Nov 2026 19:34:38 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

@@ -4304,7 +4304,7 @@ function is_cycle(pair) {
     if (pair.have_cycles()) {
         return true;
     }
-    return is_cycle(pair.car, fn) || is_cycle(pair.cdr, fn);
+    return is_cycle(pair.car) || is_cycle(pair.cdr);
 }
 
 // ----------------------------------------------------------------------------
@@ -11047,6 +11047,7 @@ var global_env = new Environment({
         var length = is_pair(code.car) ? code.car.length() : null;
         read_only(lambda, '_get_data', () => {
             const env = self;
+            // user can mutate the code and add cycle
             const source = lambda.__code__;
             const code = source.cdr;
             let __doc__;
@@ -11056,6 +11057,7 @@ var global_env = new Environment({
                 __doc__ = code.cdr.car.valueOf();
             }
             const rest = __doc__ ? code.cdr.cdr : code.cdr;
+            check_code_cycles(rest, self);
             return {
                 __doc__,
                 rest,
@@ -13506,6 +13508,9 @@ function lambda_scope(self, fn, code, args, { use_dynamic, error, cc, dynamic_en
     }
     let name = code.car;
     let i = 0;
+    if (is_pair(code.car)) {
+        check_code_cycles(code.car, env);
+    }
     if (name instanceof LSymbol || !is_nil(name)) {
         while (true) {
             if (!is_nil(name.car)) {

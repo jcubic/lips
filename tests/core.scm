@@ -1231,6 +1231,25 @@ This function returns the car (item 1) of the list.")
           (t.is (foo 10) 100)
           (t.is foo.__doc__ "hello"))))
 
+(test "should reject cycles when mutating __code__"
+      (lambda (t)
+        (define (foo x)
+          "hello"
+          (* x x))
+        ;; mutate body
+        (set-cdr! (cdr (cdadddr foo.__code__)) (cdadddr foo.__code__))
+        (t.is (--> (try (foo 10) (catch (e) e.message))
+                   (match #/cyclic/))
+              #("cyclic"))
+        (define (foo x)
+          "hello"
+          (* x x))
+        ;; mutate arguments
+        (set-cdr! (cadr foo.__code__) (cadr foo.__code__))
+        (t.is (--> (try (foo 10) (catch (e) e.message))
+                   (match #/cyclic/))
+              #("cyclic"))))
+
 ;; TODO
 ;; begin*
 ;; set-object! throws with null or boolean
