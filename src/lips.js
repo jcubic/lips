@@ -4302,6 +4302,28 @@ Pair.prototype.is_cycle = function() {
 };
 
 // ----------------------------------------------------------------------------
+// Counts destructive pair operations. An acyclic structure only becomes cyclic
+// through one of them (a datum label makes one cyclic from the start, so the
+// first check already sees it), which lets a repeated cycle check on unchanged
+// structure be skipped - see the lambda macro, where the check would otherwise
+// walk the whole body on every single call.
+//
+// The count is module-wide rather than per interpreter: Pair::set and
+// Pair::append are reached as plain methods, with the pair as `this` and no
+// environment to address, so an instance-scoped count could not see them at
+// all. Sharing the count across instances only ever means one instance repeats
+// a check another made - never a missed cycle.
+//
+// It does not see a raw `pair.cdr = x` from JavaScript, which has no hook. Code
+// mutated that way is checked again as soon as any counted operation runs.
+// ----------------------------------------------------------------------------
+let pair_mutations = 0;
+
+function pair_mutated() {
+    pair_mutations++;
+}
+
+// ----------------------------------------------------------------------------
 // Fast O(n) acyclicity check used to short-circuit mark_cycles. mark_cycles is
 // called on essentially every pair value that flows through the interpreter
 // (Environment.get, macro output, printing, ...) and its label-assigning DFS
@@ -4745,6 +4767,7 @@ Pair.prototype.toString = function(quote, { nested = false, shared = false, simp
 // ----------------------------------------------------------------------
 Pair.prototype.set = function(prop, value) {
     this[prop] = value;
+    pair_mutated();
     if (is_pair(value)) {
         this.mark_cycles();
     }
@@ -4755,6 +4778,7 @@ Pair.prototype.append = function(arg) {
     if (arg instanceof Array) {
         return this.append(Pair.from_array(arg));
     }
+    pair_mutated();
     var p = this;
     // A freshly-created placeholder pair `new Pair()` has BOTH car and cdr
     // undefined;
@@ -10299,6 +10323,7 @@ var global_env = new Environment({
     'set-car!': doc('set-car!', function(slot, value) {
         typecheck('set-car!', slot, 'pair');
         slot.car = value;
+        pair_mutated();
     }, `(set-car! obj value)
 
          Function that sets the car (first item) of the list/pair to specified value.
@@ -10307,6 +10332,7 @@ var global_env = new Environment({
     'set-cdr!': doc('set-cdr!', function(slot, value) {
         typecheck('set-cdr!', slot, 'pair');
         slot.cdr = value;
+        pair_mutated();
     }, `(set-cdr! obj value)
 
          Function that sets the cdr (tail) of the list/pair to specified value.
@@ -10912,6 +10938,11 @@ var global_env = new Environment({
         typecheck('set-object!', key, ['string', 'symbol', 'number']);
         obj = unbind(obj);
         key = key.valueOf();
+        if (is_pair(obj)) {
+            // writing car/cdr this way can make a structure cyclic just like
+            // set-car!/set-cdr! do
+            pair_mutated();
+        }
         if (arguments.length === 2) {
             delete obj[key];
             return;
@@ -11054,6 +11085,10 @@ var global_env = new Environment({
             }
             return evaluate(body, { ...eval_args, cc: top_cc });
         }
+        // the code the cycle check last accepted, and the pair mutation count
+        // it was accepted at
+        let checked_code = null;
+        let checked_mutations = -1;
         read_only(lambda, '_get_data', () => {
             const env = self;
             // user can mutate the code and add cycle
@@ -11063,8 +11098,14 @@ var global_env = new Environment({
             // keeps the `lambda` keyword out of operator position - there it
             // would be taken for a macro and its operands left unchecked. It
             // has to run before code.car.length() below, which walks a cyclic
-            // argument list forever.
-            check_code_cycles(code, self);
+            // argument list forever. Code that is unchanged since the last
+            // accepted check cannot have become cyclic, and this runs on every
+            // single call.
+            if (checked_code !== code || checked_mutations !== pair_mutations) {
+                check_code_cycles(code, self);
+                checked_code = code;
+                checked_mutations = pair_mutations;
+            }
             let __doc__;
             if (is_pair(code.cdr) &&
                 LString.isString(code.cdr.car) &&
@@ -11595,6 +11636,7 @@ var global_env = new Environment({
                     p = p.cdr;
                 }
                 p.cdr = item;
+                pair_mutated();
                 return acc;
             }
             return acc.append(item);

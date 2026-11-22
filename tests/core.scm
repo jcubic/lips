@@ -1293,7 +1293,7 @@ This function returns the car (item 1) of the list.")
         (t.is (--> (try (foo 10) (catch (e) e.message))
                    (match #/cyclic/))
               #("cyclic"))
-        ;; set-object! writes car/cdr too
+        ;; set-object! writes car/cdr too, so it has to invalidate the same way
         (define (bar x)
           "hello"
           (* x x))
@@ -1304,7 +1304,7 @@ This function returns the car (item 1) of the list.")
                    (match #/cyclic/))
               #("cyclic"))))
 
-(test "pair set method writes car/cdr"
+(test "pair set method writes car/cdr and invalidates the cycle check"
       (lambda (t)
         (t.plan 3)
         (let ((p (list 1 2)))
