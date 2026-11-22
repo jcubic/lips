@@ -2657,10 +2657,30 @@ function doc(name, fn, doc, dump) {
         name = null;
     }
     if (doc) {
-        if (dump) {
-            fn.__doc__ = doc;
+        if (is_function(doc)) {
+            Object.defineProperty(fn, '__doc__', {
+                get: () => {
+                    const __doc__ = doc();
+                    if (!dump) {
+                        __doc__ = trim_lines(__doc__);
+                    }
+                    return __doc__;
+                },
+                set: (value) => {
+                    Object.defineProperty(fn, '__doc__', {
+                        value,
+                        writable: true,
+                        configurable: true
+                    });
+                },
+                configurable: true,
+                enumarable: true
+            });
         } else {
-            fn.__doc__ = trim_lines(doc);
+            if (!dump) {
+                doc = trim_lines(doc);
+            }
+            fn.__doc__ = doc;
         }
     }
     if (name) {
@@ -4272,19 +4292,35 @@ Pair.prototype.have_cycles = function(name = null) {
 };
 
 // ----------------------------------------------------------------------------
+// The cycle labels read by have_cycles() are written by mark_cycles, which runs
+// on printing and on an environment lookup - structure that went through
+// neither has none, so the labels cannot answer this. has_cycle walks the
+// structure itself and follows the cdr spine iteratively, so a long list and a
+// cyclic one both terminate.
 Pair.prototype.is_cycle = function() {
-    return is_cycle(this);
+    return has_cycle(this);
 };
 
 // ----------------------------------------------------------------------------
-function is_cycle(pair) {
-    if (!is_pair(pair)) {
-        return false;
-    }
-    if (pair.have_cycles()) {
-        return true;
-    }
-    return is_cycle(pair.car, fn) || is_cycle(pair.cdr, fn);
+// Counts destructive pair operations. An acyclic structure only becomes cyclic
+// through one of them (a datum label makes one cyclic from the start, so the
+// first check already sees it), which lets a repeated cycle check on unchanged
+// structure be skipped - see the lambda macro, where the check would otherwise
+// walk the whole body on every single call.
+//
+// The count is module-wide rather than per interpreter: Pair::set and
+// Pair::append are reached as plain methods, with the pair as `this` and no
+// environment to address, so an instance-scoped count could not see them at
+// all. Sharing the count across instances only ever means one instance repeats
+// a check another made - never a missed cycle.
+//
+// It does not see a raw `pair.cdr = x` from JavaScript, which has no hook. Code
+// mutated that way is checked again as soon as any counted operation runs.
+// ----------------------------------------------------------------------------
+let pair_mutations = 0;
+
+function pair_mutated() {
+    pair_mutations++;
 }
 
 // ----------------------------------------------------------------------------
@@ -4347,7 +4383,7 @@ function is_quotation(node) {
 // :: checked. `quasiquote` is skipped for the same reason, which means a
 // :: cycle reachable only through an `unquote` is not detected.
 // ----------------------------------------------------------------------
-function code_has_cycle(root, env) {
+function code_has_cycle(root, env, force = false) {
     const gray = new Set();
     const black = new Set();
     // Whether NODE's operands are data rather than code. They are when the
@@ -4363,15 +4399,26 @@ function code_has_cycle(root, env) {
         if (!env || !(node.car instanceof LSymbol)) {
             return false;
         }
+        // a gensym's name is a JS Symbol, which has no property path
+        const name = node.car.valueOf();
+        const dotted = node.car[LSymbol.object] !== undefined ||
+            (typeof name === 'string' && name.includes('.'));
+        // The operator is classified from its binding alone. Environment::get
+        // would walk a dot-notation name as a property path and run the
+        // getters on the way - and the __doc__ getter reads the code back, so
+        // the check would re-enter itself until the stack was gone. A property
+        // access is never a macro, so its operands are code either way.
+        const ref = env.ref(name);
+        if (!ref) {
+            return !dotted;
+        }
         try {
-            const value = env.get(node.car, { throwError: false });
+            const value = ref.get(name, { throwError: false });
             if (typeof value === 'undefined') {
                 return true;
             }
             return is_macro(value) && !is_internal_macro(value);
         } catch (e) {
-            // resolving an operator must never break the check: a JS
-            // dot-notation name throws on a missing intermediate object, and
             // the internal-macro table is still in its temporal dead zone
             // while this module is itself being evaluated
             return true;
@@ -4396,7 +4443,9 @@ function code_has_cycle(root, env) {
             gray.add(node);
             spine.push(node);
             if (head) {
-                if (is_quotation(node)) { break; }
+                if (!force && is_quotation(node)) {
+                    break;
+                }
                 operands = skip_operands(node);
                 head = false;
             }
@@ -4422,8 +4471,8 @@ function code_has_cycle(root, env) {
 // :: evaluator (a whole form) and where a macro or syntax extension hands
 // :: back an expansion, never per evaluation step.
 // ----------------------------------------------------------------------
-function check_code_cycles(code, env) {
-    if (is_pair(code) && code_has_cycle(code, env)) {
+function check_code_cycles(code, env, force = false) {
+    if (is_pair(code) && code_has_cycle(code, env, force)) {
         const e = new Error('Syntax Error: cyclic structure in code, only quoted ' +
                             'data can contain cycles');
         // the offending form is the only frame available: the error is raised
@@ -4718,6 +4767,7 @@ Pair.prototype.toString = function(quote, { nested = false, shared = false, simp
 // ----------------------------------------------------------------------
 Pair.prototype.set = function(prop, value) {
     this[prop] = value;
+    pair_mutated();
     if (is_pair(value)) {
         this.mark_cycles();
     }
@@ -4728,6 +4778,7 @@ Pair.prototype.append = function(arg) {
     if (arg instanceof Array) {
         return this.append(Pair.from_array(arg));
     }
+    pair_mutated();
     var p = this;
     // A freshly-created placeholder pair `new Pair()` has BOTH car and cdr
     // undefined;
@@ -6880,9 +6931,12 @@ function hidden_prop(obj, name, value) {
 // ----------------------------------------------------------------------
 function set_fn_length(fn, length) {
     try {
+        if (!is_function(length)) {
+            length = () => length;
+        }
         Object.defineProperty(fn, 'length', {
             get: function() {
-                return length;
+                return length();
             }
         });
         return fn;
@@ -10269,6 +10323,7 @@ var global_env = new Environment({
     'set-car!': doc('set-car!', function(slot, value) {
         typecheck('set-car!', slot, 'pair');
         slot.car = value;
+        pair_mutated();
     }, `(set-car! obj value)
 
          Function that sets the car (first item) of the list/pair to specified value.
@@ -10277,6 +10332,7 @@ var global_env = new Environment({
     'set-cdr!': doc('set-cdr!', function(slot, value) {
         typecheck('set-cdr!', slot, 'pair');
         slot.cdr = value;
+        pair_mutated();
     }, `(set-cdr! obj value)
 
          Function that sets the cdr (tail) of the list/pair to specified value.
@@ -10882,6 +10938,11 @@ var global_env = new Environment({
         typecheck('set-object!', key, ['string', 'symbol', 'number']);
         obj = unbind(obj);
         key = key.valueOf();
+        if (is_pair(obj)) {
+            // writing car/cdr this way can make a structure cyclic just like
+            // set-car!/set-cdr! do
+            pair_mutated();
+        }
         if (arguments.length === 2) {
             delete obj[key];
             return;
@@ -10995,15 +11056,9 @@ var global_env = new Environment({
     lambda: new Macro('lambda', function(source, state) {
         const code = source.cdr;
         delete state.object;
-        var self = this;
-        var __doc__;
-        if (is_pair(code.cdr) &&
-            LString.isString(code.cdr.car) &&
-            !is_nil(code.cdr.cdr)) {
-            __doc__ = code.cdr.car.valueOf();
-        }
-        const rest = __doc__ ? code.cdr.cdr : code.cdr;
+        const self = this;
         function lambda(...args) {
+            const { code, rest } = lambda._get_data();
             const eval_args = lambda_scope.call(this, self, lambda, code, args, state);
             const { dynamic_env, use_dynamic } = eval_args;
             // Cache the hygienic (begin . body) wrapper and bind its gensym once
@@ -11019,6 +11074,9 @@ var global_env = new Environment({
                 lambda._begin_gensym = g;
                 body = lambda._hygienic_body = new Pair(g, rest);
                 self.set(g, global_env.get('begin'));
+            } else {
+                // update body to allow mutation of __code__
+                body.cdr = rest;
             }
             // dynamic-scope mode evaluates the body with dynamic_env (which does
             // not chain to `self`), so rebind the gensym there per call.
@@ -11027,17 +11085,53 @@ var global_env = new Environment({
             }
             return evaluate(body, { ...eval_args, cc: top_cc });
         }
-        var length = is_pair(code.car) ? code.car.length() : null;
-        read_only(lambda, '_env', self, { hidden: true });
-        read_only(lambda, '_body', rest, { hidden: true });
-        read_only(lambda, '_code', code, { hidden: true });
+        // the code the cycle check last accepted, and the pair mutation count
+        // it was accepted at
+        let checked_code = null;
+        let checked_mutations = -1;
+        read_only(lambda, '_get_data', () => {
+            const env = self;
+            // user can mutate the code and add cycle
+            const source = lambda.__code__;
+            const code = source.cdr;
+            // Checking `code` covers both the argument list and the body, and
+            // keeps the `lambda` keyword out of operator position - there it
+            // would be taken for a macro and its operands left unchecked. It
+            // has to run before code.car.length() below, which walks a cyclic
+            // argument list forever. Code that is unchanged since the last
+            // accepted check cannot have become cyclic, and this runs on every
+            // single call.
+            if (checked_code !== code || checked_mutations !== pair_mutations) {
+                check_code_cycles(code, self);
+                checked_code = code;
+                checked_mutations = pair_mutations;
+            }
+            let __doc__;
+            if (is_pair(code.cdr) &&
+                LString.isString(code.cdr.car) &&
+                !is_nil(code.cdr.cdr)) {
+                __doc__ = code.cdr.car.valueOf();
+            }
+            const rest = __doc__ ? code.cdr.cdr : code.cdr;
+            const length = is_pair(code.car) ? code.car.length() : null;
+            return {
+                __doc__,
+                length,
+                rest,
+                code,
+                env
+            };
+        }, { hidden: true });
         lambda.__code__ = source;
         lambda[__lambda__] = true;
-        if (is_pair(code.car)) {
-            // lambda have list of arguments
-            lambda = set_fn_length(lambda, length);
-        }
-        lambda = doc(lambda, __doc__, true);
+        lambda = set_fn_length(lambda, () => {
+            const { length } = lambda._get_data();
+            return length;
+        });
+        lambda = doc(lambda, () => {
+            const { __doc__ } = lambda._get_data();
+            return __doc__;
+        }, true);
         // continuation for stack trace
         state.cc = new Continuation('lambda', null, source, state, function(state) {
             state.object = lambda;
@@ -11542,6 +11636,7 @@ var global_env = new Environment({
                     p = p.cdr;
                 }
                 p.cdr = item;
+                pair_mutated();
                 return acc;
             }
             return acc.append(item);
@@ -13471,6 +13566,9 @@ function lambda_scope(self, fn, code, args, { use_dynamic, error, cc, dynamic_en
     }
     let name = code.car;
     let i = 0;
+    if (is_pair(code.car)) {
+        check_code_cycles(code.car, env, true);
+    }
     if (name instanceof LSymbol || !is_nil(name)) {
         while (true) {
             if (!is_nil(name.car)) {
@@ -13817,15 +13915,6 @@ function* evaluate_code(state) {
                         // expands to this form too, so it is how a macro gets
                         // its documentation.
                         doc = cdr.cdr.cdr.car.valueOf();
-                    } else if (is_pair(cdr.cdr.car) &&
-                        LSymbol.is(cdr.cdr.car.car, 'lambda') &&
-                        is_pair(cdr.cdr.car.cdr) &&
-                        is_pair(cdr.cdr.car.cdr.cdr) &&
-                        LString.isString(cdr.cdr.car.cdr.cdr.car)) {
-                        // (define (name . args) "doc string" . body) has already
-                        // been rewritten to a lambda whose body opens with the
-                        // doc string
-                        doc = cdr.cdr.car.cdr.cdr.car.valueOf();
                     }
                     const value = state.object = cdr.cdr.car;
                     // the value has not been evaluated yet, so decide whether it
@@ -14042,8 +14131,8 @@ async function next_macro(state) {
 // -------------------------------------------------------------------------
 function evaluate_lambda(fn, args, state, cc) {
     state.cc = cc.__continuation__;
-    const define_env = fn._env;
-    const scope = lambda_scope.call(cc, define_env, fn, fn._code, args, {
+    const { code, rest, env: define_env } = fn._get_data();
+    const scope = lambda_scope.call(cc, define_env, fn, code, args, {
         error: state.error,
         use_dynamic: state.use_dynamic,
         dynamic_env: state.dynamic_env
@@ -14058,8 +14147,11 @@ function evaluate_lambda(fn, args, state, cc) {
     if (is_undef(body)) {
         const g = gensym('begin');
         fn._begin_gensym = g;
-        body = read_only(fn, '_hygienic_body', new Pair(g, fn._body), { hidden: true });
+        body = read_only(fn, '_hygienic_body', new Pair(g, rest), { hidden: true });
         define_env.set(g, global_env.get('begin'));
+    } else {
+        // update body to allow mutation of __code__
+        body.cdr = rest;
     }
     // dynamic-scope mode evaluates the body with `dynamic_env` as its scope, and
     // that environment does not chain to `define_env`, so the gensym has to be

@@ -4,7 +4,7 @@
  * | |   \ \     | |  | || . \/ __>  | |
  * | |    > \    | |_ | ||  _/\__ \  | |
  * | |   / ^ \   |___||_||_|  <___/  | |
- *  \_\ /_/ \_\                     /_/ v. 1.0.0-beta.24
+ *  \_\ /_/ \_\                     /_/ v. DEV
  *
  * LIPS is Pretty Simple - Scheme based Powerful LISP in JavaScript
  *
@@ -31,7 +31,7 @@
  * Copyright (c) 2014-present, Facebook, Inc.
  * released under MIT license
  *
- * build: Sat, 21 Nov 2026 11:10:04 +0000
+ * build: Sun, 22 Nov 2026 12:51:17 +0000
  */
 
 'use strict';
@@ -67,6 +67,10 @@ function _nonIterableRest() {
 
 function _toArray(r) {
   return _arrayWithHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableRest();
+}
+
+function _readOnlyError(r) {
+  throw new TypeError('"' + r + '" is read-only');
 }
 
 function asyncGeneratorStep(n, t, e, r, o, a, c) {
@@ -5608,10 +5612,30 @@ function doc(name, fn, doc, dump) {
     name = null;
   }
   if (doc) {
-    if (dump) {
-      fn.__doc__ = doc;
+    if (is_function(doc)) {
+      Object.defineProperty(fn, '__doc__', {
+        get: () => {
+          var __doc__ = doc();
+          if (!dump) {
+            trim_lines(__doc__), _readOnlyError("__doc__");
+          }
+          return __doc__;
+        },
+        set: value => {
+          Object.defineProperty(fn, '__doc__', {
+            value,
+            writable: true,
+            configurable: true
+          });
+        },
+        configurable: true,
+        enumarable: true
+      });
     } else {
-      fn.__doc__ = trim_lines(doc);
+      if (!dump) {
+        doc = trim_lines(doc);
+      }
+      fn.__doc__ = doc;
     }
   }
   if (name) {
@@ -8349,19 +8373,34 @@ Pair.prototype.have_cycles = function () {
 };
 
 // ----------------------------------------------------------------------------
+// The cycle labels read by have_cycles() are written by mark_cycles, which runs
+// on printing and on an environment lookup - structure that went through
+// neither has none, so the labels cannot answer this. has_cycle walks the
+// structure itself and follows the cdr spine iteratively, so a long list and a
+// cyclic one both terminate.
 Pair.prototype.is_cycle = function () {
-  return is_cycle(this);
+  return has_cycle(this);
 };
 
 // ----------------------------------------------------------------------------
-function is_cycle(pair) {
-  if (!is_pair(pair)) {
-    return false;
-  }
-  if (pair.have_cycles()) {
-    return true;
-  }
-  return is_cycle(pair.car, fn) || is_cycle(pair.cdr, fn);
+// Counts destructive pair operations. An acyclic structure only becomes cyclic
+// through one of them (a datum label makes one cyclic from the start, so the
+// first check already sees it), which lets a repeated cycle check on unchanged
+// structure be skipped - see the lambda macro, where the check would otherwise
+// walk the whole body on every single call.
+//
+// The count is module-wide rather than per interpreter: Pair::set and
+// Pair::append are reached as plain methods, with the pair as `this` and no
+// environment to address, so an instance-scoped count could not see them at
+// all. Sharing the count across instances only ever means one instance repeats
+// a check another made - never a missed cycle.
+//
+// It does not see a raw `pair.cdr = x` from JavaScript, which has no hook. Code
+// mutated that way is checked again as soon as any counted operation runs.
+// ----------------------------------------------------------------------------
+var pair_mutations = 0;
+function pair_mutated() {
+  pair_mutations++;
 }
 
 // ----------------------------------------------------------------------------
@@ -8436,6 +8475,7 @@ function is_quotation(node) {
 // :: cycle reachable only through an `unquote` is not detected.
 // ----------------------------------------------------------------------
 function code_has_cycle(root, env) {
+  var force = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
   var gray = new Set();
   var black = new Set();
   // Whether NODE's operands are data rather than code. They are when the
@@ -8451,8 +8491,20 @@ function code_has_cycle(root, env) {
     if (!env || !(node.car instanceof LSymbol)) {
       return false;
     }
+    // a gensym's name is a JS Symbol, which has no property path
+    var name = node.car.valueOf();
+    var dotted = node.car[LSymbol.object] !== undefined || typeof name === 'string' && name.includes('.');
+    // The operator is classified from its binding alone. Environment::get
+    // would walk a dot-notation name as a property path and run the
+    // getters on the way - and the __doc__ getter reads the code back, so
+    // the check would re-enter itself until the stack was gone. A property
+    // access is never a macro, so its operands are code either way.
+    var ref = env.ref(name);
+    if (!ref) {
+      return !dotted;
+    }
     try {
-      var value = env.get(node.car, {
+      var value = ref.get(name, {
         throwError: false
       });
       if (typeof value === 'undefined') {
@@ -8460,8 +8512,6 @@ function code_has_cycle(root, env) {
       }
       return is_macro(value) && !is_internal_macro(value);
     } catch (e) {
-      // resolving an operator must never break the check: a JS
-      // dot-notation name throws on a missing intermediate object, and
       // the internal-macro table is still in its temporal dead zone
       // while this module is itself being evaluated
       return true;
@@ -8491,7 +8541,7 @@ function code_has_cycle(root, env) {
       gray.add(node);
       spine.push(node);
       if (head) {
-        if (is_quotation(node)) {
+        if (!force && is_quotation(node)) {
           break;
         }
         operands = skip_operands(node);
@@ -8520,7 +8570,8 @@ function code_has_cycle(root, env) {
 // :: back an expansion, never per evaluation step.
 // ----------------------------------------------------------------------
 function check_code_cycles(code, env) {
-  if (is_pair(code) && code_has_cycle(code, env)) {
+  var force = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+  if (is_pair(code) && code_has_cycle(code, env, force)) {
     var e = new Error('Syntax Error: cyclic structure in code, only quoted ' + 'data can contain cycles');
     // the offending form is the only frame available: the error is raised
     // before evaluation starts, so there is no continuation chain to walk.
@@ -8775,6 +8826,7 @@ Pair.prototype.toString = function (quote) {
 // ----------------------------------------------------------------------
 Pair.prototype.set = function (prop, value) {
   this[prop] = value;
+  pair_mutated();
   if (is_pair(value)) {
     this.mark_cycles();
   }
@@ -8785,6 +8837,7 @@ Pair.prototype.append = function (arg) {
   if (arg instanceof Array) {
     return this.append(Pair.from_array(arg));
   }
+  pair_mutated();
   var p = this;
   // A freshly-created placeholder pair `new Pair()` has BOTH car and cdr
   // undefined;
@@ -10783,9 +10836,12 @@ function hidden_prop(obj, name, value) {
 // ----------------------------------------------------------------------
 function set_fn_length(fn, length) {
   try {
+    if (!is_function(length)) {
+      length = () => length;
+    }
     Object.defineProperty(fn, 'length', {
       get: function get() {
-        return length;
+        return length();
       }
     });
     return fn;
@@ -14311,11 +14367,13 @@ var global_env = new Environment({
   'set-car!': doc('set-car!', function (slot, value) {
     typecheck('set-car!', slot, 'pair');
     slot.car = value;
+    pair_mutated();
   }, "(set-car! obj value)\n\n         Function that sets the car (first item) of the list/pair to specified value.\n         The old value is lost."),
   // ------------------------------------------------------------------
   'set-cdr!': doc('set-cdr!', function (slot, value) {
     typecheck('set-cdr!', slot, 'pair');
     slot.cdr = value;
+    pair_mutated();
   }, "(set-cdr! obj value)\n\n         Function that sets the cdr (tail) of the list/pair to specified value.\n         It will destroy the list. The old tail is lost."),
   // ------------------------------------------------------------------
   'empty?': doc('empty?', function (x) {
@@ -14802,6 +14860,11 @@ var global_env = new Environment({
     typecheck('set-object!', key, ['string', 'symbol', 'number']);
     obj = unbind(obj);
     key = key.valueOf();
+    if (is_pair(obj)) {
+      // writing car/cdr this way can make a structure cyclic just like
+      // set-car!/set-cdr! do
+      pair_mutated();
+    }
     if (arguments.length === 2) {
       delete obj[key];
       return;
@@ -14889,15 +14952,13 @@ var global_env = new Environment({
   'is-debug': doc(is_debug, "(is-debug)\n         (is-debug value)\n\n         Debug function, which checks if internal debug state is set to\n         a given value or true."),
   // ------------------------------------------------------------------
   lambda: new Macro('lambda', function (source, state) {
-    var code = source.cdr;
+    source.cdr;
     delete state.object;
     var self = this;
-    var __doc__;
-    if (is_pair(code.cdr) && LString.isString(code.cdr.car) && !is_nil(code.cdr.cdr)) {
-      __doc__ = code.cdr.car.valueOf();
-    }
-    var rest = __doc__ ? code.cdr.cdr : code.cdr;
     function lambda() {
+      var _lambda$_get_data = lambda._get_data(),
+        code = _lambda$_get_data.code,
+        rest = _lambda$_get_data.rest;
       for (var _len25 = arguments.length, args = new Array(_len25), _key25 = 0; _key25 < _len25; _key25++) {
         args[_key25] = arguments[_key25];
       }
@@ -14917,6 +14978,9 @@ var global_env = new Environment({
         lambda._begin_gensym = g;
         body = lambda._hygienic_body = new Pair(g, rest);
         self.set(g, global_env.get('begin'));
+      } else {
+        // update body to allow mutation of __code__
+        body.cdr = rest;
       }
       // dynamic-scope mode evaluates the body with dynamic_env (which does
       // not chain to `self`), so rebind the gensym there per call.
@@ -14927,23 +14991,55 @@ var global_env = new Environment({
         cc: top_cc
       }));
     }
-    var length = is_pair(code.car) ? code.car.length() : null;
-    read_only(lambda, '_env', self, {
-      hidden: true
-    });
-    read_only(lambda, '_body', rest, {
-      hidden: true
-    });
-    read_only(lambda, '_code', code, {
+    // the code the cycle check last accepted, and the pair mutation count
+    // it was accepted at
+    var checked_code = null;
+    var checked_mutations = -1;
+    read_only(lambda, '_get_data', () => {
+      var env = self;
+      // user can mutate the code and add cycle
+      var source = lambda.__code__;
+      var code = source.cdr;
+      // Checking `code` covers both the argument list and the body, and
+      // keeps the `lambda` keyword out of operator position - there it
+      // would be taken for a macro and its operands left unchecked. It
+      // has to run before code.car.length() below, which walks a cyclic
+      // argument list forever. Code that is unchanged since the last
+      // accepted check cannot have become cyclic, and this runs on every
+      // single call.
+      if (checked_code !== code || checked_mutations !== pair_mutations) {
+        check_code_cycles(code, self);
+        checked_code = code;
+        checked_mutations = pair_mutations;
+      }
+      var __doc__;
+      if (is_pair(code.cdr) && LString.isString(code.cdr.car) && !is_nil(code.cdr.cdr)) {
+        __doc__ = code.cdr.car.valueOf();
+      }
+      var rest = __doc__ ? code.cdr.cdr : code.cdr;
+      var length = is_pair(code.car) ? code.car.length() : null;
+      return {
+        __doc__,
+        length,
+        rest,
+        code,
+        env
+      };
+    }, {
       hidden: true
     });
     lambda.__code__ = source;
     lambda[__lambda__] = true;
-    if (is_pair(code.car)) {
-      // lambda have list of arguments
-      lambda = set_fn_length(lambda, length);
-    }
-    lambda = doc(lambda, __doc__, true);
+    lambda = set_fn_length(lambda, () => {
+      var _lambda$_get_data2 = lambda._get_data(),
+        length = _lambda$_get_data2.length;
+      return length;
+    });
+    lambda = doc(lambda, () => {
+      var _lambda$_get_data3 = lambda._get_data(),
+        __doc__ = _lambda$_get_data3.__doc__;
+      return __doc__;
+    }, true);
     // continuation for stack trace
     state.cc = new Continuation('lambda', null, source, state, function (state) {
       state.object = lambda;
@@ -15394,6 +15490,7 @@ var global_env = new Environment({
           p = p.cdr;
         }
         p.cdr = item;
+        pair_mutated();
         return acc;
       }
       return acc.append(item);
@@ -17152,6 +17249,9 @@ function lambda_scope(self, fn, code, args, _ref48) {
   }
   var name = code.car;
   var i = 0;
+  if (is_pair(code.car)) {
+    check_code_cycles(code.car, env, true);
+  }
   if (name instanceof LSymbol || !is_nil(name)) {
     while (true) {
       if (!is_nil(name.car)) {
@@ -17524,11 +17624,6 @@ function* evaluate_code(state) {
             // expands to this form too, so it is how a macro gets
             // its documentation.
             _doc = cdr.cdr.cdr.car.valueOf();
-          } else if (is_pair(cdr.cdr.car) && LSymbol.is(cdr.cdr.car.car, 'lambda') && is_pair(cdr.cdr.car.cdr) && is_pair(cdr.cdr.car.cdr.cdr) && LString.isString(cdr.cdr.car.cdr.cdr.car)) {
-            // (define (name . args) "doc string" . body) has already
-            // been rewritten to a lambda whose body opens with the
-            // doc string
-            _doc = cdr.cdr.car.cdr.cdr.car.valueOf();
           }
           var value = state.object = cdr.cdr.car;
           // the value has not been evaluated yet, so decide whether it
@@ -17735,8 +17830,11 @@ function is_toplevel_env(env) {
 }
 function evaluate_lambda(fn, args, state, cc) {
   state.cc = cc.__continuation__;
-  var define_env = fn._env;
-  var scope = lambda_scope.call(cc, define_env, fn, fn._code, args, {
+  var _fn$_get_data = fn._get_data(),
+    code = _fn$_get_data.code,
+    rest = _fn$_get_data.rest,
+    define_env = _fn$_get_data.env;
+  var scope = lambda_scope.call(cc, define_env, fn, code, args, {
     error: state.error,
     use_dynamic: state.use_dynamic,
     dynamic_env: state.dynamic_env
@@ -17752,10 +17850,13 @@ function evaluate_lambda(fn, args, state, cc) {
   if (is_undef(body)) {
     var g = gensym('begin');
     fn._begin_gensym = g;
-    body = read_only(fn, '_hygienic_body', new Pair(g, fn._body), {
+    body = read_only(fn, '_hygienic_body', new Pair(g, rest), {
       hidden: true
     });
     define_env.set(g, global_env.get('begin'));
+  } else {
+    // update body to allow mutation of __code__
+    body.cdr = rest;
   }
   // dynamic-scope mode evaluates the body with `dynamic_env` as its scope, and
   // that environment does not chain to `define_env`, so the gensym has to be
@@ -17806,12 +17907,12 @@ function next_pair(state) {
       }
       state.cc = clone;
     } else if (first === __apply__ && is_lambda(args[0])) {
-      var _fn = args.shift();
-      typecheck('apply', _fn, 'function', 1);
+      var fn = args.shift();
+      typecheck('apply', fn, 'function', 1);
       var last = args.pop();
       typecheck('apply', last, ['pair', 'nil'], args.length + 2);
       last = global_env.get('list->array').call(global_env, last);
-      evaluate_lambda(_fn, args.concat(last), state, this);
+      evaluate_lambda(fn, args.concat(last), state, this);
     } else if (first === __call_with_values__ && is_lambda(args[1])) {
       // Run the CONSUMER in this (the main) trampoline, so a continuation
       // captured outside and invoked by the consumer escapes correctly.
@@ -18312,9 +18413,9 @@ var cbor = function () {
   for (var _ref59 of Object.entries(serialization_map)) {
     var _ref58 = _slicedToArray(_ref59, 2);
     var name = _ref58[0];
-    var _fn2 = _ref58[1];
+    var fn = _ref58[1];
     var Class = types[name];
-    cbor_serialization_map[name] = serializer(Class, _fn2);
+    cbor_serialization_map[name] = serializer(Class, fn);
   }
   // add CBOR data mapping
   var tag = 43311;
@@ -18507,15 +18608,15 @@ if (typeof window !== 'undefined') {
 // -------------------------------------------------------------------------
 var banner = function () {
   // Rollup tree-shaking is removing the variable if it's normal string because
-  // obviously 'Sat, 21 Nov 2026 11:10:04 +0000' == '{{' + 'DATE}}'; can be removed
+  // obviously 'Sun, 22 Nov 2026 12:51:17 +0000' == '{{' + 'DATE}}'; can be removed
   // but disabling Tree-shaking is adding lot of not used code so we use this
   // hack instead
-  var date = LString('Sat, 21 Nov 2026 11:10:04 +0000').valueOf();
+  var date = LString('Sun, 22 Nov 2026 12:51:17 +0000').valueOf();
   var _date = date === '{{' + 'DATE}}' ? new Date() : new Date(date);
   var _format = x => x.toString().padStart(2, '0');
   var _year = _date.getFullYear();
   var _build = [_year, _format(_date.getMonth() + 1), _format(_date.getDate())].join('-');
-  var banner = "\n  __ __                          __\n / / \\ \\       _    _  ___  ___  \\ \\\n| |   \\ \\     | |  | || . \\/ __>  | |\n| |    > \\    | |_ | ||  _/\\__ \\  | |\n| |   / ^ \\   |___||_||_|  <___/  | |\n \\_\\ /_/ \\_\\                     /_/\n\nLIPS Interpreter 1.0.0-beta.24 (".concat(_build, ") <https://lips.js.org>\nCopyright (c) 2018-").concat(_year, " Jakub T. Jankiewicz\n\nType (env) to see environment with functions macros and variables. You can also\nuse (help name) to display help for specific function or macro, (apropos name)\nto display list of matched names in environment and (dir object) to list\nproperties of an object.\n").replace(/^.*\n/, '');
+  var banner = "\n  __ __                          __\n / / \\ \\       _    _  ___  ___  \\ \\\n| |   \\ \\     | |  | || . \\/ __>  | |\n| |    > \\    | |_ | ||  _/\\__ \\  | |\n| |   / ^ \\   |___||_||_|  <___/  | |\n \\_\\ /_/ \\_\\                     /_/\n\nLIPS Interpreter DEV (".concat(_build, ") <https://lips.js.org>\nCopyright (c) 2018-").concat(_year, " Jakub T. Jankiewicz\n\nType (env) to see environment with functions macros and variables. You can also\nuse (help name) to display help for specific function or macro, (apropos name)\nto display list of matched names in environment and (dir object) to list\nproperties of an object.\n").replace(/^.*\n/, '');
   return banner;
 }();
 // -------------------------------------------------------------------------
@@ -18548,8 +18649,8 @@ read_only(QuotedPromise, '__class__', 'promise');
 read_only(Continuation, '__class__', 'continuation');
 read_only(Parameter, '__class__', 'parameter');
 // -------------------------------------------------------------------------
-var version = '1.0.0-beta.24';
-var date = 'Sat, 21 Nov 2026 11:10:04 +0000';
+var version = 'DEV';
+var date = 'Sun, 22 Nov 2026 12:51:17 +0000';
 
 // unwrap async generator into Promise<Array>
 var parse = compose(uniterate_async, _parse);

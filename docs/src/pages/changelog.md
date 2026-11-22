@@ -15,6 +15,10 @@ format: md
 All versions of LIPS Scheme. It includes all features, bugfixes and breaking changes.
 
 
+## 1.0.0-beta.25
+### Features
+* allow mutation of `lambda.__code__` list
+
 ## 1.0.0-beta.24
 ### Breaking
 * string interpolation is now `$" ... "`
