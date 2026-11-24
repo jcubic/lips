@@ -1155,7 +1155,7 @@ With help from `(require.resolve)` you can get the path of the root directory of
 ```
 
 Node.js REPL load lips from Common.jS file and `require.resolve` returns path to file
-`dist/lips.cjs`, by removing with with String::replace and regular expression you can the real path
+`dist/lips.cjs`, by removing with String::replace and regular expression you can the real path
 to the root of the LIPS Scheme.
 
 ## Binary compiler
