@@ -306,7 +306,7 @@ You can also create ports as strings. You can use standard functions as with fil
 
 ### String Output Port
 
-Output string port act as a [buffer](https://en.wikipedia.org/wiki/Data_buffer). You can also use to to get string
+Output string port act as a [buffer](https://en.wikipedia.org/wiki/Data_buffer). You can also use to get string
 representation of different objects as a value.
 
 ```scheme
